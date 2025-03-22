@@ -1,6 +1,6 @@
 "use client"
 
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/supabase/supabase_client"
 import { useAuthStore } from "@/store/auth-store"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { ReactNode, useEffect } from "react"

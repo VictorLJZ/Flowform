@@ -73,7 +73,8 @@ export async function POST(req: NextRequest) {
     // Create a stream and return it using our centralized utility
     const stream = createSSEResponseFromStream(response, '[SERVER]');
     
-    return new Response(stream, {
+    // Ensure the stream is properly typed for the Response constructor
+    return new Response(stream as unknown as ReadableStream<Uint8Array>, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

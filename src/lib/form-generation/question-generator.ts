@@ -36,7 +36,7 @@ export class QuestionGenerator {
       throw new Error('Form must be initialized before starting a session');
     }
     
-    this.sessionId = await this.storageService.createSession(this.formId);
+    this.sessionId = await this.storageService.createFormSession(this.formId);
     
     // Get the starter question ID
     const questions = await this.storageService.getFormQuestions(this.formId);
@@ -46,7 +46,7 @@ export class QuestionGenerator {
       this.questionIds = [starterQuestion.id];
     }
     
-    return this.sessionId;
+    return this.sessionId!; // Add non-null assertion to fix type error
   }
   
   getStarterQuestion(): string {
@@ -60,7 +60,7 @@ export class QuestionGenerator {
     // Save the answer to Supabase if we have a session
     if (this.formId && this.sessionId && this.questionIds.length > 0) {
       const currentQuestionId = this.questionIds[this.contextManager.getCurrentIndex()];
-      await this.storageService.addAnswer(
+      await this.storageService.saveAnswer(
         this.formId,
         currentQuestionId,
         answer,
@@ -72,11 +72,11 @@ export class QuestionGenerator {
     if (this.contextManager.isComplete(this.config.maxQuestions)) {
       // Mark the session as complete if we have one
       if (this.sessionId) {
-        await this.storageService.updateSessionIndex(
+        await this.storageService.updateSessionQuestion(
           this.sessionId,
-          this.contextManager.getCurrentIndex(),
-          true
+          this.contextManager.getCurrentIndex()
         );
+        await this.storageService.completeSession(this.sessionId);
       }
       
       return {
@@ -129,7 +129,7 @@ export class QuestionGenerator {
     
     // Save the question to Supabase if we have a form
     if (this.formId) {
-      const questionId = await this.storageService.addQuestion(
+      const questionId = await this.storageService.saveQuestion(
         this.formId,
         generatedQuestion,
         currentIndex
@@ -138,7 +138,7 @@ export class QuestionGenerator {
       
       // Update the session's current question index if we have a session
       if (this.sessionId) {
-        await this.storageService.updateSessionIndex(
+        await this.storageService.updateSessionQuestion(
           this.sessionId,
           currentIndex
         );
@@ -172,7 +172,7 @@ export class QuestionGenerator {
     this.formId = formId;
     
     // Get the form data
-    const form = await this.storageService.getForm(formId);
+    const form = await this.storageService.getFormById(formId);
     if (!form) throw new Error(`Form not found: ${formId}`);
     
     // Update the config
@@ -209,7 +209,7 @@ export class QuestionGenerator {
     this.sessionId = sessionId;
     
     // Get the session data
-    const session = await this.storageService.getSession(sessionId);
+    const session = await this.storageService.getSessionById(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
     
     // Load the form if not already loaded
