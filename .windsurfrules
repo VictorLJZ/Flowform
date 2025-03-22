@@ -5,7 +5,7 @@ We will be using the new OpenAI Responses API in our app, instead of the old Cha
 # Tech Stack
 We are using TypeScript for type safety
 We are using Next.JS for server-side rendering
-We are using React 18 for the frontend
+We are using React 19 for the frontend
 We are using Zustand for state management
 We are using Supabase for database
 We are using Tailwind CSS v4
