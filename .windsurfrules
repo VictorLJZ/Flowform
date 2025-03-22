@@ -10,8 +10,6 @@ We are using Zustand for state management
 We are using Supabase for database
 We are using Tailwind CSS v4
 We are using OpenAI for AI integration
-We are using Duffel for travel functionality
-We are using Google Maps for map functionality
 We are using ShadCN for UI components
 
 # Director Structure
