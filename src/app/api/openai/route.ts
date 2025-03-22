@@ -1,11 +1,6 @@
-import { OpenAI } from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { createSSEResponseFromStream } from "@/lib/utils/streaming-utils";
-
-// Initialize OpenAI client on the server side only
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import openai from "./openai-client"; // Import the centralized client
 
 // Types that match what the client will send
 interface OpenAIRequestBody {
