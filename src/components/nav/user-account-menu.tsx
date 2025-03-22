@@ -4,7 +4,7 @@ import { User } from "@supabase/supabase-js"
 import { LogOut, User as UserIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/supabase/supabase_client"
 import { useAuthStore } from "@/store/auth-store"
 
 import {
