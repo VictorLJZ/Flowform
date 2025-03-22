@@ -38,4 +38,10 @@ export class ContextManager {
   isComplete(maxQuestions: number): boolean {
     return this.context.currentQuestionIndex >= maxQuestions - 1;
   }
+  
+  incrementIndex(): void {
+    if (this.context.currentQuestionIndex < this.context.questions.length - 1) {
+      this.context.currentQuestionIndex++;
+    }
+  }
 } 

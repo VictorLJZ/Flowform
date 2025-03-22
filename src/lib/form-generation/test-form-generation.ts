@@ -8,16 +8,21 @@ console.log('Imports completed');
 console.log('Loading environment from:', process.cwd());
 dotenv.config({ debug: true });
 console.log('Environment loaded');
-console.log('Available env vars:', Object.keys(process.env).filter(key => key.includes('OPENAI')));
+console.log('Available env vars:', Object.keys(process.env).filter(key => key.includes('OPENAI') || key.includes('SUPABASE')));
 
-// Check if API key is available
+// Check if API keys are available
 if (!process.env.OPENAI_API_KEY) {
   console.error('Error: OPENAI_API_KEY is not set in environment variables');
   process.exit(1);
 }
 
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  console.error('Error: Supabase environment variables are not set');
+  process.exit(1);
+}
+
 async function testFormGeneration() {
-  console.log('=== FORM GENERATION TEST ===\n');
+  console.log('=== FORM GENERATION TEST WITH SUPABASE ===\n');
   
   // Sample form configuration
   const config: FormGenerationConfig = {
@@ -36,6 +41,14 @@ async function testFormGeneration() {
   try {
     // Create a question generator
     const generator = new QuestionGenerator(config);
+    
+    // Initialize the form in Supabase
+    const formId = await generator.initializeForm('Hobby Interest Survey', 'A survey to understand hobbies and interests');
+    console.log('Form created with ID:', formId);
+    
+    // Start a new session
+    const sessionId = await generator.startSession();
+    console.log('Session started with ID:', sessionId);
     
     // Get the starter question
     console.log('=== STARTER QUESTION ===');
@@ -71,6 +84,8 @@ async function testFormGeneration() {
     console.log('Questions:', state.questions.length);
     console.log('Answers:', state.answers.length);
     console.log('Current Index:', state.currentIndex);
+    console.log('Form ID:', state.formId);
+    console.log('Session ID:', state.sessionId);
     
     console.log('\nFull Conversation:');
     for (let i = 0; i < state.questions.length; i++) {
@@ -79,6 +94,17 @@ async function testFormGeneration() {
         console.log(`A${i + 1}: ${state.answers[i]}`);
       }
     }
+    
+    // Test loading an existing session
+    console.log('\n=== TESTING SESSION LOADING ===');
+    const newGenerator = new QuestionGenerator(config);
+    await newGenerator.loadSession(sessionId);
+    
+    const loadedState = newGenerator.getConversationState();
+    console.log('Loaded session state:');
+    console.log('Questions:', loadedState.questions.length);
+    console.log('Answers:', loadedState.answers.length);
+    console.log('Current Index:', loadedState.currentIndex);
     
     console.log('\n=== TEST COMPLETED SUCCESSFULLY ===');
   } catch (error) {

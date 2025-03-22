@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSSEResponseFromStream } from "@/lib/utils/streaming-utils";
-import openai from "./openai-client"; // Import the centralized client
+import openai from "./openai-client";
 
 // Types that match what the client will send
 interface OpenAIRequestBody {
