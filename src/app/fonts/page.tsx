@@ -4,7 +4,7 @@ import { FontDemo } from "@/components/ui/font-demo";
 import { cn } from "@/lib/utils";
 
 /**
- * A dedicated page to showcase the typography system of Sword Travel
+ * A dedicated page to showcase the typography system of FlowForm
  */
 export default function FontsPage() {
   return (
@@ -23,7 +23,7 @@ export default function FontsPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-16 pb-8 border-b border-white/10">
           <div>
             <h1 className="text-5xl font-fancy font-light tracking-tight mb-2">Typography</h1>
-            <p className="text-white/60 max-w-xl">A complete guide to the Sword Travel font system</p>
+            <p className="text-white/60 max-w-xl">A complete guide to the FlowForm font system</p>
           </div>
           <Button
             asChild
@@ -56,6 +56,7 @@ export default function FontsPage() {
                   <li>• UI elements and buttons</li>
                   <li>• Navigation and menus</li>
                   <li>• Form fields and labels</li>
+                  <li>• Form instructions and hints</li>
                 </ul>
               </div>
             </div>
@@ -75,9 +76,9 @@ export default function FontsPage() {
                 <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Recommended usage</div>
                 <ul className="text-white/70 space-y-1">
                   <li>• Headings and titles</li>
-                  <li>• Hero sections</li>
+                  <li>• Form section headers</li>
                   <li>• Pull quotes and featured text</li>
-                  <li>• Brand moments and special elements</li>
+                  <li>• Success messages and confirmations</li>
                 </ul>
               </div>
             </div>
@@ -142,10 +143,10 @@ export default function FontsPage() {
                 <p className="text-white/60 text-sm">Combining both fonts for impact</p>
               </div>
               <div className="p-8 bg-gradient-to-br from-blue-950/40 to-indigo-950/40 flex flex-col items-center justify-center text-center min-h-[300px]">
-                <p className="font-fancy text-white/70 tracking-widest mb-2">DISCOVER</p>
-                <h2 className="font-fancy text-4xl font-light mb-4">Unforgettable Journeys</h2>
-                <p className="font-main text-white/80 max-w-sm">Plan your next adventure with Sword Travel's AI-powered itinerary builder</p>
-                <Button className="mt-6">Start Planning</Button>
+                <p className="font-fancy text-white/70 tracking-widest mb-2">CREATE</p>
+                <h2 className="font-fancy text-4xl font-light mb-4">Beautiful Forms</h2>
+                <p className="font-main text-white/80 max-w-sm">Build powerful and engaging forms with FlowForm's intuitive form builder</p>
+                <Button className="mt-6">Start Building</Button>
               </div>
             </div>
             
@@ -155,11 +156,11 @@ export default function FontsPage() {
                 <p className="text-white/60 text-sm">Article with proper hierarchy</p>
               </div>
               <div className="p-8 flex flex-col min-h-[300px]">
-                <h2 className="font-fancy text-2xl font-medium mb-4">Visiting Barcelona in 2025</h2>
-                <p className="font-main text-white/80 mb-4">Barcelona continues to be one of Europe's most vibrant destinations, with its stunning architecture, thriving food scene, and beautiful beaches.</p>
-                <h3 className="font-fancy text-lg font-medium mb-2 mt-2">Getting Around</h3>
-                <p className="font-main text-white/80 mb-4">The city's public transportation system is excellent, with an integrated network of metros, buses, and trams that make it easy to explore.</p>
-                <p className="font-main text-white/70 text-sm italic">Last updated: March 16, 2025</p>
+                <h2 className="font-fancy text-2xl font-medium mb-4">Creating Effective Forms</h2>
+                <p className="font-main text-white/80 mb-4">Well-designed forms improve user experience and increase completion rates, with clear instructions and logical organization of fields.</p>
+                <h3 className="font-fancy text-lg font-medium mb-2 mt-2">Form Structure</h3>
+                <p className="font-main text-white/80 mb-4">A good form follows a logical structure, groups related fields together, and provides helpful validation feedback to guide users through the process.</p>
+                <p className="font-main text-white/70 text-sm italic">Last updated: March 22, 2025</p>
               </div>
             </div>
           </div>
