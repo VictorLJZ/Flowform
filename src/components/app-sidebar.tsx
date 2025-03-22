@@ -69,42 +69,16 @@ const data = {
       ],
     },
     {
-      title: "Forms",
+      title: "My Forms",
       url: "/dashboard/forms",
       icon: FileText,
-      items: [
-        {
-          title: "My Forms",
-          url: "/dashboard/forms/my",
-        },
-        {
-          title: "Team Forms",
-          url: "/dashboard/forms/team",
-        },
-        {
-          title: "Templates",
-          url: "/dashboard/forms/templates",
-        },
-      ],
+      items: [], // Empty array means no dropdown menu
     },
     {
-      title: "Builder",
-      url: "/dashboard/builder",
+      title: "Create a Form",
+      url: "/dashboard/builder/new",
       icon: PlusCircle,
-      items: [
-        {
-          title: "Create New Form",
-          url: "/dashboard/builder/new",
-        },
-        {
-          title: "AI Assistant",
-          url: "/dashboard/builder/ai",
-        },
-        {
-          title: "Advanced Editor",
-          url: "/dashboard/builder/advanced",
-        },
-      ],
+      items: [], // Empty array means no dropdown menu
     },
     {
       title: "Responses",

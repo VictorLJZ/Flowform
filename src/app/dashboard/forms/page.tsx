@@ -100,7 +100,7 @@ export default function FormsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {forms.map((form) => (
-            <Card key={form.id} className="flex flex-col h-full overflow-hidden">
+            <Card key={form.id} className="flex flex-col h-full overflow-hidden py-4">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div className="bg-primary/10 p-2 rounded-full">

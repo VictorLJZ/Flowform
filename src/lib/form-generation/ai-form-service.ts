@@ -25,19 +25,21 @@ export class AIFormService {
       // Create a prompt for the AI to generate the next question using the Responses API format
       const systemPrompt = `You are conducting a conversational form based on the following instructions:\n\n${form.instructions}\n\nYou've had the following conversation so far:\n\n${conversationHistory}\n\nGenerate the next relevant question to ask the user based on the previous conversation and form instructions. IMPORTANT: Provide ONLY the question text without any additional content or explanations. The question should be conversational, engaging, and feel like a natural follow-up to the previous exchange.`;
       
-      // Call the OpenAI API using the correct Responses API format
-      const response = await this.openai.chat.completions.create({
+      // Using the new OpenAI Responses API format
+      console.log("Using OpenAI Responses API with model: gpt-4o-mini");
+      const response = await this.openai.responses.create({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
+        input: [
+          { role: "developer", content: systemPrompt },
           { role: "user", content: "Generate the next question based on the conversation history." }
         ],
-        max_tokens: 200,
-        temperature: 0.7
+        max_output_tokens: 200,
+        temperature: 0.7,
+        store: false // Don't store this interaction on OpenAI's servers
       });
       
-      // Extract the generated question
-      return response.choices[0]?.message?.content || "Thanks for your answers! Is there anything else you'd like to add before we wrap up?";
+      // Extract the generated question using the helper property
+      return response.output_text || "Thanks for your answers! Is there anything else you'd like to add before we wrap up?";
     } catch (error) {
       console.error("Error generating next question:", error);
       // Return a fallback question if the AI call fails
