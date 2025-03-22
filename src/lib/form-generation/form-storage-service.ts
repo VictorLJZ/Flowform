@@ -35,7 +35,7 @@ export class FormStorageService {
     if (error) throw new Error(`Error creating form: ${error.message}`);
     
     // Add the starter question
-    await this.addQuestion(formId, config.starterQuestion, 0, true);
+    await this.saveQuestion(formId, config.starterQuestion, 0, true);
     
     return formId;
   }
@@ -43,7 +43,7 @@ export class FormStorageService {
   /**
    * Create a new session for a form
    */
-  async createSession(formId: string): Promise<string> {
+  async createFormSession(formId: string): Promise<string> {
     const sessionId = uuidv4();
     const now = new Date().toISOString();
     
@@ -68,7 +68,7 @@ export class FormStorageService {
   /**
    * Add a question to a form
    */
-  async addQuestion(
+  async saveQuestion(
     formId: string, 
     content: string, 
     order: number, 
@@ -96,9 +96,9 @@ export class FormStorageService {
   }
   
   /**
-   * Add an answer to a question
+   * Save an answer to a question
    */
-  async addAnswer(
+  async saveAnswer(
     formId: string,
     questionId: string,
     content: string,
@@ -128,17 +128,31 @@ export class FormStorageService {
   /**
    * Update the session's current question index
    */
-  async updateSessionIndex(sessionId: string, index: number, completed: boolean = false): Promise<void> {
+  async updateSessionQuestion(sessionId: string, index: number): Promise<void> {
     const { error } = await supabase
       .from('form_sessions')
       .update({ 
         current_question_index: index,
-        updated_at: new Date().toISOString(),
-        completed
+        updated_at: new Date().toISOString()
       })
       .eq('id', sessionId);
       
     if (error) throw new Error(`Error updating session: ${error.message}`);
+  }
+  
+  /**
+   * Mark a session as completed
+   */
+  async completeSession(sessionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('form_sessions')
+      .update({ 
+        completed: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+      
+    if (error) throw new Error(`Error completing session: ${error.message}`);
   }
   
   /**
@@ -173,14 +187,16 @@ export class FormStorageService {
   /**
    * Get a form by ID
    */
-  async getForm(formId: string): Promise<FormRecord | null> {
+  async getFormById(formId: string): Promise<FormRecord | null> {
     const { data, error } = await supabase
       .from('forms')
       .select('*')
       .eq('id', formId)
       .single();
       
-    if (error) throw new Error(`Error fetching form: ${error.message}`);
+    if (error && error.code !== 'PGRST116') { // PGRST116 is 'not found' error
+      throw new Error(`Error fetching form: ${error.message}`);
+    }
     
     return data;
   }
@@ -188,16 +204,32 @@ export class FormStorageService {
   /**
    * Get a session by ID
    */
-  async getSession(sessionId: string): Promise<FormSession | null> {
+  async getSessionById(sessionId: string): Promise<FormSession | null> {
     const { data, error } = await supabase
       .from('form_sessions')
       .select('*')
       .eq('id', sessionId)
       .single();
       
-    if (error) throw new Error(`Error fetching session: ${error.message}`);
+    if (error && error.code !== 'PGRST116') { // PGRST116 is 'not found' error
+      throw new Error(`Error fetching session: ${error.message}`);
+    }
     
     return data;
+  }
+  
+  /**
+   * Get all forms
+   */
+  async getAllForms(): Promise<FormRecord[]> {
+    const { data, error } = await supabase
+      .from('forms')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw new Error(`Error fetching forms: ${error.message}`);
+    
+    return data || [];
   }
   
   /**
@@ -208,7 +240,7 @@ export class FormStorageService {
     answers: AnswerRecord[];
   }> {
     // First get the session to get the form ID
-    const session = await this.getSession(sessionId);
+    const session = await this.getSessionById(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
     
     // Get all questions for the form
@@ -218,5 +250,69 @@ export class FormStorageService {
     const answers = await this.getSessionAnswers(sessionId);
     
     return { questions, answers };
+  }
+
+  /**
+   * Get all sessions for a form
+   */
+  async getFormSessions(formId: string): Promise<FormSession[]> {
+    const { data, error } = await supabase
+      .from('form_sessions')
+      .select('*')
+      .eq('form_id', formId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw new Error(`Error fetching form sessions: ${error.message}`);
+    
+    return data || [];
+  }
+
+  /**
+   * Get the starter question for a form
+   */
+  async getFormStarterQuestion(formId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('questions')
+      .select('content')
+      .eq('form_id', formId)
+      .eq('is_starter', true)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') { // PGRST116 is 'not found' error
+      throw new Error(`Error fetching starter question: ${error.message}`);
+    }
+    
+    return data?.content || null;
+  }
+
+  /**
+   * Get the current question for a session
+   */
+  async getCurrentSessionQuestion(sessionId: string): Promise<QuestionRecord | null> {
+    // First get the session to get current question index
+    const session = await this.getSessionById(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
+    
+    // Get all questions for the form
+    const questions = await this.getFormQuestions(session.form_id);
+    if (!questions || questions.length === 0) return null;
+    
+    // Find the current question based on the session's current_question_index
+    const currentQuestionIndex = session.current_question_index || 0;
+    const currentQuestion = questions.find(q => q.order === currentQuestionIndex);
+    
+    return currentQuestion || null;
+  }
+
+  /**
+   * Get all questions for a specific session
+   */
+  async getSessionQuestions(sessionId: string): Promise<QuestionRecord[]> {
+    // First get the session to get the form ID
+    const session = await this.getSessionById(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
+    
+    // Get all questions for the form
+    return this.getFormQuestions(session.form_id);
   }
 } 

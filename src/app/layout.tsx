@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 import { StoreHydrator } from "@/components/store-hydrator";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "FlowForm",
@@ -20,6 +21,7 @@ export default function RootLayout({
       >
         <StoreHydrator />
         {children}
+        <Toaster />
       </body>
     </html>
   );
