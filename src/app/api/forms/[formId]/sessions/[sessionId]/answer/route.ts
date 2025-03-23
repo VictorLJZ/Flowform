@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { FormStorageService } from "@/lib/form-generation/form-storage-service"
 import { AIFormService } from "@/lib/form-generation/ai-form-service"
+import { RAGService } from "@/app/rag/rag-service"
 
 const formStorageService = new FormStorageService()
 const aiFormService = new AIFormService()
+const ragService = new RAGService()
 
 export async function POST(
   request: NextRequest,
@@ -68,6 +70,9 @@ export async function POST(
       // Mark the session as completed
       await formStorageService.completeSession(sessionId)
       
+      // Trigger RAG indexing asynchronously (don't await)
+      triggerAsyncIndexing(formId);
+      
       return NextResponse.json({
         isLastQuestion: true,
         message: "Form completed"
@@ -108,4 +113,21 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+/**
+ * Trigger RAG indexing asynchronously to avoid blocking the response
+ */
+function triggerAsyncIndexing(formId: string): void {
+  // Use Promise without await to run asynchronously
+  Promise.resolve().then(async () => {
+    try {
+      console.log(`Triggering automatic indexing for form ${formId}`);
+      await ragService.indexFormResponses(formId);
+      console.log(`Successfully indexed form ${formId} after submission`);
+    } catch (error) {
+      // Log error but don't fail the request
+      console.error(`Error auto-indexing form ${formId}:`, error);
+    }
+  });
 }

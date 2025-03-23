@@ -230,7 +230,7 @@ export function FormChat({ formId }: FormChatProps) {
   }
   
   return (
-    <div className="flex flex-col h-[600px] border rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full border rounded-lg overflow-hidden">
       <div className="flex justify-between items-center p-4 border-b">
         <h3 className="font-medium">Form Chat</h3>
         <Button 
@@ -247,7 +247,7 @@ export function FormChat({ formId }: FormChatProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
-            <p>No messages yet. Start by indexing your form responses.</p>
+            <p>No messages yet. Form responses are indexed automatically when submitted, or you can manually index them now.</p>
           </div>
         ) : (
           messages.map((message, index) => (

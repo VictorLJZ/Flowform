@@ -57,16 +57,7 @@ const data = {
       url: "/dashboard",
       icon: LayoutDashboard,
       isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard",
-        },
-        {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        },
-      ],
+      items: [], // No dropdown, direct link to dashboard overview
     },
     {
       title: "My Forms",
@@ -81,23 +72,10 @@ const data = {
       items: [], // Empty array means no dropdown menu
     },
     {
-      title: "Responses",
-      url: "/dashboard/responses",
-      icon: Inbox,
-      items: [
-        {
-          title: "All Responses",
-          url: "/dashboard/responses/all",
-        },
-        {
-          title: "Data Analysis",
-          url: "/dashboard/responses/analysis",
-        },
-        {
-          title: "Export",
-          url: "/dashboard/responses/export",
-        },
-      ],
+      title: "Data Analysis",
+      url: "/dashboard/data-analysis",
+      icon: BarChart,
+      items: [], // Empty array means no dropdown menu
     },
     {
       title: "Settings",

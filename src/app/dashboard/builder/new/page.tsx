@@ -67,7 +67,7 @@ export default function FormBuilderPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 w-full h-full">
+    <div className="flex flex-col gap-6 p-6 w-full h-[calc(100vh-4rem)] overflow-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">New Conversational Form</h1>
         <div className="flex gap-2">
@@ -144,7 +144,10 @@ export default function FormBuilderPage() {
                   min="1"
                   max="20"
                   value={formConfig.maxQuestions}
-                  onChange={(e) => handleInputChange('maxQuestions', parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                    handleInputChange('maxQuestions', value === '' ? 5 : value);
+                  }}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <p className="text-xs text-muted-foreground">Number of questions in the conversation (1-20)</p>
@@ -162,7 +165,10 @@ export default function FormBuilderPage() {
                     max="1"
                     step="0.1"
                     value={formConfig.temperature}
-                    onChange={(e) => handleInputChange('temperature', parseFloat(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                      handleInputChange('temperature', value === '' ? 0.7 : value);
+                    }}
                     className="flex-1"
                   />
                   <span className="text-sm font-mono bg-secondary px-2 py-1 rounded">{formConfig.temperature}</span>
@@ -204,7 +210,7 @@ export default function FormBuilderPage() {
                 placeholder="Enter the first question to ask users"
                 value={formConfig.starterQuestion}
                 onChange={(e) => handleInputChange('starterQuestion', e.target.value)}
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
               <p className="text-xs text-muted-foreground mt-1">This is the first question users will see when starting your form</p>
             </div>
@@ -218,7 +224,7 @@ export default function FormBuilderPage() {
                 placeholder="Provide instructions for how the AI should generate follow-up questions"
                 value={formConfig.instructions}
                 onChange={(e) => handleInputChange('instructions', e.target.value)}
-                className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[220px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
               <p className="text-xs text-muted-foreground mt-1">These instructions guide how the AI generates follow-up questions based on user responses</p>
             </div>

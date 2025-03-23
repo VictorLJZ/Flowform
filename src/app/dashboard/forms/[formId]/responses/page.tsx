@@ -140,14 +140,14 @@ export default function FormResponsesPage() {
       
       <div className="grid grid-cols-4 gap-6 py-4">
         <Card>
-          <CardHeader className="pb-4 pt-6">
+          <CardHeader>
             <CardTitle className="text-2xl">{responses.length}</CardTitle>
             <CardDescription>Total Responses</CardDescription>
           </CardHeader>
         </Card>
         
         <Card>
-          <CardHeader className="pb-4 pt-6">
+          <CardHeader>
             <CardTitle className="text-2xl">
               {new Date(form.created_at).toLocaleDateString()}
             </CardTitle>
@@ -156,7 +156,7 @@ export default function FormResponsesPage() {
         </Card>
         
         <Card>
-          <CardHeader className="pb-4 pt-6">
+          <CardHeader>
             <CardTitle className="text-2xl">
               {form.max_questions}
             </CardTitle>
@@ -165,7 +165,7 @@ export default function FormResponsesPage() {
         </Card>
         
         <Card>
-          <CardHeader className="pb-4 pt-6">
+          <CardHeader>
             <CardTitle className="text-2xl">
               {form.status.charAt(0).toUpperCase() + form.status.slice(1)}
             </CardTitle>
