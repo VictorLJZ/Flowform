@@ -101,8 +101,8 @@ export default function FormResponsesPage() {
   
   if (!form) {
     return (
-      <div className="flex flex-1 flex-col gap-6 p-6">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-1 flex-col gap-8 p-8">
+        <div className="flex items-center gap-2 py-4">
           <Button variant="ghost" size="icon" onClick={goBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -123,8 +123,8 @@ export default function FormResponsesPage() {
   }
   
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center gap-4 justify-between">
+    <div className="flex flex-1 flex-col p-8">
+      <div className="flex items-center gap-4 justify-between py-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={goBack}>
             <ArrowLeft className="h-4 w-4" />
@@ -138,16 +138,16 @@ export default function FormResponsesPage() {
         </Button>
       </div>
       
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-4 gap-6 py-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4 pt-6">
             <CardTitle className="text-2xl">{responses.length}</CardTitle>
             <CardDescription>Total Responses</CardDescription>
           </CardHeader>
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4 pt-6">
             <CardTitle className="text-2xl">
               {new Date(form.created_at).toLocaleDateString()}
             </CardTitle>
@@ -156,7 +156,7 @@ export default function FormResponsesPage() {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4 pt-6">
             <CardTitle className="text-2xl">
               {form.max_questions}
             </CardTitle>
@@ -165,7 +165,7 @@ export default function FormResponsesPage() {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4 pt-6">
             <CardTitle className="text-2xl">
               {form.status.charAt(0).toUpperCase() + form.status.slice(1)}
             </CardTitle>
@@ -175,28 +175,29 @@ export default function FormResponsesPage() {
       </div>
       
       {responses.length === 0 ? (
-        <Card className="p-8 text-center">
-          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <CardTitle className="mb-2">No responses yet</CardTitle>
-          <CardDescription className="mb-6">
+        <Card className="p-12 text-center my-6">
+          <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-6" />
+          <CardTitle className="mb-4 text-xl">No responses yet</CardTitle>
+          <CardDescription className="mb-8 text-base">
             Share your form with others to start collecting responses
           </CardDescription>
           <Button 
             variant="outline" 
             onClick={() => router.push(`/dashboard/forms`)}
+            className="px-6 py-2"
           >
             Back to Forms
           </Button>
         </Card>
       ) : (
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList>
+        <Tabs defaultValue="all" className="w-full mt-6">
+          <TabsList className="mb-4">
             <TabsTrigger value="all">All Responses</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
             <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="all" className="mt-6">
+          <TabsContent value="all" className="mt-6 py-4">
             <div className="space-y-6">
               {responses.map((response, index) => (
                 <Card key={response.session.id}>
