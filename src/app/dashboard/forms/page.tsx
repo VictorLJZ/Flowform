@@ -166,15 +166,15 @@ export default function FormsPage() {
                       <div className="space-y-4">
                         <h4 className="font-medium">Share Form</h4>
                         <p className="text-sm text-muted-foreground">Anyone with this link can fill out your form</p>
-                        <div className="flex">
+                        <div className="relative">
                           <Input 
                             readOnly 
                             value={getFormShareUrl(form.id)} 
-                            className="flex-1 pr-12 font-mono text-xs"
+                            className="w-full pr-16 font-mono text-xs"
                           />
                           <Button 
-                            className="-ml-10" 
-                            variant="ghost" 
+                            className="absolute right-0 top-0 h-full rounded-l-none" 
+                            variant="secondary" 
                             size="sm"
                             onClick={() => handleCopyToClipboard(getFormShareUrl(form.id))}
                           >

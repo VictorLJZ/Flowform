@@ -274,12 +274,20 @@ export function FormChat({ formId }: FormChatProps) {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (input.trim() && !isLoading) {
+                handleSendMessage(e);
+              }
+            }
+          }}
           placeholder="Ask a question about your form responses..."
-          className="resize-none"
+          className="resize-none min-h-10 h-10 py-2"
           rows={1}
           disabled={isLoading}
         />
-        <Button type="submit" disabled={isLoading || !input.trim()}>
+        <Button type="submit" className="h-10" disabled={isLoading || !input.trim()}>
           {isLoading ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
           ) : (
