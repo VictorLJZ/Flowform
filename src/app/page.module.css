@@ -1,18 +1,24 @@
 /* Home Page Styles */
-.homepageBackground {
-  position: relative;
-  min-height: 100vh;
+.homepage {
   width: 100%;
-  overflow: hidden;
+  height: 100vh;
+  padding: 10vh 5vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 37px;
   background-image: url('/backgrounds/background-1.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  position: relative;
+  animation: fadeIn 1s ease-out;
 }
 
 /* Noise Animation for Home Page */
 .noiseOverlay {
-  position: absolute;
+  position: fixed;
   top: -50%;
   left: -50%;
   right: -50%;
@@ -46,4 +52,171 @@
 @keyframes fadeInNoise {
   from { opacity: 0; }
   to { opacity: 0.12; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Element animations */
+.animateHeader {
+  animation: slideDown 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animateTitle {
+  font-family: 'Editorial New', serif;
+  font-weight: 400;
+  color: white;
+  animation: slideUp 0.8s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+.animateDescription {
+  animation: slideUp 0.8s ease-out 0.6s forwards;
+  opacity: 0;
+}
+
+.animateButton {
+  animation: fadeInScale 0.8s ease-out 0.9s forwards;
+  opacity: 0;
+}
+
+.pillButton {
+  position: relative;
+  background: linear-gradient(90deg, #04434C, #187E90, #08555F, #F3FBFC);
+  background-size: 300% 100%;
+  color: white;
+  border-radius: 9999px;
+  padding: 1rem 3rem;
+  font-weight: 500;
+  font-family: sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05rem;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.pillButton::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #187E90, #04434C, #F3FBFC, #08555F);
+  background-size: 300% 100%;
+  z-index: -1;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+  filter: blur(1px);
+}
+
+.pillButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(8, 85, 95, 0.3);
+}
+
+.gradientAnimation {
+  animation: gradientShift 8s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.pillButton:active {
+  transform: translateY(1px);
+}
+
+/* Page transition animation */
+.pageTransition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: white;
+  z-index: 1000;
+  transform: scaleY(0);
+  transform-origin: top;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pageTransitionActive {
+  animation: pageTransitionReveal 0.8s ease-in-out forwards;
+}
+
+@keyframes pageTransitionReveal {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animateFeatures {
+  opacity: 0;
+}
+
+.animateFeature1 {
+  animation: slideUp 0.8s ease-out 1.2s forwards;
+  opacity: 0;
+}
+
+.animateFeature2 {
+  animation: slideUp 0.8s ease-out 1.4s forwards;
+  opacity: 0;
+}
+
+.animateFeature3 {
+  animation: slideUp 0.8s ease-out 1.6s forwards;
+  opacity: 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
