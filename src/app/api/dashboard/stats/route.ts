@@ -1,30 +1,41 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/supabase/supabase_client';
+import { createClient } from '@/supabase/server';
 
 export async function GET() {
   try {
-    // Get total forms count
-    const { count: formsCount, error: formsError } = await supabase
+    const supabase = await createClient();
+    
+    // Get form count
+    const { count: formCount, error: formError } = await supabase
       .from('forms')
       .select('*', { count: 'exact', head: true });
+      
+    if (formError) throw formError;
     
-    if (formsError) throw formsError;
-    
-    // Get total responses count
-    const { count: responsesCount, error: responsesError } = await supabase
+    // Get session count
+    const { count: sessionCount, error: sessionError } = await supabase
       .from('form_sessions')
       .select('*', { count: 'exact', head: true });
+      
+    if (sessionError) throw sessionError;
     
-    if (responsesError) throw responsesError;
+    // Get total responses (answers)
+    const { count: responseCount, error: responseError } = await supabase
+      .from('answers')
+      .select('*', { count: 'exact', head: true });
+      
+    if (responseError) throw responseError;
     
     return NextResponse.json({
-      totalForms: formsCount || 0,
-      totalResponses: responsesCount || 0,
+      forms: formCount || 0,
+      sessions: sessionCount || 0,
+      responses: responseCount || 0
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch dashboard statistics' },
+      { status: 500 }
+    );
   }
 }

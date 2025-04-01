@@ -26,14 +26,10 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/providers/auth-provider"
 
 // FlowForm application data
 const data = {
-  user: {
-    name: "User",
-    email: "user@example.com",
-    avatar: "/avatars/user.jpg",
-  },
   teams: [
     {
       name: "My Forms",
@@ -121,6 +117,31 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, session, isLoading } = useAuth();
+  
+  console.log("Auth state in sidebar:", {
+    isLoading,
+    hasUser: !!user,
+    userEmail: user?.email,
+    userMetadata: user?.user_metadata,
+    session: !!session
+  });
+
+  const userData = user ? {
+    name: user.user_metadata?.name || // Google auth name
+          user.user_metadata?.full_name || // Fallback for other providers
+          user.email?.split('@')[0] || 
+          'User',
+    email: user.email || '',
+    avatar: user.user_metadata?.picture || // Google auth avatar
+           user.user_metadata?.avatar_url || // Fallback for other providers
+           ''
+  } : {
+    name: "Guest",
+    email: "",
+    avatar: ""
+  };
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -131,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userData} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

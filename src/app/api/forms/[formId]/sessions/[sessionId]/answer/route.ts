@@ -5,7 +5,6 @@ import { RAGService } from "@/app/rag/rag-service"
 
 const formStorageService = new FormStorageService()
 const aiFormService = new AIFormService()
-const ragService = new RAGService()
 
 export async function POST(
   request: NextRequest,
@@ -123,7 +122,7 @@ function triggerAsyncIndexing(formId: string): void {
   Promise.resolve().then(async () => {
     try {
       console.log(`Triggering automatic indexing for form ${formId}`);
-      await ragService.indexFormResponses(formId);
+      await RAGService.indexFormResponses(formId);
       console.log(`Successfully indexed form ${formId} after submission`);
     } catch (error) {
       // Log error but don't fail the request

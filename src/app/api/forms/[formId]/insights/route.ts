@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RAGService } from "@/app/rag/rag-service";
 
-const ragService = new RAGService();
-
 export async function GET(
   request: NextRequest,
   context: { params: { formId: string } }
@@ -18,8 +16,11 @@ export async function GET(
       );
     }
     
-    // Generate insights
-    const insights = await ragService.generateInsights(formId);
+    // Generate insights using a default question about insights
+    const insights = await RAGService.generateAnalysisResponse(
+      formId, 
+      "Generate key insights and patterns from all the responses to this form. What are the main trends, common themes, and notable outliers?"
+    );
     
     return NextResponse.json({ insights }, { status: 200 });
   } catch (error) {

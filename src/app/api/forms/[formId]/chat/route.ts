@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RAGService } from "@/app/rag/rag-service";
 
-const ragService = new RAGService();
-
 export async function POST(
   request: NextRequest,
   context: { params: { formId: string } }
@@ -28,8 +26,8 @@ export async function POST(
       );
     }
     
-    // Process the query using RAG with chat history
-    const answer = await ragService.processQuery(formId, query, chatHistory);
+    // Process the query using RAG
+    const answer = await RAGService.generateAnalysisResponse(formId, query);
     
     return NextResponse.json({ answer }, { status: 200 });
   } catch (error) {

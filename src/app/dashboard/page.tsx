@@ -143,17 +143,17 @@ export default function Page() {
                           <FileText className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="font-medium">{item.form}</p>
-                          <p className="text-sm text-muted-foreground">{item.date}</p>
+                          <p className="font-medium">{item.form_title}</p>
+                          <p className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         className="text-sm rounded-full bg-secondary px-2 py-1"
-                        onClick={() => handleViewResponses(item.formId)}
+                        onClick={() => handleViewResponses(item.form_id)}
                       >
-                        {item.responses} responses
+                        {item.completed ? "Completed" : "In Progress"}
                       </Button>
                     </div>
                   ))}

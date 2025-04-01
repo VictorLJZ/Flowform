@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../../supabase/supabase_client';
+import { createClient } from '@/supabase/server';
 import { 
   FormRecord, 
   QuestionRecord, 
@@ -13,6 +13,7 @@ export class FormStorageService {
    * Create a new form in the database
    */
   async createForm(config: FormGenerationConfig, title: string, description?: string): Promise<string> {
+    const supabase = await createClient();
     const formId = uuidv4();
     const now = new Date().toISOString();
     
@@ -44,6 +45,7 @@ export class FormStorageService {
    * Create a new session for a form
    */
   async createFormSession(formId: string): Promise<string> {
+    const supabase = await createClient();
     const sessionId = uuidv4();
     const now = new Date().toISOString();
     
@@ -74,6 +76,7 @@ export class FormStorageService {
     order: number, 
     isStarter: boolean = false
   ): Promise<string> {
+    const supabase = await createClient();
     const questionId = uuidv4();
     const now = new Date().toISOString();
     
@@ -104,6 +107,7 @@ export class FormStorageService {
     content: string,
     sessionId: string
   ): Promise<string> {
+    const supabase = await createClient();
     const answerId = uuidv4();
     const now = new Date().toISOString();
     
@@ -129,6 +133,7 @@ export class FormStorageService {
    * Update the session's current question index
    */
   async updateSessionQuestion(sessionId: string, index: number): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from('form_sessions')
       .update({ 
@@ -144,6 +149,7 @@ export class FormStorageService {
    * Mark a session as completed
    */
   async completeSession(sessionId: string): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from('form_sessions')
       .update({ 
@@ -159,6 +165,7 @@ export class FormStorageService {
    * Get all questions for a form
    */
   async getFormQuestions(formId: string): Promise<QuestionRecord[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('questions')
       .select('*')
@@ -174,6 +181,7 @@ export class FormStorageService {
    * Get all answers for a session
    */
   async getSessionAnswers(sessionId: string): Promise<AnswerRecord[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('answers')
       .select('*')
@@ -188,6 +196,7 @@ export class FormStorageService {
    * Get a form by ID
    */
   async getFormById(formId: string): Promise<FormRecord | null> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('forms')
       .select('*')
@@ -205,6 +214,7 @@ export class FormStorageService {
    * Get a session by ID
    */
   async getSessionById(sessionId: string): Promise<FormSession | null> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('form_sessions')
       .select('*')
@@ -222,6 +232,7 @@ export class FormStorageService {
    * Get all forms
    */
   async getAllForms(): Promise<FormRecord[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('forms')
       .select('*')
@@ -256,6 +267,7 @@ export class FormStorageService {
    * Get all sessions for a form
    */
   async getFormSessions(formId: string): Promise<FormSession[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('form_sessions')
       .select('*')
@@ -271,6 +283,7 @@ export class FormStorageService {
    * Get the starter question for a form
    */
   async getFormStarterQuestion(formId: string): Promise<string | null> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('questions')
       .select('content')

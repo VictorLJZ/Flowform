@@ -9,10 +9,10 @@ interface DashboardStats {
 
 interface RecentActivity {
   id: string
-  formId: string
-  form: string
-  responses: number
-  date: string
+  form_id: string
+  form_title: string
+  created_at: string
+  completed: boolean
 }
 
 interface DashboardState {
@@ -37,22 +37,25 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       // Fetch stats
       const statsResponse = await fetch('/api/dashboard/stats')
       if (!statsResponse.ok) throw new Error('Failed to fetch dashboard stats')
-      const stats = await statsResponse.json()
+      const statsData = await statsResponse.json()
       
       // Fetch recent activity
       const activityResponse = await fetch('/api/dashboard/recent-activity')
       if (!activityResponse.ok) throw new Error('Failed to fetch recent activity')
-      const activity = await activityResponse.json()
+      const activityData = await activityResponse.json()
       
       // Fetch recent forms
       const formsResponse = await fetch('/api/dashboard/recent-forms')
       if (!formsResponse.ok) throw new Error('Failed to fetch recent forms')
-      const forms = await formsResponse.json()
+      const formsData = await formsResponse.json()
       
       set({
-        stats: stats,
-        recentActivity: activity.recentActivity || [],
-        recentForms: forms.recentForms || [],
+        stats: {
+          totalForms: statsData.forms || 0,
+          totalResponses: statsData.responses || 0
+        },
+        recentActivity: activityData.activity || [],
+        recentForms: formsData.forms || [],
         isLoading: false
       })
     } catch (error) {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/supabase/supabase_client';
+import { createClient } from '@/supabase/client';
 
 export interface FormAnalytics {
   id: string;
@@ -27,6 +27,7 @@ export const useDataAnalysisStore = create<DataAnalysisState>((set, get) => ({
   fetchForms: async () => {
     try {
       set({ isLoading: true, error: null });
+      const supabase = createClient();
       
       // Fetch forms with response counts
       const { data: forms, error: formsError } = await supabase
@@ -44,6 +45,7 @@ export const useDataAnalysisStore = create<DataAnalysisState>((set, get) => ({
       
       // For each form, get the count of responses
       const formsWithStats = await Promise.all(forms.map(async (form) => {
+        const supabase = createClient();
         // Get response count
         const { count: responseCount, error: countError } = await supabase
           .from('form_sessions')
@@ -86,6 +88,7 @@ export const useDataAnalysisStore = create<DataAnalysisState>((set, get) => ({
   
   checkIndexStatus: async (formId: string) => {
     try {
+      const supabase = createClient();
       // Check if there are any embeddings for this form
       const { count, error } = await supabase
         .from('form_qa_embeddings')

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { supabase } from '@/supabase/supabase_client';
+import { createClient } from '@/supabase/server';
 import { FormRecord, QuestionRecord, AnswerRecord } from '@/types/supabase-types';
 import crypto from 'crypto';
 
@@ -17,6 +17,8 @@ export class VectorStorageService {
    */
   async indexFormResponses(formId: string): Promise<void> {
     try {
+      const supabase = await createClient();
+      
       // Get all sessions for this form
       const { data: sessions, error: sessionsError } = await supabase
         .from('form_sessions')
@@ -55,25 +57,31 @@ export class VectorStorageService {
   /**
    * Process a single session
    */
-  private async processSession(form: FormRecord, session: any): Promise<void> {
+  private async processSession(form: FormRecord, session: Record<string, any>): Promise<void> {
     try {
+      const supabase = await createClient();
+      
       // Get questions for this form
-      const { data: questions, error: questionsError } = await supabase
+      const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
-        .select('id, content, order')
+        .select('id, content, order, form_id, is_starter, created_at')
         .eq('form_id', form.id)
         .order('order', { ascending: true });
       
       if (questionsError) throw new Error(`Error fetching questions: ${questionsError.message}`);
       
+      const questions = questionsData as QuestionRecord[];
+      
       // Get answers for this session
-      const { data: answers, error: answersError } = await supabase
+      const { data: answersData, error: answersError } = await supabase
         .from('answers')
-        .select('id, content, question_id')
+        .select('id, content, question_id, form_id, created_at, session_id')
         .eq('session_id', session.id);
       
       if (answersError) throw new Error(`Error fetching answers: ${answersError.message}`);
-      if (!answers || answers.length === 0) return;
+      if (!answersData || answersData.length === 0) return;
+      
+      const answers = answersData as AnswerRecord[];
       
       // Index each Q&A pair individually
       await this.indexQAPairs(form, questions, answers, session.id);
@@ -200,6 +208,7 @@ export class VectorStorageService {
     sessionId: string
   ): Promise<void> {
     const id = crypto.randomUUID();
+    const supabase = await createClient();
     
     const { error } = await supabase
       .from('form_qa_embeddings')
@@ -227,6 +236,7 @@ export class VectorStorageService {
     embedding: number[]
   ): Promise<void> {
     const id = crypto.randomUUID();
+    const supabase = await createClient();
     
     const { error } = await supabase
       .from('form_session_embeddings')
@@ -247,62 +257,110 @@ export class VectorStorageService {
    */
   async searchSimilarQAPairs(formId: string, query: string): Promise<any[]> {
     try {
+      const supabase = await createClient();
+      
       // Generate embedding for the query
       const embedding = await this.generateEmbedding(query);
       
-      // Log the query embedding for debugging
-      console.log('Query embedding type:', typeof embedding);
-      console.log('Query embedding length:', embedding.length);
+      // Search for similar Q&A pairs
+      const { data, error } = await supabase.rpc('match_form_qa', {
+        query_embedding: embedding,
+        form_id_filter: formId,
+        match_threshold: 0.5,
+        match_count: 10
+      });
       
-      // Try direct SQL instead of RPC
-      const { data, error } = await supabase
-        .from('form_qa_embeddings')
-        .select('id, form_id, question, answer, session_id')
-        .eq('form_id', formId)
-        .limit(5);  // Just get some results without similarity for now
+      if (error) throw new Error(`Error searching similar QA pairs: ${error.message}`);
       
-      if (error) throw new Error(`Error searching QA pairs: ${error.message}`);
-      
-      // Add a default similarity score to each result
-      const resultsWithSimilarity = data?.map(item => ({
-        ...item,
-        similarity: 0.8  // Default similarity score
-      })) || [];
-      
-      // Log the results for debugging
-      console.log('Direct SQL search results with similarity:', resultsWithSimilarity);
-      
-      return resultsWithSimilarity;
+      return data || [];
     } catch (error) {
       console.error('Error searching similar QA pairs:', error);
-      return [];
+      throw error;
     }
   }
   
   /**
-   * Search for similar session documents using vector similarity
+   * Search for similar sessions using vector similarity
    */
   async searchSimilarSessions(formId: string, query: string): Promise<any[]> {
     try {
+      const supabase = await createClient();
+      
       // Generate embedding for the query
       const embedding = await this.generateEmbedding(query);
       
       // Search for similar sessions
-      const { data, error } = await supabase.rpc(
-        'match_form_sessions',
-        {
-          query_embedding: embedding,
-          match_threshold: 0.7,
-          match_count: 3,
-          p_form_id: formId
-        }
-      );
+      const { data, error } = await supabase.rpc('match_form_sessions', {
+        query_embedding: embedding,
+        form_id_filter: formId,
+        match_threshold: 0.5,
+        match_count: 5
+      });
       
-      if (error) throw new Error(`Error searching sessions: ${error.message}`);
+      if (error) throw new Error(`Error searching similar sessions: ${error.message}`);
+      
       return data || [];
     } catch (error) {
       console.error('Error searching similar sessions:', error);
-      return [];
+      throw error;
     }
+  }
+
+  /**
+   * Store a QA pair with its vector embedding
+   */
+  static async storeQAPair(formId: string, question: string, answer: string, embedding: number[]) {
+    const supabase = await createClient();
+
+    const { error } = await supabase.from('form_qa_embeddings').insert({
+      form_id: formId,
+      qa_pair: { question, answer },
+      embedding
+    });
+
+    if (error) {
+      console.error('Error storing vector embedding:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for similar QA pairs
+   */
+  static async searchSimilarQA(formId: string, queryEmbedding: number[], limit = 5) {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc('match_form_qa', {
+      query_embedding: queryEmbedding,
+      form_id_filter: formId,
+      match_threshold: 0.5,
+      match_count: limit
+    });
+
+    if (error) {
+      console.error('Error searching vector embeddings:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Check if a form has QA embeddings
+   */
+  static async hasEmbeddings(formId: string): Promise<boolean> {
+    const supabase = await createClient();
+
+    const { count, error } = await supabase
+      .from('form_qa_embeddings')
+      .select('*', { count: 'exact', head: true })
+      .eq('form_id', formId);
+
+    if (error) {
+      console.error('Error checking embeddings:', error);
+      throw error;
+    }
+
+    return count !== null && count > 0;
   }
 }

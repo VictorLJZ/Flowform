@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RAGService } from "@/app/rag/rag-service";
 
-const ragService = new RAGService();
-
 export async function POST(
   request: NextRequest,
   context: { params: { formId: string } }
@@ -19,7 +17,7 @@ export async function POST(
     }
     
     // Index the form responses
-    await ragService.indexFormResponses(formId);
+    await RAGService.indexFormResponses(formId);
     
     return NextResponse.json({ 
       success: true,

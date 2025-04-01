@@ -1,224 +1,193 @@
-import OpenAI from 'openai';
-import { VectorStorageService } from './vector-storage-service';
-import { supabase } from '@/supabase/supabase_client';
+import { OpenAI } from 'openai';
+import { createClient } from '@/supabase/server';
+import { ChatCompletionSystemMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionUserMessageParam } from 'openai/resources/chat';
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Add export of RAGService class for backward compatibility
 export class RAGService {
-  private openai: OpenAI;
-  private vectorStorage: VectorStorageService;
+  static async generateAnalysisResponse(formId: string, userQuery: string) {
+    return generateAnalysisResponse(formId, userQuery);
+  }
   
-  constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+  static async indexFormResponses(formId: string) {
+    return indexFormResponses(formId);
+  }
+  
+  static async generateInsights(formId: string) {
+    return generateAnalysisResponse(
+      formId, 
+      "Generate key insights and patterns from all the responses to this form. What are the main trends, common themes, and notable outliers?"
+    );
+  }
+  
+  static async processQuery(formId: string, query: string, chatHistory = []) {
+    return generateAnalysisResponse(formId, query);
+  }
+}
+
+export async function generateAnalysisResponse(formId: string, userQuery: string) {
+  try {
+    const supabase = await createClient();
+    
+    // Get form details for context
+    const { data: form, error: formError } = await supabase
+      .from('forms')
+      .select('title, description, instructions')
+      .eq('id', formId)
+      .single();
+      
+    if (formError) throw formError;
+    
+    // Perform similarity search on the RAG index using the user's query
+    const { data: relevantEmbeddings, error: embeddingsError } = await supabase
+      .rpc('match_form_qa', {
+        query_embedding: await generateEmbedding(userQuery),
+        form_id_filter: formId,
+        match_threshold: 0.5,
+        match_count: 10
+      });
+      
+    if (embeddingsError) throw embeddingsError;
+    
+    // Extract the relevant QA pairs
+    const relevantContext = relevantEmbeddings?.map((item: any) => {
+      const qa = item.qa_pair;
+      return `Question: ${qa.question}\nAnswer: ${qa.answer}`;
+    }).join('\n\n');
+    
+    // Prepare system prompt with form info and RAG context
+    const systemPrompt = `You are an AI assistant helping to analyze responses for a form titled "${form.title}". 
+Your task is to provide insightful analysis based on the form responses.
+
+Form description: ${form.description || 'No description provided'}
+Form instructions: ${form.instructions || 'No specific instructions provided'}
+
+Here are some relevant question-answer pairs from the form responses:
+${relevantContext || 'No relevant responses found'}
+
+Provide a clear, concise, and insightful response to the user's query about this form data.
+If the context doesn't contain enough information to answer, acknowledge the limitations of the available data.
+Avoid making up information that is not supported by the context.`;
+
+    // Generate the response
+    const messages: (ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userQuery }
+    ];
+    
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages,
+      temperature: 0.7,
+      max_tokens: 1000
     });
-    this.vectorStorage = new VectorStorageService();
-  }
-  
-  /**
-   * Process a user query using RAG
-   */
-  async processQuery(formId: string, query: string, chatHistory: Array<{role: string, content: string}> = []): Promise<string> {
-    try {
-      console.log(`Processing query for form ${formId}: "${query}"`);
-      
-      // Get form details for context
-      const { data: form, error: formError } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('id', formId)
-        .single();
-        
-      if (formError) throw new Error(`Form not found: ${formError.message}`);
-      
-      // Check if there are any embeddings
-      const hasEmbeddings = await this.checkEmbeddings(formId);
-      if (!hasEmbeddings) {
-        console.log('No embeddings found for this form');
-        return "No form responses have been indexed yet. Please index the responses first.";
-      }
-      
-      // Retrieve relevant Q&A pairs
-      console.log('Searching for similar QA pairs...');
-      const relevantQAPairs = await this.vectorStorage.searchSimilarQAPairs(formId, query);
-      console.log(`Found ${relevantQAPairs.length} relevant QA pairs`);
-      
-      // Retrieve relevant session documents
-      console.log('Searching for similar sessions...');
-      const relevantSessions = await this.vectorStorage.searchSimilarSessions(formId, query);
-      console.log(`Found ${relevantSessions.length} relevant sessions`);
-      
-      if (relevantQAPairs.length === 0 && relevantSessions.length === 0) {
-        return "There are no relevant question-answer pairs found in the form responses, so the most common answer cannot be determined.";
-      }
-      
-      // Format the context from retrieved data
-      const context = this.formatContext(relevantQAPairs, relevantSessions, form.title);
-      
-      // Prepare the input messages
-      const messages = [
-        { 
-          role: "developer", 
-          content: `You are an AI assistant that helps analyze form responses. You'll be given form responses and a user query. Answer the query based only on the provided form responses. If the answer cannot be determined from the responses, say so clearly. Be concise but thorough.`
-        },
-        { 
-          role: "user", 
-          content: `Form: ${form.title}\n\nContext from form responses:\n${context}\n\nUser query: ${query}`
-        }
-      ];
-      
-      // Add chat history if available
-      if (chatHistory.length > 0) {
-        messages.splice(1, 0, ...chatHistory);
-      }
-      
-      // Generate answer using OpenAI
-      const response = await this.openai.responses.create({
-        model: "gpt-4o-mini",
-        input: messages,
-        temperature: 0.7,
-        store: false
-      });
-      
-      return response.output_text || "I couldn't generate an answer based on the available responses.";
-    } catch (error) {
-      console.error('Error processing RAG query:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Format the context from retrieved data
-   */
-  private formatContext(qaPairs: any[], sessions: any[], formTitle: string): string {
-    let context = '';
     
-    // Add QA pairs to context
-    if (qaPairs && qaPairs.length > 0) {
-      context += "Relevant question-answer pairs:\n\n";
-      qaPairs.forEach((pair, index) => {
-        context += `${index + 1}. Question: ${pair.question}\n`;
-        context += `   Answer: ${pair.answer}\n`;
-        
-        // Check if similarity exists before trying to use it
-        if (pair.similarity !== undefined) {
-          context += `   (Similarity: ${pair.similarity.toFixed(2)})\n\n`;
-        } else {
-          context += '\n';
-        }
-      });
-    } else {
-      context += "No relevant question-answer pairs found.\n\n";
-    }
-    
-    // Add session documents to context
-    if (sessions && sessions.length > 0) {
-      context += "Relevant session documents:\n\n";
-      sessions.forEach((session, index) => {
-        context += `${index + 1}. ${session.content}\n`;
-        
-        // Check if similarity exists before trying to use it
-        if (session.similarity !== undefined) {
-          context += `   (Similarity: ${session.similarity.toFixed(2)})\n\n`;
-        } else {
-          context += '\n';
-        }
-      });
-    } else {
-      context += "No relevant session documents found.\n\n";
-    }
-    
-    return context;
+    return completion.choices[0].message.content;
+  } catch (error) {
+    console.error('Error generating analysis response:', error);
+    throw error;
   }
-  
-  /**
-   * Generate insights about form responses
-   */
-  async generateInsights(formId: string): Promise<string> {
-    try {
-      // Get form details
-      const { data: form, error: formError } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('id', formId)
-        .single();
-        
-      if (formError) throw new Error(`Form not found: ${formError.message}`);
-      
-      // Get all sessions for this form
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('form_sessions')
-        .select('*')
-        .eq('form_id', formId);
-      
-      if (sessionsError) throw new Error(`Error fetching sessions: ${sessionsError.message}`);
-      if (!sessions || sessions.length === 0) return "No responses available for analysis.";
-      
-      // Get a sample of session documents (limit to 10 for performance)
-      const { data: sessionDocs, error: docsError } = await supabase
-        .from('form_session_embeddings')
-        .select('content')
-        .eq('form_id', formId)
-        .limit(10);
-        
-      if (docsError) throw new Error(`Error fetching session documents: ${docsError.message}`);
-      
-      // Combine all session documents
-      const allResponses = sessionDocs.map(doc => doc.content).join('\n\n---\n\n');
-      
-      // Generate insights using OpenAI
-      const response = await this.openai.responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          { 
-            role: "developer", 
-            content: `You are an AI assistant that analyzes form responses. Generate key insights, patterns, and trends from the provided form responses. Be concise but thorough.`
-          },
-          { 
-            role: "user", 
-            content: `Form: ${form.title}\n\nResponses:\n${allResponses}\n\nPlease analyze these responses and provide key insights, common themes, and notable patterns. Format your response with clear headings and bullet points.`
+}
+
+async function generateEmbedding(text: string) {
+  try {
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-ada-002',
+      input: text
+    });
+    
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error('Error generating embedding:', error);
+    throw error;
+  }
+}
+
+interface QuestionData {
+  content: string;
+}
+
+interface AnswerData {
+  id: string;
+  content: string;
+  question_id: string;
+  questions: {
+    content: string;
+  };
+}
+
+interface SessionData {
+  id: string;
+  form_id: string;
+  answers: AnswerData[];
+}
+
+export async function indexFormResponses(formId: string) {
+  try {
+    const supabase = await createClient();
+    
+    // Get all QA pairs for this form
+    const { data: formSessions, error: sessionsError } = await supabase
+      .from('form_sessions')
+      .select(`
+        id, 
+        form_id,
+        answers (
+          id,
+          content,
+          question_id,
+          questions (
+            content
+          )
+        )
+      `)
+      .eq('form_id', formId);
+    
+    if (sessionsError) throw sessionsError;
+    
+    // Process and store all QA pairs
+    let indexedCount = 0;
+    
+    if (formSessions && Array.isArray(formSessions)) {
+      for (const session of formSessions as unknown as SessionData[]) {
+        if (session.answers && Array.isArray(session.answers)) {
+          for (const answer of session.answers) {
+            // Skip if missing data
+            if (!answer.content || !answer.questions?.content) continue;
+            
+            const question = answer.questions.content;
+            const answerText = answer.content;
+            
+            // Generate combined embedding
+            const qaText = `Question: ${question} Answer: ${answerText}`;
+            const embedding = await generateEmbedding(qaText);
+            
+            // Store in database
+            const { error: insertError } = await supabase
+              .from('form_qa_embeddings')
+              .insert({
+                form_id: formId,
+                qa_pair: { question, answer: answerText },
+                embedding
+              });
+              
+            if (insertError) {
+              console.error('Error storing embedding:', insertError);
+              continue;
+            }
+            
+            indexedCount++;
           }
-        ],
-        temperature: 0.7,
-        store: false
-      });
-      
-      return response.output_text || "I couldn't generate insights based on the available responses.";
-    } catch (error) {
-      console.error('Error generating insights:', error);
-      throw error;
+        }
+      }
     }
-  }
-  
-  /**
-   * Index all responses for a form
-   */
-  async indexFormResponses(formId: string): Promise<void> {
-    return this.vectorStorage.indexFormResponses(formId);
-  }
-  
-  async checkEmbeddings(formId: string): Promise<boolean> {
-    try {
-      // Check if there are any QA embeddings for this form
-      const { count: qaCount, error: qaError } = await supabase
-        .from('form_qa_embeddings')
-        .select('id', { count: 'exact', head: true })
-        .eq('form_id', formId);
-        
-      if (qaError) throw new Error(`Error checking QA embeddings: ${qaError.message}`);
-      
-      // Check if there are any session embeddings for this form
-      const { count: sessionCount, error: sessionError } = await supabase
-        .from('form_session_embeddings')
-        .select('id', { count: 'exact', head: true })
-        .eq('form_id', formId);
-        
-      if (sessionError) throw new Error(`Error checking session embeddings: ${sessionError.message}`);
-      
-      console.log(`Found ${qaCount} QA embeddings and ${sessionCount} session embeddings for form ${formId}`);
-      
-      return (qaCount > 0 || sessionCount > 0);
-    } catch (error) {
-      console.error('Error checking embeddings:', error);
-      return false;
-    }
+    
+    return { indexedCount };
+  } catch (error) {
+    console.error('Error indexing form responses:', error);
+    throw error;
   }
 } 
