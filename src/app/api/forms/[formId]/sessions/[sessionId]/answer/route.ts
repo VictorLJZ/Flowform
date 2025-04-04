@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { FormStorageService } from "@/lib/form-generation/form-storage-service"
-import { AIFormService } from "@/lib/form-generation/ai-form-service"
+import { AIService } from "@/lib/form-generation/ai-service"
 import { RAGService } from "@/app/rag/rag-service"
+import { BlockType } from "@/types/form-types"
 
 const formStorageService = new FormStorageService()
-const aiFormService = new AIFormService()
+const aiService = new AIService()
 
 export async function POST(
   request: NextRequest,
@@ -78,16 +79,52 @@ export async function POST(
       }, { status: 200 })
     }
     
-    // Generate the next question based on previous conversation
+    // Get previous questions and answers
     const previousQuestions = await formStorageService.getSessionQuestions(sessionId)
     const previousAnswers = await formStorageService.getSessionAnswers(sessionId)
     
+    // Format questions and answers for AI
+    const questionTexts = previousQuestions.map((q: any) => {
+      return typeof q === 'object' && q !== null 
+        ? (q.text || q.question_text || q.question || String(q)) 
+        : String(q);
+    });
+    
+    const answerTexts = previousAnswers.map((a: any) => {
+      return typeof a === 'object' && a !== null 
+        ? (a.text || a.answer_text || a.answer || String(a)) 
+        : String(a);
+    });
+    
+    // Create a dynamic block object for the AI service
+    const dynamicBlock: any = {
+      id: form.id,
+      formId: form.id,
+      type: "dynamic",
+      orderIndex: 0,
+      seedQuestion: form.title || "Form Questions",
+      numFollowUpQuestions: form.max_questions,
+      customPrompt: form.instructions || "",
+      temperature: 0.7,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Format data for the AI service
+    const formQuestionsContext = {
+      staticQuestions: questionTexts,
+      dynamicBlockSeeds: []
+    };
+    
     // Use the AI service to generate the next question
-    const nextQuestion = await aiFormService.generateNextQuestion(
-      form,
-      previousQuestions,
-      previousAnswers
-    )
+    const nextQuestion = await aiService.generateDynamicBlockQuestion(
+      dynamicBlock,
+      formQuestionsContext,
+      questionTexts,
+      answerTexts,
+      session.current_question_index + 1
+    );
     
     // Save the new question
     const newQuestionId = await formStorageService.saveQuestion(
