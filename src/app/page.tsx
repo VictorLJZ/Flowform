@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
+import Navbar from "@/components/layout/Navbar"
+import Hero from "@/components/sections/Hero"
+import Features from "@/components/sections/Features"
+import Testimonials from "@/components/sections/Testimonials"
+import CallToAction from "@/components/sections/CallToAction"
 
 export default function Home() {
   const router = useRouter();
@@ -42,30 +47,14 @@ export default function Home() {
   };
   
   return (
-    <div className={styles.homepage}>
-      <div className={styles.noiseOverlay}></div>
-      
-      {/* Page transition overlay */}
-      <div className={`${styles.pageTransition} ${isTransitioning ? styles.pageTransitionActive : ''}`}></div>
-      
-      {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
-        <div className="text-center max-w-3xl">
-          <h2 className={`text-6xl mb-6 ${styles.animateTitle}`}>FlowForm</h2>
-          <p className={`text-xl text-white mb-8 max-w-2xl mx-auto ${styles.animateDescription}`}>
-            Create, manage, and analyze forms with powerful AI assistance. Streamline your data collection and boost productivity.
-          </p>
-          <div className={styles.animateButton} onMouseMove={handleMouseMove}>
-            <button 
-              ref={buttonRef}
-              onClick={handleGetStarted}
-              className={`${styles.pillButton} ${styles.gradientAnimation}`}
-            >
-              Get Started
-            </button>
-          </div>
-        </div>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <Features />
+        <Testimonials />
+        <CallToAction />
       </main>
-    </div>
+    </>
   );
 }
