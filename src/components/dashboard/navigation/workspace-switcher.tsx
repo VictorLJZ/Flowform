@@ -48,6 +48,17 @@ export function WorkspaceSwitcher() {
   const handleCreateWorkspace = async () => {
     if (!newWorkspace.name) return
 
+    // Get userId from the store to confirm it's available
+    const userId = useWorkspaceStore.getState().userId
+    if (!userId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "User authentication required"
+      })
+      return
+    }
+
     try {
       setIsCreating(true)
       await createWorkspace(newWorkspace.name, newWorkspace.description)
