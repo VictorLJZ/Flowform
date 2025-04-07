@@ -168,44 +168,48 @@ export function WorkspaceSwitcher() {
       </SidebarMenu>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create workspace</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="bg-white w-full max-w-[480px] p-7 shadow-lg rounded-xl border border-gray-200">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-2xl font-bold">Create workspace</DialogTitle>
+            <DialogDescription className="text-gray-500 mt-2 text-base">
               Add a new workspace to organize your forms and collaborate with others.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+          <div className="grid gap-6 py-2">
+            <div className="grid gap-3 mb-4">
+              <Label htmlFor="name" className="text-base font-semibold">Name</Label>
               <Input
                 id="name"
                 placeholder="Enter workspace name"
                 value={newWorkspace.name}
                 onChange={(e) => setNewWorkspace(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full rounded-lg px-4 py-2.5 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+            <div className="grid gap-3">
+              <Label htmlFor="description" className="text-base font-semibold">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Enter workspace description (optional)"
                 value={newWorkspace.description}
                 onChange={(e) => setNewWorkspace(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full min-h-[120px] rounded-lg px-4 py-2.5 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-8 flex items-center justify-end gap-3">
             <Button
               variant="outline"
               onClick={() => setCreateDialogOpen(false)}
               disabled={isCreating}
+              className="rounded-lg px-6 py-3 text-sm font-medium h-10"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateWorkspace}
               disabled={!newWorkspace.name || isCreating}
+              className="rounded-lg px-6 py-3 text-sm font-medium h-10"
             >
               {isCreating ? (
                 <>
