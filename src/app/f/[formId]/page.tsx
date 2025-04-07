@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { Send, ArrowUp, ChevronLeft, ChevronRight, CornerRightDown } from "lucide-react"
-import { FormRecord, QuestionRecord } from "@/types/supabase-types"
+import { FormRecord } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
@@ -35,16 +35,6 @@ export default function FormSessionPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [animation, setAnimation] = useState<'idle' | 'exit' | 'enter'>('idle')
   
-  // Fetch form and initialize session
-  // Focus input on load and after each question
-  useEffect(() => {
-    if (!loading && !completed && answerInputRef.current) {
-      setTimeout(() => {
-        answerInputRef.current?.focus()
-      }, 300)
-    }
-  }, [loading, currentQuestion, completed])
-
   // Initialize form and session
   useEffect(() => {
     async function initializeForm() {
@@ -88,6 +78,15 @@ export default function FormSessionPage() {
     }
   }, [formId, toast])
   
+  // Focus input on load and after each question
+  useEffect(() => {
+    if (!loading && !completed && answerInputRef.current) {
+      setTimeout(() => {
+        answerInputRef.current?.focus()
+      }, 300)
+    }
+  }, [loading, currentQuestion, completed])
+  
   // Handle keyboard submit with Enter key
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -99,29 +98,31 @@ export default function FormSessionPage() {
   const handleSubmitAnswer = async () => {
     if (!userAnswer.trim() || !sessionId || isSubmitting) return
     
+    setIsSubmitting(true)
+    
     try {
-      setIsSubmitting(true)
+      // Add the current Q&A to conversation history
+      const newConversationItem = {
+        question: currentQuestion,
+        answer: userAnswer.trim()
+      }
       
-      // Animate current question out
+      setConversation(prev => [...prev, newConversationItem])
+      
+      // Animate the transition
       setAnimation('exit')
       
-      // Small delay for animation
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Add current question and answer to conversation history
-      const newConversation = [...conversation, {
-        question: currentQuestion,
-        answer: userAnswer
-      }]
-      setConversation(newConversation)
-      
-      // Submit the answer and get the next question
-      const response = await fetch(`/api/forms/${formId}/sessions/${sessionId}/answer`, {
-        method: 'POST',
+      // Submit the answer to get the next question
+      const response = await fetch(`/api/forms/${formId}/sessions`, {
+        method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ answer: userAnswer })
+        body: JSON.stringify({
+          sessionId,
+          currentQuestion,
+          userAnswer: userAnswer.trim()
+        }),
       })
       
       if (!response.ok) {
@@ -130,33 +131,27 @@ export default function FormSessionPage() {
       
       const data = await response.json()
       
-      // Calculate new progress percentage
+      // Clear the input
+      setUserAnswer("")
+      
+      // Update progress
       if (form) {
-        // Add 1 to account for the question we just answered
-        const questionIndex = newConversation.length
-        const progressPercentage = Math.min(
-          (questionIndex / form.max_questions) * 100,
-          100
-        )
-        setProgress(progressPercentage)
+        const currentCount = conversation.length + 1
+        const newProgress = Math.min(100, (currentCount / form.max_questions) * 100)
+        setProgress(newProgress)
       }
       
-      // Check if this was the last question
-      if (data.isLastQuestion) {
+      // Check if the form is completed
+      if (data.completed) {
         setCompleted(true)
       } else {
-        // Set the next question and prepare animation
-        setCurrentQuestion(data.nextQuestion)
-        setAnimation('enter')
-        
-        // Reset animation state after a moment
+        // Set the next question
         setTimeout(() => {
-          setAnimation('idle')
+          setAnimation('enter')
+          setCurrentQuestion(data.nextQuestion)
         }, 300)
       }
       
-      // Clear answer field
-      setUserAnswer("")
     } catch (error) {
       console.error('Error submitting answer:', error)
       toast({
@@ -164,184 +159,165 @@ export default function FormSessionPage() {
         description: "Failed to submit your answer. Please try again.",
         variant: "destructive"
       })
-      // Reset animation on error
-      setAnimation('idle')
     } finally {
       setIsSubmitting(false)
     }
   }
   
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    )
-  }
-  
-  if (!form) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md mx-auto px-6">
-          <h2 className="text-2xl font-semibold text-destructive mb-4">Form Not Found</h2>
-          <p className="text-muted-foreground mb-6">This form may have been removed or is no longer available.</p>
-          <Button onClick={() => window.history.back()}>Go Back</Button>
-        </div>
-      </div>
-    )
-  }
+  // Reset animation state after transition
+  useEffect(() => {
+    if (animation !== 'idle') {
+      const timer = setTimeout(() => {
+        setAnimation('idle')
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [animation])
   
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-muted z-10">
-        <div 
-          className="h-full bg-primary transition-all duration-500 ease-in-out" 
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
-
-      <header className="border-b py-4 sticky top-0 bg-background z-10">
-        <div className="container max-w-3xl mx-auto px-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-semibold">{form.title}</h1>
-            {form.description && (
-              <p className="text-muted-foreground mt-1">{form.description}</p>
-            )}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header with form title and progress */}
+      <header className="bg-white shadow-sm py-4 px-6">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-gray-900">{form?.title || "Interactive Form"}</h1>
+          <div className="flex items-center gap-2">
+            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-500" 
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-sm text-gray-500">{Math.round(progress)}%</span>
           </div>
-          {conversation.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-              className="text-xs flex items-center gap-1"
-            >
-              {showHistory ? (
-                <>
-                  <ChevronRight className="h-3 w-3" />
-                  Hide History
-                </>
-              ) : (
-                <>
-                  <ChevronLeft className="h-3 w-3" />
-                  Show History
-                </>
-              )}
-            </Button>
-          )}
         </div>
       </header>
       
-      <main className="flex-1 flex flex-col justify-center items-center py-8 px-4">
-        {completed ? (
-          <div className="max-w-3xl w-full bg-card rounded-xl p-12 shadow-md border text-center">
-            <div className="flex justify-center items-center mb-8 w-20 h-20 bg-primary/10 rounded-full mx-auto">
-              <ArrowUp className="h-10 w-10 text-primary" />
-            </div>
-            <h2 className="text-3xl font-medium mb-4">Thank you for your responses!</h2>
-            <p className="text-muted-foreground mb-8 text-lg">Your answers have been submitted successfully.</p>
-            <div className="mt-12">
-              <Button 
-                onClick={() => window.location.reload()}
-                size="lg"
-                className="px-8 py-6 text-lg h-auto"
-              >
-                Start a New Session
-              </Button>
+      <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-6">
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-6 w-24 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 w-48 bg-gray-200 rounded"></div>
             </div>
           </div>
-        ) : (
-          <div className="max-w-3xl w-full">
-            {/* Previous conversation (collapsible) */}
-            {showHistory && conversation.length > 0 && (
-              <div className="mb-8 space-y-6 max-h-[40vh] overflow-y-auto p-4 border rounded-xl">
-                <h3 className="font-medium text-sm uppercase tracking-wide mb-4 text-muted-foreground">Previous Responses</h3>
-                {conversation.map((exchange, index) => (
-                  <div key={index} className="space-y-3">
-                    <div className="bg-primary/5 rounded-lg p-4">
-                      <p className="text-sm font-medium mb-1">Question {index + 1}:</p>
-                      <p>{exchange.question}</p>
+        ) : completed ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold">Thank you for your responses!</h2>
+            <p className="text-gray-600 max-w-md">
+              Your form has been submitted successfully. We appreciate your time and input.
+            </p>
+            <div className="flex gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                {showHistory ? "Hide Responses" : "View Your Responses"}
+              </Button>
+              <Button onClick={() => window.location.href = '/'}>
+                Return Home
+              </Button>
+            </div>
+            
+            {showHistory && (
+              <div className="mt-6 w-full max-w-2xl border rounded-lg p-4 bg-white">
+                <h3 className="text-lg font-medium mb-4">Your Responses</h3>
+                <div className="space-y-4">
+                  {conversation.map((item, index) => (
+                    <div key={index} className="border-b pb-3 last:border-b-0">
+                      <p className="font-medium text-gray-700">{item.question}</p>
+                      <p className="text-gray-600 mt-1">{item.answer}</p>
                     </div>
-                    <div className="bg-secondary/20 rounded-lg p-4 ml-6 mb-6">
-                      <p className="text-sm font-medium mb-1">Your answer:</p>
-                      <p>{exchange.answer}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col">
+            {/* Conversation history toggle */}
+            {conversation.length > 0 && (
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="text-sm flex items-center gap-1 text-gray-500 hover:text-gray-700"
+                >
+                  {showHistory ? (
+                    <>
+                      <ChevronRight className="w-4 h-4" />
+                      Hide previous questions
+                    </>
+                  ) : (
+                    <>
+                      <ChevronLeft className="w-4 h-4" />
+                      Show previous questions ({conversation.length})
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+            
+            {/* Conversation history */}
+            {showHistory && conversation.length > 0 && (
+              <div className="space-y-4 mb-6 bg-white rounded-lg p-4 border">
+                {conversation.map((item, index) => (
+                  <div key={index} className="border-b pb-3 last:border-b-0">
+                    <p className="font-medium text-gray-700">{item.question}</p>
+                    <div className="flex gap-2 items-start mt-2">
+                      <CornerRightDown className="w-4 h-4 text-gray-400 mt-1" />
+                      <p className="text-gray-600">{item.answer}</p>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             
-            {/* Current question with animation */}
-            <div 
-              className={cn(
-                "mb-6 transition-all duration-300 transform",
-                animation === 'exit' && "opacity-0 -translate-y-10",
-                animation === 'enter' && "opacity-0 translate-y-10",
-              )}
-            >
-              <div className="bg-card rounded-xl p-8 shadow-md border">
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 rounded-full p-3 mt-1">
-                    <CornerRightDown className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-sm text-muted-foreground mb-2">Question {conversation.length + 1} of {form.max_questions}</h3>
-                    <p className="text-xl">{currentQuestion}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              className={cn(
-                "space-y-4 transition-all duration-300 transform",
-                animation === 'exit' && "opacity-0 translate-y-10",
-                animation === 'enter' && "opacity-0 -translate-y-10",
-              )}
-            >
-              <Textarea
-                ref={answerInputRef}
-                placeholder="Type your answer here..."
-                className="min-h-[120px] resize-none p-4 text-lg shadow-sm focus-visible:ring-primary"
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                disabled={isSubmitting}
-                onKeyDown={handleKeyDown}
-              />
+            {/* Current question */}
+            <div className={cn(
+              "flex-1 transition-all duration-300 transform",
+              animation === 'exit' && '-translate-y-4 opacity-0',
+              animation === 'enter' && 'translate-y-0 opacity-100'
+            )}>
+              <h2 className="text-xl font-medium text-gray-900 mb-6">{currentQuestion}</h2>
               
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted-foreground">
-                  Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to submit
-                </p>
-                <Button 
-                  onClick={handleSubmitAnswer}
-                  disabled={!userAnswer.trim() || isSubmitting}
-                  size="lg"
-                  className="px-6"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></div>
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Continue
-                    </>
-                  )}
-                </Button>
+              <div className="bg-white rounded-lg border p-4">
+                <Textarea
+                  ref={answerInputRef}
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your answer here..."
+                  className="min-h-24 border-0 focus-visible:ring-0 resize-none"
+                  disabled={isSubmitting}
+                />
+                <div className="flex justify-between items-center mt-2 pt-2 border-t">
+                  <p className="text-xs text-gray-500">
+                    Press Enter to submit or Shift+Enter for a new line
+                  </p>
+                  <Button 
+                    onClick={handleSubmitAnswer} 
+                    disabled={!userAnswer.trim() || isSubmitting}
+                    size="sm"
+                  >
+                    {isSubmitting ? (
+                      <span className="animate-pulse">Sending...</span>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Submit
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         )}
       </main>
-      
-      <footer className="border-t py-4">
-        <div className="container max-w-3xl mx-auto px-4 text-center text-xs text-muted-foreground">
-          Powered by FlowForm | {new Date().getFullYear()}
-        </div>
-      </footer>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"
-import { createClient } from "@/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 type AuthContextType = {
@@ -26,64 +26,73 @@ export function AuthProvider({
   children: React.ReactNode
   initialSession: Session | null
 }) {
-  const [user, setUser] = useState<User | null>(initialSession?.user ?? null)
-  const [session, setSession] = useState<Session | null>(initialSession)
-  const [isLoading, setIsLoading] = useState(!initialSession)
+  // Initialize state with null values and verify with getUser below
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
   const router = useRouter()
 
+  // Verify authentication when component mounts
   useEffect(() => {
-    console.log("Setting up auth subscription with initial session:", {
-      hasInitialSession: !!initialSession,
-      initialUser: initialSession?.user?.email
-    });
+    // Securely verify user on mount
+    const verifyAuth = async () => {
+      try {
+        // Always verify the user with the Supabase Auth server
+        const { data: userData } = await supabase.auth.getUser()
 
+        if (userData?.user) {
+          // Only if we have a verified user, get a verified session
+          const { data } = await supabase.auth.getSession()
+          setUser(userData.user)
+          setSession(data.session)
+        } else {
+          setUser(null)
+          setSession(null)
+        }
+      } catch (error) {
+        console.error('Error verifying authentication:', error)
+        setUser(null)
+        setSession(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    verifyAuth()
+
+    // Set up auth state change listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, currentSession: Session | null) => {
-      console.log("Auth state change:", { event, email: currentSession?.user?.email });
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent) => {
+      // Always re-verify the user securely with the Supabase Auth server on any auth change
+      const { data: userData } = await supabase.auth.getUser()
       
-      setSession(currentSession)
-      setUser(currentSession?.user ?? null)
-      setIsLoading(false)
+      // Only set the authenticated user if verified by the server
+      if (userData?.user) {
+        setUser(userData.user)
+        // Get a verified session
+        const { data } = await supabase.auth.getSession()
+        setSession(data.session)
+      } else {
+        setUser(null)
+        setSession(null)
+      }
 
       if (event === 'SIGNED_OUT') {
-        console.log("User signed out, redirecting to home");
         router.push('/')
       }
     })
 
     return () => {
-      console.log("Cleaning up auth subscription");
       subscription.unsubscribe()
     }
-  }, [router, supabase])
+  }, [supabase, router])
 
   const signOut = async () => {
-    console.log("Initiating sign out");
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error("Error during sign out:", error);
-        throw error
-      }
-      
-      console.log("Sign out successful, clearing state");
-      setUser(null)
-      setSession(null)
-      router.push('/')
-    } catch (error) {
-      console.error("Sign out error:", error)
-      throw error
-    }
+    await supabase.auth.signOut()
+    router.push('/')
   }
-
-  console.log("Current auth state:", {
-    isLoading,
-    hasUser: !!user,
-    userEmail: user?.email,
-    hasSession: !!session
-  });
 
   return (
     <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
@@ -94,7 +103,7 @@ export function AuthProvider({
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context

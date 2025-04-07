@@ -40,4 +40,4 @@ const CallToAction = () => {
   )
 }
 
-export default CallToAction 
+export default CallToAction

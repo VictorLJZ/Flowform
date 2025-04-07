@@ -3,37 +3,38 @@ description:
 globs: 
 alwaysApply: true
 ---
-## AI Rules
-- We are going to be using the GPT-4o-mini model in this application for our AI purposes
-- We will be using the new OpenAI Responses API in our app, instead of the old Chat Completions API
+# AI Rules
+We are going to be using the GPT-4o-mini model in this application for our AI purposes
+We will be using the new OpenAI Responses API in our app, instead of the old Chat Completions API
 
-## Tech Stack
-- We are using TypeScript for type safety
-- We are using Next.JS for server-side rendering
-- We are using React 19 for the frontend
-- We are using Zustand for state management
-- We are using Supabase for database
-- We are using Tailwind CSS v4
-- We are using OpenAI for AI integration
-- We are using Duffel for travel functionality
-- We are using Google Maps for map functionality
-- We are using ShadCN for UI components
+# Tech Stack
+We are using TypeScript for type safety
+We are using Next.JS for server-side rendering
+We are using React 19 for the frontend
+We are using Zustand for state management
+We are using Supabase for database
+We are using Tailwind CSS v4
+We are using OpenAI for AI integration
+We are using ShadCN for UI components
+We are using Bun as the Javascript runtime
 
-## Director Structure
-- We are centralizing all state management in the stores, and inside the stores folder. New stores that need to be created should be added there.
-- We are centralizing all of our types files inside the types folder. New types that need to be created should be added there.
+# Director Structure
+We are centralizing all state management in the stores, and inside the stores folder. New stores that need to be created should be added there.
+We are centralizing all of our types files inside the types folder. New types that need to be created should be added there.
+We are centralizing all services in the services folder. New services that need to be created should be added there.
 
-## Responses API
-    OpenAI recently released the responses API on March 11th 2025, replacing their legacy Chat Completions API. The documentation is referenced in the following files:
-    - @StructuredOutputs-ResponsesAPI.md
-    - @TextGen-ResponsesAPI
-    - @Streaming-ResponsesAPI.md
-    - @FunctionCalling-ResponsesAPI.md
-    - @StateManagement-ResponsesAPI.md
+# Responses API
+OpenAI recently released the responses API on March 11th 2025, replacing their legacy Chat Completions API. The documentation is referenced in the following files:
+    
+    @StructuredOutputs-ResponsesAPI.md
+    @TextGen-ResponsesAPI
+    @Streaming-ResponsesAPI.md
+    @FunctionCalling-ResponsesAPI.md
+    @StateManagement-ResponsesAPI.md
 
-    Here are some rules you MUST follow:
+Here are some rules you MUST follow:
 
-    Rule 1: Response API Input Format
+Rule 1: Response API Input Format
 
     ✅ DO:
     const response = await openai.responses.create({
@@ -47,15 +48,17 @@ alwaysApply: true
     messages: [{ role: "user", content: "Hello" }]
     });
 
-       Rule 2: Message Role Transformation
+    Rule 2: Message Role Transformation
 
     ✅ DO:
-    - Use "developer" instead of "system"
-    - Use "user" for user messages
-    - Use "assistant" for assistant replies
+    
+Use "developer" instead of "system"
+Use "user" for user messages
+Use "assistant" for assistant replies
 
     ❌ DON'T:
-    - Use "system" role (this is deprecated in Responses API)
+    
+Use "system" role (this is deprecated in Responses API)
 
     Rule 3: Function Calling Format
 
@@ -64,7 +67,7 @@ alwaysApply: true
     type: "function",
     name: "get_weather",
     description: "Get weather information",
-    parameters: { /* schema */ },
+    parameters: { /* schema / },
     strict: true
     }]
 
@@ -72,10 +75,9 @@ alwaysApply: true
     functions: [{
     name: "get_weather",
     description: "Get weather information",
-    parameters: { /* schema */ }
+    parameters: { / schema */ }
     }]
-
-    Rule 4: Function Call Results
+Rule 4: Function Call Results
 
     ✅ DO:
     input.push(toolCall); // Add the function call
@@ -95,11 +97,13 @@ alwaysApply: true
     Rule 5: Handling Streaming Events
 
     ✅ DO:
-    - Handle typed events like "response.output_text.delta"
-    - Process semantic events with their specific data structures
+    
+Handle typed events like "response.output_text.delta"
+Process semantic events with their specific data structures
 
     ❌ DON'T:
-    - Expect simple content deltas only
+    
+Expect simple content deltas only
 
     Rule 6: Accessing Text Output
 
@@ -127,3 +131,4 @@ alwaysApply: true
     ❌ DON'T:
     // Manually track conversation history
     messages.push({ role: "assistant", content: response.content });
+    

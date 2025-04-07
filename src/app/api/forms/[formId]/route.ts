@@ -29,7 +29,7 @@ export async function GET(
     
     return NextResponse.json({ form }, { status: 200 })
   } catch (error) {
-    console.error("Error getting form:", error)
+    console.error("Error retrieving form:", error)
     return NextResponse.json(
       { error: "Failed to retrieve form" },
       { status: 500 }

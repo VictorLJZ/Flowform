@@ -64,7 +64,7 @@ function DialogContent({
       >
         <DialogPrimitive.Title className="sr-only">Dialog</DialogPrimitive.Title>
         {children}
-        <DialogPrimitive.Close className="data-[state=open]:bg-accent data-[state=open]:text-white absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-white [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-full p-1.5 hover:bg-gray-100 transition-colors focus:outline-none disabled:pointer-events-none text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

@@ -57,14 +57,15 @@ export async function middleware(request: NextRequest) {
     // Keep the original query parameters
     return NextResponse.redirect(url)
   }
-  
+
   // Check if the user is authenticated and if the route requires authentication
-  // Allow public routes: '/', '/login', '/auth/*'
+  // Allow public routes: '/', '/f/*', '/login', '/auth/*'
   if (
     !user && 
-    path !== '/' && 
-    !path.startsWith('/login') && 
-    !path.startsWith('/auth')
+    !request.nextUrl.pathname.startsWith('/f/') && 
+    !request.nextUrl.pathname.startsWith('/login') && 
+    !request.nextUrl.pathname.startsWith('/auth') &&
+    request.nextUrl.pathname !== '/'
   ) {
     // For protected routes, redirect to login
     console.log("Redirecting to login (not authenticated)")
@@ -84,7 +85,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - public files (e.g. robots.txt)
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

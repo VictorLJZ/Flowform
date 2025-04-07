@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Breadcrumb,
@@ -15,7 +15,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { BarChart3, FileText, PlusCircle, Users, AlertCircle } from "lucide-react"
 import { useDashboardStore } from "@/stores/dashboard-store"
 import { Skeleton } from "@/components/ui/skeleton"
-import { FormRecord } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
 
 export default function Page() {
@@ -24,7 +23,7 @@ export default function Page() {
   
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
   
   const handleCreateForm = () => {
     router.push('/dashboard/builder/new')

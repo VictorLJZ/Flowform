@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -71,4 +71,4 @@ export async function loginWithGoogle() {
   return {
     url: data.url
   }
-} 
+}
