@@ -10,11 +10,15 @@ import { Workspace, WorkspaceMember } from '@/types/supabase-types';
 export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
   const supabase = createClient();
   
+  console.log('Fetching workspace memberships with user ID:', userId);
+  
   // First get all workspace IDs where the user is a member
   const { data: memberships, error: membershipError } = await supabase
     .from('workspace_members')
     .select('workspace_id')
     .eq('user_id', userId);
+  
+  console.log('Membership response:', { data: memberships, error: membershipError });
   
   if (membershipError) {
     console.error('Error fetching workspace memberships:', membershipError);

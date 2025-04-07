@@ -6,6 +6,7 @@ export * from './getUserWorkspaces';
 export * from './createWorkspace';
 export * from './updateWorkspace';
 export * from './deleteWorkspace';
+export * from './initializeDefaultWorkspace';
 
 // Workspace membership
 export * from './inviteToWorkspace';

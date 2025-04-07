@@ -32,6 +32,14 @@ Stores workspace information.
 | logo_url    | TEXT                    | URL to workspace logo (optional)  |
 | settings    | JSONB                   | Workspace settings (optional)     |
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Users can create workspaces | INSERT | null | `created_by = auth.uid()` |
+| Users can view workspaces they created | SELECT | `created_by = auth.uid()` | null |
+| Workspace creators can update workspace | UPDATE | `created_by = auth.uid()` | null |
+
 ### 3. workspace_invitations
 
 Tracks pending invitations to workspaces.
@@ -60,6 +68,14 @@ Stores active workspace memberships.
 | joined_at    | TIMESTAMP WITH TIME ZONE| When user joined the workspace   |
 
 Primary key: (workspace_id, user_id)
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Allow users to create their own membership | INSERT | null | `user_id = auth.uid()` |
+| Users can view their own memberships | SELECT | `user_id = auth.uid()` | null |
+| Owners can manage members | ALL | `EXISTS (SELECT 1 FROM workspaces WHERE id = workspace_id AND created_by = auth.uid())` | null |
 
 ## Form Management Tables
 

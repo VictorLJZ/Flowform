@@ -32,9 +32,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/use-toast"
 
-export function TeamSwitcher() {
+export function WorkspaceSwitcher() {
   const { isMobile } = useSidebar()
   const { currentWorkspace, workspaces, setCurrentWorkspace, fetchWorkspaces, isLoading, createWorkspace } = useWorkspaceStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -53,9 +53,16 @@ export function TeamSwitcher() {
       await createWorkspace(newWorkspace.name, newWorkspace.description)
       setCreateDialogOpen(false)
       setNewWorkspace({ name: "", description: "" })
-      toast.success("Workspace created successfully")
+      toast({
+        title: "Success",
+        description: "Workspace created successfully"
+      })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create workspace")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create workspace"
+      })
     } finally {
       setIsCreating(false)
     }
