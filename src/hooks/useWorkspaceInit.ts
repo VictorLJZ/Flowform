@@ -18,16 +18,11 @@ export function useWorkspaceInit() {
   // Set the user ID in the workspace store when auth state changes
   useEffect(() => {
     if (!authLoading && user) {
-      // Update the user ID in the workspace store
       setUserId(user.id)
-      
-      // First fetch existing workspaces
-      fetchWorkspaces().then(() => {
-        // Then ensure the user has at least one workspace
-        ensureDefaultWorkspace()
-      })
+      // Only call ensureDefaultWorkspace, which will handle checking for existing workspaces internally
+      ensureDefaultWorkspace()
     }
-  }, [user, authLoading, setUserId, fetchWorkspaces, ensureDefaultWorkspace])
+  }, [user, authLoading, setUserId, ensureDefaultWorkspace])
 
   return {
     isInitializing: authLoading || workspaceLoading

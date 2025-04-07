@@ -123,9 +123,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           console.log('[WorkspaceStore] Default workspace result:', defaultWorkspace)
           
           if (defaultWorkspace) {
-            console.log('[WorkspaceStore] Default workspace created/found, refreshing workspace list')
-            // Refresh workspace list to include the new workspace
-            await get().fetchWorkspaces()
+            console.log('[WorkspaceStore] Default workspace created/found')
+            // Set as current workspace if none is selected
+            const { currentWorkspace, workspaces } = get()
+            const updatedWorkspaces = [...workspaces]
+            
+            // Check if the workspace is already in the list
+            const workspaceExists = workspaces.some(w => w.id === defaultWorkspace.id)
+            if (!workspaceExists) {
+              updatedWorkspaces.push(defaultWorkspace)
+            }
+            
+            set({ 
+              workspaces: updatedWorkspaces,
+              currentWorkspace: currentWorkspace || defaultWorkspace,
+              isLoading: false 
+            })
           } else {
             console.log('[WorkspaceStore] No default workspace returned, might be an error')
             set({ isLoading: false })
