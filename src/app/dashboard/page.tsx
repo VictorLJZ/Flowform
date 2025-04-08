@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button"
 export default function Page() {
   const router = useRouter()
   const { stats, recentActivity, recentForms, isLoading, error, fetchDashboardData } = useDashboardStore()
+  const { currentWorkspace } = useWorkspaceStore()
   
   useEffect(() => {
     fetchDashboardData()
@@ -59,7 +61,7 @@ export default function Page() {
         </header>
         <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Dashboard</h1>
+            <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "Dashboard"}</h1>
             <Button onClick={handleCreateForm}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Form
