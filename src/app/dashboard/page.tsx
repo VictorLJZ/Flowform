@@ -13,10 +13,17 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { BarChart3, FileText, PlusCircle, Users, AlertCircle } from "lucide-react"
+import { BarChart3, FileText, PlusCircle, Users, AlertCircle, MoreHorizontal, Edit, LogOut, Trash2 } from "lucide-react"
 import { useDashboardStore } from "@/stores/dashboard-store"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu"
 
 export default function Page() {
   const router = useRouter()
@@ -33,6 +40,21 @@ export default function Page() {
   
   const handleViewResponses = (formId: string) => {
     router.push(`/dashboard/forms/${formId}/responses`)
+  }
+
+  const handleRenameWorkspace = () => {
+    // To be implemented - will open a dialog to rename the workspace
+    console.log("Rename workspace clicked")
+  }
+
+  const handleLeaveWorkspace = () => {
+    // To be implemented - will open a confirmation dialog to leave the workspace
+    console.log("Leave workspace clicked")
+  }
+
+  const handleDeleteWorkspace = () => {
+    // To be implemented - will open a confirmation dialog to delete the workspace
+    console.log("Delete workspace clicked")
   }
   
   return (
@@ -61,7 +83,32 @@ export default function Page() {
         </header>
         <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "Dashboard"}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "Dashboard"}</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">More options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleRenameWorkspace}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Rename workspace
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLeaveWorkspace}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Leave workspace
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete workspace
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <Button onClick={handleCreateForm}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Form
