@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
@@ -24,11 +24,23 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu"
+import { RenameDialog } from "@/components/workspace/rename-dialog"
+import { ConfirmDialog } from "@/components/workspace/confirm-dialog"
 
 export default function Page() {
   const router = useRouter()
   const { stats, recentActivity, recentForms, isLoading, error, fetchDashboardData } = useDashboardStore()
-  const { currentWorkspace } = useWorkspaceStore()
+  const { 
+    currentWorkspace, 
+    renameWorkspace, 
+    leaveWorkspace, 
+    deleteWorkspace 
+  } = useWorkspaceStore()
+  
+  // Dialog state
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   
   useEffect(() => {
     fetchDashboardData()
@@ -43,18 +55,15 @@ export default function Page() {
   }
 
   const handleRenameWorkspace = () => {
-    // To be implemented - will open a dialog to rename the workspace
-    console.log("Rename workspace clicked")
+    setIsRenameDialogOpen(true)
   }
 
   const handleLeaveWorkspace = () => {
-    // To be implemented - will open a confirmation dialog to leave the workspace
-    console.log("Leave workspace clicked")
+    setIsLeaveDialogOpen(true)
   }
 
   const handleDeleteWorkspace = () => {
-    // To be implemented - will open a confirmation dialog to delete the workspace
-    console.log("Delete workspace clicked")
+    setIsDeleteDialogOpen(true)
   }
   
   const handleInviteToWorkspace = () => {
@@ -63,7 +72,8 @@ export default function Page() {
   }
   
   return (
-    <div className="flex flex-1 flex-col">
+    <>
+      <div className="flex flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
@@ -271,6 +281,34 @@ export default function Page() {
             </div>
           </div>
         </div>
-    </div>
+      </div>
+      
+      {/* Workspace Dialog Components */}
+      <RenameDialog 
+        open={isRenameDialogOpen} 
+        onOpenChange={setIsRenameDialogOpen} 
+        workspace={currentWorkspace}
+        onRename={renameWorkspace}
+      />
+      
+      <ConfirmDialog
+        open={isLeaveDialogOpen}
+        onOpenChange={setIsLeaveDialogOpen}
+        title="Leave Workspace"
+        description="Are you sure you want to leave this workspace? You will lose access to all forms and data within it."
+        confirmLabel="Leave"
+        onConfirm={() => currentWorkspace ? leaveWorkspace(currentWorkspace.id) : Promise.resolve()}
+      />
+      
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Workspace"
+        description="Are you sure you want to delete this workspace? This action cannot be undone and all data will be permanently lost."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => currentWorkspace ? deleteWorkspace(currentWorkspace.id) : Promise.resolve()}
+      />
+    </>
   )
 }
