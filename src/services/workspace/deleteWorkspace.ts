@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/client';
-import { deleteForm } from '../form/deleteForm';
 
 /**
  * Delete a workspace and all associated data
@@ -24,59 +23,44 @@ export async function deleteWorkspace(workspaceId: string): Promise<{ success: b
     .eq('user_id', userData.user.id)
     .single();
 
-  if (memberError || !memberData || memberData.role !== 'owner') {
-    throw new Error('Only workspace owners can delete workspaces');
+  if (memberError || !memberData) {
+    throw new Error('User is not a member of this workspace');
+  }
+  
+  // Allow both owners and admins to delete workspaces
+  if (memberData.role !== 'owner' && memberData.role !== 'admin') {
+    throw new Error('Only workspace owners and admins can delete workspaces');
   }
 
-  // First, get all forms associated with this workspace
-  const { data: forms, error: formsError } = await supabase
-    .from('forms')
-    .select('form_id')
-    .eq('workspace_id', workspaceId);
-
-  if (formsError) {
-    console.error('Error fetching workspace forms:', formsError);
-    throw formsError;
-  }
-
-  // Delete each form and its associated data
-  if (forms && forms.length > 0) {
-    for (const form of forms) {
-      await deleteForm(form.form_id);
-    }
-  }
-
-  // Delete workspace invitations
-  const { error: invitationsError } = await supabase
-    .from('workspace_invitations')
-    .delete()
-    .eq('workspace_id', workspaceId);
-
-  if (invitationsError) {
-    console.error('Error deleting workspace invitations:', invitationsError);
-    throw invitationsError;
-  }
-
-  // Delete workspace members
-  const { error: membersError } = await supabase
-    .from('workspace_members')
-    .delete()
-    .eq('workspace_id', workspaceId);
-
-  if (membersError) {
-    console.error('Error deleting workspace members:', membersError);
-    throw membersError;
-  }
-
-  // Finally delete the workspace itself
-  const { error: deleteError } = await supabase
+  // Delete the workspace directly - database CASCADE will handle related records
+  const { data: deletedData, error: deleteError } = await supabase
     .from('workspaces')
     .delete()
-    .eq('id', workspaceId);
+    .eq('id', workspaceId)
+    .select();
 
   if (deleteError) {
     console.error('Error deleting workspace:', deleteError);
     throw deleteError;
+  }
+  
+  // Verify the workspace was actually deleted
+  console.log('Delete operation result:', { deletedData });
+  
+  // Double-check if the workspace was deleted
+  const { data: checkData, error: checkError } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('id', workspaceId)
+    .maybeSingle();
+    
+  if (checkError) {
+    console.error('Error verifying workspace deletion:', checkError);
+  }
+  
+  if (checkData) {
+    console.error('Workspace still exists after delete operation:', checkData);
+    throw new Error('Failed to delete workspace - it still exists in the database');
   }
 
   return { success: true };

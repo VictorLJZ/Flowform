@@ -44,13 +44,13 @@ export function ConfirmDialog({
   }
 
   // Determine which icon to use based on the title/variant
-  const getIcon = () => {
+  const getIcon = (inButton = false) => {
     if (title.toLowerCase().includes('delete')) {
-      return <Trash2 className="h-5 w-5 text-destructive" />
+      return <Trash2 className={`h-5 w-5 ${inButton && variant === "destructive" ? "text-white" : "text-destructive"}`} />
     } else if (title.toLowerCase().includes('leave')) {
-      return <LogOut className="h-5 w-5 text-warning" />
+      return <LogOut className={`h-5 w-5 ${inButton ? "text-white" : "text-primary"}`} />
     } else {
-      return <AlertTriangle className="h-5 w-5 text-warning" />
+      return <AlertTriangle className={`h-5 w-5 ${inButton ? "text-white" : "text-warning"}`} />
     }
   }
 
@@ -59,7 +59,11 @@ export function ConfirmDialog({
       <DialogContent className="w-full max-w-[450px] bg-background border shadow-lg rounded-lg p-6">
         <DialogHeader className="space-y-4 pb-4">
           <div className="flex items-center gap-3">
-            <div className={`${variant === "destructive" ? "bg-destructive/10" : "bg-warning/10"} p-2 rounded-full`}>
+            <div className={`${
+              title.toLowerCase().includes('delete') ? "bg-destructive/10" : 
+              title.toLowerCase().includes('leave') ? "bg-primary/10" : 
+              "bg-warning/10"
+            } p-2 rounded-full`}>
               {getIcon()}
             </div>
             <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
@@ -97,7 +101,7 @@ export function ConfirmDialog({
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                {getIcon()}
+                {getIcon(true)}
                 {confirmLabel}
               </span>
             )}

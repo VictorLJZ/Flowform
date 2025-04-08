@@ -39,6 +39,7 @@ Stores workspace information.
 | Users can create workspaces | INSERT | null | `created_by = auth.uid()` |
 | Users can view workspaces they created | SELECT | `created_by = auth.uid()` | null |
 | Workspace owners and admins can update workspace | UPDATE | `created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = id AND user_id = auth.uid() AND role IN ('owner', 'admin'))` | null |
+| Workspace owners and admins can delete workspace | DELETE | `created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = id AND user_id = auth.uid() AND role IN ('owner', 'admin'))` | null |
 
 ### 3. workspace_invitations
 
