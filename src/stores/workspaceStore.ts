@@ -4,6 +4,9 @@ import { Workspace } from '@/types/supabase-types'
 import { getUserWorkspaces } from '@/services/workspace/getUserWorkspaces'
 import { createWorkspace as createWorkspaceService } from '@/services/workspace/createWorkspace'
 import { initializeDefaultWorkspace } from '@/services/workspace/initializeDefaultWorkspace'
+import { updateWorkspace as updateWorkspaceService } from '@/services/workspace/updateWorkspace'
+import { deleteWorkspace as deleteWorkspaceService } from '@/services/workspace/deleteWorkspace'
+import { leaveWorkspace as leaveWorkspaceService } from '@/services/workspace/leaveWorkspace'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
@@ -18,6 +21,9 @@ interface WorkspaceState {
   fetchWorkspaces: () => Promise<void>
   createWorkspace: (name: string, description?: string) => Promise<Workspace>
   ensureDefaultWorkspace: () => Promise<void>
+  renameWorkspace: (workspaceId: string, name: string) => Promise<void>
+  leaveWorkspace: (workspaceId: string) => Promise<void>
+  deleteWorkspace: (workspaceId: string) => Promise<void>
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -149,6 +155,110 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             error: error instanceof Error ? error.message : 'Failed to initialize default workspace',
             isLoading: false
           })
+        }
+      },
+
+      renameWorkspace: async (workspaceId: string, name: string) => {
+        try {
+          set({ isLoading: true, error: null })
+          const updatedWorkspace = await updateWorkspaceService(workspaceId, { name })
+          
+          // Update workspaces in state
+          const { workspaces, currentWorkspace } = get()
+          const updatedWorkspaces = workspaces.map(workspace => 
+            workspace.id === workspaceId ? updatedWorkspace : workspace
+          )
+          
+          set({
+            workspaces: updatedWorkspaces,
+            currentWorkspace: currentWorkspace?.id === workspaceId 
+              ? updatedWorkspace 
+              : currentWorkspace,
+            isLoading: false
+          })
+        } catch (error) {
+          console.error('[WorkspaceStore] Error in renameWorkspace:', error)
+          set({
+            error: error instanceof Error ? error.message : 'Failed to rename workspace',
+            isLoading: false
+          })
+          throw error
+        }
+      },
+      
+      leaveWorkspace: async (workspaceId: string) => {
+        try {
+          set({ isLoading: true, error: null })
+          await leaveWorkspaceService(workspaceId)
+          
+          // Update state after leaving
+          const { workspaces, currentWorkspace } = get()
+          const updatedWorkspaces = workspaces.filter(workspace => workspace.id !== workspaceId)
+          
+          // Switch to another workspace if leaving the current one
+          let newCurrentWorkspace = currentWorkspace
+          if (currentWorkspace?.id === workspaceId) {
+            newCurrentWorkspace = updatedWorkspaces.length > 0 ? updatedWorkspaces[0] : null
+          }
+          
+          set({
+            workspaces: updatedWorkspaces,
+            currentWorkspace: newCurrentWorkspace,
+            isLoading: false
+          })
+          
+          // If no workspaces left, user might need a default one
+          if (updatedWorkspaces.length === 0) {
+            const { userId } = get()
+            if (userId) {
+              get().ensureDefaultWorkspace()
+            }
+          }
+        } catch (error) {
+          console.error('[WorkspaceStore] Error in leaveWorkspace:', error)
+          set({
+            error: error instanceof Error ? error.message : 'Failed to leave workspace',
+            isLoading: false
+          })
+          throw error
+        }
+      },
+      
+      deleteWorkspace: async (workspaceId: string) => {
+        try {
+          set({ isLoading: true, error: null })
+          await deleteWorkspaceService(workspaceId)
+          
+          // Update state after deletion
+          const { workspaces, currentWorkspace } = get()
+          const updatedWorkspaces = workspaces.filter(workspace => workspace.id !== workspaceId)
+          
+          // Switch to another workspace if deleting the current one
+          let newCurrentWorkspace = currentWorkspace
+          if (currentWorkspace?.id === workspaceId) {
+            newCurrentWorkspace = updatedWorkspaces.length > 0 ? updatedWorkspaces[0] : null
+          }
+          
+          set({
+            workspaces: updatedWorkspaces,
+            currentWorkspace: newCurrentWorkspace,
+            isLoading: false
+          })
+          
+          // If no workspaces left, user might need a default one
+          if (updatedWorkspaces.length === 0) {
+            const { userId } = get()
+            if (userId) {
+              get().ensureDefaultWorkspace()
+            }
+          }
+        } catch (error) {
+          console.error('[WorkspaceStore] Error in deleteWorkspace:', error)
+          set({
+            error: error instanceof Error ? error.message : 'Failed to delete workspace',
+            isLoading: false
+          })
+          throw error
         }
       },
     }),
