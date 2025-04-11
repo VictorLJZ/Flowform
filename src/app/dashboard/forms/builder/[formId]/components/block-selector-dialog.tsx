@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Mail, Phone, User, Calendar, Globe, MessageSquare, FileText, CheckSquare, List, BarChart3, Star, FileUp, X, Hash, CreditCard, Image, Send, Monitor, Layers, Bookmark, Diamond, ArrowUpRight } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Search, Mail, Phone, User, Calendar, Globe, MessageSquare, FileText, CheckSquare, List, BarChart3, Star, FileUp, X, Hash, CreditCard, Image, Send, Monitor, Layers, Bookmark, ArrowUpRight } from "lucide-react"
+import { Dialog as DialogComponent, DialogHeader, DialogTitle, DialogClose, DialogPortal, DialogOverlay } from "@/components/ui/dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
 // Block type definitions matching what's in the FormBlock type
@@ -89,49 +91,40 @@ export default function BlockSelectorDialog({
       blocks: [
         { id: "nps", type: "static", name: "Net Promoter Score®", description: "NPS survey", icon: BarChart3 },
         { id: "opinion-scale", type: "static", name: "Opinion Scale", description: "Likert scale rating", icon: BarChart3 },
-        { id: "rating", type: "static", name: "Rating", description: "Rate on a scale", icon: Star },
-        { id: "ranking", type: "static", name: "Ranking", description: "Rank options", icon: List },
-        { id: "matrix", type: "static", name: "Matrix", description: "Grid of questions", icon: Layers, isPremium: true },
+        { id: "rating", type: "static", name: "Rating", description: "Star rating", icon: Star },
+        { id: "ranking", type: "static", name: "Ranking", description: "Order by preference", icon: List },
       ]
     },
     {
-      id: "text-video",
-      name: "Text & Video",
-      color: "#0ea5e9", // Sky blue
+      id: "payment",
+      name: "Payment",
+      color: "#0ea5e9", // Sky
       blocks: [
-        { id: "long-text", type: "static", name: "Long Text", description: "Multi-line text area", icon: FileText },
-        { id: "short-text", type: "static", name: "Short Text", description: "Single line text field", icon: MessageSquare },
-        { id: "video", type: "static", name: "Video", description: "Embed video content", icon: Monitor, isPremium: true },
-        { id: "clarify-ai", type: "dynamic", name: "Clarify with AI", description: "AI-assisted clarification", icon: MessageSquare, isPremium: true },
+        { id: "payment", type: "integration", name: "Payment", description: "Accept payments", icon: CreditCard },
+        { id: "price-selector", type: "static", name: "Price Selector", description: "Choose payment amount", icon: CreditCard },
+        { id: "appointment", type: "integration", name: "Appointment", description: "Book meetings", icon: Calendar },
       ]
     },
     {
-      id: "other",
-      name: "Other",
-      color: "#eab308", // Yellow
+      id: "media",
+      name: "Media",
+      color: "#ec4899", // Pink
       blocks: [
-        { id: "number", type: "static", name: "Number", description: "Numerical input", icon: Hash },
-        { id: "date", type: "static", name: "Date", description: "Date selector", icon: Calendar },
-        { id: "payment", type: "static", name: "Payment", description: "Payment collection", icon: CreditCard, isPremium: true },
-        { id: "file-upload", type: "static", name: "File Upload", description: "File upload field", icon: FileUp, isPremium: true },
-        { id: "google-drive", type: "integration", name: "Google Drive", description: "Google Drive integration", icon: FileUp, isPremium: true },
-        { id: "calendly", type: "integration", name: "Calendly", description: "Schedule appointments", icon: Calendar },
+        { id: "image", type: "static", name: "Image", description: "Display an image", icon: Image },
+        { id: "video", type: "static", name: "Video", description: "Embed a video", icon: Monitor },
+        { id: "file-upload", type: "static", name: "File Upload", description: "Allow file uploads", icon: FileUp },
       ]
     },
     {
       id: "layout",
-      name: "Other",
-      color: "#64748b", // Slate
+      name: "Layout",
+      color: "#6366f1", // Indigo
       blocks: [
-        { id: "welcome-screen", type: "layout", name: "Welcome Screen", description: "Introduction screen", icon: Monitor },
-        { id: "partial-submit", type: "layout", name: "Partial Submit Point", description: "Save partial responses", icon: Bookmark, isPremium: true },
-        { id: "statement", type: "layout", name: "Statement", description: "Display text without input", icon: FileText },
-        { id: "question-group", type: "layout", name: "Question Group", description: "Group related questions", icon: Layers },
-        { id: "multi-question", type: "layout", name: "Multi-Question Page", description: "Multiple questions on one page", icon: Layers },
-        { id: "end-screen", type: "layout", name: "End Screen", description: "Thank you screen", icon: Send },
-        { id: "redirect-url", type: "layout", name: "Redirect to URL", description: "Redirect after completion", icon: ArrowUpRight, isPremium: true },
+        { id: "section-break", type: "layout", name: "Section Break", description: "Add a section divider", icon: Layers },
+        { id: "page-break", type: "layout", name: "Page Break", description: "Add a new page", icon: Bookmark },
+        { id: "redirect", type: "layout", name: "Redirect", description: "Redirect to URL", icon: ArrowUpRight },
       ]
-    }
+    },
   ]
 
   // Filter blocks based on search query
@@ -163,48 +156,113 @@ export default function BlockSelectorDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-auto bg-white p-6 border rounded-lg overflow-auto">
-        <DialogHeader className="border-b pb-4 px-0 -mt-1">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">Add form elements</DialogTitle>
-          </div>
-        </DialogHeader>
+    <DialogComponent open={open} onOpenChange={onOpenChange}>
+      <DialogPortal>
+        <DialogOverlay className="bg-black/50 fixed inset-0" />
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <DialogPrimitive.Content
+            className={cn(
+              "bg-background rounded-lg border p-6 shadow-lg focus:outline-none w-auto"
+            )}
+            style={{
+              width: 'fit-content',
+              maxWidth: '95vw',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative' /* Ensure absolute positioning of children works */
+            }}
+        >
+          <button 
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted/20 transition-colors"
+            aria-label="Close dialog"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          
+          <DialogHeader className="border-b pb-4 px-0 -mt-1">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">Add form elements</DialogTitle>
+            </div>
+          </DialogHeader>
 
-        <div className="overflow-x-auto py-6">
-          <div className="flex" style={{ minWidth: 'max-content' }}>
-            {/* Search Column */}
-            <div className="w-[260px] min-w-[260px] pr-8 border-r mr-8">
-              <div className="relative mb-6">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search form elements"
-                  className="w-full pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+          <div className="pt-2 pb-4 flex">
+            {/* Left Column with Search and First Two Categories */}
+            <div className="flex flex-col gap-6 mr-6 w-[260px]">
+              {/* Search Box */}
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search form elements"
+                    className="w-full pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
-              
+
+              {/* Connect to CRM */}
+              {!searchQuery && (
+                <div>
+                  <h3 className="mb-2 text-base font-medium">{blockCategories[0].name}</h3>
+                  <div className="flex flex-col gap-1">
+                    {blockCategories[0].blocks.map((block) => (
+                      <button
+                        key={`${block.id}-${block.type}`}
+                        className="flex items-center rounded-md border border-muted/30 py-1.5 pl-2 pr-3 text-left hover:bg-muted/20 transition-colors relative" 
+                        style={{ width: '200px' }}
+                        onClick={() => handleSelectBlock(block)}
+                      >
+                        <div className="mr-3 rounded-md" style={{ backgroundColor: `${blockCategories[0].color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <block.icon className="h-4 w-4" style={{ color: blockCategories[0].color }} />
+                        </div>
+                        <span className="text-sm font-medium">{block.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommended */}
+              {!searchQuery && (
+                <div>
+                  <h3 className="mb-2 text-base font-medium">{blockCategories[1].name}</h3>
+                  <div className="flex flex-col gap-1">
+                    {blockCategories[1].blocks.map((block) => (
+                      <button
+                        key={`${block.id}-${block.type}`}
+                        className="flex items-center rounded-md border border-muted/30 py-1.5 pl-2 pr-3 text-left hover:bg-muted/20 transition-colors relative" 
+                        style={{ width: '200px' }}
+                        onClick={() => handleSelectBlock(block)}
+                      >
+                        <div className="mr-3 rounded-md" style={{ backgroundColor: `${blockCategories[1].color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <block.icon className="h-4 w-4" style={{ color: blockCategories[1].color }} />
+                        </div>
+                        <span className="text-sm font-medium">{block.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Search Results */}
               {searchQuery && (
                 <div>
                   <h3 className="mb-4 text-sm font-medium">Search Results</h3>
-                  <div className="flex flex-col space-y-3">
+                  <div className="flex flex-col gap-1">
                     {filterBlocks(getAllBlocks()).map((block) => (
                       <button
                         key={`${block.id}-${block.type}`}
-                        className="flex items-center rounded-md border border-muted/30 p-3 text-left hover:bg-muted/20 transition-colors relative w-full"
+                        className="flex items-center rounded-md border border-muted/30 py-1.5 pl-2 pr-3 text-left hover:bg-muted/20 transition-colors relative" 
+                        style={{ width: '200px' }}
                         onClick={() => handleSelectBlock(block)}
                       >
-                        <div className="mr-3 rounded-md" style={{ backgroundColor: `${getCategoryByBlockId(block.id)?.color}20` }}>
-                          <block.icon className="h-5 w-5 m-2" style={{ color: getCategoryByBlockId(block.id)?.color }} />
+                        <div className="mr-3 rounded-md" style={{ backgroundColor: `${getCategoryByBlockId(block.id)?.color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <block.icon className="h-4 w-4" style={{ color: getCategoryByBlockId(block.id)?.color }} />
                         </div>
                         <span className="text-sm font-medium">{block.name}</span>
-                        {block.isPremium && (
-                          <div className="absolute top-3 right-3">
-                            <Diamond className="h-3 w-3 text-primary" />
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>
@@ -215,35 +273,42 @@ export default function BlockSelectorDialog({
               )}
             </div>
 
-            {/* Category Columns */}
-            {!searchQuery && blockCategories.map((category) => (
-              <div key={category.id} className="w-[220px] min-w-[220px] mr-8" style={{ flexShrink: 0 }}>
-                <h3 className="mb-4 text-base font-medium">{category.name}</h3>
-                <div className="flex flex-col space-y-3">
-                  {category.blocks.map((block) => (
-                    <button
-                      key={`${block.id}-${block.type}`}
-                      className="flex items-center rounded-md border border-muted/30 p-3 text-left hover:bg-muted/20 transition-colors relative w-full"
-                      onClick={() => handleSelectBlock(block)}
-                    >
-                      <div className="mr-3 rounded-md" style={{ backgroundColor: `${category.color}20` }}>
-                        <block.icon className="h-5 w-5 m-2" style={{ color: category.color }} />
-                      </div>
-                      <span className="text-sm font-medium">{block.name}</span>
-                      {block.isPremium && (
-                        <div className="absolute top-3 right-3">
-                          <Diamond className="h-3 w-3 text-primary" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+            {/* Right Column - Main Categories Grid - 3x2 */}
+            {!searchQuery && (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateRows: 'repeat(2, auto)',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridAutoFlow: 'column', /* This makes it fill by column first */
+                gap: '1.5rem', 
+                width: 'fit-content' 
+              }}>
+                {blockCategories.slice(2).map((category) => (
+                  <div key={category.id} style={{ width: '100%', margin: 0, padding: 0 }}>
+                    <h3 className="mb-2 text-base font-medium">{category.name}</h3>
+                    <div className="flex flex-col gap-1">
+                      {category.blocks.map((block) => (
+                        <button
+                          key={`${block.id}-${block.type}`}
+                          className="flex items-center rounded-md border border-muted/30 py-1.5 pl-2 pr-3 text-left hover:bg-muted/20 transition-colors relative" 
+                          style={{ width: '200px' }}
+                          onClick={() => handleSelectBlock(block)}
+                        >
+                          <div className="mr-3 rounded-md" style={{ backgroundColor: `${category.color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <block.icon className="h-4 w-4" style={{ color: category.color }} />
+                          </div>
+                          <span className="text-sm font-medium">{block.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
+        </DialogPrimitive.Content>
         </div>
-        
-      </DialogContent>
-    </Dialog>
+      </DialogPortal>
+    </DialogComponent>
   )
 }
