@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { RenameDialog } from "@/components/workspace/rename-dialog"
 import { ConfirmDialog } from "@/components/workspace/confirm-dialog"
+import { InviteDialog } from "@/components/workspace/invite-dialog"
+import { InvitationList } from "@/components/workspace/invitation-list"
 
 export default function Page() {
   const router = useRouter()
@@ -41,6 +43,7 @@ export default function Page() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   
   useEffect(() => {
     fetchDashboardData()
@@ -67,8 +70,7 @@ export default function Page() {
   }
   
   const handleInviteToWorkspace = () => {
-    // To be implemented - will open a dialog to invite users to the workspace
-    console.log("Invite to workspace clicked")
+    setIsInviteDialogOpen(true)
   }
   
   return (
@@ -180,7 +182,15 @@ export default function Page() {
           </div>
           
           <div className="grid gap-6 grid-cols-1 md:grid-cols-3 md:grid-rows-2">
-             <div className="bg-card rounded-xl p-6 shadow-sm border md:col-span-2 md:row-span-2">
+            {/* Invitation List */}
+            <div className="md:col-span-1 md:row-span-2">
+              {currentWorkspace && (
+                <InvitationList workspaceId={currentWorkspace.id} />
+              )}
+            </div>
+            
+            {/* Recent Activity */}
+            <div className="bg-card rounded-xl p-6 shadow-sm border md:col-span-2 md:row-span-2">
               <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
               {isLoading ? (
                 <div className="space-y-4">
@@ -295,8 +305,8 @@ export default function Page() {
         open={isLeaveDialogOpen}
         onOpenChange={setIsLeaveDialogOpen}
         title="Leave Workspace"
-        description="Are you sure you want to leave this workspace? You will lose access to all forms and data within it."
-        confirmLabel="Leave"
+        description={`Are you sure you want to leave the "${currentWorkspace?.name}" workspace? You will no longer have access to this workspace's forms and data.`}
+        confirmLabel="Leave Workspace"
         onConfirm={() => currentWorkspace ? leaveWorkspace(currentWorkspace.id) : Promise.resolve()}
       />
       
@@ -304,10 +314,15 @@ export default function Page() {
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete Workspace"
-        description="Are you sure you want to delete this workspace? This action cannot be undone and all data will be permanently lost."
-        confirmLabel="Delete"
+        description={`Are you sure you want to delete the "${currentWorkspace?.name}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
+        confirmLabel="Delete Workspace"
         variant="destructive"
         onConfirm={() => currentWorkspace ? deleteWorkspace(currentWorkspace.id) : Promise.resolve()}
+      />
+      
+      <InviteDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
       />
     </>
   )

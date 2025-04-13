@@ -7,8 +7,16 @@ export * from './createWorkspace';
 export * from './updateWorkspace';
 export * from './deleteWorkspace';
 export * from './initializeDefaultWorkspace';
+export * from './leaveWorkspace';
 
-// Workspace membership
+// Workspace membership and invitations
+export * from './getWorkspaceMembers';
+
+// Invitation management
 export * from './inviteToWorkspace';
 export * from './acceptInvitation';
-export * from './getWorkspaceMembers';
+export * from './declineInvitation';
+export * from './getPendingInvitations';
+export * from './getSentInvitations';
+export * from './resendInvitation';
+export * from './revokeInvitation';

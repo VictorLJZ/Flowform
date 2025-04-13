@@ -1,42 +1,82 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Workspace } from '@/types/supabase-types'
+import { Workspace, WorkspaceInvitation, WorkspaceMember } from '@/types/supabase-types'
 import { getUserWorkspaces } from '@/services/workspace/getUserWorkspaces'
 import { createWorkspace as createWorkspaceService } from '@/services/workspace/createWorkspace'
 import { initializeDefaultWorkspace } from '@/services/workspace/initializeDefaultWorkspace'
 import { updateWorkspace as updateWorkspaceService } from '@/services/workspace/updateWorkspace'
 import { deleteWorkspace as deleteWorkspaceService } from '@/services/workspace/deleteWorkspace'
 import { leaveWorkspace as leaveWorkspaceService } from '@/services/workspace/leaveWorkspace'
+import { acceptInvitation as acceptInvitationService } from '@/services/workspace/acceptInvitation'
+import { declineInvitation as declineInvitationService } from '@/services/workspace/declineInvitation'
+import { getPendingInvitations } from '@/services/workspace/getPendingInvitations'
+import { getSentInvitations } from '@/services/workspace/getSentInvitations'
+import { inviteToWorkspace } from '@/services/workspace/inviteToWorkspace'
+import { resendInvitation as resendInvitationService } from '@/services/workspace/resendInvitation'
+import { revokeInvitation as revokeInvitationService } from '@/services/workspace/revokeInvitation'
 
 interface WorkspaceState {
+  // Core Workspace State
   currentWorkspace: Workspace | null
   workspaces: Workspace[]
   isLoading: boolean
   error: string | null
   userId: string | null
+  userEmail: string | null
   
-  // Actions
+  // Invitation State
+  pendingInvitations: WorkspaceInvitation[]
+  sentInvitations: WorkspaceInvitation[]
+  isLoadingInvitations: boolean
+  invitationError: string | null
+  invitationLimit: number
+  
+  // Core Workspace Actions
   setCurrentWorkspace: (workspace: Workspace | null) => void
   setUserId: (userId: string) => void
+  setUserEmail: (email: string) => void
   fetchWorkspaces: () => Promise<void>
   createWorkspace: (name: string, description?: string) => Promise<Workspace>
   ensureDefaultWorkspace: () => Promise<void>
   renameWorkspace: (workspaceId: string, name: string) => Promise<void>
   leaveWorkspace: (workspaceId: string) => Promise<void>
   deleteWorkspace: (workspaceId: string) => Promise<void>
+  
+  // Invitation Actions
+  fetchPendingInvitations: () => Promise<void>
+  fetchSentInvitations: (workspaceId: string) => Promise<void>
+  sendInvitations: (invites: { email: string; role: 'owner' | 'admin' | 'editor' | 'viewer' }[]) => Promise<WorkspaceInvitation[]>
+  resendInvitation: (invitationId: string) => Promise<WorkspaceInvitation | null>
+  acceptInvitation: (token: string) => Promise<WorkspaceMember | null>
+  declineInvitation: (token: string) => Promise<boolean>
+  revokeInvitation: (invitationId: string) => Promise<boolean>
+  clearInvitationError: () => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
+      // Core Workspace State
       currentWorkspace: null,
       workspaces: [],
       isLoading: false,
       error: null,
       userId: null,
+      userEmail: null,
+      
+      // Invitation State
+      pendingInvitations: [],
+      sentInvitations: [],
+      isLoadingInvitations: false,
+      invitationError: null,
+      invitationLimit: 50, // Default limit of 50 pending invitations per workspace
 
       setUserId: (userId) => {
         set({ userId })
+      },
+      
+      setUserEmail: (email) => {
+        set({ userEmail: email })
       },
 
       setCurrentWorkspace: (workspace) => {
@@ -261,12 +301,314 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           throw error
         }
       },
+      
+      // Invitation Management Actions
+      fetchPendingInvitations: async () => {
+        console.log('[WorkspaceStore] Starting fetchPendingInvitations')
+        const { userEmail } = get()
+        console.log('[WorkspaceStore] User email for pending invitations:', userEmail)
+        
+        if (!userEmail) {
+          console.warn('[WorkspaceStore] Cannot fetch pending invitations: User email not set')
+          set({ invitationError: 'User email not set' })
+          return
+        }
+        
+        try {
+          console.log('[WorkspaceStore] Setting loading state for pending invitations')
+          set({ isLoadingInvitations: true, invitationError: null })
+          
+          console.log('[WorkspaceStore] Calling getPendingInvitations service with email:', userEmail)
+          const pendingInvitations = await getPendingInvitations(userEmail)
+          console.log('[WorkspaceStore] Received pending invitations:', pendingInvitations.length)
+          
+          set({ pendingInvitations, isLoadingInvitations: false })
+          console.log('[WorkspaceStore] Updated store with pending invitations')
+        } catch (error) {
+          console.error('[WorkspaceStore] Error fetching pending invitations:', error)
+          if (error instanceof Error) {
+            console.error('[WorkspaceStore] Error message:', error.message)
+            console.error('[WorkspaceStore] Error stack:', error.stack)
+          } else {
+            console.error('[WorkspaceStore] Unknown error type:', typeof error)
+          }
+          
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to fetch invitations',
+            isLoadingInvitations: false
+          })
+        }
+      },
+      
+      fetchSentInvitations: async (workspaceId: string) => {
+        console.log('[WorkspaceStore] Starting fetchSentInvitations with workspaceId:', workspaceId)
+        
+        if (!workspaceId) {
+          console.warn('[WorkspaceStore] Cannot fetch sent invitations: workspaceId is empty')
+          set({ invitationError: 'Workspace ID not provided' })
+          return
+        }
+        
+        try {
+          console.log('[WorkspaceStore] Setting loading state for sent invitations')
+          set({ isLoadingInvitations: true, invitationError: null })
+          
+          console.log('[WorkspaceStore] Calling getSentInvitations service')
+          const sentInvitations = await getSentInvitations(workspaceId)
+          console.log('[WorkspaceStore] Received sent invitations, count:', sentInvitations.length)
+          
+          set({ sentInvitations, isLoadingInvitations: false })
+          console.log('[WorkspaceStore] Updated store with sent invitations')
+        } catch (error) {
+          console.error('[WorkspaceStore] Error fetching sent invitations:', error)
+          if (error instanceof Error) {
+            console.error('[WorkspaceStore] Error details:', { 
+              message: error.message, 
+              name: error.name,
+              stack: error.stack
+            })
+          }
+          
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to fetch sent invitations',
+            isLoadingInvitations: false
+          })
+        }
+      },
+      
+      sendInvitations: async (invites) => {
+        console.log('[WorkspaceStore] Starting sendInvitations with invites:', invites.length)
+        const { currentWorkspace, userId, sentInvitations, invitationLimit } = get()
+        
+        console.log('[WorkspaceStore] Current state:', { 
+          workspaceId: currentWorkspace?.id,
+          userId, 
+          sentInvitationsCount: sentInvitations.length 
+        })
+        
+        if (!currentWorkspace) {
+          console.error('[WorkspaceStore] No current workspace selected')
+          throw new Error('No current workspace selected')
+        }
+        
+        if (!userId) {
+          console.error('[WorkspaceStore] User ID not set')
+          throw new Error('User ID not set')
+        }
+        
+        // Check if we've hit the invitation limit
+        const pendingInvitationCount = sentInvitations.filter(inv => inv.status === 'pending').length
+        console.log('[WorkspaceStore] Current pending invitations:', pendingInvitationCount, 'of', invitationLimit, 'limit')
+        
+        if (pendingInvitationCount + invites.length > invitationLimit) {
+          const errorMessage = `Cannot send more than ${invitationLimit} pending invitations for a workspace`
+          console.error('[WorkspaceStore]', errorMessage)
+          throw new Error(errorMessage)
+        }
+        
+        try {
+          console.log('[WorkspaceStore] Setting loading state for sending invitations')
+          set({ isLoadingInvitations: true, invitationError: null })
+          
+          // Process each invitation in sequence
+          console.log('[WorkspaceStore] Processing', invites.length, 'invitations')
+          const createdInvitations: WorkspaceInvitation[] = []
+          
+          for (let i = 0; i < invites.length; i++) {
+            const invite = invites[i]
+            console.log(`[WorkspaceStore] Processing invitation ${i + 1}/${invites.length} for email:`, invite.email)
+            
+            try {
+              const invitation = await inviteToWorkspace(
+                currentWorkspace.id,
+                invite.email,
+                invite.role,
+                userId
+              )
+              
+              console.log('[WorkspaceStore] Successfully created invitation with ID:', invitation.id)
+              createdInvitations.push(invitation)
+            } catch (inviteError) {
+              console.error(`[WorkspaceStore] Error creating invitation ${i + 1}:`, inviteError)
+              throw inviteError
+            }
+          }
+          
+          console.log('[WorkspaceStore] All invitations processed, updating store')
+          
+          // Update the sent invitations list
+          const updatedSentInvitations = [...sentInvitations, ...createdInvitations]
+          set({ 
+            sentInvitations: updatedSentInvitations,
+            isLoadingInvitations: false
+          })
+          
+          console.log('[WorkspaceStore] Store updated with new invitations')
+          return createdInvitations
+        } catch (error) {
+          console.error('[WorkspaceStore] Error sending invitations:', error)
+          if (error instanceof Error) {
+            console.error('[WorkspaceStore] Error details:', { 
+              message: error.message, 
+              name: error.name,
+              stack: error.stack
+            })
+          }
+          
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to send invitations',
+            isLoadingInvitations: false
+          })
+          throw error
+        }
+      },
+      
+      resendInvitation: async (invitationId: string) => {
+        try {
+          set({ isLoadingInvitations: true, invitationError: null })
+          const updatedInvitation = await resendInvitationService(invitationId)
+          
+          if (updatedInvitation) {
+            // Update the invitation in the sent invitations list
+            const { sentInvitations } = get()
+            const updatedSentInvitations = sentInvitations.map(inv => 
+              inv.id === invitationId ? updatedInvitation : inv
+            )
+            set({ 
+              sentInvitations: updatedSentInvitations,
+              isLoadingInvitations: false
+            })
+          } else {
+            set({ 
+              invitationError: 'Failed to resend invitation',
+              isLoadingInvitations: false
+            })
+          }
+          
+          return updatedInvitation
+        } catch (error) {
+          console.error('[WorkspaceStore] Error resending invitation:', error)
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to resend invitation',
+            isLoadingInvitations: false
+          })
+          return null
+        }
+      },
+      
+      acceptInvitation: async (token: string) => {
+        const { userId, fetchWorkspaces } = get()
+        
+        if (!userId) {
+          set({ invitationError: 'User ID not set' })
+          return null
+        }
+        
+        try {
+          set({ isLoadingInvitations: true, invitationError: null })
+          const membership = await acceptInvitationService(token, userId)
+          
+          if (membership) {
+            // Refresh the workspaces list since we've joined a new one
+            await fetchWorkspaces()
+            
+            // Remove the invitation from pending list
+            const { pendingInvitations } = get()
+            const updatedPendingInvitations = pendingInvitations.filter(inv => inv.token !== token)
+            set({ 
+              pendingInvitations: updatedPendingInvitations,
+              isLoadingInvitations: false
+            })
+          } else {
+            set({ 
+              invitationError: 'Failed to accept invitation',
+              isLoadingInvitations: false
+            })
+          }
+          
+          return membership
+        } catch (error) {
+          console.error('[WorkspaceStore] Error accepting invitation:', error)
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to accept invitation',
+            isLoadingInvitations: false
+          })
+          return null
+        }
+      },
+      
+      declineInvitation: async (token: string) => {
+        try {
+          set({ isLoadingInvitations: true, invitationError: null })
+          const success = await declineInvitationService(token)
+          
+          if (success) {
+            // Remove the invitation from pending list
+            const { pendingInvitations } = get()
+            const updatedPendingInvitations = pendingInvitations.filter(inv => inv.token !== token)
+            set({ 
+              pendingInvitations: updatedPendingInvitations,
+              isLoadingInvitations: false
+            })
+          } else {
+            set({ 
+              invitationError: 'Failed to decline invitation',
+              isLoadingInvitations: false
+            })
+          }
+          
+          return success
+        } catch (error) {
+          console.error('[WorkspaceStore] Error declining invitation:', error)
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to decline invitation',
+            isLoadingInvitations: false
+          })
+          return false
+        }
+      },
+      
+      revokeInvitation: async (invitationId: string) => {
+        try {
+          set({ isLoadingInvitations: true, invitationError: null })
+          const success = await revokeInvitationService(invitationId)
+          
+          if (success) {
+            // Remove the invitation from sent invitations list
+            const { sentInvitations } = get()
+            const updatedSentInvitations = sentInvitations.filter(inv => inv.id !== invitationId)
+            set({ 
+              sentInvitations: updatedSentInvitations,
+              isLoadingInvitations: false
+            })
+          } else {
+            set({ 
+              invitationError: 'Failed to revoke invitation',
+              isLoadingInvitations: false
+            })
+          }
+          
+          return success
+        } catch (error) {
+          console.error('[WorkspaceStore] Error revoking invitation:', error)
+          set({
+            invitationError: error instanceof Error ? error.message : 'Failed to revoke invitation',
+            isLoadingInvitations: false
+          })
+          return false
+        }
+      },
+      
+      clearInvitationError: () => {
+        set({ invitationError: null })
+      },
     }),
     {
       name: 'workspace-storage',
       partialize: (state) => ({ 
         currentWorkspace: state.currentWorkspace,
-        userId: state.userId 
+        userId: state.userId,
+        userEmail: state.userEmail
       }),
     }
   )
