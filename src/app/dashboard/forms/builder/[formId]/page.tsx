@@ -1,92 +1,117 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Loader2 } from "lucide-react"
-import { useFormStore } from "@/stores/formStore"
+import { 
+  Breadcrumb, 
+  BreadcrumbItem, 
+  BreadcrumbLink, 
+  BreadcrumbList, 
+  BreadcrumbPage, 
+  BreadcrumbSeparator 
+} from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
+import { Loader2, Save } from "lucide-react"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
-import FormBuilderSidebar from "./components/form-builder-sidebar"
+import FormBuilderBlockSelector from "./components/form-builder-block-selector"
 
 export default function FormBuilderPage() {
   const params = useParams()
   const formId = params.formId as string
-  const { fetchFormById, currentForm, isLoading } = useFormStore()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [pageLoading, setPageLoading] = useState(true)
-
+  
+  const { 
+    loadForm, 
+    isLoading, 
+    isSaving,
+    formData,
+    saveForm
+  } = useFormBuilderStore()
+  
+  // Load form data on mount
   useEffect(() => {
-    // Initial loading state
-    setPageLoading(true)
-    
-    // Simulating form initialization delay
-    const loadingTimeout = setTimeout(() => {
-      setPageLoading(false)
-    }, 1000)
-    
-    if (formId !== "new") {
-      fetchFormById(formId)
-    }
-    
-    return () => clearTimeout(loadingTimeout)
-  }, [formId, fetchFormById])
-
+    loadForm(formId)
+  }, [formId, loadForm])
+  
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b">
-        <div className="flex items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
+    <div className="flex flex-col min-h-[100vh]">
+      {/* Header */}
+      <header className="bg-background border-b px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center">
+          <Breadcrumb className="mr-6">
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbItem>
                 <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
                 <BreadcrumbLink href="/dashboard/forms">Forms</BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {formId === "new" ? "New Form" : currentForm?.title || "Form Builder"}
-                </BreadcrumbPage>
+                <BreadcrumbPage>{formData.title || "Untitled Form"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-1" 
+            onClick={() => window.open(`/preview/${formId}`, '_blank')}
+          >
+            Preview
+          </Button>
+          
+          <Button 
+            onClick={saveForm}
+            disabled={isSaving}
+            size="sm"
+            className="gap-1"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Save
+              </>
+            )}
+          </Button>
+        </div>
       </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        {pageLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Preparing form builder...</p>
-            </div>
+      
+      {/* Main content area */}
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 size={30} className="animate-spin mx-auto mb-4 text-primary" />
+            <p className="font-medium">Loading form...</p>
+            <p className="text-sm text-muted-foreground mt-1">Preparing your form builder</p>
           </div>
-        ) : (
-          <>
-            {/* Left sidebar - collapsed by default */}
-            <FormBuilderSidebar 
-              isOpen={sidebarOpen} 
-              onToggle={() => setSidebarOpen(!sidebarOpen)} 
-            />
-
-            {/* Main content */}
-            <FormBuilderContent />
-
-            {/* Right settings panel */}
-            <FormBuilderSettings />
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <main className="flex-1 flex h-full">
+          {/* Left sidebar - list of blocks */}
+          <FormBuilderSidebar />
+          
+          {/* Main content - single block slide */}
+          <FormBuilderContent />
+          
+          {/* Right settings panel - block settings */}
+          <FormBuilderSettings />
+          
+          {/* Block selector dialog */}
+          <FormBuilderBlockSelector />
+        </main>
+      )}
     </div>
   )
 }

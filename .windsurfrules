@@ -11,6 +11,7 @@ We are using Supabase for database
 We are using Tailwind CSS v4
 We are using OpenAI for AI integration
 We are using ShadCN for UI components
+We are using Motion (fka Framer Motion) for animation
 We are using Bun as the Javascript runtime
 
 # Director Structure
