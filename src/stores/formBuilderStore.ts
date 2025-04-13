@@ -192,6 +192,24 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         }
       }
       
+      // Debug logs before saving
+      console.log('==== DEBUG: FormBuilder saveForm ====');
+      console.log('Save Data being prepared:', saveData);
+      console.log('Blocks to save:', blocks);
+      
+      // Additional logging to check for any empty arrays in settings
+      blocks.forEach((block, index) => {
+        console.log(`FormBuilder Block ${index} settings:`, block.settings);
+        // Check if any values in settings are empty arrays
+        if (block.settings) {
+          Object.entries(block.settings).forEach(([key, value]) => {
+            if (Array.isArray(value) && value.length === 0) {
+              console.log(`Empty array found in block ${index} settings.${key}`);
+            }
+          });
+        }
+      });
+      
       // Save the form and blocks using RPC transaction
       const result = await saveFormWithBlocks(saveData, blocks)
       
