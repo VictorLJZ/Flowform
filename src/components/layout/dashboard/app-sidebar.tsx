@@ -61,8 +61,9 @@ const data = {
     },
     {
       title: "Create a Form",
-      url: "/dashboard/forms/builder/new",
+      url: "#create-form", // Special URL that will be handled via client action
       icon: PlusCircle,
+      action: "create-form", // Flag to indicate this should trigger an action, not navigation
       items: [], // Empty array means no dropdown menu
     },
     {

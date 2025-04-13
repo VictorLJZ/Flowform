@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 type AuthContextType = {
   user: User | null
@@ -94,6 +95,29 @@ export function AuthProvider({
     router.push('/')
   }
 
+  // Setup workspace state when user is authenticated
+  useEffect(() => {
+    const setupWorkspaceState = async () => {
+      if (!user) return
+      
+      const { setUserId, setUserEmail, fetchWorkspaces, ensureDefaultWorkspace } = useWorkspaceStore.getState()
+      
+      try {
+        // Set user data in workspace store
+        setUserId(user.id)
+        setUserEmail(user.email || '')
+        
+        // Fetch workspaces and ensure default workspace
+        await fetchWorkspaces()
+        await ensureDefaultWorkspace()
+      } catch (error) {
+        console.error('Error setting up workspace state:', error)
+      }
+    }
+    
+    setupWorkspaceState()
+  }, [user])
+  
   return (
     <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
       {children}

@@ -58,20 +58,68 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Check if the user is authenticated and if the route requires authentication
-  // Allow public routes: '/', '/f/*', '/login', '/auth/*'
-  if (
-    !user && 
-    !request.nextUrl.pathname.startsWith('/f/') && 
-    !request.nextUrl.pathname.startsWith('/login') && 
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    request.nextUrl.pathname !== '/'
-  ) {
-    // For protected routes, redirect to login
-    console.log("Redirecting to login (not authenticated)")
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // If this is an API route, add the auth token to the request headers
+  // This ensures our API routes have access to the user's authentication token
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Get the session to extract the access token
+    const { data: { session }} = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    
+    if (accessToken) {
+      // Clone the request and add the Authorization header
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+      
+      // Create a new request with the updated headers
+      const newRequest = new Request(
+        request.url,
+        {
+          headers: requestHeaders,
+          method: request.method,
+          body: request.body,
+          redirect: request.redirect,
+          cache: request.cache,
+          credentials: request.credentials,
+          integrity: request.integrity,
+          keepalive: request.keepalive,
+          mode: request.mode,
+          signal: request.signal,
+        }
+      );
+      
+      // Return the response with the new request
+      return NextResponse.next({
+        request: newRequest,
+      });
+    }
+    
+    // For API routes, if no token is found and route requires authentication,
+    // return a 401 Unauthorized response
+    if (
+      !user && 
+      !request.nextUrl.pathname.startsWith('/api/public/')
+    ) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+  } else {
+    // For non-API routes, check authentication and redirect to login if needed
+    // Allow public routes: '/', '/f/*', '/login', '/auth/*'
+    if (
+      !user && 
+      !request.nextUrl.pathname.startsWith('/f/') && 
+      !request.nextUrl.pathname.startsWith('/login') && 
+      !request.nextUrl.pathname.startsWith('/auth') &&
+      request.nextUrl.pathname !== '/'
+    ) {
+      // For protected routes, redirect to login
+      console.log("Redirecting to login (not authenticated)")
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as is.

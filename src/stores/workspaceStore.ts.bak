@@ -135,32 +135,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           console.log('[WorkspaceStore] Received workspaces:', workspaces)
           set({ workspaces, isLoading: false })
           
-          // Get current workspace from state
-          const { currentWorkspace } = get()
-          console.log('[WorkspaceStore] Current workspace from state:', currentWorkspace)
-          
-          // Validate current workspace against database results
-          if (currentWorkspace) {
-            // Check if current workspace exists in the fetched workspaces
-            const workspaceStillExists = workspaces.some(w => w.id === currentWorkspace.id)
-            
-            if (!workspaceStillExists) {
-              console.log('[WorkspaceStore] WARNING: Current workspace not found in database')
-              console.log('[WorkspaceStore] Current workspace ID:', currentWorkspace.id)
-              console.log('[WorkspaceStore] Available workspace IDs:', workspaces.map(w => w.id))
-              
-              // Reset to first available workspace if current one doesn't exist
-              if (workspaces.length > 0) {
-                console.log('[WorkspaceStore] Resetting to first available workspace:', workspaces[0])
-                set({ currentWorkspace: workspaces[0] })
-              } else {
-                console.log('[WorkspaceStore] No workspaces available, clearing current workspace')
-                set({ currentWorkspace: null })
-              }
-            }
-          }
           // Set current workspace if none selected
-          else if (!currentWorkspace && workspaces.length > 0) {
+          const { currentWorkspace } = get()
+          console.log('[WorkspaceStore] Current workspace:', currentWorkspace)
+          if (!currentWorkspace && workspaces.length > 0) {
             console.log('[WorkspaceStore] Setting first workspace as current:', workspaces[0])
             set({ currentWorkspace: workspaces[0] })
           }

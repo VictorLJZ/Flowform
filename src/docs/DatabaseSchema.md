@@ -121,6 +121,15 @@ Stores form information.
 | updated_at  | TIMESTAMP WITH TIME ZONE| When form was last updated        |
 | published_at| TIMESTAMP WITH TIME ZONE| When form was published (nullable)|
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Public can view published forms | SELECT | `status = 'published'` | null |
+| Users can create forms in their workspaces | INSERT | null | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` |
+| Users can update forms in their workspaces | UPDATE | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
+| Users can view forms in their workspaces | SELECT | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
+
 ### 6. form_blocks
 
 Stores question blocks within forms.

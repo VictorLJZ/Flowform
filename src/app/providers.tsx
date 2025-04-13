@@ -4,7 +4,7 @@ import { Session } from "@supabase/supabase-js"
 import { AuthProvider } from "@/providers/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { Toaster } from "@/components/ui/toaster"
-import { WorkspaceProvider } from "@/contexts/WorkspaceContext"
+import { WorkspaceValidator } from "@/components/providers/workspace-validator"
 
 export function Providers({
   children,
@@ -21,9 +21,9 @@ export function Providers({
     <>
       {/* Pass null instead of potentially unverified session data */}
       <AuthProvider initialSession={null}>
-        <WorkspaceProvider>
-          {children}
-        </WorkspaceProvider>
+        {/* Add workspace validator to validate workspace data */}
+        <WorkspaceValidator />
+        {children}
       </AuthProvider>
       <Toaster />
     </>

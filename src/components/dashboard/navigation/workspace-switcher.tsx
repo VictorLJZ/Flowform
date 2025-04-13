@@ -41,6 +41,12 @@ export function WorkspaceSwitcher() {
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspace, setNewWorkspace] = useState({ name: "", description: "" })
 
+  // Log workspace information when component mounts or updates
+  useEffect(() => {
+    console.log("[DEBUG] WorkspaceSwitcher - Current workspace:", currentWorkspace);
+    console.log("[DEBUG] WorkspaceSwitcher - Available workspaces:", workspaces);
+  }, [currentWorkspace, workspaces])
+
   useEffect(() => {
     fetchWorkspaces()
   }, [fetchWorkspaces])
@@ -133,7 +139,10 @@ export function WorkspaceSwitcher() {
                 workspaces.map((workspace, index) => (
                   <DropdownMenuItem
                     key={workspace.id}
-                    onClick={() => setCurrentWorkspace(workspace)}
+                    onClick={() => {
+                      console.log("[DEBUG] WorkspaceSwitcher - Switching to workspace:", workspace);
+                      setCurrentWorkspace(workspace);
+                    }}
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border">

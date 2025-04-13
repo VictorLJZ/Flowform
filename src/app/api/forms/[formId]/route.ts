@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import { FormStorageService } from "@/lib/form-generation/form-storage-service"
-
-const formStorageService = new FormStorageService()
+import { getFormWithBlocks } from "@/services/form/getFormWithBlocks"
 
 export async function GET(
   request: NextRequest,
   context: { params: { formId: string } }
 ) {
   try {
-    const params = await context.params;
+    const params = context.params;
     const { formId } = params
     
     if (!formId) {
@@ -18,7 +16,7 @@ export async function GET(
       )
     }
     
-    const form = await formStorageService.getFormById(formId)
+    const form = await getFormWithBlocks(formId)
     
     if (!form) {
       return NextResponse.json(
