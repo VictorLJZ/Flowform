@@ -57,28 +57,6 @@ Tracks pending invitations to workspaces.
 | expires_at  | TIMESTAMP WITH TIME ZONE| When invitation expires           |
 | token       | TEXT                    | Unique token for invitation link  |
 
-#### Foreign Key Constraints
-
-| Constraint Name | Column | References |
-|-----------------|--------|------------|
-| fk_workspace_invitations_invited_by | invited_by | auth.users(id) |
-
-#### Helper Functions
-
-| Function Name | Return Type | Description | Security |
-|--------------|------------|-------------|----------|
-| get_auth_email() | TEXT | Returns the email of the authenticated user | SECURITY DEFINER |
-| is_workspace_admin(workspace_id UUID) | BOOLEAN | Checks if the authenticated user is an owner or admin of the workspace | SECURITY DEFINER |
-
-#### Row Level Security Policies
-
-| Policy Name | Command | Using (qual) | With Check |
-|-------------|---------|--------------|------------|
-| Workspace owners and admins can create invitations | INSERT | null | `public.is_workspace_admin(workspace_id)` |
-| Users can view invitations sent to them | SELECT | `email = public.get_auth_email() OR public.is_workspace_admin(workspace_id)` | null |
-| Users can update their own invitations | UPDATE | `email = public.get_auth_email() AND status = 'pending'` | `email = public.get_auth_email() AND status IN ('accepted', 'declined')` |
-| Workspace owners and admins can manage invitations | ALL | `public.is_workspace_admin(workspace_id)` | null |
-
 ### 4. workspace_members
 
 Stores active workspace memberships.
@@ -120,15 +98,6 @@ Stores form information.
 | created_by  | UUID                    | References auth.users.id          |
 | updated_at  | TIMESTAMP WITH TIME ZONE| When form was last updated        |
 | published_at| TIMESTAMP WITH TIME ZONE| When form was published (nullable)|
-
-#### Row Level Security Policies
-
-| Policy Name | Command | Using (qual) | With Check |
-|-------------|---------|--------------|------------|
-| Public can view published forms | SELECT | `status = 'published'` | null |
-| Users can create forms in their workspaces | INSERT | null | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` |
-| Users can update forms in their workspaces | UPDATE | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
-| Users can view forms in their workspaces | SELECT | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
 
 ### 6. form_blocks
 
@@ -292,3 +261,111 @@ Analytics specific to AI-driven conversation blocks.
 | answer_length       | INTEGER                 | Character count of answer         |
 | sentiment_score     | FLOAT                   | Optional sentiment analysis       |
 | topics              | JSONB                   | Optional extracted topics         |
+
+## Database Functions and Stored Procedures
+
+### 1. create_form
+
+Securely creates a new form with permission checks.
+
+#### Function Signature
+```sql
+create_form(
+  p_workspace_id UUID,
+  p_user_id UUID,
+  p_title TEXT DEFAULT 'Untitled Form',
+  p_description TEXT DEFAULT NULL,
+  p_status TEXT DEFAULT 'draft',
+  p_settings JSONB DEFAULT NULL
+) RETURNS TABLE (
+  form_id UUID,
+  title TEXT,
+  description TEXT,
+  workspace_id UUID,
+  created_by UUID,
+  status TEXT,
+  created_at TIMESTAMPTZ
+)
+```
+
+#### Key SQL Pattern
+```sql
+-- Pattern used to avoid ambiguous column references in RETURNING clause
+WITH inserted_form AS (
+  INSERT INTO forms (...) VALUES (...)
+  RETURNING *
+)
+SELECT inf.form_id INTO v_form_id
+FROM inserted_form inf;
+```
+
+#### Description
+This function creates a new form while performing security checks to ensure the user has permission to create forms in the specified workspace. It combines multiple validation steps and database operations into a single transaction for improved performance. The function uses table aliases throughout to avoid ambiguous column references.
+
+#### Parameters
+| Parameter     | Type  | Description                              | Default |
+|---------------|-------|------------------------------------------|----------|
+| p_workspace_id| UUID  | Workspace ID where form will be created  | Required |
+| p_user_id     | UUID  | User ID creating the form                | Required |
+| p_title       | TEXT  | Form title                               | 'Untitled Form' |
+| p_description | TEXT  | Form description                         | NULL |
+| p_status      | TEXT  | Form status (draft, published, archived) | 'draft' |
+| p_settings    | JSONB | Form settings                            | NULL |
+
+#### Returns
+Table containing the created form data.
+
+#### Error Codes
+| Code  | Description                                |
+|-------|--------------------------------------------|  
+| P0001 | User or workspace does not exist           |
+| P0002 | User is not a member of the workspace      |
+
+#### Implementation Notes
+- Executes with SECURITY DEFINER privileges (runs as function owner)
+- Permission to execute is granted to authenticated users
+- Uses table aliases (e.g., `wm` for workspace_members, `f` for forms) in all queries to prevent ambiguous column references
+- All columns are fully qualified (e.g., `wm.workspace_id` instead of just `workspace_id`)
+- Uses a Common Table Expression (CTE) for the INSERT with proper aliasing to avoid ambiguity in the RETURNING clause
+- Handles the PostgreSQL limitation where aliases can't be used in the `INSERT INTO` clause itself
+- Search path is explicitly set to public for additional security
+
+## Database Functions
+
+Database functions are server-side procedures that run directly in the Supabase PostgreSQL database. They provide a way to execute complex operations in a single request while maintaining data integrity.
+
+### save_form_with_blocks
+
+**Purpose:** Save a complete form with all its blocks in a single database transaction
+
+**What is RPC?** RPC (Remote Procedure Call) is a technique that allows your frontend code to call functions that run on the server. Think of it like making a phone call to ask someone to do multiple tasks for you, rather than sending separate text messages for each task.
+
+**Why Use This Approach?**
+1. **Data Consistency**: All operations succeed or fail together, preventing partial saves
+2. **Performance**: Reduces network round-trips by handling all operations server-side
+3. **Complexity Management**: Complex logic stays in the database where it's most efficient
+
+**Parameters:**
+- `p_form_data` (JSONB): Form metadata including title, description, settings, etc.
+- `p_blocks_data` (JSONB): Array of form blocks with their configurations
+
+**Returns:** JSONB object containing:
+- `form`: The saved form data
+- `blocks`: Array of saved blocks
+- `success`: Boolean indicating success
+
+**Behavior:**
+- For new forms: Creates form record and all associated blocks
+- For existing forms: Updates form data and synchronizes blocks by:
+  - Adding new blocks
+  - Updating existing blocks
+  - Removing blocks no longer present in the frontend
+- For dynamic blocks: Manages configurations in the dynamic_block_configs table
+
+**Example Usage:**
+```typescript
+const { data, error } = await supabase.rpc('save_form_with_blocks', {
+  p_form_data: formData,
+  p_blocks_data: blocksData
+});
+```

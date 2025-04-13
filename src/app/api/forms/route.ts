@@ -12,11 +12,15 @@ const FormCreateSchema = z.object({
 
 /**
  * POST /api/forms
- * Creates a new form with secure authentication using Admin Client
+ * Creates a new form using the create_form stored procedure
+ * 
+ * This implementation leverages a database stored procedure that handles
+ * all security checks and form creation in a single database call, improving
+ * performance significantly over the previous multi-query approach.
  */
 export async function POST(request: Request) {
   try {
-    // 1. Get the request body first
+    // 1. Validate the request body
     let requestBody;
     try {
       requestBody = await request.json();
@@ -29,8 +33,22 @@ export async function POST(request: Request) {
       );
     }
     
-    const { workspace_id } = requestBody;
-    console.log("[DEBUG] /api/forms - Received workspace_id:", workspace_id);
+    // Extract form data from request
+    const { 
+      workspace_id,
+      title = 'Untitled Form',
+      description = '',
+      status = 'draft',
+      settings = {
+        showProgressBar: true,
+        requireSignIn: false,
+        theme: 'default',
+        primaryColor: '#0284c7',
+        fontFamily: 'inter'
+      }
+    } = requestBody;
+    
+    logger.info('Form creation request received', { workspace_id });
     
     // 2. Create admin client that bypasses RLS
     const adminClient = createAdminClient();
@@ -40,14 +58,14 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : '';
     
-    // 4. Validate the user's session with the token if available
+    // 4. Get the authenticated user ID
     let userId;
     
     if (token) {
       // Try to get the user from the token
       const { data } = await adminClient.auth.getUser(token);
       userId = data?.user?.id;
-      console.log("[DEBUG] /api/forms - Authenticated user ID:", userId);
+      logger.debug('Authenticated user for form creation', { userId });
     }
     
     // If no valid user was found, use secure fallback for dev/testing
@@ -65,63 +83,53 @@ export async function POST(request: Request) {
       }
     }
     
-
+    // 5. Use the stored procedure to create the form with all security checks
+    // This replaces multiple database queries with a single call
+    const { data, error } = await adminClient.rpc('create_form', {
+      p_workspace_id: workspace_id,
+      p_user_id: userId,
+      p_title: title,
+      p_description: description,
+      p_status: status,
+      p_settings: settings
+    });
     
-    // 5. Verify user is a member of the requested workspace
-    // This adds an extra layer of security beyond RLS
-    console.log("[DEBUG] /api/forms - Checking membership for user:", userId, "in workspace:", workspace_id);
-    
-    // Log all workspace memberships for this user to debug
-    const { data: allMemberships } = await adminClient
-      .from('workspace_members')
-      .select('workspace_id, role')
-      .eq('user_id', userId);
-    console.log("[DEBUG] /api/forms - User's workspace memberships:", allMemberships);
-    
-    const { data: workspaceMembership, error: membershipError } = await adminClient
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', userId)
-      .single();
-    
-    if (membershipError || !workspaceMembership) {
-      logger.warn('Unauthorized workspace access attempt', { 
-        userId, 
-        workspaceId: workspace_id,
-        error: membershipError 
-      });
+    // 6. Handle errors from the stored procedure
+    if (error) {
+      // Handle specific error codes from the stored procedure
+      if (error.message && error.message.includes('not a member of this workspace')) {
+        logger.warn('Unauthorized workspace access attempt', { 
+          userId, 
+          workspaceId: workspace_id,
+          error 
+        });
+        return NextResponse.json(
+          { error: 'You do not have permission to create forms in this workspace' },
+          { status: 403 }
+        );
+      } else if (error.message && (error.message.includes('User does not exist') || 
+                                 error.message.includes('Workspace does not exist'))) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      
+      // Generic error handling
+      logger.error('Database error when creating form', { error });
       return NextResponse.json(
-        { error: 'You do not have permission to create forms in this workspace' },
-        { status: 403 }
+        { error: 'An error occurred while creating the form' },
+        { status: 500 }
       );
     }
     
-    // 6. Create the form with the authenticated user's ID
-    const { data: form, error } = await adminClient
-      .from('forms')
-      .insert({
-        workspace_id,
-        created_by: userId, // Use the verified user ID
-        title: 'Untitled Form',
-        description: '',
-        status: 'draft',
-        settings: {
-          showProgressBar: true,
-          requireSignIn: false,
-          theme: 'default',
-          primaryColor: '#0284c7',
-          fontFamily: 'inter'
-        }
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      logger.error('Database error when creating form', { error });
-      throw error;
+    // Form created successfully
+    if (!data || data.length === 0) {
+      logger.error('No data returned from form creation');
+      return NextResponse.json(
+        { error: 'Form created but no data returned' },
+        { status: 500 }
+      );
     }
     
+    const form = data[0];
     logger.info('Form created successfully', { formId: form.form_id, userId });
     return NextResponse.json({ form_id: form.form_id });
   } catch (error: any) {
