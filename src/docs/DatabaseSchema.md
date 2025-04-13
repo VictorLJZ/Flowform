@@ -57,6 +57,12 @@ Tracks pending invitations to workspaces.
 | expires_at  | TIMESTAMP WITH TIME ZONE| When invitation expires           |
 | token       | TEXT                    | Unique token for invitation link  |
 
+#### Foreign Key Constraints
+
+| Constraint Name | Column | References |
+|-----------------|--------|------------|
+| fk_workspace_invitations_invited_by | invited_by | auth.users(id) |
+
 #### Helper Functions
 
 | Function Name | Return Type | Description | Security |
