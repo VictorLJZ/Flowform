@@ -6,6 +6,7 @@ export * from './createForm';
 export * from './getFormWithBlocks';
 export * from './updateForm';
 export * from './deleteForm';
+export * from './saveFormWithBlocks';
 
 // Block management
 export * from './createFormBlock';

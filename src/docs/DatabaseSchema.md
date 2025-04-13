@@ -261,3 +261,43 @@ Analytics specific to AI-driven conversation blocks.
 | answer_length       | INTEGER                 | Character count of answer         |
 | sentiment_score     | FLOAT                   | Optional sentiment analysis       |
 | topics              | JSONB                   | Optional extracted topics         |
+
+## Database Functions
+
+Database functions are server-side procedures that run directly in the Supabase PostgreSQL database. They provide a way to execute complex operations in a single request while maintaining data integrity.
+
+### save_form_with_blocks
+
+**Purpose:** Save a complete form with all its blocks in a single database transaction
+
+**What is RPC?** RPC (Remote Procedure Call) is a technique that allows your frontend code to call functions that run on the server. Think of it like making a phone call to ask someone to do multiple tasks for you, rather than sending separate text messages for each task.
+
+**Why Use This Approach?**
+1. **Data Consistency**: All operations succeed or fail together, preventing partial saves
+2. **Performance**: Reduces network round-trips by handling all operations server-side
+3. **Complexity Management**: Complex logic stays in the database where it's most efficient
+
+**Parameters:**
+- `p_form_data` (JSONB): Form metadata including title, description, settings, etc.
+- `p_blocks_data` (JSONB): Array of form blocks with their configurations
+
+**Returns:** JSONB object containing:
+- `form`: The saved form data
+- `blocks`: Array of saved blocks
+- `success`: Boolean indicating success
+
+**Behavior:**
+- For new forms: Creates form record and all associated blocks
+- For existing forms: Updates form data and synchronizes blocks by:
+  - Adding new blocks
+  - Updating existing blocks
+  - Removing blocks no longer present in the frontend
+- For dynamic blocks: Manages configurations in the dynamic_block_configs table
+
+**Example Usage:**
+```typescript
+const { data, error } = await supabase.rpc('save_form_with_blocks', {
+  p_form_data: formData,
+  p_blocks_data: blocksData
+});
+```

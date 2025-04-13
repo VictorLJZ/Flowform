@@ -2,11 +2,17 @@
 
 import { create } from 'zustand'
 import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockRegistry'
+import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
+import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
+import { createClient } from '@/lib/supabase/client'
 
 interface FormData {
   id: string
   title: string
   description?: string
+  workspace_id?: string  // Added for Supabase integration
+  created_by?: string    // Added for Supabase integration
+  status?: 'draft' | 'published' | 'archived' // Added for Supabase integration
   settings: {
     showProgressBar: boolean
     requireSignIn: boolean
@@ -154,17 +160,42 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   
   setBlockSelectorOpen: (open) => set({ blockSelectorOpen: open }),
   
-  // Form operations - These would be expanded with actual API calls
+  // Form operations with actual Supabase API calls
   saveForm: async () => {
     set({ isSaving: true })
     
     try {
-      // This would be replaced with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const { formData, blocks } = get()
       
-      // Simulate successful save
-      console.log('Form saved:', { formData: get().formData, blocks: get().blocks })
+      // Prepare form data for saving - format for RPC function
+      const saveData = {
+        id: formData.id,
+        title: formData.title,
+        description: formData.description || '',
+        // We always include workspace_id and created_by now since forms 
+        // are created with real UUIDs from the start
+        workspace_id: formData.workspace_id,
+        created_by: formData.created_by,
+        status: formData.status || 'draft',
+        theme: formData.settings ? {
+          name: formData.settings.theme,
+          primaryColor: formData.settings.primaryColor,
+          fontFamily: formData.settings.fontFamily
+        } : {},
+        settings: {
+          showProgressBar: formData.settings?.showProgressBar ?? true,
+          requireSignIn: formData.settings?.requireSignIn ?? false,
+          estimatedTime: formData.settings?.estimatedTime,
+          estimatedTimeUnit: formData.settings?.estimatedTimeUnit,
+          redirectUrl: formData.settings?.redirectUrl,
+          customCss: formData.settings?.customCss
+        }
+      }
       
+      // Save the form and blocks using RPC transaction
+      const result = await saveFormWithBlocks(saveData, blocks)
+      
+      console.log('Form saved successfully with transaction:', result)
     } catch (error) {
       console.error('Error saving form:', error)
     } finally {
@@ -176,40 +207,55 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     set({ isLoading: true })
     
     try {
-      // This would be replaced with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const supabase = createClient()
       
-      // For now, just load some sample data if it's not a new form
-      if (formId !== 'new') {
-        set({
-          formData: {
-            ...defaultFormData,
-            id: formId,
-            title: 'Sample Loaded Form',
-            description: 'This is a sample form loaded from the API'
-          },
-          blocks: [
-            createNewBlock('short-text', 0),
-            createNewBlock('multiple-choice', 1),
-            createNewBlock('email', 2)
-          ],
-          currentBlockId: formId === 'new' ? null : undefined // Will be set to first block below
-        })
-      } else {
-        // New form - just set the formId
-        set({
-          formData: {
-            ...defaultFormData,
-            id: 'new'
-          }
-        })
+      // Fetch the form data
+      const { data: formData, error: formError } = await supabase
+        .from('forms')
+        .select('*')
+        .eq('form_id', formId)
+        .single()
+      
+      if (formError) {
+        console.error('Error fetching form:', formError)
+        throw formError
       }
       
-      // Set current block to first block if none selected
-      const { blocks, currentBlockId } = get()
-      if (blocks.length > 0 && currentBlockId === undefined) {
-        set({ currentBlockId: blocks[0].id })
+      // Fetch the form blocks
+      const { data: blocksData, error: blocksError } = await supabase
+        .from('form_blocks')
+        .select('*')
+        .eq('form_id', formId)
+        .order('order_index', { ascending: true })
+      
+      if (blocksError) {
+        console.error('Error fetching blocks:', blocksError)
+        throw blocksError
       }
+      
+      // Map database blocks to frontend format
+      const frontendBlocks = blocksData && blocksData.length > 0
+        ? blocksData.map((block: DbFormBlock, index: number) => {
+            // Here we'd convert from DB format to frontend format
+            // For now, just create generic blocks
+            return createNewBlock(block.subtype || 'short-text', index) 
+          })
+        : []
+      
+      // Update the store with form and blocks
+      set({
+        formData: {
+          id: formData.form_id,
+          title: formData.title || 'Untitled Form',
+          description: formData.description || '',
+          workspace_id: formData.workspace_id,
+          created_by: formData.created_by,
+          status: formData.status || 'draft',
+          settings: formData.settings || defaultFormData.settings
+        },
+        blocks: frontendBlocks,
+        currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null
+      })
       
     } catch (error) {
       console.error('Error loading form:', error)

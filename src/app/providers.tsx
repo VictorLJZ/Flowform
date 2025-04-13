@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Session } from "@supabase/supabase-js"
 import { AuthProvider } from "@/providers/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { Toaster } from "@/components/ui/toaster"
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext"
 
 export function Providers({
   children,
@@ -21,7 +21,9 @@ export function Providers({
     <>
       {/* Pass null instead of potentially unverified session data */}
       <AuthProvider initialSession={null}>
-        {children}
+        <WorkspaceProvider>
+          {children}
+        </WorkspaceProvider>
       </AuthProvider>
       <Toaster />
     </>

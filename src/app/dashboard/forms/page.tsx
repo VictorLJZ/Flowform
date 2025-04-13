@@ -26,10 +26,31 @@ export default function FormsPage() {
     fetchForms()
   }, [])
 
-  const handleCreateForm = () => {
-    // Navigate directly to the form builder
-    // Using the router.push for proper navigation in Next.js
-    router.push("/dashboard/forms/builder/new")
+  const handleCreateForm = async () => {
+    try {
+      // Create the form record first on the server
+      const response = await fetch('/api/forms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          workspace_id: '00000000-0000-0000-0000-000000000000', // Default workspace UUID
+          user_id: '00000000-0000-0000-0000-000000000000'       // Current user UUID
+        })
+      });
+      
+      const { form_id, error } = await response.json();
+      
+      if (error) {
+        console.error('Error creating form:', error);
+        return; // Add proper error handling/toast in production
+      }
+      
+      // Navigate to the newly created form with a real UUID
+      router.push(`/dashboard/forms/builder/${form_id}`);
+    } catch (error) {
+      console.error('Failed to create form:', error);
+      // Show error notification in production
+    }
   }
 
   return (
