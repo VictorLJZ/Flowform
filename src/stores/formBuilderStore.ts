@@ -5,6 +5,7 @@ import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockR
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
 import { createClient } from '@/lib/supabase/client'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 interface FormData {
   id: string
@@ -166,16 +167,17 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     
     try {
       const { formData, blocks } = get()
+      const { currentWorkspace, userId } = useWorkspaceStore.getState()
       
       // Prepare form data for saving - format for RPC function
       const saveData = {
         id: formData.id,
         title: formData.title,
         description: formData.description || '',
-        // We always include workspace_id and created_by now since forms 
-        // are created with real UUIDs from the start
-        workspace_id: formData.workspace_id,
-        created_by: formData.created_by,
+        // Always ensure workspace_id and created_by are set
+        // Use stored values first, then fallback to current workspace/user
+        workspace_id: formData.workspace_id || currentWorkspace?.id,
+        created_by: formData.created_by || (userId || undefined),
         status: formData.status || 'draft',
         theme: formData.settings ? {
           name: formData.settings.theme,
@@ -190,6 +192,11 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           redirectUrl: formData.settings?.redirectUrl,
           customCss: formData.settings?.customCss
         }
+      }
+      
+      // Validate workspace_id is available
+      if (!saveData.workspace_id) {
+        throw new Error('No workspace selected. Please select a workspace before saving.')
       }
       
       // Debug logs before saving

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash } from "lucide-react"
 import { useFormStore } from "@/stores/formStore"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,13 +29,26 @@ export default function FormsPage() {
 
   const handleCreateForm = async () => {
     try {
-      // Create the form record first on the server
+      // Get current workspace and user data from the workspace store
+      const { currentWorkspace, userId } = useWorkspaceStore.getState();
+      
+      if (!currentWorkspace?.id) {
+        console.error('No current workspace selected');
+        return; // Add proper error handling/toast in production
+      }
+      
+      if (!userId) {
+        console.error('No user ID available');
+        return; // Add proper error handling/toast in production
+      }
+      
+      // Create the form record using actual workspace and user IDs
       const response = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          workspace_id: '00000000-0000-0000-0000-000000000000', // Default workspace UUID
-          user_id: '00000000-0000-0000-0000-000000000000'       // Current user UUID
+          workspace_id: currentWorkspace.id,
+          user_id: userId
         })
       });
       
@@ -45,7 +59,7 @@ export default function FormsPage() {
         return; // Add proper error handling/toast in production
       }
       
-      // Navigate to the newly created form with a real UUID
+      // Navigate to the newly created form
       router.push(`/dashboard/forms/builder/${form_id}`);
     } catch (error) {
       console.error('Failed to create form:', error);
