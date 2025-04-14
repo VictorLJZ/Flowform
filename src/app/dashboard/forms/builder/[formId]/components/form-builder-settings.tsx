@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings2, LayoutGrid, Wrench, Sparkles, Code, Hash, Trash2 } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
@@ -380,6 +381,51 @@ export default function FormBuilderSettings() {
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       Additional context for the AI about how to respond.
+                    </p>
+                  </div>
+
+                  {/* Temperature Setting */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="temperature">Temperature</Label>
+                    <div className="flex items-center gap-4">
+                      <Slider 
+                        id="temperature"
+                        min={0} 
+                        max={1} 
+                        step={0.1} 
+                        defaultValue={[currentBlock.settings.temperature || 0.7]} 
+                        onValueChange={(value) => updateBlockSettings(currentBlock.id, { 
+                          temperature: value[0] 
+                        })}
+                        className="flex-1"
+                      />
+                      <span className="text-sm w-10 text-right">
+                        {(currentBlock.settings.temperature || 0.7).toFixed(1)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Controls creativity: lower for consistent answers, higher for more variety
+                    </p>
+                  </div>
+
+                  {/* Max Questions Setting */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="maxQuestions">Maximum Questions</Label>
+                    <Input 
+                      id="maxQuestions"
+                      type="number" 
+                      min={1} 
+                      max={10}
+                      value={currentBlock.settings.maxQuestions || 5}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 5 : parseInt(e.target.value);
+                        updateBlockSettings(currentBlock.id, { 
+                          maxQuestions: isNaN(value) ? 5 : value 
+                        });
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Maximum number of follow-up questions in the conversation
                     </p>
                   </div>
                 </div>

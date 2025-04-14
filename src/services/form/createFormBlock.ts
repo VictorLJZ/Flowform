@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormBlock, DynamicBlockConfig, BlockType, StaticBlockSubtype } from '@/types/supabase-types';
+import { invalidateFormCache } from './invalidateCache';
 
 type FormBlockInput = Pick<FormBlock, 
   'form_id' | 
@@ -75,11 +76,17 @@ export async function createFormBlock(
       throw configError;
     }
 
+    // Invalidate form cache after successful dynamic block creation
+    invalidateFormCache(block.form_id);
+
     return {
       ...block,
       dynamic_config: config
     };
   }
+
+  // Invalidate form cache after successful static block creation
+  invalidateFormCache(block.form_id);
 
   return block;
 }

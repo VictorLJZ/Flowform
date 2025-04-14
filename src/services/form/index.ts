@@ -12,3 +12,9 @@ export * from './saveFormWithBlocks';
 export * from './createFormBlock';
 export * from './updateFormBlock';
 export * from './deleteFormBlock';
+
+// Dynamic block functionality
+export * from './getDynamicBlockQuestion';
+export * from './saveDynamicBlockResponse';
+export * from './getFormContext';
+export * from './invalidateCache';

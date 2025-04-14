@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Form } from '@/types/supabase-types';
+import { invalidateFormCache } from './invalidateCache';
 
 type FormUpdateInput = Partial<Pick<Form, 
   'title' | 
@@ -42,6 +43,9 @@ export async function updateForm(formId: string, formData: FormUpdateInput): Pro
     console.error('Error updating form:', error);
     throw error;
   }
+
+  // Invalidate form cache after successful update
+  invalidateFormCache(formId);
 
   return data;
 }

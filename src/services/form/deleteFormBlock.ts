@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { invalidateFormCache } from './invalidateCache';
 
 /**
  * Delete a form block and its associated data
@@ -93,6 +94,11 @@ export async function deleteFormBlock(blockId: string): Promise<{ success: boole
   if (deleteError) {
     console.error('Error deleting form block:', deleteError);
     throw deleteError;
+  }
+
+  // Invalidate form cache after successful deletion
+  if (block && block.form_id) {
+    invalidateFormCache(block.form_id);
   }
 
   return { success: true };

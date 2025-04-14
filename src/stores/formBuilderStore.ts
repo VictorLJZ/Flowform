@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
+import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -221,6 +222,29 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       const result = await saveFormWithBlocks(saveData, blocks)
       
       console.log('Form saved successfully with transaction:', result)
+      
+      // Handle dynamic blocks - save their specialized configuration
+      const dynamicBlocksToProcess = blocks.filter(block => block.type === 'dynamic')
+      
+      // Process dynamic blocks to save their configuration
+      if (dynamicBlocksToProcess.length > 0) {
+        console.log(`Processing ${dynamicBlocksToProcess.length} dynamic blocks for configuration`)
+        
+        // Find the corresponding saved blocks with proper UUIDs
+        for (const frontendBlock of dynamicBlocksToProcess) {
+          // Find the matching saved block by comparing properties, since IDs may have changed
+          const savedBlock = result.blocks.find(b => 
+            b.title === frontendBlock.title && 
+            b.order_index === frontendBlock.order
+          )
+          
+          if (savedBlock) {
+            // Save the dynamic block configuration
+            await saveDynamicBlockConfig(savedBlock.id, frontendBlock.settings)
+            console.log(`Saved configuration for dynamic block: ${savedBlock.id}`)
+          }
+        }
+      }
     } catch (error) {
       console.error('Error saving form:', error)
     } finally {

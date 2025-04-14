@@ -212,7 +212,9 @@ const blockRegistry: Record<string, BlockDefinition> = {
     category: "advanced",
     getDefaultValues: () => ({
       startingPrompt: "How can I help you today?",
-      contextInstructions: "You are a helpful assistant responding to form submissions."
+      contextInstructions: "You are a helpful assistant responding to form submissions.",
+      temperature: 0.7,
+      maxQuestions: 5
     })
   },
   

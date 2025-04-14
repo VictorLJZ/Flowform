@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
+import { invalidateFormCache } from './invalidateCache';
 
 type FormBlockUpdateInput = Partial<Pick<FormBlock, 
   'title' | 
@@ -97,6 +98,9 @@ export async function updateFormBlock(
       dynamic_config: config
     };
   }
+
+  // Invalidate form cache after successful update
+  invalidateFormCache(updatedBlock.form_id);
 
   return updatedBlock;
 }
