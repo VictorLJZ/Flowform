@@ -75,9 +75,9 @@ export default function FormBuilderContent() {
   const currentIndex = blocks.findIndex(block => block.id === currentBlockId)
   
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col">
-      {/* Preview header */}
-      <div className="p-2 flex justify-between items-center">
+    <div className="flex-1 bg-slate-50 flex flex-col h-full">
+      {/* Preview header - fixed at top */}
+      <div className="p-2 flex justify-between items-center flex-shrink-0 sticky top-0 z-10 bg-slate-50">
         <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center space-x-1 shadow-sm">
           <Button 
             variant="ghost" 
@@ -110,12 +110,12 @@ export default function FormBuilderContent() {
         </div>
       </div>
       
-      {/* Main content - Slide-style layout */}
-      <div className="flex-1 overflow-auto flex items-center p-4" style={{ width: '100%', maxWidth: 'none', minWidth: '0' }}>
-        {/* Full width container */}
-        <div style={{ width: '100%', maxWidth: 'none' }}>
+      {/* Main content - Scrollable container with vertical centering */}
+      <div className="flex-1 overflow-auto flex items-center px-4">
+        {/* Content centered in scrollable area */}
+        <div className="w-full min-h-fit py-4">
           {/* 16:9 aspect ratio wrapper */}
-          <div className="relative" style={{ width: '100%', paddingTop: '56.25%' /* 16:9 Aspect Ratio */ }}>
+          <div className="relative w-full mx-auto" style={{ maxWidth: '1200px', paddingTop: 'min(56.25%, calc(100vh - 10rem))' }}>
             <Card className="shadow-sm rounded-none absolute top-0 left-0 w-full h-full border-0">
               <CardContent className="h-full" style={{ padding: '1.5rem 15%' }}>
                 <div className="grid h-full place-items-center">
