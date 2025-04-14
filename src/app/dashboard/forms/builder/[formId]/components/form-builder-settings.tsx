@@ -47,7 +47,7 @@ export default function FormBuilderSettings() {
   if (!currentBlock || !blockDefinition) {
     return (
       <div className="w-80 border-l flex flex-col h-full bg-background">
-        <div className="p-4 border-b">
+        <div className="px-4 py-3 border-b">
           <h3 className="font-medium">Block Settings</h3>
         </div>
         
@@ -63,7 +63,7 @@ export default function FormBuilderSettings() {
   
   return (
     <div className="w-80 border-l flex flex-col h-full bg-background">
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="px-4 py-3 border-b flex items-center justify-between">
         <h3 className="font-medium">{blockDefinition.name} Settings</h3>
         <Button 
           variant="ghost" 

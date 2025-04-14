@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useAutosave } from "@/services/form/autosaveForm"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -27,6 +28,7 @@ export default function FormBuilderContent() {
   
   const currentBlock = getCurrentBlock()
   const blockDefinition = useCurrentBlockDefinition()
+  const autosave = useAutosave()
   
   // Function to navigate to prev/next block
   const goToBlock = (direction: 'prev' | 'next') => {
@@ -75,19 +77,19 @@ export default function FormBuilderContent() {
   return (
     <div className="flex-1 bg-slate-50 flex flex-col">
       {/* Preview header */}
-      <div className="bg-background border-b p-2 flex justify-between items-center">
-        <div className="flex items-center space-x-1">
+      <div className="p-2 flex justify-between items-center">
+        <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center space-x-1 shadow-sm">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="h-8"
+            className="h-7 w-7 rounded-full"
             disabled={currentIndex <= 0}
             onClick={() => goToBlock('prev')}
           >
             <ChevronLeft size={16} />
           </Button>
           
-          <div className="text-sm">
+          <div className="text-sm px-1">
             <span className="font-medium">{currentIndex + 1}</span>
             <span className="text-muted-foreground">/{blocks.length}</span>
           </div>
@@ -95,7 +97,7 @@ export default function FormBuilderContent() {
           <Button 
             variant="ghost" 
             size="sm"
-            className="h-8"
+            className="h-7 w-7 rounded-full"
             disabled={currentIndex >= blocks.length - 1}
             onClick={() => goToBlock('next')}
           >
@@ -103,7 +105,7 @@ export default function FormBuilderContent() {
           </Button>
         </div>
         
-        <div className="text-sm text-muted-foreground" style={{ padding: 'calc(var(--spacing, 0.625rem) * 2.5)' }}>
+        <div className="bg-background/80 rounded-full px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
           {blockDefinition.name}
         </div>
       </div>
@@ -147,6 +149,10 @@ export default function FormBuilderContent() {
                           const target = e.target as HTMLDivElement;
                           updateBlock(currentBlock.id, { title: target.textContent || '' });
                         }}
+                        onBlur={(e) => {
+                          // Schedule an autosave when the user finishes editing the title
+                          autosave.scheduleAutosave();
+                        }}
                         ref={(el) => {
                           // Safely update content without using dangerouslySetInnerHTML
                           if (el && el.textContent !== currentBlock.title) {
@@ -163,6 +169,7 @@ export default function FormBuilderContent() {
                     <Textarea
                       value={currentBlock.description || ''}
                       onChange={(e) => updateBlock(currentBlock.id, { description: e.target.value })}
+                      onBlur={() => autosave.scheduleAutosave()} // Autosave on blur
                       className="border-none resize-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       placeholder="Add a description (optional)"
                       rows={2}
