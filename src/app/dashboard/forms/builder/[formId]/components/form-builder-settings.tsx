@@ -154,7 +154,7 @@ export default function FormBuilderSettings() {
               </h4>
               
               {/* Text input fields */}
-              {(currentBlock.blockTypeId === 'short-text' || currentBlock.blockTypeId === 'long-text' || currentBlock.blockTypeId === 'email') && (
+              {(currentBlock.blockTypeId === 'text_short' || currentBlock.blockTypeId === 'text_long' || currentBlock.blockTypeId === 'email') && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="input-placeholder">Placeholder</Label>
@@ -167,7 +167,7 @@ export default function FormBuilderSettings() {
                     />
                   </div>
                   
-                  {currentBlock.blockTypeId === 'short-text' && (
+                  {currentBlock.blockTypeId === 'text_short' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-length">Maximum Length</Label>
                       <Input 
@@ -184,7 +184,7 @@ export default function FormBuilderSettings() {
                     </div>
                   )}
                   
-                  {currentBlock.blockTypeId === 'long-text' && (
+                  {currentBlock.blockTypeId === 'text_long' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-rows">Maximum Rows</Label>
                       <Input 
@@ -265,7 +265,7 @@ export default function FormBuilderSettings() {
               )}
               
               {/* Choice fields */}
-              {(currentBlock.blockTypeId === 'multiple-choice' || currentBlock.blockTypeId === 'checkbox' || currentBlock.blockTypeId === 'dropdown') && (
+              {(currentBlock.blockTypeId === 'multiple_choice' || currentBlock.blockTypeId === 'checkbox_group' || currentBlock.blockTypeId === 'dropdown') && (
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium uppercase">Options</h5>
                   
@@ -314,7 +314,7 @@ export default function FormBuilderSettings() {
                     Add Option
                   </Button>
                   
-                  {currentBlock.blockTypeId === 'checkbox' && (
+                  {currentBlock.blockTypeId === 'checkbox_group' && (
                     <div className="pt-2 space-y-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="min-selected">Minimum Selected</Label>
@@ -351,7 +351,7 @@ export default function FormBuilderSettings() {
               )}
               
               {/* AI Conversation */}
-              {currentBlock.blockTypeId === 'ai-conversation' && (
+              {currentBlock.blockTypeId === 'ai_conversation' && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="starting-prompt">Starting Prompt</Label>

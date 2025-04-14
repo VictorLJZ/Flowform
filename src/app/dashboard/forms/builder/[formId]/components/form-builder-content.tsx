@@ -118,7 +118,7 @@ export default function FormBuilderContent() {
           <div className="relative w-full mx-auto" style={{ maxWidth: '1200px', paddingTop: 'min(56.25%, calc(100vh - 10rem))' }}>
             <Card className="shadow-sm rounded-none absolute top-0 left-0 w-full h-full border-0">
               <CardContent className="h-full" style={{ padding: '1.5rem 15%' }}>
-                <div className="grid h-full place-items-center">
+                <div className="flex h-full flex-col justify-center">
                   <div className="slide-content-wrapper w-full">
                   {/* Slide counter with arrow */}
                   <div className="flex items-center mb-5">
@@ -137,7 +137,7 @@ export default function FormBuilderContent() {
                     </div>
                   </div>
                   {/* Editable title */}
-                  <div className="mb-6">
+                  <div className="mb-3">
                     <div className="flex items-baseline">
                       <div 
                         contentEditable
@@ -180,24 +180,28 @@ export default function FormBuilderContent() {
                 {/* Block type specific preview */}
                 <div>
                   {/* Render different content based on block type */}
-                  {currentBlock.blockTypeId === 'short-text' && (
-                    <Input 
+                  {currentBlock.blockTypeId === 'text_short' && (
+                    <div className="mt-2 w-full">
+                      <Input 
                         disabled 
                         placeholder={currentBlock.settings.placeholder || "Type your answer here..."} 
-                        className="max-w-md mt-4" 
+                        className="w-full text-base placeholder:text-gray-500 placeholder:text-left border-gray-300" 
                       />
+                    </div>
                     )}
                     
-                    {currentBlock.blockTypeId === 'long-text' && (
-                      <Textarea 
-                        disabled 
-                        placeholder={currentBlock.settings.placeholder || "Type your detailed answer here..."} 
-                        className="max-w-md mt-4" 
-                        rows={currentBlock.settings.maxRows || 5}
-                      />
+                    {currentBlock.blockTypeId === 'text_long' && (
+                      <div className="mt-2 w-full">
+                        <Textarea 
+                          disabled 
+                          placeholder={currentBlock.settings.placeholder || "Type your detailed answer here..."} 
+                          className="w-full text-base placeholder:text-gray-500 placeholder:text-left border-gray-300" 
+                          rows={currentBlock.settings.maxRows || 5}
+                        />
+                      </div>
                     )}
                     
-                    {currentBlock.blockTypeId === 'multiple-choice' && (
+                    {currentBlock.blockTypeId === 'multiple_choice' && (
                       <div className="space-y-4 mt-4">
                         <RadioGroup disabled value="option-1">
                           {currentBlock.settings.options?.map((option: any) => (
@@ -210,7 +214,7 @@ export default function FormBuilderContent() {
                       </div>
                     )}
                     
-                    {currentBlock.blockTypeId === 'checkbox' && (
+                    {currentBlock.blockTypeId === 'checkbox_group' && (
                       <div className="space-y-4 mt-4">
                         {currentBlock.settings.options?.map((option: any) => (
                           <div key={option.id} className="flex items-center space-x-2">
@@ -239,33 +243,39 @@ export default function FormBuilderContent() {
                     )}
                     
                     {currentBlock.blockTypeId === 'email' && (
-                      <Input 
-                        disabled 
-                        type="email"
-                        placeholder={currentBlock.settings.placeholder || "email@example.com"} 
-                        className="max-w-md mt-4" 
-                      />
+                      <div className="mt-4 w-full">
+                        <Input 
+                          disabled 
+                          type="email"
+                          placeholder={currentBlock.settings.placeholder || "email@example.com"} 
+                          className="w-full text-base placeholder:text-gray-500 placeholder:text-left border-gray-300" 
+                        />
+                      </div>
                     )}
                     
                     {currentBlock.blockTypeId === 'number' && (
-                      <Input 
-                        disabled 
-                        type="number"
-                        placeholder={currentBlock.settings.placeholder || "0"} 
-                        className="max-w-md mt-4" 
-                      />
+                      <div className="mt-4 w-full">
+                        <Input 
+                          disabled 
+                          type="number"
+                          placeholder={currentBlock.settings.placeholder || "0"} 
+                          className="w-full text-base placeholder:text-gray-500 placeholder:text-left border-gray-300" 
+                        />
+                      </div>
                     )}
                     
                     {currentBlock.blockTypeId === 'date' && (
-                      <Input 
-                        disabled 
-                        type="date"
-                        placeholder="YYYY-MM-DD" 
-                        className="max-w-md mt-4" 
-                      />
+                      <div className="mt-4 w-full">
+                        <Input 
+                          disabled 
+                          type="date"
+                          placeholder="YYYY-MM-DD" 
+                          className="w-full text-base placeholder:text-gray-500 placeholder:text-left border-gray-300" 
+                        />
+                      </div>
                     )}
                     
-                    {currentBlock.blockTypeId === 'ai-conversation' && (
+                    {currentBlock.blockTypeId === 'ai_conversation' && (
                       <div className="border rounded-lg p-4 bg-primary/5 max-w-xl mt-4">
                         <div className="flex items-center gap-2 text-sm font-medium mb-2">
                           <MessageSquare size={16} />
