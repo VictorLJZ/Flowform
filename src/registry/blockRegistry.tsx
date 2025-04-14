@@ -49,8 +49,8 @@ export interface FormBlock {
 // Block registry
 const blockRegistry: Record<string, BlockDefinition> = {
   // Static input blocks
-  "short-text": {
-    id: "short-text",
+  "text_short": {
+    id: "text_short",
     type: "static",
     name: "Short Text",
     description: "Short answer text field for brief responses",
@@ -63,8 +63,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
     })
   },
   
-  "long-text": {
-    id: "long-text",
+  "text_long": {
+    id: "text_long",
     type: "static",
     name: "Long Text",
     description: "Paragraph text for longer responses",
@@ -145,8 +145,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
   },
   
   // Choice blocks
-  "multiple-choice": {
-    id: "multiple-choice",
+  "multiple_choice": {
+    id: "multiple_choice",
     type: "static",
     name: "Multiple Choice",
     description: "Single selection from multiple options",
@@ -163,8 +163,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
     })
   },
   
-  "checkbox": {
-    id: "checkbox",
+  "checkbox_group": {
+    id: "checkbox_group",
     type: "static",
     name: "Checkbox",
     description: "Multiple selection from options",
@@ -202,8 +202,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
   },
   
   // Dynamic blocks
-  "ai-conversation": {
-    id: "ai-conversation",
+  "ai_conversation": {
+    id: "ai_conversation",
     type: "dynamic",
     name: "AI Conversation",
     description: "Dynamic AI-powered conversation",
@@ -233,8 +233,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
   },
   
   // Layout blocks
-  "page-break": {
-    id: "page-break",
+  "page_break": {
+    id: "page_break",
     type: "layout",
     name: "Page Break",
     description: "Add a new page",

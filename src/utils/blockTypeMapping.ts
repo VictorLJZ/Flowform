@@ -3,7 +3,7 @@
 import { StaticBlockSubtype, BlockType } from '@/types/supabase-types';
 
 /**
- * Map frontend block types to database subtypes
+ * Map block types to database type and subtype
  * 
  * @param blockTypeId - The block type from the registry
  * @returns Object with database type and subtype
@@ -13,30 +13,30 @@ export function mapToDbBlockType(blockTypeId: string): {
   subtype: StaticBlockSubtype | 'dynamic' 
 } {
   // Dynamic blocks
-  if (blockTypeId === 'ai-conversation') {
+  if (blockTypeId === 'ai_conversation') {
     return { type: 'dynamic', subtype: 'dynamic' };
   }
 
-  // Static blocks
-  const staticMappings: Record<string, StaticBlockSubtype> = {
-    'short-text': 'text_short',
-    'long-text': 'text_long',
-    'email': 'email',
-    'number': 'number',
-    'date': 'date',
-    'multiple-choice': 'multiple_choice',
-    'checkbox': 'multiple_choice',
-    'dropdown': 'multiple_choice',
-    'redirect': 'text_short',
-    'page-break': 'text_short',
-  };
+  // For dropdowns and checkboxes that share the multiple_choice subtype
+  if (blockTypeId === 'dropdown' || blockTypeId === 'checkbox_group') {
+    return { type: 'static', subtype: 'multiple_choice' };
+  }
 
-  const subtype = staticMappings[blockTypeId] || 'text_short';
-  return { type: 'static', subtype };
+  // For layout blocks that might use a generic subtype
+  if (blockTypeId === 'redirect' || blockTypeId === 'page_break') {
+    return { type: 'layout', subtype: 'text_short' };
+  }
+
+  // For most other blocks, the blockTypeId is already the subtype
+  return { 
+    type: 'static', 
+    subtype: blockTypeId as StaticBlockSubtype 
+  };
 }
 
 /**
- * Map database subtypes back to frontend block types
+ * Map database type and subtype to the block type ID
+ * This function is for compatibility with any legacy code
  * 
  * @param type - The database block type
  * @param subtype - The database block subtype
@@ -44,17 +44,9 @@ export function mapToDbBlockType(blockTypeId: string): {
  */
 export function mapFromDbBlockType(type: BlockType, subtype: StaticBlockSubtype | 'dynamic'): string {
   if (type === 'dynamic' && subtype === 'dynamic') {
-    return 'ai-conversation';
+    return 'ai_conversation';
   }
-
-  const reverseStaticMappings: Record<string, string> = {
-    'text_short': 'short-text',
-    'text_long': 'long-text',
-    'email': 'email',
-    'number': 'number',
-    'date': 'date',
-    'multiple_choice': 'multiple-choice',
-  };
-
-  return reverseStaticMappings[subtype] || 'short-text';
+  
+  // For most cases now, the subtype is directly the block type ID
+  return subtype;
 }

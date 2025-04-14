@@ -258,12 +258,23 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         throw blocksError
       }
       
-      // Map database blocks to frontend format
+      // Map database blocks to frontend format preserving their original properties
       const frontendBlocks = blocksData && blocksData.length > 0
         ? blocksData.map((block: DbFormBlock, index: number) => {
-            // Here we'd convert from DB format to frontend format
-            // For now, just create generic blocks
-            return createNewBlock(block.subtype || 'short-text', index) 
+            // Get the block definition for validation and default values
+            const blockDef = getBlockDefinition(block.subtype || 'text_short')
+            
+            // Create a block preserving original properties
+            return {
+              id: block.id,
+              blockTypeId: block.subtype || 'text_short',
+              type: blockDef.type,
+              title: block.title || blockDef.defaultTitle,
+              description: block.description || blockDef.defaultDescription || '',
+              required: block.required || false,
+              order: block.order_index || index,
+              settings: block.settings || blockDef.getDefaultValues()
+            }
           })
         : []
       

@@ -63,7 +63,7 @@ export interface Form {
   published_at: string | null; // ISO date string
 }
 
-export type BlockType = 'static' | 'dynamic';
+export type BlockType = 'static' | 'dynamic' | 'layout' | 'integration';
 export type StaticBlockSubtype = 
   'text_short' | 
   'text_long' | 

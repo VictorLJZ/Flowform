@@ -69,9 +69,9 @@ export default function FormBuilderBlockSelector() {
     // For recommended category, return a curated list of blocks
     if (categoryId === "recommended") {
       return [
-        getBlockDefinition("short-text"),
-        getBlockDefinition("multiple-choice"), 
-        getBlockDefinition("ai-conversation"),
+        getBlockDefinition("text_short"),
+        getBlockDefinition("multiple_choice"), 
+        getBlockDefinition("ai_conversation"),
         getBlockDefinition("email")
       ]
     }
