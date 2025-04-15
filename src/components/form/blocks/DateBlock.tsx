@@ -1,0 +1,129 @@
+"use client"
+
+import React, { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { FormBlockWrapper } from "@/components/form/FormBlockWrapper"
+import { BlockPresentation } from "@/types/theme-types"
+
+interface DateBlockProps {
+  id: string
+  title: string
+  description?: string
+  required: boolean
+  index?: number
+  totalBlocks?: number
+  settings: {
+    placeholder?: string
+    minDate?: string
+    maxDate?: string
+    includeTime?: boolean
+    format?: string
+    presentation?: BlockPresentation
+  }
+  value?: string
+  onChange?: (value: string) => void
+  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+}
+
+export function DateBlock({
+  id,
+  title,
+  description,
+  required,
+  index,
+  totalBlocks,
+  settings,
+  value,
+  onChange,
+  onUpdate
+}: DateBlockProps) {
+  const { mode } = useFormBuilderStore()
+  const [focused, setFocused] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const isBuilder = mode === 'builder'
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateValue = e.target.value
+    
+    if (onChange) {
+      onChange(dateValue)
+    }
+    
+    // Validate date range if set
+    if (!isBuilder && dateValue) {
+      const selectedDate = new Date(dateValue)
+      
+      if (settings?.minDate) {
+        const minDate = new Date(settings.minDate)
+        if (selectedDate < minDate) {
+          setError(`Date must be on or after ${settings.minDate}`)
+          return
+        }
+      }
+      
+      if (settings?.maxDate) {
+        const maxDate = new Date(settings.maxDate)
+        if (selectedDate > maxDate) {
+          setError(`Date must be on or before ${settings.maxDate}`)
+          return
+        }
+      }
+      
+      setError(null)
+    }
+  }
+
+  // The actual date input field component that will be wrapped
+  const dateField = (
+    <div className="w-full">
+      <Input
+        type={settings?.includeTime ? "datetime-local" : "date"}
+        placeholder={settings?.placeholder || "YYYY-MM-DD"}
+        min={settings?.minDate}
+        max={settings?.maxDate}
+        value={isBuilder ? '' : value}
+        onChange={handleInputChange}
+        disabled={isBuilder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className={cn(
+          "w-full text-base placeholder:text-gray-500 placeholder:text-left transition-all",
+          isBuilder && "opacity-70 cursor-not-allowed",
+          focused && "ring-2 ring-primary/50",
+          error && "border-red-500"
+        )}
+      />
+      
+      {error && !isBuilder && (
+        <div className="text-red-500 text-sm mt-1">
+          {error}
+        </div>
+      )}
+      
+      {(settings?.minDate || settings?.maxDate) && (
+        <div className="text-xs text-gray-500 mt-1">
+          {settings.minDate && `From: ${settings.minDate}`}
+          {settings.minDate && settings.maxDate && ' • '}
+          {settings.maxDate && `To: ${settings.maxDate}`}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <FormBlockWrapper
+      id={id}
+      title={title}
+      description={description}
+      required={required}
+      index={index}
+      totalBlocks={totalBlocks}
+      settings={{ presentation: settings.presentation }}
+      onUpdate={onUpdate}
+    >
+      {dateField}
+    </FormBlockWrapper>
+  );
+}

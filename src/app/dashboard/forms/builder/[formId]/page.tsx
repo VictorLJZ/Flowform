@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { 
   Breadcrumb, 
@@ -11,8 +11,10 @@ import {
   BreadcrumbSeparator 
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
-import { Loader2, Save } from "lucide-react"
+import { Loader2, Save, Globe } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { useFormStore } from "@/stores/formStore"
+import { useToast } from "@/components/ui/use-toast"
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
@@ -29,6 +31,10 @@ export default function FormBuilderPage() {
     formData,
     saveForm
   } = useFormBuilderStore()
+  
+  const { publishForm } = useFormStore()
+  const { toast } = useToast()
+  const [isPublishing, setIsPublishing] = useState(false)
   
   // Load form data on mount
   useEffect(() => {
@@ -82,6 +88,59 @@ export default function FormBuilderPage() {
               <>
                 <Save size={16} />
                 Save
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            disabled={isPublishing || !formData.form_id}
+            onClick={async () => {
+              if (!formData.form_id) return;
+              
+              try {
+                setIsPublishing(true);
+                const success = await publishForm(formData.form_id);
+                
+                if (success) {
+                  toast({
+                    title: "Form published",
+                    description: "Your form is now publicly accessible",
+                    action: (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/f/${formData.form_id}`);
+                        toast({
+                          description: "Share link copied to clipboard",
+                        });
+                      }}>
+                        Copy Link
+                      </Button>
+                    ),
+                  });
+                }
+              } catch (error) {
+                console.error("Error publishing form:", error);
+                toast({
+                  variant: "destructive",
+                  title: "Publishing failed",
+                  description: "There was an error publishing your form.",
+                });
+              } finally {
+                setIsPublishing(false);
+              }
+            }}
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Globe size={16} />
+                Publish
               </>
             )}
           </Button>

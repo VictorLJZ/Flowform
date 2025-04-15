@@ -1,0 +1,91 @@
+"use client"
+
+import React, { useState } from "react"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { FormBlockWrapper } from "@/components/form/FormBlockWrapper"
+import { BlockPresentation } from "@/types/theme-types"
+
+interface TextAreaBlockProps {
+  id: string
+  title: string
+  description?: string
+  required: boolean
+  index?: number
+  totalBlocks?: number
+  settings: {
+    placeholder?: string
+    maxRows?: number
+    maxLength?: number
+    presentation?: BlockPresentation
+  }
+  value?: string
+  onChange?: (value: string) => void
+  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+}
+
+export function TextAreaBlock({
+  id,
+  title,
+  description,
+  required,
+  index,
+  totalBlocks,
+  settings,
+  value,
+  onChange,
+  onUpdate
+}: TextAreaBlockProps) {
+  const { mode } = useFormBuilderStore()
+  const [focused, setFocused] = useState(false)
+  const isBuilder = mode === 'builder'
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (onChange) {
+      onChange(e.target.value)
+    }
+  }
+
+  // The actual textarea field component that will be wrapped
+  const textareaField = (
+    <>
+      <Textarea
+        placeholder={settings?.placeholder || "Type your detailed answer here..."}
+        maxLength={settings?.maxLength}
+        rows={settings?.maxRows || 5}
+        value={isBuilder ? '' : value}
+        onChange={handleInputChange}
+        disabled={isBuilder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className={cn(
+          "w-full text-base placeholder:text-gray-500 placeholder:text-left transition-all",
+          isBuilder && "opacity-70 cursor-not-allowed",
+          focused && "ring-2 ring-primary/50"
+        )}
+      />
+      
+      {settings?.maxLength && (
+        <div className="text-xs text-right mt-1 text-gray-500">
+          Max {settings.maxLength} characters
+        </div>
+      )}
+    </>
+  )
+
+  return (
+    <FormBlockWrapper
+      id={id}
+      title={title}
+      description={description}
+      required={required}
+      index={index}
+      totalBlocks={totalBlocks}
+      settings={{ presentation: settings.presentation }}
+      onUpdate={onUpdate}
+    >
+      {textareaField}
+    </FormBlockWrapper>
+  );
+}

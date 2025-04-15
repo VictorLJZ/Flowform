@@ -34,30 +34,64 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     try {
       set({ isLoading: true, error: null })
       
-      // Fetch stats
-      const statsResponse = await fetch('/api/dashboard/stats')
-      if (!statsResponse.ok) throw new Error('Failed to fetch dashboard stats')
-      const statsData = await statsResponse.json()
+      // TEMPORARY: Use placeholder data instead of fetching from API
+      // This avoids hitting non-existent endpoints
       
-      // Fetch recent activity
-      const activityResponse = await fetch('/api/dashboard/recent-activity')
-      if (!activityResponse.ok) throw new Error('Failed to fetch recent activity')
-      const activityData = await activityResponse.json()
-      
-      // Fetch recent forms
-      const formsResponse = await fetch('/api/dashboard/recent-forms')
-      if (!formsResponse.ok) throw new Error('Failed to fetch recent forms')
-      const formsData = await formsResponse.json()
-      
-      set({
-        stats: {
-          totalForms: statsData.forms || 0,
-          totalResponses: statsData.responses || 0
-        },
-        recentActivity: activityData.activity || [],
-        recentForms: formsData.forms || [],
-        isLoading: false
-      })
+      setTimeout(() => {
+        set({
+          stats: {
+            totalForms: 3,
+            totalResponses: 12
+          },
+          recentActivity: [
+            {
+              id: '1',
+              form_id: 'form1',
+              form_title: 'Customer Feedback Form',
+              created_at: new Date().toISOString(),
+              completed: true
+            },
+            {
+              id: '2',
+              form_id: 'form2',
+              form_title: 'Product Survey',
+              created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+              completed: true
+            }
+          ],
+          recentForms: [
+            {
+              id: 'form1',
+              title: 'Customer Feedback Form',
+              description: 'Collect customer feedback',
+              status: 'published' as const,
+              workspace_id: 'workspace1',
+              created_by: 'user1',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              published_at: new Date().toISOString(),
+              max_questions: 5,
+              starter_question: 'How was your experience?',
+              temperature: 0.7
+            },
+            {
+              id: 'form2',
+              title: 'Product Survey',
+              description: 'Get feedback on our products',
+              status: 'published' as const,
+              workspace_id: 'workspace1',
+              created_by: 'user1',
+              created_at: new Date(Date.now() - 86400000).toISOString(),
+              updated_at: new Date(Date.now() - 86400000).toISOString(),
+              published_at: new Date(Date.now() - 86400000).toISOString(),
+              max_questions: 5,
+              starter_question: 'What do you think of our product?',
+              temperature: 0.7
+            }
+          ],
+          isLoading: false
+        });
+      }, 500); // Add slight delay to simulate loading
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
       set({ error: error instanceof Error ? error.message : 'Unknown error occurred', isLoading: false })

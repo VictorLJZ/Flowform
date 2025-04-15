@@ -17,9 +17,13 @@ export function mapToDbBlockType(blockTypeId: string): {
     return { type: 'dynamic', subtype: 'dynamic' };
   }
 
-  // For dropdowns and checkboxes that share the multiple_choice subtype
-  if (blockTypeId === 'dropdown' || blockTypeId === 'checkbox_group') {
-    return { type: 'static', subtype: 'multiple_choice' };
+  // Use distinct subtypes for each choice block type
+  if (blockTypeId === 'dropdown') {
+    return { type: 'static', subtype: 'dropdown' };
+  }
+  
+  if (blockTypeId === 'checkbox_group') {
+    return { type: 'static', subtype: 'checkbox_group' };
   }
 
   // For layout blocks that might use a generic subtype
@@ -47,6 +51,20 @@ export function mapFromDbBlockType(type: BlockType, subtype: StaticBlockSubtype 
     return 'ai_conversation';
   }
   
-  // For most cases now, the subtype is directly the block type ID
-  return subtype;
+  // Explicitly handle each supported subtype
+  switch (subtype) {
+    case 'text_short':
+    case 'text_long':
+    case 'email':
+    case 'date':
+    case 'multiple_choice':
+    case 'checkbox_group':
+    case 'dropdown':
+    case 'number':
+    case 'scale':
+    case 'yes_no':
+      return subtype;
+    default:
+      return subtype; // Fallback for unrecognized subtypes
+  }
 }

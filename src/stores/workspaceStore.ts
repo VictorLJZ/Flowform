@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Workspace, WorkspaceInvitation, WorkspaceMember } from '@/types/supabase-types'
 import { getUserWorkspaces } from '@/services/workspace/getUserWorkspaces'
+import { createClient } from '@/lib/supabase/client'
 import { createWorkspace as createWorkspaceService } from '@/services/workspace/createWorkspace'
 import { initializeDefaultWorkspace } from '@/services/workspace/initializeDefaultWorkspace'
 import { updateWorkspace as updateWorkspaceService } from '@/services/workspace/updateWorkspace'
@@ -119,8 +120,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       fetchWorkspaces: async () => {
         console.log('[WorkspaceStore] Starting fetchWorkspaces')
-        const { userId } = get()
-        console.log('[WorkspaceStore] Current userId:', userId)
+        const { userId, userEmail } = get()
+        console.log('[WorkspaceStore] Current auth state:', {
+          userId,
+          userEmail,
+          hasUserId: !!userId,
+          hasUserEmail: !!userEmail,
+          store: 'workspaceStore'
+        })
         
         if (!userId) {
           console.log('[WorkspaceStore] No userId set, aborting fetchWorkspaces')
@@ -131,8 +138,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         try {
           console.log('[WorkspaceStore] Setting loading state, fetching workspaces')
           set({ isLoading: true, error: null })
+          
+          // Check authentication status using Supabase client
+          const supabase = createClient()
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          console.log('[WorkspaceStore] Supabase session check:', {
+            isAuthenticated: !!session,
+            sessionError,
+            sessionUserId: session?.user?.id,
+            storeUserId: userId,
+            idsMatch: session?.user?.id === userId
+          })
+          
+          if (sessionError) {
+            console.error('[WorkspaceStore] Session error:', sessionError)
+            set({ error: 'Authentication error', isLoading: false })
+            return
+          }
+          
+          if (!session) {
+            console.error('[WorkspaceStore] No active session found')
+            set({ error: 'No active session', isLoading: false })
+            return
+          }
+          
+          console.log('[WorkspaceStore] Calling getUserWorkspaces service')
           const workspaces = await getUserWorkspaces(userId)
-          console.log('[WorkspaceStore] Received workspaces:', workspaces)
+          console.log('[WorkspaceStore] Received workspaces:', {
+            count: workspaces?.length || 0,
+            isEmpty: workspaces?.length === 0,
+            ids: workspaces?.map(w => w.id) || [],
+            names: workspaces?.map(w => w.name) || []
+          })
           set({ workspaces, isLoading: false })
           
           // Get current workspace from state
@@ -175,8 +212,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       
       ensureDefaultWorkspace: async () => {
         console.log('[WorkspaceStore] Starting ensureDefaultWorkspace')
-        const { userId } = get()
-        console.log('[WorkspaceStore] Current userId for ensureDefaultWorkspace:', userId)
+        const { userId, workspaces } = get()
+        console.log('[WorkspaceStore] Current state for ensureDefaultWorkspace:', {
+          userId,
+          hasWorkspaces: !!workspaces?.length,
+          workspaceCount: workspaces?.length || 0
+        })
         
         if (!userId) {
           console.log('[WorkspaceStore] No userId set, aborting ensureDefaultWorkspace')

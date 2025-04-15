@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Input types for saveFormWithBlocks
 interface SaveFormInput {
-  id: string;
+  form_id: string;
   title: string;
   description?: string;
   workspace_id?: string;
@@ -41,7 +41,7 @@ export async function saveFormWithBlocks(
   try {
     // Extract and ensure critical fields with proper types
     const {
-      id,
+      form_id,
       title = 'Untitled Form',
       description = '',
       workspace_id,
@@ -56,8 +56,11 @@ export async function saveFormWithBlocks(
     }
     
     // Prepare the form data object
+    // Make sure to include an 'id' field that matches 'form_id' since the PostgreSQL function
+    // looks for 'id' but our frontend uses 'form_id'
     const formDataObj = {
-      id,
+      id: form_id, // Add 'id' matching the form_id to fix the database function compatibility
+      form_id,
       title,
       description,
       workspace_id,
@@ -67,8 +70,24 @@ export async function saveFormWithBlocks(
       settings
     };
     
+    console.log('===== DEBUG: saveFormWithBlocks =====');
+    console.log('Input formData:', JSON.stringify(formDataObj, null, 2));
+    console.log('Input blocks count:', blocks.length);
+    if (blocks.length > 0) {
+      console.log('Sample block input:', JSON.stringify(blocks[0], null, 2));
+    }
+    
     // Map blocks to database format with proper UUID handling
-    const blocksData = blocks.map(frontendBlock => {
+    const blocksData = blocks.map((frontendBlock, index) => {
+      // Check for any unexpected structure in block settings
+      const blockSettings = frontendBlock.settings || {};
+      console.log(`Block ${index} settings keys:`, Object.keys(blockSettings));
+      
+      // Look for potential presentation settings that might cause problems
+      if (blockSettings.presentation) {
+        console.log(`Block ${index} has presentation settings:`, blockSettings.presentation);
+      }
+      
       const { type, subtype } = mapToDbBlockType(frontendBlock.blockTypeId);
       
       // Generate a proper UUID if the ID isn't already a UUID format
@@ -76,7 +95,8 @@ export async function saveFormWithBlocks(
                      frontendBlock.id.length === 36 ? 
                      frontendBlock.id : uuidv4();
       
-      return {
+      // Create the DB-ready block object
+      const dbBlock = {
         id: blockId,
         type,
         subtype,
@@ -84,11 +104,20 @@ export async function saveFormWithBlocks(
         description: frontendBlock.description || null,
         required: !!frontendBlock.required,
         order_index: frontendBlock.order || 0,
-        settings: frontendBlock.settings || {}
+        settings: blockSettings
       };
+      
+      console.log(`Block ${index} transformed for DB:`, JSON.stringify(dbBlock, null, 2));
+      return dbBlock;
     });
     
+    // Log the exact payload being sent to the database function
+    console.log('Payload being sent to database function:');
+    console.log('p_form_data:', JSON.stringify(formDataObj, null, 2));
+    console.log('p_blocks_data:', JSON.stringify(blocksData, null, 2));
+
     // Call the PostgreSQL function that handles empty arrays and UUID conversion
+    console.log('Calling database function save_form_with_blocks_empty_safe...');
     const { data, error } = await supabase.rpc('save_form_with_blocks_empty_safe', {
       p_form_data: formDataObj,
       p_blocks_data: blocksData
@@ -100,8 +129,12 @@ export async function saveFormWithBlocks(
       throw error;
     }
     
+    // Log the response from database function
+    console.log('Response from database function:', JSON.stringify(data, null, 2));
+    
     // Ensure data exists before accessing properties
     if (!data || !data.form) {
+      console.error('Invalid data structure received:', JSON.stringify(data, null, 2));
       throw new Error('Invalid response format from database function');
     }
     

@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings2, LayoutGrid, Wrench, Sparkles, Code, Hash, Trash2 } from "lucide-react"
+import { Settings2, LayoutGrid, Wrench, Sparkles, Code, Hash, Trash2, Columns } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
+import { BlockLayoutSettings } from "@/components/form/settings/BlockLayoutSettings"
 
 export default function FormBuilderSettings() {
   const { 
@@ -77,7 +78,7 @@ export default function FormBuilderSettings() {
       </div>
       
       <Tabs defaultValue="settings" className="flex-1 flex flex-col" onValueChange={setSelectedTab}>
-        <div className="px-1 pt-1 border-b">
+        <div className="px-1 pt-1 border-b flex-shrink-0">
           <TabsList className="w-full justify-start bg-transparent p-0">
             <TabsTrigger 
               value="settings" 
@@ -85,12 +86,14 @@ export default function FormBuilderSettings() {
             >
               Settings
             </TabsTrigger>
+            
             <TabsTrigger 
-              value="logic" 
+              value="layout" 
               className="data-[state=active]:bg-background data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:rounded-none px-4 py-2 h-10"
             >
-              Logic
+              Layout
             </TabsTrigger>
+            
             <TabsTrigger 
               value="style" 
               className="data-[state=active]:bg-background data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:rounded-none px-4 py-2 h-10"
@@ -100,9 +103,9 @@ export default function FormBuilderSettings() {
           </TabsList>
         </div>
         
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-hidden">
           {/* Settings Tab - Block-specific settings */}
-          <TabsContent value="settings" className="m-0 p-4 space-y-6">
+          <TabsContent value="settings" className="h-full overflow-y-auto m-0 p-4 space-y-6">
             {/* Common settings for all blocks */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
@@ -145,7 +148,7 @@ export default function FormBuilderSettings() {
               </div>
             </div>
             
-            <Separator />
+
             
             {/* Block-specific settings */}
             <div className="space-y-4">
@@ -433,23 +436,26 @@ export default function FormBuilderSettings() {
             </div>
           </TabsContent>
           
-          {/* Logic Tab */}
-          <TabsContent value="logic" className="m-0 p-4 space-y-6">
+
+          
+          {/* Layout Tab */}
+          <TabsContent value="layout" className="m-0 p-4 space-y-6">
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
-                <Code size={16} className="mr-2" />
-                Conditional Logic
+                <Columns size={16} className="mr-2" />
+                Block Layout
               </h4>
               
-              <Card className="p-4 flex flex-col items-center justify-center text-center text-muted-foreground">
-                <p className="mb-2">Conditional logic coming soon</p>
-                <p className="text-xs">Show or hide questions based on previous answers</p>
-              </Card>
+              {/* Block layout settings component */}
+              <BlockLayoutSettings 
+                blockId={currentBlock.id}
+                currentLayout={currentBlock.settings?.layout}
+              />
             </div>
           </TabsContent>
           
           {/* Style Tab */}
-          <TabsContent value="style" className="m-0 p-4 space-y-6">
+          <TabsContent value="style" className="h-full overflow-y-auto m-0 p-4 space-y-6">
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
                 <Sparkles size={16} className="mr-2" />
@@ -462,7 +468,7 @@ export default function FormBuilderSettings() {
               </Card>
             </div>
           </TabsContent>
-        </ScrollArea>
+        </div>
       </Tabs>
     </div>
   )

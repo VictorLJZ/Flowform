@@ -1,110 +1,240 @@
-formBuilderStore.ts:196 ==== DEBUG: FormBuilder saveForm ====
-formBuilderStore.ts:197 Save Data being prepared: {id: 'd86e3353-0087-43a8-a1cb-17b0a399424d', title: 'Untitled Form', description: '', workspace_id: 'f9f45bf0-4835-4947-87df-df8c42da7410', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
-formBuilderStore.ts:198 Blocks to save: [{…}]
-formBuilderStore.ts:202 FormBuilder Block 0 settings: {placeholder: 'Type your answer here...', maxLength: 255}
-saveFormWithBlocks.ts:48 🔍 Fetching PostgreSQL function definition for better understanding...
-fetch.ts:15 
-            
-            
-           POST https://ajghquxxyenvzebhpobn.supabase.co/rest/v1/rpc/pg_get_functiondef 404 (Not Found)
-(anonymous) @ fetch.ts:15
-(anonymous) @ fetch.ts:46
-fulfilled @ fetch.ts:2
-Promise.then
-step @ fetch.ts:2
-(anonymous) @ fetch.ts:2
-push.[project]/node_modules/@supabase/supabase-js/dist/module/lib/fetch.js [app-client] (ecmascript).__awaiter @ fetch.ts:2
-(anonymous) @ fetch.ts:34
-then @ PostgrestBuilder.ts:101
-saveFormWithBlocks.ts:54 ❌ Error getting function definition: {code: 'PGRST202', details: 'Searched for the function public.pg_get_functionde…r, but no matches were found in the schema cache.', hint: null, message: 'Could not find the function public.pg_get_functiondef(p_function_name) in the schema cache'}
-saveFormWithBlocks.ts:78 Saving form with blocks using type-safe approach...
-saveFormWithBlocks.ts:92 Form data prepared with critical fields:
-saveFormWithBlocks.ts:93 - workspace_id: f9f45bf0-4835-4947-87df-df8c42da7410
-saveFormWithBlocks.ts:94 - id: d86e3353-0087-43a8-a1cb-17b0a399424d
-saveFormWithBlocks.ts:129 Prepared 1 blocks for saving
-saveFormWithBlocks.ts:133 Executing type-safe PostgreSQL RPC...
-saveFormWithBlocks.ts:134 🔎 DIAGNOSTICS: Blocks array length: 1
-saveFormWithBlocks.ts:140 🔎 DIAGNOSTICS: Stringified blocks sample: [{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,...
-saveFormWithBlocks.ts:145 📡 TEST: Is this an empty blocks array? false
-saveFormWithBlocks.ts:152 📡 TEST: Alternative format 1 (wrapped): {"data":[{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,"required":false,"order_index":0,"settings":{"placeholder":"Type your answer here...","maxLength":255}}]}
-saveFormWithBlocks.ts:153 📡 TEST: Alternative format 2 (empty object): [{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,"required":false,"order_index":0,"settings":{"placeholder":"Type your answer here...","maxLength":255}}]
-saveFormWithBlocks.ts:154 📡 TEST: Alternative format 3 (empty array in object): [{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,"required":false,"order_index":0,"settings":{"placeholder":"Type your answer here...","maxLength":255}}]
-saveFormWithBlocks.ts:174 🔎 DIAGNOSTICS: Using blocks format: Standard JSON
-saveFormWithBlocks.ts:177 🔎 DIAGNOSTICS: RPC params: {p_form_id: 'd86e3353-0087-43a8-a1cb-17b0a399424d', p_title: 'Untitled Form', p_description: '', p_workspace_id: 'f9f45bf0-4835-4947-87df-df8c42da7410', p_created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
-saveFormWithBlocks.ts:178 🔎 DIAGNOSTICS: p_blocks_data type: string
-saveFormWithBlocks.ts:179 🔎 DIAGNOSTICS: p_blocks_data value: [{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,"required":false,"order_index":0,"settings":{"placeholder":"Type your answer here...","maxLength":255}}]
-saveFormWithBlocks.ts:212 🔬 MOCK SQL THAT WOULD BE EXECUTED:
- 
--- MOCK SQL for debugging purposes
-SELECT save_form_with_blocks_typed(
-  'd86e3353-0087-43a8-a1cb-17b0a399424d'::uuid,
-  'Untitled Form'::text,
-  ''::text,
-  'f9f45bf0-4835-4947-87df-df8c42da7410'::uuid,
-  '226d4bff-1c02-4c9f-9fec-f574cfe8a333'::uuid,
-  'draft'::text,
-  '{"name":"default","primaryColor":"#0284c7","fontFamily":"inter"}'::jsonb,
-  '{"showProgressBar":true,"requireSignIn":false}'::jsonb,
-  '[{"id":"block-1744588326029","type":"static","subtype":"text_short","title":"wd","description":null,"required":false,"order_index":0,"settings":{"placeholder":"Type your answer here...","maxLength":255}}]'
-);
-      
-saveFormWithBlocks.ts:221 🌐 Attempting to intercept the network request...
-saveFormWithBlocks.ts:224 🌐 Raw Request Details:
-saveFormWithBlocks.ts:280 🔬 DEEP DIAGNOSTICS - Form Data Object:
-saveFormWithBlocks.ts:281   id: {value: 'd86e3353-0087-43a8-a1cb-17b0a399424d', type: 'string', nullCheck: false, undefinedCheck: false}
-saveFormWithBlocks.ts:282   workspace_id: {value: 'f9f45bf0-4835-4947-87df-df8c42da7410', type: 'string', nullCheck: false, undefinedCheck: false}
-fetch.ts:15 Fetch failed loading: POST "https://ajghquxxyenvzebhpobn.supabase.co/rest/v1/rpc/pg_get_functiondef".
-(anonymous) @ fetch.ts:15
-(anonymous) @ fetch.ts:46
-fulfilled @ fetch.ts:2
-Promise.then
-step @ fetch.ts:2
-(anonymous) @ fetch.ts:2
-push.[project]/node_modules/@supabase/supabase-js/dist/module/lib/fetch.js [app-client] (ecmascript).__awaiter @ fetch.ts:2
-(anonymous) @ fetch.ts:34
-then @ PostgrestBuilder.ts:101
-saveFormWithBlocks.ts:283   created_by: {value: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', type: 'string', nullCheck: false, undefinedCheck: false}
-saveFormWithBlocks.ts:286 🔬 DEEP DIAGNOSTICS - Form object direct: {id: 'd86e3353-0087-43a8-a1cb-17b0a399424d', title: 'Untitled Form', description: '', workspace_id: 'f9f45bf0-4835-4947-87df-df8c42da7410', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
-saveFormWithBlocks.ts:296 🔬 Using specialized PostgreSQL call with proper UUID handling
-saveFormWithBlocks.ts:307 Converting block ID from block-1744588326029 to UUID ddeb31c2-ebee-4025-83fe-faad30831df1
-saveFormWithBlocks.ts:321 🔬 DEEP DIAGNOSTICS - Direct blocks data: [{…}]
-saveFormWithBlocks.ts:325 🔬 DEEP DIAGNOSTICS - Creating direct SQL call with explicit UUID casting
-saveFormWithBlocks.ts:355 🔬 DEEP DIAGNOSTICS - SQL params: (9) ['d86e3353-0087-43a8-a1cb-17b0a399424d', 'Untitled Form', '', 'f9f45bf0-4835-4947-87df-df8c42da7410', '226d4bff-1c02-4c9f-9fec-f574cfe8a333', 'draft', {…}, {…}, Array(1)]
-fetch.ts:15 Fetch failed loading: POST "https://ajghquxxyenvzebhpobn.supabase.co/rest/v1/rpc/execute_sql_with_params".
-(anonymous) @ fetch.ts:15
-(anonymous) @ fetch.ts:46
-fulfilled @ fetch.ts:2
-Promise.then
-step @ fetch.ts:2
-(anonymous) @ fetch.ts:2
-push.[project]/node_modules/@supabase/supabase-js/dist/module/lib/fetch.js [app-client] (ecmascript).__awaiter @ fetch.ts:2
-(anonymous) @ fetch.ts:34
-then @ PostgrestBuilder.ts:101
-fetch.ts:15 
-            
-            
-           POST https://ajghquxxyenvzebhpobn.supabase.co/rest/v1/rpc/execute_sql_with_params 404 (Not Found)
-(anonymous) @ fetch.ts:15
-(anonymous) @ fetch.ts:46
-fulfilled @ fetch.ts:2
-Promise.then
-step @ fetch.ts:2
-(anonymous) @ fetch.ts:2
-push.[project]/node_modules/@supabase/supabase-js/dist/module/lib/fetch.js [app-client] (ecmascript).__awaiter @ fetch.ts:2
-(anonymous) @ fetch.ts:34
-then @ PostgrestBuilder.ts:101
-saveFormWithBlocks.ts:369 ⚠️ Direct SQL approach failed: {code: 'PGRST202', details: 'Searched for the function public.execute_sql_with_…r, but no matches were found in the schema cache.', hint: 'Perhaps you meant to call the function public.save_form_with_blocks', message: 'Could not find the function public.execute_sql_with_params(p_params, p_sql) in the schema cache'}
-saveFormWithBlocks.ts:370 🔄 Falling back to RPC call with object passing
-fetch.ts:15 Fetch finished loading: POST "https://ajghquxxyenvzebhpobn.supabase.co/rest/v1/rpc/save_form_with_blocks_empty_safe".
-(anonymous) @ fetch.ts:15
-(anonymous) @ fetch.ts:46
-fulfilled @ fetch.ts:2
-Promise.then
-step @ fetch.ts:2
-(anonymous) @ fetch.ts:2
-push.[project]/node_modules/@supabase/supabase-js/dist/module/lib/fetch.js [app-client] (ecmascript).__awaiter @ fetch.ts:2
-(anonymous) @ fetch.ts:34
-then @ PostgrestBuilder.ts:101
-saveFormWithBlocks.ts:403 Response from save_form_with_blocks_empty_safe: {form: {…}, blocks: Array(1), success: true}
-saveFormWithBlocks.ts:412 Form saved successfully! ID: undefined
-formBuilderStore.ts:216 Form saved successfully with transaction: {form: {…}, blocks: Array(1), success: true}
+react-dom-client.development.js:24914 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+web-client-content-script.js:2 Uncaught (in promise) Error: Access to storage is not allowed from this context.
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: null
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: []
+workspaceStore.ts:122 [WorkspaceStore] Starting fetchWorkspaces
+workspaceStore.ts:124 [WorkspaceStore] Current auth state: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', userEmail: 'jleewchs2020@gmail.com', hasUserId: true, hasUserEmail: true, store: 'workspaceStore'}
+workspaceStore.ts:139 [WorkspaceStore] Setting loading state, fetching workspaces
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: []
+workspaceStore.ts:145 [WorkspaceStore] Supabase session check: {isAuthenticated: true, sessionError: null, sessionUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', storeUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', idsMatch: true}
+workspaceStore.ts:165 [WorkspaceStore] Calling getUserWorkspaces service
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+hot-reloader-client.tsx:371 [Fast Refresh] rebuilding
+hot-reloader-client.tsx:116 [Fast Refresh] done in 14ms
+hot-reloader-client.tsx:371 [Fast Refresh] rebuilding
+hot-reloader-client.tsx:116 [Fast Refresh] done in 33ms
+hot-reloader-client.tsx:371 [Fast Refresh] rebuilding
+hot-reloader-client.tsx:116 [Fast Refresh] done in 62ms
+hot-reloader-client.tsx:371 [Fast Refresh] rebuilding
+hot-reloader-client.tsx:116 [Fast Refresh] done in 39ms
+26Fetch finished loading: GET "<URL>".
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+workspace-validator.tsx:25 [WorkspaceValidator] Validating workspace data with user ID: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+workspaceStore.ts:122 [WorkspaceStore] Starting fetchWorkspaces
+workspaceStore.ts:124 [WorkspaceStore] Current auth state: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', userEmail: 'jleewchs2020@gmail.com', hasUserId: true, hasUserEmail: true, store: 'workspaceStore'}
+workspaceStore.ts:139 [WorkspaceStore] Setting loading state, fetching workspaces
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: false, workspaceCount: 0}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:45 Initializing default workspace for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+workspaceStore.ts:122 [WorkspaceStore] Starting fetchWorkspaces
+workspaceStore.ts:124 [WorkspaceStore] Current auth state: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', userEmail: 'jleewchs2020@gmail.com', hasUserId: true, hasUserEmail: true, store: 'workspaceStore'}
+workspaceStore.ts:139 [WorkspaceStore] Setting loading state, fetching workspaces
+workspace-validator.tsx:25 [WorkspaceValidator] Validating workspace data with user ID: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+workspaceStore.ts:122 [WorkspaceStore] Starting fetchWorkspaces
+workspaceStore.ts:124 [WorkspaceStore] Current auth state: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', userEmail: 'jleewchs2020@gmail.com', hasUserId: true, hasUserEmail: true, store: 'workspaceStore'}
+workspaceStore.ts:139 [WorkspaceStore] Setting loading state, fetching workspaces
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: false, workspaceCount: 0}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:18 Initialization already in progress for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333 waiting for it to complete
+workspaceStore.ts:122 [WorkspaceStore] Starting fetchWorkspaces
+workspaceStore.ts:124 [WorkspaceStore] Current auth state: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', userEmail: 'jleewchs2020@gmail.com', hasUserId: true, hasUserEmail: true, store: 'workspaceStore'}
+workspaceStore.ts:139 [WorkspaceStore] Setting loading state, fetching workspaces
+workspaceStore.ts:145 [WorkspaceStore] Supabase session check: {isAuthenticated: true, sessionError: null, sessionUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', storeUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', idsMatch: true}
+workspaceStore.ts:165 [WorkspaceStore] Calling getUserWorkspaces service
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+workspaceStore.ts:145 [WorkspaceStore] Supabase session check: {isAuthenticated: true, sessionError: null, sessionUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', storeUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', idsMatch: true}
+workspaceStore.ts:165 [WorkspaceStore] Calling getUserWorkspaces service
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+workspaceStore.ts:145 [WorkspaceStore] Supabase session check: {isAuthenticated: true, sessionError: null, sessionUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', storeUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', idsMatch: true}
+workspaceStore.ts:165 [WorkspaceStore] Calling getUserWorkspaces service
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+workspaceStore.ts:145 [WorkspaceStore] Supabase session check: {isAuthenticated: true, sessionError: null, sessionUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', storeUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', idsMatch: true}
+workspaceStore.ts:165 [WorkspaceStore] Calling getUserWorkspaces service
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+formBuilderStore.ts:385 ==== DEBUG: FormBuilder loadForm - Block Mapping ====
+formBuilderStore.ts:394 Block 1 (363b9d0d-2922-4581-9fdb-c63281ec1ded):
+formBuilderStore.ts:395   - From DB: subtype = "text_short"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "text_short"
+formBuilderStore.ts:397   - Block definition: {id: 'text_short', name: 'Short Text', type: 'static', category: 'input', iconExists: 'yes', …}
+formBuilderStore.ts:394 Block 2 (6095add3-2dda-4198-af3a-ae971c22a268):
+formBuilderStore.ts:395   - From DB: subtype = "text_long"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "text_long"
+formBuilderStore.ts:397   - Block definition: {id: 'text_long', name: 'Long Text', type: 'static', category: 'input', iconExists: 'yes', …}
+formBuilderStore.ts:394 Block 3 (78d9f699-5901-4356-944f-f3d54054d2f7):
+formBuilderStore.ts:395   - From DB: subtype = "multiple_choice"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "multiple_choice"
+formBuilderStore.ts:397   - Block definition: {id: 'multiple_choice', name: 'Multiple Choice', type: 'static', category: 'choice', iconExists: 'yes', …}
+formBuilderStore.ts:394 Block 4 (716d7aa2-9316-4940-b684-8318925080d1):
+formBuilderStore.ts:395   - From DB: subtype = "multiple_choice"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "multiple_choice"
+formBuilderStore.ts:397   - Block definition: {id: 'multiple_choice', name: 'Multiple Choice', type: 'static', category: 'choice', iconExists: 'yes', …}
+formBuilderStore.ts:394 Block 5 (49f412c8-b10b-4d40-9333-360cf30b262f):
+formBuilderStore.ts:395   - From DB: subtype = "multiple_choice"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "multiple_choice"
+formBuilderStore.ts:397   - Block definition: {id: 'multiple_choice', name: 'Multiple Choice', type: 'static', category: 'choice', iconExists: 'yes', …}
+formBuilderStore.ts:394 Block 6 (e055ae31-7273-4fd6-8655-f45b48313856):
+formBuilderStore.ts:395   - From DB: subtype = "email"
+formBuilderStore.ts:396   - Mapped to blockTypeId = "email"
+formBuilderStore.ts:397   - Block definition: {id: 'email', name: 'Email', type: 'static', category: 'input', iconExists: 'yes', …}
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:167 [WorkspaceStore] Received workspaces: {count: 1, isEmpty: false, ids: Array(1), names: Array(1)}
+workspaceStore.ts:177 [WorkspaceStore] Current workspace from state: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+initializeDefaultWorkspace.ts:50 Existing workspaces: [{…}]
+initializeDefaultWorkspace.ts:54 User already has workspaces, returning first one: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:167 [WorkspaceStore] Received workspaces: {count: 1, isEmpty: false, ids: Array(1), names: Array(1)}
+workspaceStore.ts:177 [WorkspaceStore] Current workspace from state: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: true, workspaceCount: 1}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:45 Initializing default workspace for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:167 [WorkspaceStore] Received workspaces: {count: 1, isEmpty: false, ids: Array(1), names: Array(1)}
+workspaceStore.ts:177 [WorkspaceStore] Current workspace from state: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: true, workspaceCount: 1}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:18 Initialization already in progress for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333 waiting for it to complete
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:167 [WorkspaceStore] Received workspaces: {count: 1, isEmpty: false, ids: Array(1), names: Array(1)}
+workspaceStore.ts:177 [WorkspaceStore] Current workspace from state: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: true, workspaceCount: 1}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:18 Initialization already in progress for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333 waiting for it to complete
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:167 [WorkspaceStore] Received workspaces: {count: 1, isEmpty: false, ids: Array(1), names: Array(1)}
+workspaceStore.ts:177 [WorkspaceStore] Current workspace from state: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspaceStore.ts:214 [WorkspaceStore] Starting ensureDefaultWorkspace
+workspaceStore.ts:216 [WorkspaceStore] Current state for ensureDefaultWorkspace: {userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', hasWorkspaces: true, workspaceCount: 1}
+workspaceStore.ts:229 [WorkspaceStore] Setting loading state, initializing default workspace
+initializeDefaultWorkspace.ts:18 Initialization already in progress for user: 226d4bff-1c02-4c9f-9fec-f574cfe8a333 waiting for it to complete
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+initializeDefaultWorkspace.ts:50 Existing workspaces: [{…}]
+initializeDefaultWorkspace.ts:54 User already has workspaces, returning first one: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+getUserWorkspaces.ts:11 [getUserWorkspaces] Starting with userId: 226d4bff-1c02-4c9f-9fec-f574cfe8a333
+getUserWorkspaces.ts:16 [getUserWorkspaces] Supabase client created
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspace-validator.tsx:41 [WorkspaceValidator] Stored workspace ID: f9f45bf0-4835-4947-87df-df8c42da7410
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:20 [getUserWorkspaces] Session check: {isAuthenticated: true, hasError: false, error: null, userId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', providedUserId: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+getUserWorkspaces.ts:30 [getUserWorkspaces] Fetching workspace_members table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+getUserWorkspaces.ts:38 [getUserWorkspaces] Membership query details: {status: 200, query: 'workspace_members where user_id = 226d4bff-1c02-4c9f-9fec-f574cfe8a333', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:59 [getUserWorkspaces] Found workspace IDs: ['f9f45bf0-4835-4947-87df-df8c42da7410']
+getUserWorkspaces.ts:61 [getUserWorkspaces] Fetching workspaces table data
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]
+workspace-validator.tsx:41 [WorkspaceValidator] Stored workspace ID: f9f45bf0-4835-4947-87df-df8c42da7410
+getUserWorkspaces.ts:69 [getUserWorkspaces] Workspaces query details: {status: 200, query: 'workspaces where id in (f9f45bf0-4835-4947-87df-df8c42da7410)', count: 1, error: null, rawError: 'null', …}
+getUserWorkspaces.ts:83 [getUserWorkspaces] Successfully fetched workspaces: {count: 1, names: Array(1)}
+workspaceStore.ts:232 [WorkspaceStore] Default workspace result: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspaceStore.ts:235 [WorkspaceStore] Default workspace created/found
+workspace-switcher.tsx:46 [DEBUG] WorkspaceSwitcher - Current workspace: {id: 'f9f45bf0-4835-4947-87df-df8c42da7410', name: "Jesse Lee's Workspace", description: 'My default workspace', created_at: '2025-04-07T19:05:46.581116+00:00', created_by: '226d4bff-1c02-4c9f-9fec-f574cfe8a333', …}
+workspace-switcher.tsx:47 [DEBUG] WorkspaceSwitcher - Available workspaces: [{…}]

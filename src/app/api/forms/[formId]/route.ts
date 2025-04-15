@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getFormWithBlocks } from "@/services/form/getFormWithBlocks"
+import { createClient } from "@/lib/supabase/client"
 
 export async function GET(
   request: NextRequest,
   context: { params: { formId: string } }
 ) {
   try {
-    const params = context.params;
+    const params = await context.params;
     const { formId } = params
+    const supabase = createClient();
     
     if (!formId) {
       return NextResponse.json(
@@ -16,11 +18,24 @@ export async function GET(
       )
     }
     
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    const isAuthenticated = !!session?.user;
+    
+    // Get the form
     const form = await getFormWithBlocks(formId)
     
     if (!form) {
       return NextResponse.json(
         { error: "Form not found" },
+        { status: 404 }
+      )
+    }
+    
+    // For unauthenticated users, only return published forms
+    if (!isAuthenticated && form.status !== 'published') {
+      return NextResponse.json(
+        { error: "Form not found" },  // Use generic error for security
         { status: 404 }
       )
     }

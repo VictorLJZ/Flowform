@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 
 type Form = {
-  id: string
+  form_id: string
   title: string
   starter_question: string
   instructions: string
@@ -10,6 +10,10 @@ type Form = {
   max_questions: number
   created_at: string
   updated_at: string
+  status: 'draft' | 'published' | 'archived'
+  published_at?: string
+  workspace_id: string
+  created_by: string
 }
 
 type FormState = {
@@ -24,6 +28,7 @@ type FormState = {
   createForm: (form: Omit<Form, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   updateForm: (id: string, form: Partial<Form>) => Promise<void>
   deleteForm: (id: string) => Promise<void>
+  publishForm: (id: string) => Promise<boolean>
   setCurrentForm: (form: Form | null) => void
 }
 
@@ -59,7 +64,7 @@ export const useFormStore = create<FormState>((set, get) => ({
       const { data, error } = await supabase
         .from('forms')
         .select('*')
-        .eq('id', id)
+        .eq('form_id', id)
         .single()
       
       if (error) throw error
@@ -100,15 +105,15 @@ export const useFormStore = create<FormState>((set, get) => ({
       const { data, error } = await supabase
         .from('forms')
         .update(formUpdates)
-        .eq('id', id)
+        .eq('form_id', id)
         .select()
         .single()
       
       if (error) throw error
       
       set({ 
-        forms: get().forms.map(form => form.id === id ? data : form),
-        currentForm: get().currentForm?.id === id ? data : get().currentForm,
+        forms: get().forms.map(form => form.form_id === id ? data : form),
+        currentForm: get().currentForm?.form_id === id ? data : get().currentForm,
         isLoading: false 
       })
     } catch (error: any) {
@@ -124,17 +129,49 @@ export const useFormStore = create<FormState>((set, get) => ({
       const { error } = await supabase
         .from('forms')
         .delete()
-        .eq('id', id)
+        .eq('form_id', id)
       
       if (error) throw error
       
       set({ 
-        forms: get().forms.filter(form => form.id !== id),
-        currentForm: get().currentForm?.id === id ? null : get().currentForm,
+        forms: get().forms.filter(form => form.form_id !== id),
+        currentForm: get().currentForm?.form_id === id ? null : get().currentForm,
         isLoading: false 
       })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
+    }
+  },
+  
+  publishForm: async (id) => {
+    const supabase = createClient()
+    set({ isLoading: true, error: null })
+    
+    try {
+      // Update the form status to published and set published_at timestamp
+      const { data, error } = await supabase
+        .from('forms')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString()
+        })
+        .eq('form_id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      // Update store state with the published form
+      set({ 
+        forms: get().forms.map(form => form.form_id === id ? data : form),
+        currentForm: get().currentForm?.form_id === id ? data : get().currentForm,
+        isLoading: false 
+      })
+      
+      return true
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false })
+      return false
     }
   },
   

@@ -7,9 +7,11 @@ import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
+import { BlockLayout, LayoutType, StandardLayout, getDefaultLayoutByType } from '@/types/layout-types'
 
 interface FormData {
-  id: string
+  form_id: string
   title: string
   description?: string
   workspace_id?: string  // Added for Supabase integration
@@ -26,6 +28,8 @@ interface FormData {
     redirectUrl?: string
     customCss?: string
   }
+  // WYSIWYG theme data
+  theme?: FormTheme
 }
 
 interface FormBuilderState {
@@ -40,12 +44,21 @@ interface FormBuilderState {
   sidebarOpen: boolean
   blockSelectorOpen: boolean
   
+  // WYSIWYG state
+  mode: 'builder' | 'viewer'
+  defaultBlockPresentation: BlockPresentation
+  getBlockPresentation: (blockId: string) => BlockPresentation
+  setBlockPresentation: (blockId: string, presentation: Partial<BlockPresentation>) => void
+  setFormTheme: (theme: Partial<FormTheme>) => void
+  setMode: (mode: 'builder' | 'viewer') => void
+  
   // Actions
   setFormData: (data: Partial<FormData>) => void
   setBlocks: (blocks: FormBlock[]) => void
   addBlock: (blockTypeId: string) => void
   updateBlock: (blockId: string, updates: Partial<FormBlock>) => void
   updateBlockSettings: (blockId: string, settings: Record<string, any>) => void
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<BlockLayout>) => void
   removeBlock: (blockId: string) => void
   reorderBlocks: (startIndex: number, endIndex: number) => void
   setCurrentBlockId: (blockId: string | null) => void
@@ -62,7 +75,7 @@ interface FormBuilderState {
 
 // Initial empty form data
 const defaultFormData: FormData = {
-  id: '',
+  form_id: '',
   title: 'Untitled Form',
   description: '',
   settings: {
@@ -71,7 +84,8 @@ const defaultFormData: FormData = {
     theme: 'default',
     primaryColor: '#0284c7',
     fontFamily: 'inter'
-  }
+  },
+  theme: defaultFormTheme
 }
 
 export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
@@ -83,6 +97,10 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   isSaving: false,
   sidebarOpen: true,
   blockSelectorOpen: false,
+  
+  // WYSIWYG state
+  mode: 'builder',
+  defaultBlockPresentation: defaultBlockPresentation,
   
   // Actions
   setFormData: (data) => set((state) => ({
@@ -116,6 +134,37 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         : block
     )
   })),
+  
+  updateBlockLayout: (blockId, layoutConfig) => set((state) => {
+    return {
+      blocks: state.blocks.map(block => {
+        if (block.id === blockId) {
+          // If layout type is changing, get the default settings for the new layout type
+          let updatedLayout: BlockLayout;
+          
+          if (layoutConfig.type && layoutConfig.type !== block.settings?.layout?.type) {
+            // Start with defaults for the new layout type
+            updatedLayout = getDefaultLayoutByType(layoutConfig.type);
+            // Then apply any specific overrides from layoutConfig
+            updatedLayout = { ...updatedLayout, ...layoutConfig } as BlockLayout;
+          } else {
+            // If we already have a layout or are just updating properties
+            const currentLayout = block.settings?.layout || { type: 'standard' } as StandardLayout;
+            updatedLayout = { ...currentLayout, ...layoutConfig } as BlockLayout;
+          }
+          
+          return { 
+            ...block, 
+            settings: { 
+              ...block.settings, 
+              layout: updatedLayout 
+            } 
+          };
+        }
+        return block;
+      })
+    };
+  }),
   
   removeBlock: (blockId) => set((state) => {
     const newBlocks = state.blocks.filter(block => block.id !== blockId)
@@ -162,6 +211,41 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   
   setBlockSelectorOpen: (open) => set({ blockSelectorOpen: open }),
   
+  // WYSIWYG methods
+  getBlockPresentation: (blockId) => {
+    const block = get().blocks.find(b => b.id === blockId)
+    return block?.settings?.presentation || get().defaultBlockPresentation
+  },
+  
+  setBlockPresentation: (blockId, presentation) => set((state) => ({
+    blocks: state.blocks.map(block => 
+      block.id === blockId 
+        ? { 
+            ...block, 
+            settings: { 
+              ...block.settings, 
+              presentation: { 
+                ...(block.settings.presentation || defaultBlockPresentation), 
+                ...presentation 
+              } 
+            } 
+          } 
+        : block
+    )
+  })),
+  
+  setFormTheme: (theme) => set((state) => ({
+    formData: { 
+      ...state.formData, 
+      theme: { 
+        ...(state.formData.theme || defaultFormTheme), 
+        ...theme 
+      } 
+    }
+  })),
+  
+  setMode: (mode) => set({ mode }),
+  
   // Form operations with actual Supabase API calls
   saveForm: async () => {
     set({ isSaving: true })
@@ -172,7 +256,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       
       // Prepare form data for saving - format for RPC function
       const saveData = {
-        id: formData.id,
+        form_id: formData.form_id,
         title: formData.title,
         description: formData.description || '',
         // Always ensure workspace_id and created_by are set
@@ -202,8 +286,24 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       
       // Debug logs before saving
       console.log('==== DEBUG: FormBuilder saveForm ====');
-      console.log('Save Data being prepared:', saveData);
-      console.log('Blocks to save:', blocks);
+      console.log('Save Data being prepared:', JSON.stringify(saveData, null, 2));
+      console.log('Form theme data:', JSON.stringify(formData.theme, null, 2));
+      
+      // Log detailed block information
+      console.log('Detailed block information:');
+      blocks.forEach((block, index) => {
+        console.log(`Block ${index} (${block.blockTypeId}):`, JSON.stringify(block, null, 2));
+        
+        // Check for non-standard properties that might cause DB issues
+        const standardProps = ['id', 'blockTypeId', 'type', 'title', 'description', 'required', 'order', 'settings'];
+        const unusualProps = Object.keys(block).filter(key => !standardProps.includes(key));
+        
+        if (unusualProps.length > 0) {
+          console.log(`⚠️ Block ${index} has non-standard properties:`, unusualProps);
+        }
+      });
+      
+      console.log('Blocks being sent to database:', blocks);
       
       // Additional logging to check for any empty arrays in settings
       blocks.forEach((block, index) => {
@@ -282,11 +382,26 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         throw blocksError
       }
       
+      console.log('==== DEBUG: FormBuilder loadForm - Block Mapping ====');
+      
       // Map database blocks to frontend format preserving their original properties
       const frontendBlocks = blocksData && blocksData.length > 0
         ? blocksData.map((block: DbFormBlock, index: number) => {
             // Get the block definition for validation and default values
             const blockDef = getBlockDefinition(block.subtype || 'text_short')
+            
+            // Debug logging for this specific block
+            console.log(`Block ${index + 1} (${block.id}):`);
+            console.log(`  - From DB: subtype = "${block.subtype}"`);
+            console.log(`  - Mapped to blockTypeId = "${block.subtype || 'text_short'}"`); 
+            console.log(`  - Block definition:`, {
+              id: blockDef.id,
+              name: blockDef.name,
+              type: blockDef.type,
+              category: blockDef.category,
+              iconExists: blockDef.icon ? 'yes' : 'no',
+              iconType: blockDef.icon ? typeof blockDef.icon : 'undefined'
+            });
             
             // Create a block preserving original properties
             return {
@@ -302,10 +417,13 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           })
         : []
       
+      // Convert theme data from database if it exists
+      const formTheme = formData.theme || defaultFormTheme
+      
       // Update the store with form and blocks
       set({
         formData: {
-          id: formData.form_id,
+          form_id: formData.form_id,
           title: formData.title || 'Untitled Form',
           description: formData.description || '',
           workspace_id: formData.workspace_id,

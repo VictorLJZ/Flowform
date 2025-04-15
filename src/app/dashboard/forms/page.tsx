@@ -6,8 +6,10 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CopyField } from "@/components/ui/copy-button"
+import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText, Check } from "lucide-react"
+import { toast, useToast } from "@/components/ui/use-toast"
 import { useFormStore } from "@/stores/formStore"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
@@ -21,11 +23,53 @@ import {
 
 export default function FormsPage() {
   const router = useRouter()
-  const { fetchForms, forms, isLoading } = useFormStore()
+  const { fetchForms, forms, isLoading, publishForm } = useFormStore()
+  const { toast } = useToast()
+  const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
+  
+  // Handle form publishing
+  const handlePublishForm = async (formId: string) => {
+    try {
+      setPublishingFormId(formId);
+      const success = await publishForm(formId);
+      
+      if (success) {
+        toast({
+          title: "Form published",
+          description: "Your form is now publicly accessible via the share link.",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/f/${formId}`);
+              toast({
+                description: "Share link copied to clipboard",
+              });
+            }}>
+              Copy Link
+            </Button>
+          ),
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Publishing failed",
+          description: "There was an error publishing your form.",
+        });
+      }
+    } catch (error) {
+      console.error("Error publishing form:", error);
+      toast({
+        variant: "destructive",
+        title: "Publishing failed",
+        description: "There was an unexpected error publishing your form.",
+      });
+    } finally {
+      setPublishingFormId(null);
+    }
+  };
 
   useEffect(() => {
     fetchForms()
-  }, [])
+  }, [fetchForms])
 
   const handleCreateForm = async () => {
     try {
@@ -78,13 +122,13 @@ export default function FormsPage() {
           />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbItem key="dashboard" className="hidden md:block">
                 <BreadcrumbLink href="/dashboard">
                   Dashboard
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
+              <BreadcrumbSeparator key="separator" className="hidden md:block" />
+              <BreadcrumbItem key="forms">
                 <BreadcrumbPage>My Forms</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
@@ -105,9 +149,18 @@ export default function FormsPage() {
           </div>
         ) : forms.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {forms.map((form) => (
-              <Card key={form.id} className="overflow-hidden">
-                <div className="bg-muted h-3" />
+            {forms.map((form, index) => (
+              <Card key={form.form_id || `form-${index}`} className="overflow-hidden flex flex-col">
+                {/* Thumbnail preview */}
+                <div className="h-32 bg-muted flex items-center justify-center border-b">
+                  {/* Form preview placeholder */}
+                  <div className="text-muted-foreground text-sm flex flex-col items-center">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 mb-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <span>Form Preview</span>
+                  </div>
+                </div>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div>
@@ -122,23 +175,67 @@ export default function FormsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/dashboard/forms/builder/${form.id}`)}>
+                        <DropdownMenuItem key="edit" onClick={() => router.push(`/dashboard/forms/builder/${form.form_id}`)}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem key="duplicate">
                           <Copy className="mr-2 h-4 w-4" /> Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem key="share">
                           <ExternalLink className="mr-2 h-4 w-4" /> Share
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuSeparator key="separator" />
+                        <DropdownMenuItem key="delete" className="text-destructive">
                           <Trash className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </CardHeader>
+                
+                <CardContent className="pt-0">
+                  {/* Shareable link field */}
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-1.5">Share link</p>
+                    <CopyField 
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`} 
+                      className="text-xs bg-muted h-8" 
+                    />
+                    <div className="flex items-center justify-between mt-1.5">
+                      <p className="text-[10px] text-muted-foreground">
+                        {form.status === 'published' ? (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Published
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Draft (not publicly accessible)
+                          </span>
+                        )}
+                      </p>
+                      {form.status !== 'published' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-6 text-[10px] px-2"
+                          onClick={() => handlePublishForm(form.form_id)}
+                          disabled={publishingFormId === form.form_id}
+                        >
+                          {publishingFormId === form.form_id ? (
+                            <>
+                              <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                              Publishing...
+                            </>
+                          ) : (
+                            <>Publish</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { checkAuthStatus } from "@/lib/debug/authCheck"
 import { useRouter } from "next/navigation"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
@@ -47,6 +48,24 @@ export default function Page() {
   
   useEffect(() => {
     fetchDashboardData()
+    
+    // Run auth diagnostic check when dashboard loads
+    const runAuthCheck = async () => {
+      console.log('[Dashboard] Running auth diagnostic check')
+      try {
+        const result = await checkAuthStatus()
+        console.log('[Dashboard] Auth check result:', result)
+        // Make the auth check function available in console for debugging
+        if (typeof window !== 'undefined') {
+          (window as any).checkAuth = checkAuthStatus
+          console.log('[Dashboard] Auth checker available in console as "checkAuth()"')
+        }
+      } catch (error) {
+        console.error('[Dashboard] Auth check error:', error)
+      }
+    }
+    
+    runAuthCheck()
   }, [fetchDashboardData])
   
   const handleCreateForm = () => {

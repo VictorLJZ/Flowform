@@ -70,6 +70,8 @@ export type StaticBlockSubtype =
   'email' | 
   'date' | 
   'multiple_choice' | 
+  'checkbox_group' | 
+  'dropdown' | 
   'number' | 
   'scale' | 
   'yes_no';
