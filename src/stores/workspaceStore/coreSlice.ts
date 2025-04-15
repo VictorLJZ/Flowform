@@ -63,6 +63,7 @@ export const createCoreSlice: StateCreator<
         description: description || null,
         created_by: userId,
         logo_url: null,
+        settings: null
       })
       
       // Update workspaces list and set as current

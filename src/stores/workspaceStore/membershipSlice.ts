@@ -45,6 +45,10 @@ export const createMembershipSlice: StateCreator<
         set({ isLoading: true, error: null })
         const defaultWorkspace = await initializeDefaultWorkspace(userId)
         
+        if (!defaultWorkspace) {
+          throw new Error('Failed to create default workspace')
+        }
+        
         // Update state with the new workspace
         set({ 
           workspaces: [defaultWorkspace],
@@ -70,7 +74,7 @@ export const createMembershipSlice: StateCreator<
     
     try {
       set({ isLoading: true, error: null })
-      await leaveWorkspaceService(workspaceId, userId)
+      await leaveWorkspaceService(workspaceId)
       
       // Remove the workspace from the workspaces list
       const updatedWorkspaces = workspaces.filter(w => w.id !== workspaceId)

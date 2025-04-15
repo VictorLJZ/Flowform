@@ -96,12 +96,12 @@ export const createInvitationSlice: StateCreator<
       
       for (const invite of invites) {
         try {
-          const invitation = await inviteToWorkspace({
-            workspaceId: currentWorkspace.id,
-            email: invite.email,
-            role: invite.role,
-            invitedBy: userId
-          })
+          const invitation = await inviteToWorkspace(
+            currentWorkspace.id,
+            invite.email,
+            invite.role,
+            userId
+          )
           
           if (invitation) {
             newInvitations.push(invitation)
