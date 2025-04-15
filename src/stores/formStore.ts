@@ -1,35 +1,28 @@
 import { create } from 'zustand'
+// Import individual services directly instead of from the index to avoid AI dependencies
+import { createForm as createFormService } from '@/services/form/createForm'
+import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
+import { updateForm as updateFormService } from '@/services/form/updateForm'
+import { deleteForm as deleteFormService } from '@/services/form/deleteForm'
+// Temporarily skip invalidateFormCache to avoid the AI dependency chain
+// import { invalidateFormCache } from '@/services/form/invalidateCache'
 import { createClient } from '@/lib/supabase/client'
-
-type Form = {
-  form_id: string
-  title: string
-  starter_question: string
-  instructions: string
-  temperature: number
-  max_questions: number
-  created_at: string
-  updated_at: string
-  status: 'draft' | 'published' | 'archived'
-  published_at?: string
-  workspace_id: string
-  created_by: string
-}
+import { Form, CompleteForm } from '@/types/supabase-types'
 
 type FormState = {
   forms: Form[]
-  currentForm: Form | null
+  currentForm: CompleteForm | null
   isLoading: boolean
   error: string | null
   
   // Actions
   fetchForms: () => Promise<void>
   fetchFormById: (id: string) => Promise<void>
-  createForm: (form: Omit<Form, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
+  createForm: (form: Parameters<typeof createFormService>[0]) => Promise<void>
   updateForm: (id: string, form: Partial<Form>) => Promise<void>
   deleteForm: (id: string) => Promise<void>
   publishForm: (id: string) => Promise<boolean>
-  setCurrentForm: (form: Form | null) => void
+  setCurrentForm: (form: CompleteForm | null) => void
 }
 
 export const useFormStore = create<FormState>((set, get) => ({
@@ -39,10 +32,11 @@ export const useFormStore = create<FormState>((set, get) => ({
   error: null,
   
   fetchForms: async () => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
+    const supabase = createClient()
     
     try {
+      // Since there's no getForms service yet, we'll use a direct Supabase call
       const { data, error } = await supabase
         .from('forms')
         .select('*')
@@ -57,39 +51,31 @@ export const useFormStore = create<FormState>((set, get) => ({
   },
   
   fetchFormById: async (id) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { data, error } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('form_id', id)
-        .single()
+      const form = await getFormWithBlocks(id)
       
-      if (error) throw error
+      if (!form) {
+        throw new Error('Form not found')
+      }
       
-      set({ currentForm: data, isLoading: false })
+      set({ currentForm: form, isLoading: false })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
     }
   },
   
-  createForm: async (form) => {
-    const supabase = createClient()
+  createForm: async (formData) => {
     set({ isLoading: true, error: null })
     
     try {
-      const { data, error } = await supabase
-        .from('forms')
-        .insert([form])
-        .select()
+      const newForm = await createFormService(formData)
       
-      if (error) throw error
-      
+      // Update the local state with the new form
       set({ 
-        forms: [data[0], ...get().forms],
-        currentForm: data[0],
+        forms: [newForm, ...get().forms],
+        currentForm: { ...newForm, blocks: [] }, // Initialize with empty blocks array
         isLoading: false 
       })
     } catch (error: any) {
@@ -98,41 +84,39 @@ export const useFormStore = create<FormState>((set, get) => ({
   },
   
   updateForm: async (id, formUpdates) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { data, error } = await supabase
-        .from('forms')
-        .update(formUpdates)
-        .eq('form_id', id)
-        .select()
-        .single()
+      const updatedForm = await updateFormService(id, formUpdates)
       
-      if (error) throw error
-      
+      // If successful, update the local state
       set({ 
-        forms: get().forms.map(form => form.form_id === id ? data : form),
-        currentForm: get().currentForm?.form_id === id ? data : get().currentForm,
+        forms: get().forms.map(form => 
+          form.form_id === id ? updatedForm : form
+        ),
         isLoading: false 
       })
+
+      // If the current form is the one being updated, refresh it with blocks
+      if (get().currentForm?.form_id === id) {
+        const completeForm = await getFormWithBlocks(id)
+        set({ currentForm: completeForm })
+      }
+      
+      // Temporarily skipping cache invalidation to avoid AI dependency
+      // invalidateFormCache(id)
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
     }
   },
   
   deleteForm: async (id) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { error } = await supabase
-        .from('forms')
-        .delete()
-        .eq('form_id', id)
+      await deleteFormService(id)
       
-      if (error) throw error
-      
+      // Update the local state by removing the deleted form
       set({ 
         forms: get().forms.filter(form => form.form_id !== id),
         currentForm: get().currentForm?.form_id === id ? null : get().currentForm,
@@ -144,29 +128,26 @@ export const useFormStore = create<FormState>((set, get) => ({
   },
   
   publishForm: async (id) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      // Update the form status to published and set published_at timestamp
-      const { data, error } = await supabase
-        .from('forms')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString()
-        })
-        .eq('form_id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
+      // Update the form status to published by using the updateForm service
+      const updatedForm = await updateFormService(id, {
+        status: 'published',
+        published_at: new Date().toISOString()
+      })
       
       // Update store state with the published form
       set({ 
-        forms: get().forms.map(form => form.form_id === id ? data : form),
-        currentForm: get().currentForm?.form_id === id ? data : get().currentForm,
+        forms: get().forms.map(form => form.form_id === id ? updatedForm : form),
         isLoading: false 
       })
+      
+      // If the current form is the one being published, refresh it with blocks
+      if (get().currentForm?.form_id === id) {
+        const completeForm = await getFormWithBlocks(id)
+        set({ currentForm: completeForm })
+      }
       
       return true
     } catch (error: any) {
