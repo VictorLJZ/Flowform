@@ -1,16 +1,11 @@
 import { create } from 'zustand'
-import { createClient } from '@/lib/supabase/client'
+import { User, AuthState as BaseAuthState } from '@/types/auth-types'
+import { login as loginService } from '@/services/auth/login'
+import { signUp as signUpService } from '@/services/auth/signUp'
+import { logout as logoutService } from '@/services/auth/logout'
+import { resetPassword as resetPasswordService } from '@/services/auth/resetPassword'
 
-type User = {
-  id: string
-  email: string
-}
-
-type AuthState = {
-  user: User | null
-  isLoading: boolean
-  error: string | null
-  
+type AuthState = BaseAuthState & {
   // Actions
   login: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
@@ -25,61 +20,32 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
   
   login: async (email, password) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      
-      if (error) throw error
-      
-      set({ 
-        user: data.user ? {
-          id: data.user.id,
-          email: data.user.email || '',
-        } : null,
-        isLoading: false
-      })
+      const user = await loginService(email, password)
+      set({ user, isLoading: false })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
     }
   },
   
   signUp: async (email, password) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-      
-      if (error) throw error
-      
-      set({ 
-        user: data.user ? {
-          id: data.user.id,
-          email: data.user.email || '',
-        } : null,
-        isLoading: false
-      })
+      const user = await signUpService(email, password)
+      set({ user, isLoading: false })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
     }
   },
   
   logout: async () => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      
+      await logoutService()
       set({ user: null, isLoading: false })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })
@@ -87,13 +53,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   
   resetPassword: async (email) => {
-    const supabase = createClient()
     set({ isLoading: true, error: null })
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
-      if (error) throw error
-      
+      await resetPasswordService(email)
       set({ isLoading: false })
     } catch (error: any) {
       set({ error: error.message, isLoading: false })

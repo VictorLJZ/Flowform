@@ -133,6 +133,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: ""
   };
 
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>

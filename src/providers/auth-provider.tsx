@@ -1,10 +1,12 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"
+import { Session, AuthChangeEvent } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useAuthStore } from "@/stores/authStore"
+import { User } from "@/types/auth-types"
 
 type AuthContextType = {
   user: User | null
@@ -27,8 +29,10 @@ export function AuthProvider({
   children: React.ReactNode
   initialSession: Session | null
 }) {
-  // Initialize state with null values and verify with getUser below
-  const [user, setUser] = useState<User | null>(null)
+  // Use the authStore instead of local state
+  const { user, login, signUp, logout, setUser, error, isLoading: authLoading } = useAuthStore()
+  
+  // Maintain session state for Supabase API calls
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
@@ -45,7 +49,16 @@ export function AuthProvider({
         if (userData?.user) {
           // Only if we have a verified user, get a verified session
           const { data } = await supabase.auth.getSession()
-          setUser(userData.user)
+          
+
+          // Update auth store with user data
+          setUser({
+            id: userData.user.id,
+            email: userData.user.email || '',
+            user_metadata: userData.user.user_metadata || {},
+            app_metadata: userData.user.app_metadata || {}
+          })
+          
           setSession(data.session)
         } else {
           setUser(null)
@@ -71,7 +84,14 @@ export function AuthProvider({
       
       // Only set the authenticated user if verified by the server
       if (userData?.user) {
-        setUser(userData.user)
+        // Update auth store with user data
+        setUser({
+          id: userData.user.id,
+          email: userData.user.email || '',
+          user_metadata: userData.user.user_metadata || {},
+          app_metadata: userData.user.app_metadata || {}
+        })
+        
         // Get a verified session
         const { data } = await supabase.auth.getSession()
         setSession(data.session)
@@ -91,7 +111,7 @@ export function AuthProvider({
   }, [supabase, router])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    await logout()
     router.push('/')
   }
 
@@ -119,7 +139,12 @@ export function AuthProvider({
   }, [user])
   
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading: isLoading || authLoading, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   )

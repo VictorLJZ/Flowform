@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
+import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
 import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -356,31 +357,16 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     set({ isLoading: true })
     
     try {
-      const supabase = createClient()
+      // Use the getFormWithBlocks service to get the form and its blocks
+      const completeForm = await getFormWithBlocks(formId)
       
-      // Fetch the form data
-      const { data: formData, error: formError } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('form_id', formId)
-        .single()
-      
-      if (formError) {
-        console.error('Error fetching form:', formError)
-        throw formError
+      if (!completeForm) {
+        console.error('Form not found')
+        throw new Error('Form not found')
       }
       
-      // Fetch the form blocks
-      const { data: blocksData, error: blocksError } = await supabase
-        .from('form_blocks')
-        .select('*')
-        .eq('form_id', formId)
-        .order('order_index', { ascending: true })
-      
-      if (blocksError) {
-        console.error('Error fetching blocks:', blocksError)
-        throw blocksError
-      }
+      const formData = completeForm
+      const blocksData = completeForm.blocks
       
       console.log('==== DEBUG: FormBuilder loadForm - Block Mapping ====');
       
@@ -429,7 +415,17 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           workspace_id: formData.workspace_id,
           created_by: formData.created_by,
           status: formData.status || 'draft',
-          settings: formData.settings || defaultFormData.settings
+          settings: formData.settings ? {
+            showProgressBar: formData.settings.showProgressBar ?? defaultFormData.settings.showProgressBar,
+            requireSignIn: formData.settings.requireSignIn ?? defaultFormData.settings.requireSignIn,
+            theme: formData.settings.theme ?? defaultFormData.settings.theme,
+            primaryColor: formData.settings.primaryColor ?? defaultFormData.settings.primaryColor,
+            fontFamily: formData.settings.fontFamily ?? defaultFormData.settings.fontFamily,
+            estimatedTime: formData.settings.estimatedTime,
+            estimatedTimeUnit: formData.settings.estimatedTimeUnit,
+            redirectUrl: formData.settings.redirectUrl,
+            customCss: formData.settings.customCss
+          } : defaultFormData.settings
         },
         blocks: frontendBlocks,
         currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null
