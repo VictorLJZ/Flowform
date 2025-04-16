@@ -27,7 +27,18 @@ interface NumberBlockProps {
   }
   value?: number | string
   onChange?: (value: number | string) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      placeholder?: string,
+      min?: number,
+      max?: number,
+      step?: number,
+      presentation?: BlockPresentation,
+      layout?: SlideLayout
+    }
+  }>) => void
 }
 
 export function NumberBlock({
