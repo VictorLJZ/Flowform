@@ -8,20 +8,20 @@ type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 let connectionState: ConnectionState = 'disconnected';
 
 // --- Simple Event Emitter ---
-type Listener<T = any> = (...args: T[]) => void;
+type Listener<T = unknown> = (...args: T[]) => void;
 const emitter = {
   events: {} as Record<string, Listener[] | undefined>,
-  on<T = any>(event: string, listener: Listener<T>) {
+  on<T = unknown>(event: string, listener: Listener<T>) {
     if (!this.events[event]) {
       this.events[event] = [];
     }
     this.events[event]!.push(listener as Listener);
   },
-  off<T = any>(event: string, listener: Listener<T>) {
+  off<T = unknown>(event: string, listener: Listener<T>) {
     if (!this.events[event]) return;
     this.events[event] = this.events[event]!.filter(l => l !== listener);
   },
-  emit<T = any>(event: string, ...args: T[]) {
+  emit<T = unknown>(event: string, ...args: T[]) {
     if (!this.events[event]) return;
     // Call listeners on a copy in case one listener modifies the array
     [...this.events[event]!].forEach(listener => listener(...args));
@@ -75,7 +75,7 @@ export async function reconnectClient(): Promise<void> {
 
     networkLog('[WS] 🔄 [SUPABASE_RECONNECT] Calling getOrCreateClient() to create fresh client');
     // Get or create the client instance (still synchronous)
-    const client = getOrCreateClient(); 
+    getOrCreateClient(); 
     
     networkLog('[WS] 🔄 [SUPABASE_RECONNECT] Waiting for WebSocket connection...');
     // Wait for the WebSocket connection to be established
