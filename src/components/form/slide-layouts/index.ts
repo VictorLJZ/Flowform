@@ -1,0 +1,6 @@
+export { StandardSlideLayout } from './StandardSlideLayout'
+export { MediaLeftLayout } from './MediaLeftLayout'
+export { MediaRightLayout } from './MediaRightLayout'
+export { MediaBackgroundLayout } from './MediaBackgroundLayout'
+export { MediaLeftSplitLayout } from './MediaLeftSplitLayout'
+export { MediaRightSplitLayout } from './MediaRightSplitLayout'

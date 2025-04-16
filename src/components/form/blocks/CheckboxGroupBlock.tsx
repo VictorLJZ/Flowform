@@ -5,8 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { FormBlockWrapper } from "@/components/form/FormBlockWrapper"
+import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
+import { SlideLayout } from "@/types/layout-types"
 
 interface Option {
   id: string
@@ -22,9 +23,11 @@ interface CheckboxGroupBlockProps {
   totalBlocks?: number
   settings: {
     options?: Option[]
-    minSelections?: number
-    maxSelections?: number
+    allowOther?: boolean
+    minSelected?: number
+    maxSelected?: number
     presentation?: BlockPresentation
+    layout?: SlideLayout
   }
   value?: string[]
   onChange?: (value: string[]) => void
@@ -49,11 +52,14 @@ export function CheckboxGroupBlock({
   const handleCheckboxChange = (checked: boolean, optionId: string) => {
     if (!onChange) return;
     
+    const selectedCount = value.filter(id => id === optionId).length + (checked ? 1 : -1);
+    
     if (checked) {
       const newValue = [...value, optionId];
       
       // If max selections is set, enforce it
-      if (settings?.maxSelections && newValue.length > settings.maxSelections) {
+      const maxError = typeof settings?.maxSelected === 'number' && selectedCount > settings.maxSelected;
+      if (maxError) {
         return; // Don't update if it exceeds max selections
       }
       
@@ -85,32 +91,35 @@ export function CheckboxGroupBlock({
         </div>
       ))}
       
-      {settings?.minSelections && settings.minSelections > 0 && (
-        <div className="text-xs text-gray-500 mt-2">
-          Select at least {settings.minSelections} {settings.minSelections === 1 ? 'option' : 'options'}
+      {settings?.minSelected !== undefined && value.length < settings.minSelected && (
+        <div className="text-red-500 text-sm mt-1">
+          Please select at least {settings.minSelected} {settings.minSelected === 1 ? 'option' : 'options'}
         </div>
       )}
       
-      {settings?.maxSelections && (
+      {settings?.maxSelected && (
         <div className="text-xs text-gray-500 mt-2">
-          Select up to {settings.maxSelections} {settings.maxSelections === 1 ? 'option' : 'options'}
+          Select up to {settings.maxSelected} {settings.maxSelected === 1 ? 'option' : 'options'}
         </div>
       )}
     </div>
   )
 
   return (
-    <FormBlockWrapper
+    <SlideWrapper
       id={id}
       title={title}
       description={description}
       required={required}
       index={index}
       totalBlocks={totalBlocks}
-      settings={{ presentation: settings.presentation }}
+      settings={{
+        presentation: settings.presentation,
+        layout: settings.layout || { type: 'standard' }
+      }}
       onUpdate={onUpdate}
     >
       {checkboxGroupField}
-    </FormBlockWrapper>
+    </SlideWrapper>
   );
 }

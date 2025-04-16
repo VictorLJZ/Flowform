@@ -232,8 +232,8 @@ export default function FormBuilderSidebar() {
 
   return (
     <div className={cn(
-      "border-r bg-background transition-all duration-300 ease-in-out flex flex-col h-full",
-      sidebarOpen ? "w-72" : "w-16"
+      "bg-card border-r transition-all duration-200 flex flex-col overflow-hidden",
+      sidebarOpen ? "w-72" : "w-[56px]"
     )}>
       {/* Sidebar header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b">

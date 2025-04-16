@@ -4,8 +4,9 @@ import React, { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { FormBlockWrapper } from "@/components/form/FormBlockWrapper"
+import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
+import { SlideLayout } from "@/types/layout-types"
 
 interface TextAreaBlockProps {
   id: string
@@ -19,6 +20,7 @@ interface TextAreaBlockProps {
     maxRows?: number
     maxLength?: number
     presentation?: BlockPresentation
+    layout?: SlideLayout
   }
   value?: string
   onChange?: (value: string) => void
@@ -75,17 +77,20 @@ export function TextAreaBlock({
   )
 
   return (
-    <FormBlockWrapper
+    <SlideWrapper
       id={id}
       title={title}
       description={description}
       required={required}
       index={index}
       totalBlocks={totalBlocks}
-      settings={{ presentation: settings.presentation }}
+      settings={{
+        presentation: settings.presentation,
+        layout: settings.layout || { type: 'standard' }
+      }}
       onUpdate={onUpdate}
     >
       {textareaField}
-    </FormBlockWrapper>
+    </SlideWrapper>
   );
 }

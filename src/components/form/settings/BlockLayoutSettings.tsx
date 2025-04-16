@@ -8,279 +8,178 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { BlockLayout, LayoutType } from "@/types/layout-types"
+import { SlideLayout, SlideLayoutType } from "@/types/layout-types"
+import {
+  StandardLayoutIcon,
+  MediaLeftLayoutIcon,
+  MediaRightLayoutIcon,
+  MediaBackgroundLayoutIcon,
+  MediaLeftSplitLayoutIcon,
+  MediaRightSplitLayoutIcon
+} from "@/components/ui/slide-layout-icons"
+import { cn } from "@/lib/utils"
 
 interface BlockLayoutSettingsProps {
   blockId: string
-  currentLayout?: BlockLayout
+  currentLayout?: SlideLayout
+}
+
+interface LayoutOptionProps {
+  type: SlideLayoutType
+  label: string
+  icon: React.FC<{ className?: string }>
+  isSelected: boolean
+  onSelect: (type: SlideLayoutType) => void
+}
+
+// Individual layout option with icon
+function LayoutOption({ type, label, icon: Icon, isSelected, onSelect }: LayoutOptionProps) {
+  return (
+    <div 
+      className={cn(
+        "flex flex-col items-center p-2 cursor-pointer rounded-md transition-colors",
+        isSelected 
+          ? "bg-primary/10 border border-primary/30" 
+          : "border border-transparent hover:bg-muted"
+      )}
+      onClick={() => onSelect(type)}
+      aria-selected={isSelected}
+      role="option"
+    >
+      <Icon className={cn(
+        "w-7 h-7 mb-1",
+        isSelected ? "text-primary" : "text-muted-foreground"
+      )} />
+      <span className={cn(
+        "text-xs text-center",
+        isSelected ? "font-medium text-primary" : "text-muted-foreground"
+      )}>
+        {label}
+      </span>
+    </div>
+  )
 }
 
 export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSettingsProps) {
   const { updateBlockLayout } = useFormBuilderStore()
   
   // Default to standard layout if none is set
-  const layoutType: LayoutType = currentLayout?.type || 'standard'
+  const layoutType: SlideLayoutType = currentLayout?.type || 'standard'
   
   // Handle layout type change
-  const handleLayoutTypeChange = (type: LayoutType) => {
+  const handleLayoutTypeChange = (type: SlideLayoutType) => {
     updateBlockLayout(blockId, { type })
   }
   
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="layout-type">Layout Type</Label>
-        <Select
-          value={layoutType}
-          onValueChange={(value) => handleLayoutTypeChange(value as LayoutType)}
-        >
-          <SelectTrigger id="layout-type">
-            <SelectValue placeholder="Select a layout" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="standard">Standard Layout</SelectItem>
-            <SelectItem value="grid">Grid Layout</SelectItem>
-            <SelectItem value="card">Card Layout</SelectItem>
-            <SelectItem value="section">Section Layout</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Layout specific settings */}
-      {layoutType === 'grid' && (
-        <div className="mt-6">
-          <GridLayoutSettings 
-            blockId={blockId} 
-            currentLayout={currentLayout} 
-          />
-        </div>
-      )}
-      
-      {layoutType === 'card' && (
-        <div className="mt-6">
-          <CardLayoutSettings 
-            blockId={blockId} 
-            currentLayout={currentLayout} 
-          />
-        </div>
-      )}
-      
-      {layoutType === 'section' && (
-        <div className="mt-6">
-          <SectionLayoutSettings 
-            blockId={blockId} 
-            currentLayout={currentLayout} 
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface GridLayoutSettingsProps {
-  blockId: string
-  currentLayout?: BlockLayout
-}
-
-export function GridLayoutSettings({ blockId, currentLayout }: GridLayoutSettingsProps) {
-  const { updateBlockLayout } = useFormBuilderStore()
-  
-  // Extract grid-specific settings
-  const gridLayout = currentLayout?.type === 'grid' ? currentLayout : undefined
-  const columns = gridLayout?.columns || 2
-  const gapX = gridLayout?.gapX || 'medium'
-  const gapY = gridLayout?.gapY || 'medium'
+  // Layout options with their icons
+  const layoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
+    { type: 'standard', label: 'Standard', icon: StandardLayoutIcon },
+    { type: 'media-right', label: 'Media Right', icon: MediaRightLayoutIcon },
+    { type: 'media-left', label: 'Media Left', icon: MediaLeftLayoutIcon },
+    { type: 'media-right-split', label: 'Split Right', icon: MediaRightSplitLayoutIcon },
+    { type: 'media-left-split', label: 'Split Left', icon: MediaLeftSplitLayoutIcon },
+    { type: 'media-background', label: 'Background', icon: MediaBackgroundLayoutIcon },
+  ]
   
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Columns</Label>
-        <RadioGroup 
-          value={columns.toString()} 
-          onValueChange={(value) => updateBlockLayout(blockId, { columns: parseInt(value) as 1 | 2 | 3 | 4 })}
-          className="flex space-x-2"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="1" id="columns-1" />
-            <Label htmlFor="columns-1">1</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="2" id="columns-2" />
-            <Label htmlFor="columns-2">2</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="3" id="columns-3" />
-            <Label htmlFor="columns-3">3</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="4" id="columns-4" />
-            <Label htmlFor="columns-4">4</Label>
-          </div>
-        </RadioGroup>
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Label>Slide Layout</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {layoutOptions.map((option) => (
+            <LayoutOption
+              key={option.type}
+              type={option.type}
+              label={option.label}
+              icon={option.icon}
+              isSelected={layoutType === option.type}
+              onSelect={handleLayoutTypeChange}
+            />
+          ))}
+        </div>
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="gap-x">Horizontal Spacing</Label>
-        <Select
-          value={gapX}
-          onValueChange={(value) => updateBlockLayout(blockId, { gapX: value as 'none' | 'small' | 'medium' | 'large' })}
-        >
-          <SelectTrigger id="gap-x">
-            <SelectValue placeholder="Select spacing" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="small">Small</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="large">Large</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="gap-y">Vertical Spacing</Label>
-        <Select
-          value={gapY}
-          onValueChange={(value) => updateBlockLayout(blockId, { gapY: value as 'none' | 'small' | 'medium' | 'large' })}
-        >
-          <SelectTrigger id="gap-y">
-            <SelectValue placeholder="Select spacing" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="small">Small</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="large">Large</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  )
-}
-
-interface CardLayoutSettingsProps {
-  blockId: string
-  currentLayout?: BlockLayout
-}
-
-export function CardLayoutSettings({ blockId, currentLayout }: CardLayoutSettingsProps) {
-  const { updateBlockLayout } = useFormBuilderStore()
-  
-  // Extract card-specific settings
-  const cardLayout = currentLayout?.type === 'card' ? currentLayout : undefined
-  const shadow = cardLayout?.shadow || 'sm'
-  const border = cardLayout?.border !== false
-  const padding = cardLayout?.padding || 'md'
-  const rounded = cardLayout?.rounded || 'md'
-  
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="shadow">Shadow</Label>
-        <Select
-          value={shadow}
-          onValueChange={(value) => updateBlockLayout(blockId, { shadow: value as 'none' | 'sm' | 'md' | 'lg' })}
-        >
-          <SelectTrigger id="shadow">
-            <SelectValue placeholder="Select shadow" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="sm">Small</SelectItem>
-            <SelectItem value="md">Medium</SelectItem>
-            <SelectItem value="lg">Large</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="flex items-center space-x-2">
-        <Switch
-          checked={border}
-          onCheckedChange={(checked) => updateBlockLayout(blockId, { border: checked })}
-          id="border"
+      {/* Layout specific settings based on selected layout type */}
+      {layoutType === 'media-left' || layoutType === 'media-right' ? (
+        <MediaPositionSettings 
+          blockId={blockId} 
+          currentLayout={currentLayout} 
         />
-        <Label htmlFor="border">Show Border</Label>
-      </div>
+      ) : layoutType === 'media-background' ? (
+        <MediaBackgroundSettings 
+          blockId={blockId} 
+          currentLayout={currentLayout} 
+        />
+      ) : null}
       
-      <div className="space-y-2">
-        <Label htmlFor="padding">Padding</Label>
-        <Select
-          value={padding}
-          onValueChange={(value) => updateBlockLayout(blockId, { padding: value as 'none' | 'sm' | 'md' | 'lg' })}
-        >
-          <SelectTrigger id="padding">
-            <SelectValue placeholder="Select padding" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="sm">Small</SelectItem>
-            <SelectItem value="md">Medium</SelectItem>
-            <SelectItem value="lg">Large</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="rounded">Corner Radius</Label>
-        <Select
-          value={rounded}
-          onValueChange={(value) => updateBlockLayout(blockId, { rounded: value as 'none' | 'sm' | 'md' | 'lg' })}
-        >
-          <SelectTrigger id="rounded">
-            <SelectValue placeholder="Select radius" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="sm">Small</SelectItem>
-            <SelectItem value="md">Medium</SelectItem>
-            <SelectItem value="lg">Large</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Common settings for all layouts with media */}
+      {layoutType !== 'standard' && (
+        <MediaSettings
+          blockId={blockId}
+          currentLayout={currentLayout}
+        />
+      )}
     </div>
   )
 }
 
-interface SectionLayoutSettingsProps {
+interface MediaPositionSettingsProps {
   blockId: string
-  currentLayout?: BlockLayout
+  currentLayout?: SlideLayout
 }
 
-export function SectionLayoutSettings({ blockId, currentLayout }: SectionLayoutSettingsProps) {
+// Settings for media-left and media-right layouts
+export function MediaPositionSettings({ blockId, currentLayout }: MediaPositionSettingsProps) {
   const { updateBlockLayout } = useFormBuilderStore()
   
-  // Extract section-specific settings
-  const sectionLayout = currentLayout?.type === 'section' ? currentLayout : undefined
-  const titleSize = sectionLayout?.titleSize || 'medium'
-  const separator = sectionLayout?.separator !== false
-  const spacing = sectionLayout?.spacing || 'normal'
+  // Extract media-specific settings
+  const isMediaLayout = 
+    currentLayout?.type === 'media-left' || 
+    currentLayout?.type === 'media-right';
+    
+  if (!isMediaLayout) return null;
+  
+  // Get settings or use defaults
+  const mediaProportion = (currentLayout as any)?.mediaProportion || 0.4;
+  const textAlignment = (currentLayout as any)?.textAlignment || 'left';
+  const spacing = (currentLayout as any)?.spacing || 'normal';
   
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="title-size">Title Size</Label>
+        <Label htmlFor="media-proportion">Media Size</Label>
         <Select
-          value={titleSize}
-          onValueChange={(value) => updateBlockLayout(blockId, { titleSize: value as 'small' | 'medium' | 'large' })}
+          value={mediaProportion.toString()}
+          onValueChange={(value) => updateBlockLayout(blockId, { mediaProportion: parseFloat(value) })}
         >
-          <SelectTrigger id="title-size">
+          <SelectTrigger id="media-proportion">
             <SelectValue placeholder="Select size" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="small">Small</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="large">Large</SelectItem>
+            <SelectItem value="0.3">Small (30%)</SelectItem>
+            <SelectItem value="0.4">Medium (40%)</SelectItem>
+            <SelectItem value="0.5">Half (50%)</SelectItem>
+            <SelectItem value="0.6">Large (60%)</SelectItem>
+            <SelectItem value="0.7">Extra Large (70%)</SelectItem>
           </SelectContent>
         </Select>
       </div>
       
-      <div className="flex items-center space-x-2">
-        <Switch
-          checked={separator}
-          onCheckedChange={(checked) => updateBlockLayout(blockId, { separator: checked })}
-          id="separator"
-        />
-        <Label htmlFor="separator">Show Separator</Label>
+      <div className="space-y-2">
+        <Label htmlFor="text-alignment">Text Alignment</Label>
+        <Select
+          value={textAlignment}
+          onValueChange={(value) => updateBlockLayout(blockId, { textAlignment: value as 'left' | 'center' | 'right' })}
+        >
+          <SelectTrigger id="text-alignment">
+            <SelectValue placeholder="Select alignment" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left">Left</SelectItem>
+            <SelectItem value="center">Center</SelectItem>
+            <SelectItem value="right">Right</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="space-y-2">
@@ -298,6 +197,185 @@ export function SectionLayoutSettings({ blockId, currentLayout }: SectionLayoutS
             <SelectItem value="spacious">Spacious</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+    </div>
+  )
+}
+
+interface MediaBackgroundSettingsProps {
+  blockId: string
+  currentLayout?: SlideLayout
+}
+
+// Settings for media-background layout
+export function MediaBackgroundSettings({ blockId, currentLayout }: MediaBackgroundSettingsProps) {
+  const { updateBlockLayout } = useFormBuilderStore()
+  
+  // Extract media-background specific settings
+  const isMediaBgLayout = currentLayout?.type === 'media-background';
+  if (!isMediaBgLayout) return null;
+  
+  // Get settings or use defaults
+  const overlayColor = (currentLayout as any)?.overlayColor || '#000000';
+  const overlayOpacity = (currentLayout as any)?.overlayOpacity || 50;
+  const contentPosition = (currentLayout as any)?.contentPosition || 'center';
+  const textAlignment = (currentLayout as any)?.textAlignment || 'center';
+  const textColor = (currentLayout as any)?.textColor || 'light';
+  
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="overlay-color">Overlay Color</Label>
+        <div className="flex gap-2">
+          <input 
+            type="color" 
+            value={overlayColor} 
+            onChange={(e) => updateBlockLayout(blockId, { overlayColor: e.target.value })}
+            className="h-9 w-9 rounded-md border"
+          />
+          <input 
+            type="text" 
+            value={overlayColor} 
+            onChange={(e) => updateBlockLayout(blockId, { overlayColor: e.target.value })}
+            className="flex-1 h-9 px-3 rounded-md border"
+          />
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="overlay-opacity">
+          Overlay Opacity: {overlayOpacity}%
+        </Label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={overlayOpacity}
+          onChange={(e) => updateBlockLayout(blockId, { overlayOpacity: parseInt(e.target.value) })}
+          className="w-full"
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="content-position">Content Position</Label>
+        <Select
+          value={contentPosition}
+          onValueChange={(value) => updateBlockLayout(blockId, { contentPosition: value as 'top' | 'center' | 'bottom' })}
+        >
+          <SelectTrigger id="content-position">
+            <SelectValue placeholder="Select position" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="top">Top</SelectItem>
+            <SelectItem value="center">Center</SelectItem>
+            <SelectItem value="bottom">Bottom</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="text-alignment">Text Alignment</Label>
+        <Select
+          value={textAlignment}
+          onValueChange={(value) => updateBlockLayout(blockId, { textAlignment: value as 'left' | 'center' | 'right' })}
+        >
+          <SelectTrigger id="text-alignment">
+            <SelectValue placeholder="Select alignment" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left">Left</SelectItem>
+            <SelectItem value="center">Center</SelectItem>
+            <SelectItem value="right">Right</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="text-color">Text Color</Label>
+        <Select
+          value={textColor}
+          onValueChange={(value) => updateBlockLayout(blockId, { textColor: value as 'light' | 'dark' })}
+        >
+          <SelectTrigger id="text-color">
+            <SelectValue placeholder="Select color scheme" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="light">Light (for dark backgrounds)</SelectItem>
+            <SelectItem value="dark">Dark (for light backgrounds)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  )
+}
+
+interface MediaSettingsProps {
+  blockId: string
+  currentLayout?: SlideLayout
+}
+
+// Shared media settings for all media layouts
+export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
+  const { updateBlockLayout } = useFormBuilderStore()
+  
+  // Check if this is a media layout
+  const isMediaLayout = 
+    currentLayout?.type === 'media-left' || 
+    currentLayout?.type === 'media-right' ||
+    currentLayout?.type === 'media-background' ||
+    currentLayout?.type === 'media-left-split' ||
+    currentLayout?.type === 'media-right-split';
+  
+  if (!isMediaLayout) return null;
+  
+  // Get settings or use defaults
+  const mediaId = (currentLayout as any)?.mediaId || '';
+  const sizingMode = (currentLayout as any)?.sizingMode || 'cover';
+  const opacity = (currentLayout as any)?.opacity || 100;
+  
+  return (
+    <div className="space-y-4">
+      <Separator />
+      <div className="space-y-2">
+        <Label>Media Settings</Label>
+        
+        {/* We'll add an actual media selector later */}
+        <div className="p-4 border border-dashed rounded-md bg-muted/50 text-center">
+          <span className="text-sm text-muted-foreground">
+            {mediaId ? 'Media: ' + mediaId : 'Click to add media'}
+          </span>
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="sizing-mode">Sizing Mode</Label>
+        <Select
+          value={sizingMode}
+          onValueChange={(value) => updateBlockLayout(blockId, { sizingMode: value as 'contain' | 'cover' | 'fill' })}
+        >
+          <SelectTrigger id="sizing-mode">
+            <SelectValue placeholder="Select sizing mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="contain">Contain</SelectItem>
+            <SelectItem value="cover">Cover</SelectItem>
+            <SelectItem value="fill">Fill</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="media-opacity">
+          Media Opacity: {opacity}%
+        </Label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={opacity}
+          onChange={(e) => updateBlockLayout(blockId, { opacity: parseInt(e.target.value) })}
+          className="w-full"
+        />
       </div>
     </div>
   )

@@ -9,7 +9,7 @@ import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
-import { BlockLayout, LayoutType, StandardLayout, getDefaultLayoutByType } from '@/types/layout-types'
+import { SlideLayout, SlideLayoutType, getDefaultLayoutByType } from '@/types/layout-types'
 
 interface FormData {
   form_id: string
@@ -59,7 +59,7 @@ interface FormBuilderState {
   addBlock: (blockTypeId: string) => void
   updateBlock: (blockId: string, updates: Partial<FormBlock>) => void
   updateBlockSettings: (blockId: string, settings: Record<string, any>) => void
-  updateBlockLayout: (blockId: string, layoutConfig: Partial<BlockLayout>) => void
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void
   removeBlock: (blockId: string) => void
   reorderBlocks: (startIndex: number, endIndex: number) => void
   setCurrentBlockId: (blockId: string | null) => void
@@ -141,17 +141,17 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       blocks: state.blocks.map(block => {
         if (block.id === blockId) {
           // If layout type is changing, get the default settings for the new layout type
-          let updatedLayout: BlockLayout;
+          let updatedLayout: SlideLayout;
           
           if (layoutConfig.type && layoutConfig.type !== block.settings?.layout?.type) {
             // Start with defaults for the new layout type
             updatedLayout = getDefaultLayoutByType(layoutConfig.type);
             // Then apply any specific overrides from layoutConfig
-            updatedLayout = { ...updatedLayout, ...layoutConfig } as BlockLayout;
+            updatedLayout = { ...updatedLayout, ...layoutConfig } as SlideLayout;
           } else {
             // If we already have a layout or are just updating properties
-            const currentLayout = block.settings?.layout || { type: 'standard' } as StandardLayout;
-            updatedLayout = { ...currentLayout, ...layoutConfig } as BlockLayout;
+            const currentLayout = block.settings?.layout || { type: 'standard' };
+            updatedLayout = { ...currentLayout, ...layoutConfig } as SlideLayout;
           }
           
           return { 

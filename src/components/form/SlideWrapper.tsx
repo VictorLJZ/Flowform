@@ -1,0 +1,230 @@
+"use client"
+
+import React, { useRef, useEffect, ReactNode } from "react"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { useAutosave } from "@/services/form/autosaveForm"
+import { BlockPresentation } from "@/types/theme-types"
+import { SlideLayout, SlideLayoutType, getDefaultLayoutByType } from "@/types/layout-types"
+import { SlideAspectRatioContainer } from "./SlideAspectRatioContainer"
+import { StandardSlideLayout } from "./slide-layouts/StandardSlideLayout"
+import { MediaLeftLayout } from "./slide-layouts/MediaLeftLayout"
+import { MediaRightLayout } from "./slide-layouts/MediaRightLayout"
+import { MediaBackgroundLayout } from "./slide-layouts/MediaBackgroundLayout"
+import { MediaLeftSplitLayout } from "./slide-layouts/MediaLeftSplitLayout"
+import { MediaRightSplitLayout } from "./slide-layouts/MediaRightSplitLayout"
+
+interface SlideWrapperProps {
+  id: string
+  title: string
+  description?: string
+  required: boolean
+  index?: number
+  totalBlocks?: number
+  settings?: {
+    layout?: SlideLayout
+    presentation?: BlockPresentation
+  }
+  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  children: ReactNode
+  className?: string
+}
+
+export function SlideWrapper({
+  id,
+  title,
+  description,
+  required,
+  index,
+  totalBlocks,
+  settings,
+  onUpdate,
+  children,
+  className
+}: SlideWrapperProps) {
+  const titleRef = useRef<HTMLDivElement>(null)
+  const { mode } = useFormBuilderStore()
+  const autosave = useAutosave()
+  
+  // Get block presentation from settings
+  const presentation = settings?.presentation || { layout: 'left', spacing: 'normal', titleSize: 'medium' }
+  
+  // Get slide layout from settings or use standard layout as default
+  const slideLayout = settings?.layout || { type: 'standard' }
+  
+  // Determine if we're in builder mode
+  const isBuilder = mode === 'builder'
+  
+  // Update title ref when title prop changes
+  useEffect(() => {
+    if (titleRef.current && isBuilder && titleRef.current.textContent !== title) {
+      titleRef.current.textContent = title || ''
+    }
+  }, [title, isBuilder])
+  
+  // Handle title update
+  const handleTitleUpdate = (e: React.FormEvent<HTMLDivElement>) => {
+    if (isBuilder && onUpdate) {
+      const target = e.target as HTMLDivElement
+      onUpdate({ title: target.textContent || '' })
+    }
+  }
+  
+  // Handle description update
+  const handleDescriptionUpdate = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (isBuilder && onUpdate) {
+      onUpdate({ description: e.target.value })
+    }
+  }
+  
+  // Handle autosave on blur
+  const handleBlur = () => {
+    if (isBuilder) {
+      autosave.scheduleAutosave()
+    }
+  }
+  
+  // Prepare the content of the slide
+  const slideContent = (
+    <>
+      {/* Slide counter with arrow - only in builder mode */}
+      {isBuilder && typeof index === 'number' && typeof totalBlocks === 'number' && (
+        <div className="flex items-center mb-5">
+          <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+              {index + 1}
+            </span>
+            <span className="text-muted-foreground">of {totalBlocks}</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Title */}
+      <div className="mb-3">
+        <div className="flex items-baseline">
+          {isBuilder ? (
+            <div 
+              ref={titleRef}
+              contentEditable
+              suppressContentEditableWarning
+              className="font-semibold outline-none focus-visible:ring-0 focus-visible:ring-offset-0 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none"
+              style={{ fontSize: '1.75rem', lineHeight: '2.25rem', minWidth: '1rem' }}
+              data-placeholder="Question title"
+              onInput={handleTitleUpdate}
+              onBlur={handleBlur}
+            />
+          ) : (
+            <div className={cn(
+              "font-medium",
+              presentation.titleSize === 'small' && "text-base",
+              presentation.titleSize === 'medium' && "text-xl",
+              presentation.titleSize === 'large' && "text-2xl"
+            )}>
+              {title}
+            </div>
+          )}
+          
+          {required && (
+            <span className="text-primary font-medium ml-1" style={{ fontSize: isBuilder ? '1.5rem' : '1rem' }}>*</span>
+          )}
+        </div>
+        
+        {/* Description */}
+        {isBuilder ? (
+          <Textarea
+            value={description || ''}
+            onChange={handleDescriptionUpdate}
+            onBlur={handleBlur}
+            className="border-none resize-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            placeholder="Add a description (optional)"
+            rows={2}
+          />
+        ) : description ? (
+          <div className="text-sm text-gray-500 mt-1">{description}</div>
+        ) : null}
+      </div>
+      
+      {/* Block content */}
+      <div className={cn("mt-4", className)}>
+        {children}
+      </div>
+    </>
+  )
+  
+  // Render the appropriate layout based on the slide layout type
+  // Wrap all slide layouts in the aspect ratio container when in builder mode
+  const wrappedContent = (layoutComponent: React.ReactNode) => (
+    <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
+      {layoutComponent}
+    </SlideAspectRatioContainer>
+  );
+
+  switch (slideLayout.type) {
+    case 'media-left':
+      return wrappedContent(
+        <MediaLeftLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </MediaLeftLayout>
+      )
+    
+    case 'media-right':
+      return wrappedContent(
+        <MediaRightLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </MediaRightLayout>
+      )
+    
+    case 'media-background':
+      return wrappedContent(
+        <MediaBackgroundLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </MediaBackgroundLayout>
+      )
+    
+    case 'media-left-split':
+      return wrappedContent(
+        <MediaLeftSplitLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </MediaLeftSplitLayout>
+      )
+    
+    case 'media-right-split':
+      return wrappedContent(
+        <MediaRightSplitLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </MediaRightSplitLayout>
+      )
+    
+    default:
+      return wrappedContent(
+        <StandardSlideLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+        >
+          {slideContent}
+        </StandardSlideLayout>
+      )
+  }
+}

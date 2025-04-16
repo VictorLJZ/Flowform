@@ -1,7 +1,11 @@
 // Export form components for easy imports
 export * from './dynamic-block-response'
+export * from './SlideWrapper'
 
-// Export all layout components
+// Export all slide layout components
+export * from './slide-layouts'
+
+// Legacy layout components - will be deprecated
 export * from './layouts'
 
 // Export all block components

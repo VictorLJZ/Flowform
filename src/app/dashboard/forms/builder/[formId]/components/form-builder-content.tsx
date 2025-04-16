@@ -23,67 +23,7 @@ import { EmailBlock } from "@/components/form/blocks/EmailBlock"
 import { NumberBlock } from "@/components/form/blocks/NumberBlock"
 import { DateBlock } from "@/components/form/blocks/DateBlock"
 
-// Import layout components
-import { GridLayout, CardLayout, SectionLayout } from "@/components/form/layouts"
 
-// Wrapper function to apply layout to block content
-function withLayout(blockId: string, blockContent: React.ReactNode, layout?: any) {
-  // If no layout is specified, return content as is
-  if (!layout || layout.type === 'standard') {
-    return blockContent;
-  }
-
-  // Apply the appropriate layout wrapper based on type
-  switch (layout.type) {
-    case 'grid':
-      return (
-        <GridLayout
-          id={`${blockId}-layout`}
-          columns={layout.columns || 2}
-          gapX={layout.gapX || 'medium'}
-          gapY={layout.gapY || 'medium'}
-        >
-          {blockContent}
-        </GridLayout>
-      );
-    
-    case 'card':
-      return (
-        <CardLayout
-          id={`${blockId}-layout`}
-          title={layout.title}
-          description={layout.description}
-          settings={{
-            shadow: layout.shadow || 'sm',
-            border: layout.border !== false,
-            padding: layout.padding || 'md',
-            rounded: layout.rounded || 'md'
-          }}
-        >
-          {blockContent}
-        </CardLayout>
-      );
-    
-    case 'section':
-      return (
-        <SectionLayout
-          id={`${blockId}-layout`}
-          title={layout.title || 'Section'}
-          description={layout.description}
-          settings={{
-            titleSize: layout.titleSize || 'medium',
-            separator: layout.separator !== false,
-            spacing: layout.spacing || 'normal'
-          }}
-        >
-          {blockContent}
-        </SectionLayout>
-      );
-    
-    default:
-      return blockContent;
-  }
-}
 
 export default function FormBuilderContent() {
   const { 
@@ -146,7 +86,7 @@ export default function FormBuilderContent() {
   const currentIndex = blocks.findIndex(block => block.id === currentBlockId)
   
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col h-full">
+    <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
       {/* Preview header - fixed at top */}
       <div className="p-2 flex justify-between items-center flex-shrink-0 sticky top-0 z-10 bg-slate-50">
         <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center space-x-1 shadow-sm">
@@ -190,8 +130,7 @@ export default function FormBuilderContent() {
             {/* Block specific components */}
             <div className="absolute top-0 left-0 w-full h-full">
               {/* Render different content based on block type */}
-              {currentBlock.blockTypeId === 'text_short' && withLayout(
-                currentBlock.id,
+              {currentBlock.blockTypeId === 'text_short' && (
                 <TextInputBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -212,12 +151,10 @@ export default function FormBuilderContent() {
                     // Trigger autosave when changes are made
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
                     
-              {currentBlock.blockTypeId === 'text_long' && withLayout(
-                currentBlock.id,
+              {currentBlock.blockTypeId === 'text_long' && (
                 <TextAreaBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -235,12 +172,10 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
                     
-                    {currentBlock.blockTypeId === 'multiple_choice' && withLayout(
-                currentBlock.id,
+                    {currentBlock.blockTypeId === 'multiple_choice' && (
                 <MultipleChoiceBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -258,12 +193,10 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
                     
-                    {currentBlock.blockTypeId === 'checkbox_group' && withLayout(
-                currentBlock.id,
+                    {currentBlock.blockTypeId === 'checkbox_group' && (
                 <CheckboxGroupBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -281,12 +214,10 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
                     
-                    {currentBlock.blockTypeId === 'dropdown' && withLayout(
-                currentBlock.id,
+                    {currentBlock.blockTypeId === 'dropdown' && (
                 <DropdownBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -304,12 +235,10 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
                     
-                    {currentBlock.blockTypeId === 'email' && withLayout(
-                currentBlock.id,
+                    {currentBlock.blockTypeId === 'email' && (
                 <EmailBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -327,12 +256,9 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
+                />
               )}
-                    
-                    {currentBlock.blockTypeId === 'number' && withLayout(
-                currentBlock.id,
+                    {currentBlock.blockTypeId === 'number' && (
                 <NumberBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -350,49 +276,7 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
-                />,
-                currentBlock.settings?.layout
-              )}
-                    
-                    {currentBlock.blockTypeId === 'date' && withLayout(
-                currentBlock.id,
-                <DateBlock
-                  id={currentBlock.id}
-                  title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
-                  index={currentIndex}
-                  totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
-                  onUpdate={(updates) => {
-                    if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
-                    }
-                    if (updates.settings) {
-                      updateBlockSettings(currentBlock.id, updates.settings);
-                    }
-                    autosave.scheduleAutosave();
-                  }}
-                />,
-                currentBlock.settings?.layout
-              )}
-                    
-                    {currentBlock.blockTypeId === 'ai_conversation' && (
-                <div className="border rounded-lg p-4 bg-primary/5 max-w-xl mt-4">
-                  <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                          <MessageSquare size={16} />
-                          <span>AI Conversation</span>
-                    </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          This block will start an AI-powered conversation with the form respondent.
-                        </p>
-                  <div className="bg-background rounded p-3 border text-sm">
-                          <p className="font-medium">Starter Question:</p>
-                          <p className="text-muted-foreground mt-1">
-                            {currentBlock.settings.startingPrompt || "How can I help you today?"}
-                          </p>
-                    </div>
-                  </div>
+                />
               )}
             </div>
           </div>

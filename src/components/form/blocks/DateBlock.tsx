@@ -4,8 +4,9 @@ import React, { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { FormBlockWrapper } from "@/components/form/FormBlockWrapper"
+import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
+import { SlideLayout } from "@/types/layout-types"
 
 interface DateBlockProps {
   id: string
@@ -21,6 +22,7 @@ interface DateBlockProps {
     includeTime?: boolean
     format?: string
     presentation?: BlockPresentation
+    layout?: SlideLayout
   }
   value?: string
   onChange?: (value: string) => void
@@ -113,17 +115,20 @@ export function DateBlock({
   )
 
   return (
-    <FormBlockWrapper
+    <SlideWrapper
       id={id}
       title={title}
       description={description}
       required={required}
       index={index}
       totalBlocks={totalBlocks}
-      settings={{ presentation: settings.presentation }}
+      settings={{
+        presentation: settings.presentation,
+        layout: settings.layout || { type: 'standard' }
+      }}
       onUpdate={onUpdate}
     >
       {dateField}
-    </FormBlockWrapper>
+    </SlideWrapper>
   );
 }

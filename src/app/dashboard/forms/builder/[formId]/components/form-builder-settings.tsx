@@ -48,7 +48,7 @@ export default function FormBuilderSettings() {
   // If no block is selected, show empty state
   if (!currentBlock || !blockDefinition) {
     return (
-      <div className="w-80 border-l flex flex-col h-full bg-background">
+      <aside className="w-[320px] border-l bg-card flex flex-col h-full overflow-hidden">
         <div className="px-4 py-3 border-b">
           <h3 className="font-medium">Block Settings</h3>
         </div>
@@ -59,12 +59,12 @@ export default function FormBuilderSettings() {
             <p className="text-sm">Select a block to configure its settings</p>
           </div>
         </div>
-      </div>
+      </aside>
     )
   }
   
   return (
-    <div className="w-80 border-l flex flex-col h-full bg-background">
+    <aside className="w-[320px] border-l bg-card flex flex-col h-full overflow-hidden">
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <h3 className="font-medium">{blockDefinition.name} Settings</h3>
         <Button 
@@ -77,7 +77,7 @@ export default function FormBuilderSettings() {
         </Button>
       </div>
       
-      <Tabs defaultValue="settings" className="flex-1 flex flex-col" onValueChange={setSelectedTab}>
+      <Tabs defaultValue="settings" className="flex-1 flex flex-col h-full" onValueChange={setSelectedTab}>
         <div className="px-1 pt-1 border-b flex-shrink-0">
           <TabsList className="w-full justify-start bg-transparent p-0">
             <TabsTrigger 
@@ -103,9 +103,9 @@ export default function FormBuilderSettings() {
           </TabsList>
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col relative">
           {/* Settings Tab - Block-specific settings */}
-          <TabsContent value="settings" className="h-full overflow-y-auto m-0 p-4 space-y-6">
+          <TabsContent value="settings" className="absolute inset-0 overflow-y-auto minimal-scrollbar m-0 p-4 space-y-6">
             {/* Common settings for all blocks */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
@@ -439,7 +439,7 @@ export default function FormBuilderSettings() {
 
           
           {/* Layout Tab */}
-          <TabsContent value="layout" className="m-0 p-4 space-y-6">
+          <TabsContent value="layout" className="absolute inset-0 overflow-y-auto minimal-scrollbar m-0 p-4 space-y-6">
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
                 <Columns size={16} className="mr-2" />
@@ -455,7 +455,7 @@ export default function FormBuilderSettings() {
           </TabsContent>
           
           {/* Style Tab */}
-          <TabsContent value="style" className="h-full overflow-y-auto m-0 p-4 space-y-6">
+          <TabsContent value="style" className="absolute inset-0 overflow-y-auto minimal-scrollbar m-0 p-4 space-y-6">
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center">
                 <Sparkles size={16} className="mr-2" />
@@ -470,6 +470,6 @@ export default function FormBuilderSettings() {
           </TabsContent>
         </div>
       </Tabs>
-    </div>
+    </aside>
   )
 }

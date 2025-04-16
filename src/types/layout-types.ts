@@ -1,105 +1,175 @@
 /**
- * FlowForm Layout System Types
+ * FlowForm Slide Layout System Types
  * 
- * This file defines the types used by the block-level layout system
+ * This file defines the types used by the slide-based layout system
  * for consistent rendering between form builder and form viewer.
+ * Each form block is presented as a full-screen slide with different arrangements
+ * of question, answer, and media elements.
  */
 
 /**
- * Base layout type
+ * Available slide layout types
  */
-export type LayoutType = 'standard' | 'grid' | 'card' | 'section';
+export type SlideLayoutType = 
+  | 'standard'         // Standard layout with question and answer field in a vertical arrangement
+  | 'media-left'       // Media on the left, question/answer content on the right
+  | 'media-right'      // Media on the right, question/answer content on the left
+  | 'media-background' // Media as full-screen background with question/answer overlaid
+  | 'media-left-split' // Equal split with media on left (50/50 arrangement)
+  | 'media-right-split'; // Equal split with media on right (50/50 arrangement)
 
 /**
- * Base layout interface with properties common to all layouts
+ * Base layout interface with properties common to all slide layouts
  */
-export interface BaseLayout {
-  type: LayoutType;
+export interface BaseSlideLayout {
+  type: SlideLayoutType;
 }
 
 /**
- * Grid layout configuration
+ * Standard layout configuration (default vertical arrangement)
  */
-export interface GridLayout extends BaseLayout {
-  type: 'grid';
-  columns: 1 | 2 | 3 | 4;
-  gapX: 'none' | 'small' | 'medium' | 'large';
-  gapY: 'none' | 'small' | 'medium' | 'large';
-}
-
-/**
- * Card layout configuration
- */
-export interface CardLayout extends BaseLayout {
-  type: 'card';
-  shadow: 'none' | 'sm' | 'md' | 'lg';
-  border: boolean;
-  padding: 'none' | 'sm' | 'md' | 'lg';
-  rounded: 'none' | 'sm' | 'md' | 'lg';
-}
-
-/**
- * Section layout configuration
- */
-export interface SectionLayout extends BaseLayout {
-  type: 'section';
-  titleSize: 'small' | 'medium' | 'large';
-  separator: boolean;
-  spacing: 'compact' | 'normal' | 'spacious';
-}
-
-/**
- * Standard layout configuration (default FormBlockWrapper)
- */
-export interface StandardLayout extends BaseLayout {
+export interface StandardSlideLayout extends BaseSlideLayout {
   type: 'standard';
+  alignment?: 'left' | 'center' | 'right'; // Text alignment
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
 }
 
 /**
- * Union type of all layout configurations
+ * Media position configuration for layouts with media
  */
-export type BlockLayout = StandardLayout | GridLayout | CardLayout | SectionLayout;
+export interface MediaConfig {
+  // If media is not set, we'll show a placeholder in builder mode
+  mediaId?: string; // Reference to the media asset
+  sizingMode?: 'contain' | 'cover' | 'fill'; // How the media fills its container
+  opacity?: number; // 0-100 for background overlay opacity
+}
+
+/**
+ * Media left layout with question/answer on right
+ */
+export interface MediaLeftLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-left';
+  mediaProportion?: number; // 0.3-0.7 for media width (default 0.4 = 40%)
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in right section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Media right layout with question/answer on left
+ */
+export interface MediaRightLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-right';
+  mediaProportion?: number; // 0.3-0.7 for media width (default 0.4 = 40%)
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in left section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Media as background with content overlaid
+ */
+export interface MediaBackgroundLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-background';
+  overlayColor?: string; // Color for semi-transparent overlay
+  overlayOpacity?: number; // 0-100 for overlay opacity
+  contentPosition?: 'top' | 'center' | 'bottom'; // Vertical position of content
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment
+  textColor?: 'light' | 'dark'; // Text color scheme for better contrast
+}
+
+/**
+ * Media left split layout (50/50)
+ */
+export interface MediaLeftSplitLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-left-split';
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in right section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Media right split layout (50/50)
+ */
+export interface MediaRightSplitLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-right-split';
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in left section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Union type of all slide layout configurations
+ */
+export type SlideLayout = 
+  | StandardSlideLayout 
+  | MediaLeftLayout 
+  | MediaRightLayout 
+  | MediaBackgroundLayout 
+  | MediaLeftSplitLayout 
+  | MediaRightSplitLayout;
 
 /**
  * Default layout configurations
  */
-export const defaultGridLayout: GridLayout = {
-  type: 'grid',
-  columns: 2,
-  gapX: 'medium',
-  gapY: 'medium'
-};
-
-export const defaultCardLayout: CardLayout = {
-  type: 'card',
-  shadow: 'sm',
-  border: true,
-  padding: 'md',
-  rounded: 'md'
-};
-
-export const defaultSectionLayout: SectionLayout = {
-  type: 'section',
-  titleSize: 'medium',
-  separator: true,
+export const defaultStandardLayout: StandardSlideLayout = {
+  type: 'standard',
+  alignment: 'center',
   spacing: 'normal'
 };
 
-export const defaultStandardLayout: StandardLayout = {
-  type: 'standard'
+export const defaultMediaLeftLayout: MediaLeftLayout = {
+  type: 'media-left',
+  mediaProportion: 0.4,
+  textAlignment: 'left',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
+export const defaultMediaRightLayout: MediaRightLayout = {
+  type: 'media-right',
+  mediaProportion: 0.4,
+  textAlignment: 'left',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
+export const defaultMediaBackgroundLayout: MediaBackgroundLayout = {
+  type: 'media-background',
+  overlayColor: '#000000',
+  overlayOpacity: 50,
+  contentPosition: 'center',
+  textAlignment: 'center',
+  textColor: 'light',
+  sizingMode: 'cover',
+  opacity: 100
+};
+
+export const defaultMediaLeftSplitLayout: MediaLeftSplitLayout = {
+  type: 'media-left-split',
+  textAlignment: 'left',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
+export const defaultMediaRightSplitLayout: MediaRightSplitLayout = {
+  type: 'media-right-split',
+  textAlignment: 'left',
+  spacing: 'normal',
+  sizingMode: 'cover'
 };
 
 /**
  * Get default layout settings based on layout type
  */
-export function getDefaultLayoutByType(type: LayoutType): BlockLayout {
+export function getDefaultLayoutByType(type: SlideLayoutType): SlideLayout {
   switch (type) {
-    case 'grid':
-      return defaultGridLayout;
-    case 'card':
-      return defaultCardLayout;
-    case 'section':
-      return defaultSectionLayout;
+    case 'media-left':
+      return defaultMediaLeftLayout;
+    case 'media-right':
+      return defaultMediaRightLayout;
+    case 'media-background':
+      return defaultMediaBackgroundLayout;
+    case 'media-left-split':
+      return defaultMediaLeftSplitLayout;
+    case 'media-right-split':
+      return defaultMediaRightSplitLayout;
     default:
       return defaultStandardLayout;
   }

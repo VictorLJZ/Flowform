@@ -42,7 +42,7 @@ export default function FormBuilderPage() {
   }, [formId, loadForm])
   
   return (
-    <div className="flex flex-col min-h-[100vh]">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <header className="bg-background border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
@@ -157,7 +157,7 @@ export default function FormBuilderPage() {
           </div>
         </div>
       ) : (
-        <main className="flex-1 flex h-full">
+        <main className="flex-1 flex overflow-hidden">
           {/* Left sidebar - list of blocks */}
           <FormBuilderSidebar />
           
