@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { FormMetrics, FormView, FormInteraction } from '@/types/supabase-types';
 
 type Analytics = {
@@ -24,7 +24,7 @@ export async function getFormAnalytics(
   startDate?: string,
   endDate?: string
 ): Promise<Analytics> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const now = new Date().toISOString();
   
   // Define date range filters

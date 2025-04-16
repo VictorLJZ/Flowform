@@ -5,6 +5,8 @@ import { AuthProvider } from "@/providers/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { Toaster } from "@/components/ui/toaster"
 import { WorkspaceValidator } from "@/components/providers/workspace-validator"
+import { NetworkTracerProvider } from "@/components/providers/network-tracer-provider"
+import { TabFocusMonitor } from "@/components/providers/tab-focus-monitor"
 
 export function Providers({
   children,
@@ -21,9 +23,14 @@ export function Providers({
     <>
       {/* Pass null instead of potentially unverified session data */}
       <AuthProvider initialSession={null}>
-        {/* Add workspace validator to validate workspace data */}
-        <WorkspaceValidator />
-        {children}
+        {/* Network tracer for debugging Supabase requests */}
+        <NetworkTracerProvider>
+          {/* Add workspace validator to validate workspace data */}
+          <WorkspaceValidator />
+          {/* Add TabFocusMonitor to handle tab switching and Supabase reconnection */}
+          <TabFocusMonitor />
+          {children}
+        </NetworkTracerProvider>
       </AuthProvider>
       <Toaster />
     </>

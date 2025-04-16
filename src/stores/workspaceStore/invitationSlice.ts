@@ -9,7 +9,7 @@ import {
   revokeInvitation as revokeInvitationService,
   acceptInvitation as acceptInvitationService,
   declineInvitation as declineInvitationService
-} from '@/services/workspace'
+} from '@/services/workspace/client'
 
 export const createInvitationSlice: StateCreator<
   WorkspaceStore,

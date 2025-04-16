@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { BlockMetrics } from '@/types/supabase-types';
 
 type BlockPerformance = {
@@ -27,7 +27,7 @@ export async function getBlockPerformance(
   startDate?: string,
   endDate?: string
 ): Promise<BlockPerformance[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const now = new Date().toISOString();
   
   // Define date range filters

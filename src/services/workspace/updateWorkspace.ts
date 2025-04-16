@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { Workspace } from '@/types/supabase-types';
+import { networkLog } from '@/lib/debug-logger';
+import { checkWorkspacePermissionClient } from '@/services/permissions/checkWorkspacePermissionClient';
 
 type WorkspaceUpdateInput = Partial<Pick<Workspace, 
   'name' | 
@@ -19,27 +21,22 @@ export async function updateWorkspace(
   workspaceId: string,
   workspaceData: WorkspaceUpdateInput
 ): Promise<Workspace> {
-  const supabase = createClient();
-
-  // Get the current user to verify ownership/permissions
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) {
+  networkLog('Initializing workspace update request', { workspaceId, updates: workspaceData });
+  
+  // Get user ID from the auth store (our single source of truth for auth state)
+  const { useAuthStore } = await import('@/stores/authStore');
+  const userId = useAuthStore.getState().user?.id;
+  
+  if (!userId) {
     throw new Error('User not authenticated');
   }
+  
+  const supabase = createClient();
+  networkLog('Using verified user ID for permission check', { userId, workspaceId });
 
-  // Check if user is a member of this workspace with owner or admin role
-  const { data: memberData, error: memberError } = await supabase
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userData.user.id)
-    .single();
-
-  if (memberError || !memberData) {
-    throw new Error('User does not have permission to update this workspace');
-  }
-
-  if (memberData.role !== 'owner' && memberData.role !== 'admin') {
+  // Check permissions using dedicated service with verified user ID
+  const permissionCheck = await checkWorkspacePermissionClient(workspaceId, userId);
+  if (!permissionCheck.hasPermission) {
     throw new Error('User does not have permission to update this workspace');
   }
 
@@ -49,7 +46,7 @@ export async function updateWorkspace(
     updated_at: new Date().toISOString()
   };
 
-  // Update the workspace
+  // Make a single database call for the update
   const { data, error } = await supabase
     .from('workspaces')
     .update(updateData)
@@ -58,9 +55,15 @@ export async function updateWorkspace(
     .single();
 
   if (error) {
+    networkLog('Error updating workspace', { 
+      workspaceId, 
+      errorCode: error.code,
+      errorMessage: error.message
+    });
     console.error('Error updating workspace:', error);
     throw error;
   }
 
+  networkLog('Workspace updated successfully', { workspaceId, name: data.name });
   return data;
 }

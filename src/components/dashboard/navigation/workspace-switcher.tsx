@@ -43,13 +43,16 @@ export function WorkspaceSwitcher() {
 
   // Log workspace information when component mounts or updates
   useEffect(() => {
-    console.log("[DEBUG] WorkspaceSwitcher - Current workspace:", currentWorkspace);
-    console.log("[DEBUG] WorkspaceSwitcher - Available workspaces:", workspaces);
-  }, [currentWorkspace, workspaces])
-
-  useEffect(() => {
-    fetchWorkspaces()
-  }, [fetchWorkspaces])
+    console.log("⭐ [WorkspaceSwitcher] Rendering with workspace state:", {
+      currentWorkspaceId: currentWorkspace?.id,
+      isLoading: isLoading,
+      workspacesCount: workspaces.length,
+      tabVisible: document.visibilityState === 'visible',
+      timestamp: new Date().toISOString()
+    });
+  }, [currentWorkspace, workspaces, isLoading])
+  
+  // No longer fetching workspaces here - centralized in WorkspaceValidator
 
   const handleCreateWorkspace = async () => {
     if (!newWorkspace.name) return

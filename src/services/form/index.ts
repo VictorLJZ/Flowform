@@ -17,4 +17,5 @@ export * from './deleteFormBlock';
 export * from './getDynamicBlockQuestion';
 export * from './saveDynamicBlockResponse';
 export * from './getFormContext';
+export * from './getFormContextClient';
 export * from './invalidateCache';

@@ -3,4 +3,6 @@
 
 export * from './trackFormView';
 export * from './getFormAnalytics'; 
+export * from './getFormAnalyticsClient';
 export * from './getBlockPerformance';
+export * from './getBlockPerformanceClient';

@@ -3,7 +3,7 @@ import { WorkspaceStore, MembershipActions } from '@/types/store-types'
 import {
   initializeDefaultWorkspace,
   leaveWorkspace as leaveWorkspaceService
-} from '@/services/workspace'
+} from '@/services/workspace/client'
 
 export const createMembershipSlice: StateCreator<
   WorkspaceStore,

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { Form } from '@/types/supabase-types';
 
 export type StaticQuestionContext = {
@@ -65,7 +65,7 @@ export async function getFormContext(
     }
   }
   
-  const supabase = createClient();
+  const supabase = await createClient();
   
   try {
     // 1. Get form info

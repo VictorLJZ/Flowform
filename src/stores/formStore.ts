@@ -14,6 +14,7 @@ type FormState = {
   currentForm: CompleteForm | null
   isLoading: boolean
   error: string | null
+  lastFetchTime: number // Track when we last fetched data
   
   // Actions
   fetchForms: () => Promise<void>
@@ -23,6 +24,9 @@ type FormState = {
   deleteForm: (id: string) => Promise<void>
   publishForm: (id: string) => Promise<boolean>
   setCurrentForm: (form: CompleteForm | null) => void
+  
+  // New method for refetching after tab reconnection
+  refetchAll: () => Promise<void>
 }
 
 export const useFormStore = create<FormState>((set, get) => ({
@@ -30,9 +34,10 @@ export const useFormStore = create<FormState>((set, get) => ({
   currentForm: null,
   isLoading: false,
   error: null,
+  lastFetchTime: 0,
   
   fetchForms: async () => {
-    set({ isLoading: true, error: null })
+    set({ isLoading: true, error: null, lastFetchTime: Date.now() })
     const supabase = createClient()
     
     try {
@@ -158,5 +163,69 @@ export const useFormStore = create<FormState>((set, get) => ({
   
   setCurrentForm: (form) => {
     set({ currentForm: form })
+  },
+  
+  /**
+   * Refetch all data after a tab visibility change or reconnection
+   * This serves as a critical method to refresh data when the app regains focus
+   */
+  refetchAll: async () => {
+    // Get the current state
+    const { isLoading, currentForm, lastFetchTime } = get()
+    const now = Date.now()
+    
+    // Only refetch if we're not already loading and it's been at least 1 second since last fetch
+    // This prevents excessive refetching when rapidly switching tabs
+    if (!isLoading && (now - lastFetchTime > 1000)) {
+      console.log('🔄 [FormStore] Refetching all data after tab focus or reconnection')
+      
+      try {
+        // Set loading state but don't clear existing data to prevent UI flicker
+        set({ isLoading: true, lastFetchTime: now })
+        
+        // Parallel fetch operations
+        const fetchPromises = []
+        
+        // Always fetch forms list
+        const supabase = createClient()
+        const formsPromise = supabase
+          .from('forms')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        fetchPromises.push(formsPromise)
+        
+        // If we have a current form, refresh it too
+        let formWithBlocksPromise = null
+        if (currentForm?.form_id) {
+          formWithBlocksPromise = getFormWithBlocks(currentForm.form_id)
+          fetchPromises.push(formWithBlocksPromise)
+        }
+        
+        // Wait for all fetches to complete
+        const results = await Promise.allSettled(fetchPromises)
+        
+        // Process forms result
+        if (results[0].status === 'fulfilled') {
+          const formsResult = results[0].value as { data: Form[] | null, error: any }
+          if (!formsResult.error) {
+            set({ forms: formsResult.data || [] })
+          }
+        }
+        
+        // Process current form result if we fetched it
+        if (formWithBlocksPromise && results[1]?.status === 'fulfilled') {
+          const form = results[1].value as CompleteForm
+          if (form) {
+            set({ currentForm: form })
+          }
+        }
+      } catch (error: any) {
+        console.error('Error in refetchAll:', error.message)
+        // Don't set error state to prevent UI disruption
+      } finally {
+        set({ isLoading: false })
+      }
+    }
   }
 }))

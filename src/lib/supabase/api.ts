@@ -5,8 +5,9 @@ import { createServerClient } from '@supabase/ssr';
  * Creates a Supabase client for API routes that can access the auth session
  * This preserves authentication context for server components and API routes
  */
-export function createAPIClient() {
-  const cookieStore = cookies();
+export async function createAPIClient() {
+  // Await the cookie store since it's now a Promise in newer Next.js versions
+  const cookieStore = await cookies();
   
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,8 @@ export function createAPIClient() {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll().map(cookie => ({
+          // Map the cookies to the format expected by Supabase
+          return cookieStore.getAll().map((cookie) => ({
             name: cookie.name,
             value: cookie.value,
           }))

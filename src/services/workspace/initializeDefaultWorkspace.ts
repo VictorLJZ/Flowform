@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Workspace } from '@/types/supabase-types';
-import { getUserWorkspaces } from './getUserWorkspaces';
+import { getUserWorkspacesClient } from './getUserWorkspacesClient';
 import { createWorkspace } from './createWorkspace';
 
 // Keep track of initialization in progress
@@ -19,7 +19,7 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
     try {
       await initializationInProgress[userId];
       // After the previous initialization completes, fetch the workspaces
-      const existingWorkspaces = await getUserWorkspaces(userId);
+      const existingWorkspaces = await getUserWorkspacesClient(userId);
       if (existingWorkspaces.length > 0) {
         return existingWorkspaces[0];
       }
@@ -46,7 +46,7 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
     
     // First check if the user already has any workspaces
     try {
-      const existingWorkspaces = await getUserWorkspaces(userId);
+      const existingWorkspaces = await getUserWorkspacesClient(userId);
       console.log('Existing workspaces:', existingWorkspaces);
       
       // If user already has workspaces, return the first one

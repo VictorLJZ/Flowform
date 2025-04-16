@@ -3,6 +3,7 @@
 
 // Workspace access and creation
 export * from './getUserWorkspaces';
+export * from './getUserWorkspacesClient';
 export * from './createWorkspace';
 export * from './updateWorkspace';
 export * from './deleteWorkspace';
@@ -11,6 +12,7 @@ export * from './leaveWorkspace';
 
 // Workspace membership and invitations
 export * from './getWorkspaceMembers';
+export * from './getWorkspaceMembersClient';
 
 // Invitation management
 export * from './inviteToWorkspace';

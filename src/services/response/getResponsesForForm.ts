@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { FormResponse, StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
 
 /**
@@ -21,7 +21,7 @@ export async function getResponsesForForm(
   dynamic_responses?: Record<string, DynamicBlockResponse[]>;
   total: number;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Get responses for this form
   const { data: responses, error: responseError, count } = await supabase

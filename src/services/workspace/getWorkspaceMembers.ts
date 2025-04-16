@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { WorkspaceMember, Profile } from '@/types/supabase-types';
 
 type WorkspaceMemberWithProfile = WorkspaceMember & {
@@ -14,7 +14,7 @@ type WorkspaceMemberWithProfile = WorkspaceMember & {
 export async function getWorkspaceMembers(
   workspaceId: string
 ): Promise<WorkspaceMemberWithProfile[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Get all members with their profile information using a join
   const { data, error } = await supabase

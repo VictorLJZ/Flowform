@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { Workspace, WorkspaceMember } from '@/types/supabase-types';
 
 /**
@@ -11,83 +11,108 @@ export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
   console.log('[getUserWorkspaces] Starting with userId:', userId);
   
   try {
-    // Create Supabase client
-    const supabase = createClient();
-    console.log('[getUserWorkspaces] Supabase client created');
+    // Use the server-side Supabase client
+    const supabase = await createClient();
+    console.log('[getUserWorkspaces] Using server-side Supabase client');
+    console.log('[getUserWorkspaces] Proceeding with workspace fetch for userId:', userId);
     
-    // Log session status to check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('[getUserWorkspaces] Session check:', {
-      isAuthenticated: !!session,
-      hasError: !!sessionError,
-      error: sessionError,
-      userId: session?.user?.id,
-      providedUserId: userId,
-      idsMatch: session?.user?.id === userId
+    // FIRST QUERY: Get workspace memberships with timeout protection
+    console.log('📍 [QUERY_TRACKING] Step 1: About to execute workspace_members query');
+    
+    // Create promise that will reject after timeout
+    const membershipTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Workspace members query timed out after 5 seconds'));
+      }, 5000);
     });
     
-    // First get all workspace IDs where the user is a member
-    console.log('[getUserWorkspaces] Fetching workspace_members table data');
-    const membershipResponse = await supabase
-      .from('workspace_members')
-      .select('workspace_id, role')
-      .eq('user_id', userId);
-      
-    const { data: memberships, error: membershipError, status: membershipStatus } = membershipResponse;
+    console.log('📍 [QUERY_TRACKING] Step 2: Query created, awaiting execution');
     
+    // Use Promise.race to implement timeout
+    const membershipResponse = await Promise.race([
+      supabase
+        .from('workspace_members')
+        .select('workspace_id, role')
+        .eq('user_id', userId),
+      membershipTimeout
+    ]);
+    
+    console.log('📍 [QUERY_TRACKING] Step 3: First query completed!');
+    
+    // Extract data from the response
+    const { data: memberships, error: membershipError } = membershipResponse;
+    
+    // Log membership query details
     console.log('[getUserWorkspaces] Membership query details:', {
-      status: membershipStatus,
-      query: `workspace_members where user_id = ${userId}`,
       count: memberships?.length || 0,
-      error: membershipError,
-      rawError: JSON.stringify(membershipError),
-      rawData: memberships ? JSON.stringify(memberships.slice(0, 2)) + (memberships.length > 2 ? '...' : '') : 'null'
+      error: membershipError ? membershipError.message : null
     });
     
+    // Check for errors
     if (membershipError) {
       console.error('[getUserWorkspaces] Error fetching workspace memberships:', membershipError);
       throw membershipError;
     }
     
+    // Check for empty results
     if (!memberships || memberships.length === 0) {
       console.log('[getUserWorkspaces] No workspace memberships found for user');
       return [];
     }
-
-    // Get all workspaces by their IDs
-    const workspaceIds = memberships.map((m) => m.workspace_id);
+    
+    // Get workspace IDs from memberships
+    const workspaceIds = memberships.map((m: any) => m.workspace_id);
     console.log('[getUserWorkspaces] Found workspace IDs:', workspaceIds);
     
-    console.log('[getUserWorkspaces] Fetching workspaces table data');
-    const workspacesResponse = await supabase
-      .from('workspaces')
-      .select('*')
-      .in('id', workspaceIds);
+    // SECOND QUERY: Get workspaces with timeout protection
+    console.log('📍 [QUERY_TRACKING] Step 4: About to execute workspaces query');
     
-    const { data: workspaces, error: workspacesError, status: workspacesStatus } = workspacesResponse;
-    
-    console.log('[getUserWorkspaces] Workspaces query details:', {
-      status: workspacesStatus,
-      query: `workspaces where id in (${workspaceIds.join(', ')})`,
-      count: workspaces?.length || 0,
-      error: workspacesError,
-      rawError: JSON.stringify(workspacesError),
-      rawData: workspaces ? JSON.stringify(workspaces.slice(0, 2)) + (workspaces.length > 2 ? '...' : '') : 'null'
+    // Create promise that will reject after timeout
+    const workspacesTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Workspaces query timed out after 5 seconds'));
+      }, 5000);
     });
     
+    console.log('📍 [QUERY_TRACKING] Step 5: Second query created, awaiting execution');
+    
+    // Use Promise.race to implement timeout
+    const workspacesResponse = await Promise.race([
+      supabase
+        .from('workspaces')
+        .select('*')
+        .in('id', workspaceIds),
+      workspacesTimeout
+    ]);
+    
+    console.log('📍 [QUERY_TRACKING] Step 6: Second query completed!');
+    
+    // Extract data from the response
+    const { data: workspaces, error: workspacesError } = workspacesResponse;
+    
+    // Log workspaces query details
+    console.log('[getUserWorkspaces] Workspaces query details:', {
+      count: workspaces?.length || 0,
+      error: workspacesError ? workspacesError.message : null
+    });
+    
+    // Check for errors
     if (workspacesError) {
       console.error('[getUserWorkspaces] Error fetching workspaces:', workspacesError);
       throw workspacesError;
     }
     
+    // Log success
     console.log('[getUserWorkspaces] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map(w => w.name) || []
+      names: workspaces?.map((w: any) => w.name) || []
     });
     
+    // Return workspaces or empty array
     return workspaces || [];
-  } catch (error) {
-    console.error('[getUserWorkspaces] Unexpected error:', error);
+  } catch (error: any) {
+    // Log any unexpected errors
+    console.error('[getUserWorkspaces] ERROR in workspace fetch:', error);
     throw error;
   }
 }

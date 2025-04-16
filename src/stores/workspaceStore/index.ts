@@ -16,6 +16,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       name: 'workspace-storage',
       partialize: (state) => ({
         currentWorkspace: state.currentWorkspace,
+        workspaces: state.workspaces,   // Save all workspaces to localStorage
         userId: state.userId,
         userEmail: state.userEmail
       }),

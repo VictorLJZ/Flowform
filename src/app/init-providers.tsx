@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server"
 import { Providers } from "./providers"
 
 export async function InitProviders({

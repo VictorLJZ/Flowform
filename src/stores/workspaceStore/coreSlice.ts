@@ -2,11 +2,12 @@ import { StateCreator } from 'zustand'
 import { WorkspaceStore, CoreWorkspaceActions } from '@/types/store-types'
 import { Workspace } from '@/types/supabase-types'
 import { 
-  getUserWorkspaces,
+  getUserWorkspacesClient,
   createWorkspace as createWorkspaceService,
   updateWorkspace as updateWorkspaceService,
   deleteWorkspace as deleteWorkspaceService
-} from '@/services/workspace'
+} from '@/services/workspace/client'
+import { workspaceLog, stateLog, networkLog } from '@/lib/debug-logger'
 
 export const createCoreSlice: StateCreator<
   WorkspaceStore,
@@ -22,31 +23,77 @@ export const createCoreSlice: StateCreator<
   
   // Actions
   setCurrentWorkspace: (workspace) => {
+    workspaceLog('Setting current workspace', { 
+      oldId: get().currentWorkspace?.id,
+      newId: workspace?.id,
+      newName: workspace?.name
+    })
     set({ currentWorkspace: workspace })
+    stateLog('Current workspace state updated', { currentWorkspaceId: workspace?.id })
   },
   
   fetchWorkspaces: async () => {
-    const { userId } = get()
+    const { userId, isLoading } = get()
+    console.log('⭐ [WorkspaceStore] fetchWorkspaces called', { 
+      userId, 
+      isLoading: get().isLoading,
+      timestamp: new Date().toISOString(),
+      tabActive: typeof document !== 'undefined' ? document.visibilityState === 'visible' : 'unknown'
+    })
+
+    // Protect against duplicate fetches - don't allow multiple concurrent fetch operations
+    if (isLoading) {
+      console.log('⭐ [WorkspaceStore] Fetch already in progress, skipping redundant call')
+      return
+    }
+    
     if (!userId) {
+      console.log('⭐ [WorkspaceStore] No userId, aborting fetchWorkspaces')
       set({ error: 'User ID not set' })
       return
     }
     
     try {
+      console.log('⭐ [WorkspaceStore] Setting isLoading = true')
       set({ isLoading: true, error: null })
-      const workspaces = await getUserWorkspaces(userId)
+      
+      const workspaces = await getUserWorkspacesClient(userId)
+      console.log('⭐ [WorkspaceStore] Workspaces fetched successfully', { 
+        count: workspaces.length,
+        workspaceIds: workspaces.map(w => w.id),
+        timestamp: new Date().toISOString()
+      })
+      
+      // Even if tab is not visible, we should still update the state
+      // This ensures consistency when the user switches back to the tab
+      
+      console.log('⭐ [WorkspaceStore] Setting isLoading = false and updating workspaces')
+      
+      // Determine current workspace - maintain current selection if it exists in the fetched workspaces
+      const currentWorkspace = get().currentWorkspace
+      const currentExists = currentWorkspace && workspaces.some(w => w.id === currentWorkspace.id)
+      const newCurrentWorkspace = currentExists ? currentWorkspace : (workspaces[0] || null)
+      
+      // Important: Make sure to update workspaces array with ALL fetched workspaces
       set({ 
-        workspaces,
+        workspaces: [...workspaces], // Create new array to ensure state update is detected
         isLoading: false,
-        // If current workspace is null or not in the list, set it to the first one
-        currentWorkspace: get().currentWorkspace || workspaces[0] || null
+        currentWorkspace: newCurrentWorkspace
+      })
+      
+      console.log('⭐ [WorkspaceStore] State after update', {
+        isLoading: get().isLoading,
+        currentWorkspaceId: get().currentWorkspace?.id,
+        workspacesCount: get().workspaces.length,
+        allWorkspaceIds: get().workspaces.map(w => w.id)
       })
     } catch (error) {
-      console.error('[WorkspaceStore] Error fetching workspaces:', error)
+      console.error('⭐ [WorkspaceStore] Error fetching workspaces:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch workspaces',
         isLoading: false
       })
+      console.log('⭐ [WorkspaceStore] Set isLoading = false after error')
     }
   },
   
@@ -86,12 +133,18 @@ export const createCoreSlice: StateCreator<
   },
   
   renameWorkspace: async (workspaceId, name) => {
+    workspaceLog('Renaming workspace', { workspaceId, newName: name })
+    
     try {
-      set({ isLoading: true, error: null })
-      await updateWorkspaceService(workspaceId, { name })
+      // 0. Ensure auth is stable before proceeding
+      // This prevents operations during auth state transitions
+      const { useAuthStore } = await import('@/stores/authStore')
+      await useAuthStore.getState().ensureStableAuth()
       
-      // Update the workspace in the workspaces list
+      // 1. Get current state for potential rollback
       const { workspaces, currentWorkspace } = get()
+      
+      // 2. Apply optimistic update to local state immediately
       const updatedWorkspaces = workspaces.map(w => 
         w.id === workspaceId ? { ...w, name } : w
       )
@@ -102,15 +155,44 @@ export const createCoreSlice: StateCreator<
         updatedCurrentWorkspace = { ...currentWorkspace, name }
       }
       
+      // 3. Set the optimistic update to the UI
       set({ 
         workspaces: updatedWorkspaces,
         currentWorkspace: updatedCurrentWorkspace,
-        isLoading: false
+        isLoading: true, 
+        error: null 
       })
+      
+      // 4. Make the actual API call
+      await updateWorkspaceService(workspaceId, { name })
+      
+      // 5. Update loading state since the API call completed successfully
+      workspaceLog('Workspace renamed successfully', { 
+        workspaceId,
+        name
+      })
+      
+      // 6. Update loading state to false
+      set({ isLoading: false })
+      
     } catch (error) {
+      // 7. If the API call fails, we need to revert to the original state
+      const errorMessage = error instanceof Error ? error.message : 'Failed to rename workspace'
+      workspaceLog('Error renaming workspace', { workspaceId, error: errorMessage })
       console.error('[WorkspaceStore] Error renaming workspace:', error)
+      
+      // 8. Re-fetch workspaces to ensure our state is consistent with the database
+      try {
+        // Silently refetch workspaces to sync with server state
+        await get().fetchWorkspaces()
+      } catch (fetchError) {
+        // Ignore fetch errors, we already have the main error to show
+        console.warn('Error syncing workspaces after rename failure:', fetchError)
+      }
+      
+      // 9. Set error state
       set({
-        error: error instanceof Error ? error.message : 'Failed to rename workspace',
+        error: errorMessage,
         isLoading: false
       })
     }

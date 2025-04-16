@@ -9,7 +9,7 @@ import { headers } from 'next/headers';
 export async function getAuthenticatedUser() {
   try {
     // Get the authorization header safely (handling async nature of headers)
-    const headersList = headers();
+    const headersList = await headers();
     const authorization = headersList.get('authorization') || '';
     
     // If no auth header is present, return null

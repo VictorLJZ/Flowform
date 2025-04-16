@@ -120,16 +120,15 @@ export function AuthProvider({
     const setupWorkspaceState = async () => {
       if (!user) return
       
-      const { setUserId, setUserEmail, fetchWorkspaces, ensureDefaultWorkspace } = useWorkspaceStore.getState()
+      const { setUserId, setUserEmail } = useWorkspaceStore.getState()
       
       try {
         // Set user data in workspace store
         setUserId(user.id)
         setUserEmail(user.email || '')
         
-        // Fetch workspaces and ensure default workspace
-        await fetchWorkspaces()
-        await ensureDefaultWorkspace()
+        // No longer fetching workspaces here - centralized in WorkspaceValidator
+        // WorkspaceValidator will handle fetching and default workspace creation
       } catch (error) {
         console.error('Error setting up workspace state:', error)
       }
@@ -137,6 +136,11 @@ export function AuthProvider({
     
     setupWorkspaceState()
   }, [user])
+  
+  // Note: We no longer need tab visibility handling here
+  // Tab focus detection and proper sequencing (reconnect -> auth -> data fetch)
+  // is now centralized in the TabFocusMonitor component to prevent duplicate calls
+  // and improve the coordination between reconnection and auth verification
   
   return (
     <AuthContext.Provider value={{ 
