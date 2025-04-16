@@ -324,8 +324,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }, 5000); // 5 second timeout
     });
     
-    // Race between normal resolution and timeout
-    return Promise.race([
+    console.log('⭐ [AUTH] Waiting for stable auth, starting race between timeout and syncStatus ready');
+    const waitPromise = Promise.race([
       timeoutPromise,
       new Promise<void>(resolve => {
         // Set up subscription to watch for state changes
@@ -343,5 +343,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       })
     ]);
+    waitPromise.then(() => {
+      console.log('⭐ [AUTH] ensureStableAuth resolved, final syncStatus:', get().syncStatus);
+    });
+    return waitPromise;
   }
 }))

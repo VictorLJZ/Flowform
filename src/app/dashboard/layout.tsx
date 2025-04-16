@@ -1,5 +1,4 @@
 "use client";
-
 import { AppSidebar } from "@/components/layout/dashboard/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useWorkspaceInit } from "@/hooks/useWorkspaceInit";
