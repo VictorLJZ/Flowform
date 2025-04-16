@@ -5,11 +5,10 @@ import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockR
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
-import { Form as SupabaseForm, FormBlock as DbFormBlock } from '@/types/supabase-types'
-import { createClient } from '@/lib/supabase/client'
+import { FormBlock as DbFormBlock } from '@/types/supabase-types'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
-import { SlideLayout, SlideLayoutType, getDefaultLayoutByType } from '@/types/layout-types'
+import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 
 interface FormData {
   form_id: string
@@ -143,7 +142,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           // If layout type is changing, get the default settings for the new layout type
           let updatedLayout: SlideLayout;
           
-          if (layoutConfig.type && layoutConfig.type !== block.settings?.layout?.type) {
+          if (layoutConfig.type && layoutConfig.type !== (block.settings?.layout as SlideLayout | undefined)?.type) {
             // Start with defaults for the new layout type
             updatedLayout = getDefaultLayoutByType(layoutConfig.type);
             // Then apply any specific overrides from layoutConfig
@@ -215,7 +214,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   // WYSIWYG methods
   getBlockPresentation: (blockId) => {
     const block = get().blocks.find(b => b.id === blockId)
-    return block?.settings?.presentation || get().defaultBlockPresentation
+    return (block?.settings?.presentation as BlockPresentation | undefined) || get().defaultBlockPresentation
   },
   
   setBlockPresentation: (blockId, presentation) => set((state) => ({
@@ -403,8 +402,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           })
         : []
       
-      // Convert theme data from database if it exists
-      const formTheme = formData.theme || defaultFormTheme
+      // Theme data is available from formData.theme if needed
       
       // Update the store with form and blocks
       set({

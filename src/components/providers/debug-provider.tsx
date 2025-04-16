@@ -49,7 +49,7 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
     // Start observing long tasks
     try {
       observer.observe({ entryTypes: ['longtask'] })
-    } catch (err) {
+    } catch {
       // Some browsers might not support this
       console.warn('PerformanceObserver for longtasks not supported')
     }
@@ -57,7 +57,7 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
     return () => {
       try {
         observer.disconnect()
-      } catch (err) {
+      } catch {
         // Ignore errors on cleanup
       }
     }

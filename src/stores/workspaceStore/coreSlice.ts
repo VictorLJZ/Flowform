@@ -1,13 +1,13 @@
 import { StateCreator } from 'zustand'
 import { WorkspaceStore, CoreWorkspaceActions } from '@/types/store-types'
-import { Workspace } from '@/types/supabase-types'
+// Workspace type is used in the store interface
 import { 
   getUserWorkspacesClient,
   createWorkspace as createWorkspaceService,
   updateWorkspace as updateWorkspaceService,
   deleteWorkspace as deleteWorkspaceService
 } from '@/services/workspace/client'
-import { workspaceLog, stateLog, networkLog } from '@/lib/debug-logger'
+import { workspaceLog, stateLog } from '@/lib/debug-logger'
 
 export const createCoreSlice: StateCreator<
   WorkspaceStore,

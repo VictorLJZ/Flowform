@@ -97,7 +97,8 @@ export async function checkAuthStatus() {
 // Make available globally in development
 if (process.env.NODE_ENV === 'development') {
   if (typeof window !== 'undefined') {
-    (window as any).checkAuth = checkAuthStatus;
+    // Use a more specific type for the window object
+    (window as Window & typeof globalThis & { checkAuth?: typeof checkAuthStatus }).checkAuth = checkAuthStatus;
     console.log('[AuthCheck] Auth check function available in console. Type "checkAuth()" to run.');
   }
 }

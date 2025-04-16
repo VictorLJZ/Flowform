@@ -5,7 +5,7 @@
  * to improve type safety across API routes.
  */
 
-import { ApiError } from './util-types';
+// Error types are defined inline for API responses
 
 /**
  * Standard API response format

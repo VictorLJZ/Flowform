@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { FormMetrics, FormView, FormInteraction } from '@/types/supabase-types';
+import { FormMetrics } from '@/types/supabase-types';
 
 type Analytics = {
   form_id: string;

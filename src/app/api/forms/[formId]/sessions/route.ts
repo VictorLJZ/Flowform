@@ -5,13 +5,11 @@ import { saveDynamicResponse } from "@/services/response/saveDynamicResponse"
 import { completeResponse } from "@/services/response/completeResponse"
 import { createClient } from "@/lib/supabase/client"
 
-export async function POST(
-  request: NextRequest,
-  context: { params: { formId: string } }
-) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  // Extract formId from URL
+  const formId = request.nextUrl.pathname.split('/')[3]; // Get formId from /api/forms/[formId]/sessions
   try {
-    const params = await context.params;
-    const { formId } = params
+    // formId is already extracted from the URL
     
     if (!formId) {
       return NextResponse.json(
@@ -53,13 +51,11 @@ function getDeviceType(userAgent: string): string {
   return 'desktop';
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: { formId: string } }
-) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+  // Extract formId from URL
+  const formId = request.nextUrl.pathname.split('/')[3]; // Get formId from /api/forms/[formId]/sessions
   try {
-    const params = await context.params;
-    const { formId } = params
+    // formId is already extracted from the URL
     
     if (!formId) {
       return NextResponse.json(

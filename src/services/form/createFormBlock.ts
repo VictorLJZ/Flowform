@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormBlock, DynamicBlockConfig, BlockType, StaticBlockSubtype } from '@/types/supabase-types';
+import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
 import { invalidateFormCache } from './invalidateCache';
 
 type FormBlockInput = Pick<FormBlock, 

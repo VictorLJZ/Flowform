@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
-import { WorkspaceInvitation } from "@/types/supabase-types"
 import { InvitationRow } from "@/components/workspace/invitation-row"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mail, LoaderCircle } from "lucide-react"

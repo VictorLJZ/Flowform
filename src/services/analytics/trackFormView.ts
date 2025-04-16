@@ -10,7 +10,7 @@ import { FormView } from '@/types/supabase-types';
  */
 export async function trackFormView(
   formId: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, unknown> = {}
 ): Promise<FormView> {
   const supabase = createClient();
 

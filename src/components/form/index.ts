@@ -5,8 +5,7 @@ export * from './SlideWrapper'
 // Export all slide layout components
 export * from './slide-layouts'
 
-// Legacy layout components - will be deprecated
-export * from './layouts'
+// Legacy layout components have been removed
 
 // Export all block components
 export * from './blocks/TextInputBlock'

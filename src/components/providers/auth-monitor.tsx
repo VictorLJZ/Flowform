@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useRef } from 'react'
-import { authLog, tabFocusLog } from '@/lib/debug-logger'
+import { authLog } from '@/lib/debug-logger'
 import { createClient } from '@/lib/supabase/client'
-import { Session } from '@supabase/supabase-js'
 
 /**
  * AuthMonitor component
@@ -112,7 +111,7 @@ export function AuthMonitor() {
     }
     
     // Expose the monitor operation function globally for debugging
-    // @ts-ignore
+    // @ts-expect-error - Adding debug method to window object for debugging purposes
     window.__monitorOperation = monitorOperation
     
     // Listen to auth state changes
@@ -168,7 +167,7 @@ export function AuthMonitor() {
       if (url && url.includes('supabase')) {
         const requestStartTime = Date.now()
         const accessToken = init?.headers && typeof init.headers === 'object' ? 
-          // @ts-ignore - We know headers might contain Authorization
+          // @ts-expect-error - We know headers might contain Authorization
           init.headers['Authorization'] || init.headers['authorization'] : null
           
         if (accessToken) {
@@ -216,7 +215,7 @@ export function AuthMonitor() {
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.fetch = originalFetch
-      // @ts-ignore
+      // @ts-expect-error - Removing debug method from window object during cleanup
       delete window.__monitorOperation
     }
   }, [])

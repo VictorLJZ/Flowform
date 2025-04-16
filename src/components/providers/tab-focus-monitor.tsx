@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { tabFocusLog, networkLog } from '@/lib/debug-logger'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -106,13 +106,26 @@ export function TabFocusMonitor() {
                     const workspaceStore = useWorkspaceStore.getState()
                     
                     // Convert the API response to the format the store expects, ensuring all required fields
-                    const workspaces = workspaceResult.data.map((member: any) => ({
+                    const workspaces = workspaceResult.data.map((member: {
+  workspace_id: string;
+  role?: string;
+  workspaces: {
+    name: string;
+    description: string;
+    created_at: string;
+    updated_at: string;
+    created_by?: string;
+    owner_id?: string;
+    logo_url?: string;
+    settings?: Record<string, unknown>;
+  };
+}) => ({
                       id: member.workspace_id,
                       name: member.workspaces.name,
                       description: member.workspaces.description,
                       created_at: member.workspaces.created_at,
                       updated_at: member.workspaces.updated_at,
-                      created_by: member.workspaces.created_by || member.workspaces.owner_id, // Ensure created_by exists
+                      created_by: (member.workspaces.created_by || member.workspaces.owner_id) || '', // Ensure created_by is never undefined
                       logo_url: member.workspaces.logo_url || null,
                       settings: member.workspaces.settings || null,
                       // Store role separately as it's not part of the Workspace interface
@@ -141,10 +154,8 @@ export function TabFocusMonitor() {
                 const formsResult = await fetchFormsDirect()
                 
                 if (formsResult.data && Array.isArray(formsResult.data)) {
-                  // Use the refetchAll method which is already implemented
-                  const formStore = useFormStore.getState()
-                  
                   // Since there's no direct setForms method, we'll update the store manually
+                  // No need to store the reference to formStore
                   useFormStore.setState({ forms: formsResult.data, lastFetchTime: Date.now() })
                 }
                 

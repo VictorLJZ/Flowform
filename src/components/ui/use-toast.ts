@@ -8,7 +8,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 5000
+// TOAST_REMOVE_DELAY removed as it was unused
 
 type ToasterToast = ToastProps & {
   id: string
@@ -82,7 +82,7 @@ const reducer = (state: State, action: Action): State => {
         // Set toast status to closed if the toast exists
         if (toastTimeouts.has(toastId)) {
           const timeout = toastTimeouts.get(toastId)
-          timeout && clearTimeout(timeout)
+          if (timeout) clearTimeout(timeout)
           toastTimeouts.delete(toastId)
         }
       } else {
@@ -130,7 +130,8 @@ function dispatch(action: Action) {
   })
 }
 
-interface Toast extends Omit<ToasterToast, "id"> {}
+// Use type alias instead of empty interface
+type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
   const id = genId()

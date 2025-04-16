@@ -39,7 +39,7 @@ const Testimonials = () => {
               className="bg-white p-8 rounded-2xl shadow-sm"
             >
               <blockquote className="text-gray-600 mb-6">
-                "{testimonial.quote}"
+                &ldquo;{testimonial.quote}&rdquo;
               </blockquote>
               <div>
                 <p className="font-medium text-gray-900">{testimonial.author}</p>

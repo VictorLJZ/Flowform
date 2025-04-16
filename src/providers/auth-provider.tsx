@@ -109,7 +109,7 @@ export function AuthProvider({
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase, router])
+  }, [supabase, router, setUser])
 
   const signOut = async () => {
     await logout()

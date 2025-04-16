@@ -65,7 +65,7 @@ export function FontDemo({ className, fullWidth = false }: FontDemoProps) {
         <div className="text-body text-white">Body Text</div>
         <div className="text-body-small text-white">Small Body Text</div>
         <div className="text-caption text-white">CAPTION TEXT</div>
-        <div className="text-code text-white">Code: console.log('Hello World');</div>
+        <div className="text-code text-white">Code: console.log(&apos;Hello World&apos;);</div>
       </div>
     </div>
   );

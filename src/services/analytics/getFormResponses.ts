@@ -67,7 +67,7 @@ export async function getFormResponses(formId: string): Promise<CompleteResponse
     )
     
     return completeResponses
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching form responses:', error)
     throw error
   }

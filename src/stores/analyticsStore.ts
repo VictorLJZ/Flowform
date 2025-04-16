@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/client'
 import { 
   CompleteResponse
 } from '@/types/supabase-types'
-import { PostgreSQLError } from '@/types/postgresql-types'
 
 type AnalyticsState = {
   responses: CompleteResponse[]

@@ -56,7 +56,7 @@ export async function getResponseDetails(responseId: string): Promise<CompleteRe
       dynamic_responses: dynamicResponses || [],
       form: formData
     } as CompleteResponse
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching response details:', error)
     throw error
   }

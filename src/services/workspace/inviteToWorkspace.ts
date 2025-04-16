@@ -25,7 +25,7 @@ export async function inviteToWorkspace(
   try {
     // First check if the table exists
     console.log('[inviteToWorkspace] Checking if table exists');
-    const { data: tableCheck, error: tableError } = await supabase
+    const { error: tableError } = await supabase
       .from('workspace_invitations')
       .select('id')
       .limit(1);

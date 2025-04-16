@@ -54,8 +54,11 @@ export async function generateQuestion(
       requestParams.previous_response_id = previousResponseId;
     }
 
-    // Use a type assertion to allow the API call to work
-    const response = await openai.responses.create(requestParams as any);
+    // Add a comment explaining why we need to use 'any' here
+    // We're using 'any' because the OpenAI Responses API is new (March 2025) and proper TypeScript
+    // definitions may not be fully available yet. This is a temporary solution until official types are updated.
+    // @ts-expect-error - Using any for new OpenAI Responses API until proper types are available
+    const response = await openai.responses.create(requestParams);
 
     // Access text using output_text helper property as per Responses API documentation
     return { 

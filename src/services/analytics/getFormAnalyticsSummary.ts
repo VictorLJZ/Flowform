@@ -65,8 +65,10 @@ export async function getFormAnalyticsSummary(formId: string): Promise<FormMetri
     
     if (completionsError) throw completionsError
     
-    // Calculate completion rate
-    const completionRate = totalStarts > 0 ? (totalCompletions / totalStarts) : 0
+    // Calculate completion rate with null safety
+    const safeStarts = totalStarts || 0
+    const safeCompletions = totalCompletions || 0
+    const completionRate = safeStarts > 0 ? (safeCompletions / safeStarts) : 0
     
     // Create dynamic metrics (not saved to database)
     const dynamicMetrics: FormMetrics = {
@@ -82,7 +84,7 @@ export async function getFormAnalyticsSummary(formId: string): Promise<FormMetri
     }
     
     return dynamicMetrics
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching form analytics summary:', error)
     throw error
   }

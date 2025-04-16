@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Workspace, WorkspaceMember } from '@/types/supabase-types';
+import { Workspace } from '@/types/supabase-types';
 
 // Interface for the specific fields returned by the workspace_members query
 interface WorkspaceMemberBasic {

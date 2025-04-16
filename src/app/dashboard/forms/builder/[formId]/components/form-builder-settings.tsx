@@ -12,6 +12,7 @@ import { Settings2, Wrench, Sparkles, Trash2, Columns } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
 import { Card } from "@/components/ui/card"
 import { BlockLayoutSettings } from "@/components/form/settings/BlockLayoutSettings"
+import { SlideLayout } from "@/types/layout-types"
 
 export default function FormBuilderSettings() {
   const { 
@@ -24,6 +25,8 @@ export default function FormBuilderSettings() {
   } = useFormBuilderStore()
   
   const currentBlock = getCurrentBlock()
+  // Ensure settings is always an object
+  const blockSettings = currentBlock?.settings || {}
   const blockDefinition = useCurrentBlockDefinition()
   const [, setSelectedTab] = useState("settings") // Using just setSelectedTab for tab switching
   
@@ -161,10 +164,10 @@ export default function FormBuilderSettings() {
                     <Label htmlFor="input-placeholder">Placeholder</Label>
                     <Input 
                       id="input-placeholder" 
-                      value={currentBlock.settings.placeholder || ''}
+                      value={(blockSettings as { placeholder: string }).placeholder || ''}
                       onChange={(e) => updateBlockSettings(currentBlock.id, { 
                         placeholder: e.target.value 
-                      })}
+                      } as Record<string, unknown>)}
                     />
                   </div>
                   
@@ -174,12 +177,12 @@ export default function FormBuilderSettings() {
                       <Input 
                         id="max-length" 
                         type="number" 
-                        value={currentBlock.settings.maxLength || ''}
+                        value={(blockSettings as { maxLength: number }).maxLength || ''}
                         onChange={(e) => {
-                          const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          const value = e.target.value === '' ? null : parseInt(e.target.value);
                           updateBlockSettings(currentBlock.id, { 
-                            maxLength: isNaN(value as number) ? undefined : value 
-                          })
+                            maxLength: isNaN(value as number) ? null : value 
+                          } as Record<string, unknown>)
                         }}
                       />
                     </div>
@@ -191,12 +194,12 @@ export default function FormBuilderSettings() {
                       <Input 
                         id="max-rows" 
                         type="number" 
-                        value={currentBlock.settings.maxRows || ''}
+                        value={(blockSettings as { rows: number }).rows || ''}
                         onChange={(e) => {
-                          const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          const value = e.target.value === '' ? null : parseInt(e.target.value);
                           updateBlockSettings(currentBlock.id, { 
-                            maxRows: isNaN(value as number) ? undefined : value 
-                          })
+                            rows: isNaN(value as number) ? null : value 
+                          } as Record<string, unknown>)
                         }}
                       />
                     </div>
@@ -211,10 +214,10 @@ export default function FormBuilderSettings() {
                     <Label htmlFor="number-placeholder">Placeholder</Label>
                     <Input 
                       id="number-placeholder" 
-                      value={currentBlock.settings.placeholder || ''}
+                      value={(blockSettings as { placeholder: string }).placeholder || ''}
                       onChange={(e) => updateBlockSettings(currentBlock.id, { 
                         placeholder: e.target.value 
-                      })}
+                      } as Record<string, unknown>)}
                     />
                   </div>
                   
@@ -223,12 +226,12 @@ export default function FormBuilderSettings() {
                     <Input 
                       id="min-value" 
                       type="number" 
-                      value={currentBlock.settings.min ?? ''}
+                      value={(blockSettings as { min: number }).min || ''}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                        const value = e.target.value === '' ? null : parseInt(e.target.value);
                         updateBlockSettings(currentBlock.id, { 
-                          min: isNaN(value as number) ? undefined : value 
-                        })
+                          min: isNaN(value as number) ? null : value 
+                        } as Record<string, unknown>)
                       }}
                     />
                   </div>
@@ -238,12 +241,12 @@ export default function FormBuilderSettings() {
                     <Input 
                       id="max-value" 
                       type="number" 
-                      value={currentBlock.settings.max ?? ''}
+                      value={(blockSettings as { max: number }).max || ''}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                        const value = e.target.value === '' ? null : parseInt(e.target.value);
                         updateBlockSettings(currentBlock.id, { 
-                          max: isNaN(value as number) ? undefined : value 
-                        })
+                          max: isNaN(value as number) ? null : value 
+                        } as Record<string, unknown>)
                       }}
                     />
                   </div>
@@ -253,12 +256,12 @@ export default function FormBuilderSettings() {
                     <Input 
                       id="step-value" 
                       type="number" 
-                      value={currentBlock.settings.step || ''}
+                      value={(blockSettings as { step: number }).step || ''}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                        const value = e.target.value === '' ? null : parseFloat(e.target.value);
                         updateBlockSettings(currentBlock.id, { 
-                          step: isNaN(value as number) ? undefined : value 
-                        })
+                          step: isNaN(value as number) ? null : value 
+                        } as Record<string, unknown>)
                       }}
                     />
                   </div>
@@ -271,14 +274,14 @@ export default function FormBuilderSettings() {
                   <h5 className="text-xs text-muted-foreground font-medium uppercase">Options</h5>
                   
                   <div className="space-y-2">
-                    {currentBlock.settings.options?.map((option: { id: string; label: string; value: string }, index: number) => (
+                    {(blockSettings as { options: Array<{ id: string; label: string; value: string }> }).options?.map((option, index) => (
                       <div key={option.id} className="flex items-center gap-2">
                         <Input 
                           value={option.label}
                           onChange={(e) => {
-                            const updatedOptions = [...currentBlock.settings.options]
+                            const updatedOptions = [...(blockSettings as { options: Array<{ id: string; label: string; value: string }> }).options || []]
                             updatedOptions[index] = { ...option, label: e.target.value }
-                            updateBlockSettings(currentBlock.id, { options: updatedOptions })
+                            updateBlockSettings(currentBlock.id, { options: updatedOptions } as Record<string, unknown>)
                           }}
                           className="flex-1"
                         />
@@ -287,10 +290,10 @@ export default function FormBuilderSettings() {
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={() => {
-                            const updatedOptions = currentBlock.settings.options.filter(
-                              (_: { id: string; label: string; value: string }, i: number) => i !== index
+                            const updatedOptions = (blockSettings as { options: Array<{ id: string; label: string; value: string }> }).options?.filter(
+                              (_, i) => i !== index
                             )
-                            updateBlockSettings(currentBlock.id, { options: updatedOptions })
+                            updateBlockSettings(currentBlock.id, { options: updatedOptions } as Record<string, unknown>)
                           }}
                         >
                           <Trash2 size={14} />
@@ -306,10 +309,10 @@ export default function FormBuilderSettings() {
                     onClick={() => {
                       const newOption = { 
                         id: `option-${Date.now()}`, 
-                        label: `Option ${(currentBlock.settings.options?.length || 0) + 1}` 
+                        label: `Option ${(blockSettings as { options: Array<{ id: string; label: string; value: string }> }).options?.length || 0} + 1` 
                       }
-                      const updatedOptions = [...(currentBlock.settings.options || []), newOption]
-                      updateBlockSettings(currentBlock.id, { options: updatedOptions })
+                      const updatedOptions = [...((blockSettings as { options: Array<{ id: string; label: string; value: string }> }).options || []), newOption]
+                      updateBlockSettings(currentBlock.id, { options: updatedOptions } as Record<string, unknown>)
                     }}
                   >
                     Add Option
@@ -322,12 +325,12 @@ export default function FormBuilderSettings() {
                         <Input 
                           id="min-selected" 
                           type="number" 
-                          value={currentBlock.settings.minSelected ?? ''}
+                          value={(blockSettings as { minSelected: number }).minSelected || ''}
                           onChange={(e) => {
-                            const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                            const value = e.target.value === '' ? null : parseInt(e.target.value);
                             updateBlockSettings(currentBlock.id, { 
-                              minSelected: isNaN(value as number) ? undefined : value 
-                            })
+                              minSelected: isNaN(value as number) ? null : value 
+                            } as Record<string, unknown>)
                           }}
                         />
                       </div>
@@ -337,12 +340,12 @@ export default function FormBuilderSettings() {
                         <Input 
                           id="max-selected" 
                           type="number" 
-                          value={currentBlock.settings.maxSelected ?? ''}
+                          value={(blockSettings as { maxSelected: number }).maxSelected || ''}
                           onChange={(e) => {
-                            const value = e.target.value === '' ? undefined : parseInt(e.target.value);
+                            const value = e.target.value === '' ? null : parseInt(e.target.value);
                             updateBlockSettings(currentBlock.id, { 
-                              maxSelected: isNaN(value as number) ? undefined : value 
-                            })
+                              maxSelected: isNaN(value as number) ? null : value 
+                            } as Record<string, unknown>)
                           }}
                         />
                       </div>
@@ -358,10 +361,10 @@ export default function FormBuilderSettings() {
                     <Label htmlFor="starting-prompt">Starting Prompt</Label>
                     <Textarea 
                       id="starting-prompt" 
-                      value={currentBlock.settings.startingPrompt || ''}
+                      value={(blockSettings as { startingPrompt: string }).startingPrompt || ''}
                       onChange={(e) => updateBlockSettings(currentBlock.id, { 
                         startingPrompt: e.target.value 
-                      })}
+                      } as Record<string, unknown>)}
                       rows={3}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
@@ -373,10 +376,10 @@ export default function FormBuilderSettings() {
                     <Label htmlFor="context-instructions">AI Instructions</Label>
                     <Textarea 
                       id="context-instructions" 
-                      value={currentBlock.settings.contextInstructions || ''}
+                      value={(blockSettings as { contextInstructions: string }).contextInstructions || ''}
                       onChange={(e) => updateBlockSettings(currentBlock.id, { 
                         contextInstructions: e.target.value 
-                      })}
+                      } as Record<string, unknown>)}
                       rows={4}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
@@ -393,14 +396,14 @@ export default function FormBuilderSettings() {
                         min={0} 
                         max={1} 
                         step={0.1} 
-                        defaultValue={[currentBlock.settings.temperature || 0.7]} 
+                        defaultValue={[(blockSettings as { temperature: number }).temperature || 0.7]} 
                         onValueChange={(value) => updateBlockSettings(currentBlock.id, { 
-                          temperature: value[0] 
-                        })}
+                          temperature: value[0]
+                        } as Record<string, unknown>)}
                         className="flex-1"
                       />
                       <span className="text-sm w-10 text-right">
-                        {(currentBlock.settings.temperature || 0.7).toFixed(1)}
+                        {((blockSettings as { temperature: number }).temperature || 0.7).toFixed(1)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -416,12 +419,12 @@ export default function FormBuilderSettings() {
                       type="number" 
                       min={1} 
                       max={10}
-                      value={currentBlock.settings.maxQuestions || 5}
+                      value={(blockSettings as { maxQuestions: number }).maxQuestions || 5}
                       onChange={(e) => {
                         const value = e.target.value === '' ? 5 : parseInt(e.target.value);
                         updateBlockSettings(currentBlock.id, { 
-                          maxQuestions: isNaN(value) ? 5 : value 
-                        });
+                          maxQuestions: value
+                        } as Record<string, unknown>)
                       }}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
@@ -446,7 +449,7 @@ export default function FormBuilderSettings() {
               {/* Block layout settings component */}
               <BlockLayoutSettings 
                 blockId={currentBlock.id}
-                currentLayout={currentBlock.settings?.layout}
+                currentLayout={(blockSettings.layout as SlideLayout | undefined)}
               />
             </div>
           </TabsContent>

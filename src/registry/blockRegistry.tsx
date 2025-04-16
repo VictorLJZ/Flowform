@@ -53,7 +53,7 @@ export interface FormBlock {
   description?: string
   required: boolean
   order: number
-  settings: Record<string, any>
+  settings: Record<string, unknown>
 }
 
 // Block registry

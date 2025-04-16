@@ -5,10 +5,9 @@ export async function InitProviders({
 }: {
   children: React.ReactNode
 }) {
-  // We don't need to pass initialSession anymore since AuthProvider will securely verify on mount
-  // This prevents security warnings about using unverified session data
+  // AuthProvider inside Providers will handle session verification
   return (
-    <Providers initialSession={null}>
+    <Providers>
       {children}
     </Providers>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, Send, Mail, Users } from "lucide-react"
+import { Plus, Trash2, Send, Users } from "lucide-react"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -141,7 +140,7 @@ export function InviteDialog({ open, onOpenChange }: InviteDialogProps) {
               </span>
             ) : (
               <span className="text-destructive">
-                You've reached the maximum number of pending invitations ({invitationLimit}).
+                You&apos;ve reached the maximum number of pending invitations ({invitationLimit}).
               </span>
             )}
           </DialogDescription>

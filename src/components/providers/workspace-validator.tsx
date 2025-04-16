@@ -75,7 +75,7 @@ export function WorkspaceValidator() {
     return () => {
       isMounted = false; // Prevent state updates after unmount
     }
-  }, [user, fetchWorkspaces, ensureDefaultWorkspace])
+  }, [user, fetchWorkspaces, ensureDefaultWorkspace, isLoading])
   
   // Function to validate localStorage data
   const validateLocalStorage = () => {

@@ -8,7 +8,7 @@ type LogCategory = 'TAB-FOCUS' | 'WORKSPACE' | 'STORAGE' | 'AUTH' | 'NETWORK' | 
 
 const debugEnabled = process.env.NODE_ENV === 'development';
 
-export const debugLog = (category: LogCategory, message: string, data?: any) => {
+export const debugLog = (category: LogCategory, message: string, data?: unknown) => {
   if (!debugEnabled) return;
   
   const timestamp = new Date().toISOString();
@@ -21,9 +21,9 @@ export const debugLog = (category: LogCategory, message: string, data?: any) => 
   }
 };
 
-export const tabFocusLog = (message: string, data?: any) => debugLog('TAB-FOCUS', message, data);
-export const workspaceLog = (message: string, data?: any) => debugLog('WORKSPACE', message, data);
-export const storageLog = (message: string, data?: any) => debugLog('STORAGE', message, data);
-export const authLog = (message: string, data?: any) => debugLog('AUTH', message, data);
-export const networkLog = (message: string, data?: any) => debugLog('NETWORK', message, data);
-export const stateLog = (message: string, data?: any) => debugLog('STATE', message, data);
+export const tabFocusLog = (message: string, data?: unknown) => debugLog('TAB-FOCUS', message, data);
+export const workspaceLog = (message: string, data?: unknown) => debugLog('WORKSPACE', message, data);
+export const storageLog = (message: string, data?: unknown) => debugLog('STORAGE', message, data);
+export const authLog = (message: string, data?: unknown) => debugLog('AUTH', message, data);
+export const networkLog = (message: string, data?: unknown) => debugLog('NETWORK', message, data);
+export const stateLog = (message: string, data?: unknown) => debugLog('STATE', message, data);

@@ -11,7 +11,7 @@ export function useWorkspaceInit() {
   const { 
     setUserId, 
     ensureDefaultWorkspace, 
-    fetchWorkspaces,
+    // fetchWorkspaces removed as it was unused
     isLoading: workspaceLoading
   } = useWorkspaceStore()
 
