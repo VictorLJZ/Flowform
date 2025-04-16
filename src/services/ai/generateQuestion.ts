@@ -1,28 +1,48 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
-// Initialize the OpenAI client
+// Initialize OpenAI client with API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
+
+// Response type for generate question function
+interface GenerateQuestionResponse {
+  success: boolean;
+  data?: string;
+  error?: string;
+  responseId?: string;
+}
+
+// Define types for OpenAI Responses API parameters
+type OpenAIMessage = {
+  role: string;
+  content: string;
+};
 
 /**
  * Generate a question using the OpenAI Responses API
  * 
- * @param conversation - The conversation history in Responses API format
- * @param instructions - Instructions for the AI
- * @param temperature - Controls randomness (0.0-1.0)
- * @param previousResponseId - Optional previous response ID for conversation continuity
+ * @param conversation Array of conversation messages
+ * @param instructions System instructions for the AI
+ * @param temperature Controls randomness (0-1)
+ * @param previousResponseId Optional previous response ID for conversation continuity
  * @returns Success status and generated question or error
  */
 export async function generateQuestion(
-  conversation: { role: string; content: string }[], 
+  conversation: OpenAIMessage[],
   instructions: string,
   temperature: number = 0.7,
   previousResponseId?: string
-) {
+): Promise<GenerateQuestionResponse> {
   try {
+    // Type safety check for conversation array
+    if (!Array.isArray(conversation) || conversation.length === 0) {
+      throw new Error("Invalid conversation format provided");
+    }
+    
     // Using the Responses API that replaced Chat Completions API on March 11th, 2025
-    const requestParams: any = {
+    // Use a type that allows adding properties dynamically
+    const requestParams: Record<string, unknown> = {
       model: "gpt-4o-mini", // Using GPT-4o-mini as specified in project requirements
       input: conversation, 
       temperature,
@@ -34,19 +54,21 @@ export async function generateQuestion(
       requestParams.previous_response_id = previousResponseId;
     }
 
-    const response = await openai.responses.create(requestParams);
+    // Use a type assertion to allow the API call to work
+    const response = await openai.responses.create(requestParams as any);
 
     // Access text using output_text helper property as per Responses API documentation
     return { 
       success: true, 
-      data: response.output_text,
-      responseId: response.id // Save for potential continuation
+      data: typeof response.output_text === 'string' ? response.output_text : '',
+      responseId: typeof response.id === 'string' ? response.id : undefined // Save for potential continuation
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating AI response:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return { 
       success: false, 
-      error: error.message 
+      error: errorMessage 
     };
   }
 }

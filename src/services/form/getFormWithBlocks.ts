@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { CompleteForm, Form, FormBlock, DynamicBlockConfig, BlockOption } from '@/types/supabase-types';
+import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/types/supabase-types';
 
 /**
  * Get a complete form with all its blocks, configs, and options

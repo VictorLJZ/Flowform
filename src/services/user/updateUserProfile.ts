@@ -6,7 +6,7 @@ type ProfileUpdateInput = Partial<Pick<Profile,
   'avatar_url'
 > & {
   bio?: string;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }>;
 
 /**

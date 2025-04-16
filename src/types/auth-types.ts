@@ -2,13 +2,19 @@
 
 /**
  * User metadata from authentication providers
+ * Including common fields from various providers
  */
 export interface UserMetadata {
   name?: string;
   full_name?: string;
   avatar_url?: string;
   picture?: string;
-  [key: string]: any; // Allow for other provider-specific metadata
+  email?: string;
+  email_verified?: boolean;
+  provider?: string;
+  sub?: string; // Subject identifier
+  // Allow for other provider-specific metadata with type safety
+  [key: string]: unknown;
 }
 
 /**
@@ -18,7 +24,7 @@ export interface User {
   id: string;
   email: string;
   user_metadata?: UserMetadata;
-  app_metadata?: Record<string, any>;
+  app_metadata?: Record<string, unknown>;
 }
 
 /**

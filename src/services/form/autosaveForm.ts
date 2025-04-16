@@ -19,7 +19,7 @@ class AutosaveService {
   /**
    * Utility function to debounce method calls
    */
-  private debounce<T extends (...args: any[]) => any>(
+  private debounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     wait: number
   ): (...args: Parameters<T>) => void {

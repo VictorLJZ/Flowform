@@ -21,7 +21,7 @@ export default function InvitePage({ params }: InvitePageProps) {
   const router = useRouter()
   const { toast } = useToast()
   const { 
-    userId, 
+    // userId not used but keeping comment for clarity
     setUserEmail,
     acceptInvitation, 
     declineInvitation, 
@@ -29,7 +29,8 @@ export default function InvitePage({ params }: InvitePageProps) {
     invitationError 
   } = useWorkspaceStore()
   
-  const [email, setEmail] = useState("")
+  // Not using email state directly as it's handled by the invitation details
+  // const [email, setEmail] = useState("")
   const [isValidating, setIsValidating] = useState(true)
   const [invitationDetails, setInvitationDetails] = useState<{
     email: string
@@ -198,7 +199,7 @@ export default function InvitePage({ params }: InvitePageProps) {
         <CardHeader className="text-center">
           <CardTitle>Workspace Invitation</CardTitle>
           <CardDescription>
-            You have been invited to join the "{invitationDetails.workspace}" workspace 
+            You have been invited to join the &ldquo;{invitationDetails.workspace}&rdquo; workspace 
             as a {invitationDetails.role}.
           </CardDescription>
         </CardHeader>

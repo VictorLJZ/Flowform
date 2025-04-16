@@ -11,7 +11,7 @@ import { mapToDynamicBlockConfig } from '@/utils/dynamicBlockMapping';
  */
 export async function saveDynamicBlockConfig(
   blockId: string,
-  settings: Record<string, any>
+  settings: Record<string, unknown>
 ): Promise<{ success: boolean }> {
   const supabase = createClient();
   

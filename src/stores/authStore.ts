@@ -4,8 +4,9 @@ import { login as loginService } from '@/services/auth/login'
 import { signUp as signUpService } from '@/services/auth/signUp'
 import { logout as logoutService } from '@/services/auth/logout'
 import { resetPassword as resetPasswordService } from '@/services/auth/resetPassword'
-import { createClient, reconnectClient } from '@/lib/supabase/client'
-import { authLog, networkLog } from '@/lib/debug-logger'
+import { createClient } from '@/lib/supabase/client'
+import { authLog } from '@/lib/debug-logger'
+import { SafeRecord } from '@/types/util-types'
 
 type SyncStatus = 'ready' | 'verifying' | 'refreshing'
 
@@ -39,8 +40,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await loginService(email, password)
       set({ user, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Login failed', 
+        isLoading: false 
+      })
     }
   },
   
@@ -50,8 +54,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await signUpService(email, password)
       set({ user, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Sign up failed', 
+        isLoading: false 
+      })
     }
   },
   
@@ -61,8 +68,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await logoutService()
       set({ user: null, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Logout failed', 
+        isLoading: false 
+      })
     }
   },
   
@@ -72,8 +82,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await resetPasswordService(email)
       set({ isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Password reset failed', 
+        isLoading: false 
+      })
     }
   },
   
@@ -138,16 +151,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('⭐ [AUTH] Using direct HTTP approach for auth verification');
       
       // First get the current session token the traditional way (but with a short timeout)
+      type SessionResult = { data: { session?: { access_token?: string } } }
+      
       const currentSession = await Promise.race([
         createClient().auth.getSession(),
-        new Promise((_, reject) => {
+        new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('getSession call timed out')), 1500);
         })
-      ]) as any;
+      ]) as SessionResult;
       
       // If we have a session token, use a direct fetch which is more reliable after tab switching
-      let data: any = null;
-      let error: any = null;
+      interface UserData {
+        user?: {
+          id: string;
+          email: string;
+          user_metadata?: SafeRecord;
+          app_metadata?: SafeRecord;
+        };
+      }
+      
+      let data: UserData | null = null;
+      let error: Error | null = null;
       
       if (currentSession?.data?.session?.access_token) {
         console.log('⭐ [AUTH] Found session token, using direct fetch approach');
@@ -181,7 +205,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             new Promise((_, reject) => {
               setTimeout(() => reject(new Error('Fallback getUser API call timed out')), 2000);
             })
-          ]) as any;
+          ]) as { data: UserData; error: Error | null };
           data = result.data;
           error = result.error;
         }
@@ -194,7 +218,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           new Promise((_, reject) => {
             setTimeout(() => reject(new Error('Regular getUser API call timed out')), 2000);
           })
-        ]) as any;
+        ]) as { data: { user: User } | null; error: Error | null };
         data = result.data;
         error = result.error;
       }
@@ -244,16 +268,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Success - clear the timeout
       clearTimeout(verificationTimeout);
       return true;
-    } catch (error: any) {
-      console.error('⭐ [AUTH] ERROR in verification:', error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown auth verification error';
+      console.error('⭐ [AUTH] ERROR in verification:', errorMessage);
       authLog('Auth verification failed', {
-        error: error.message,
+        error: errorMessage,
         timestamp: new Date().toISOString()
       })
       
       // Set auth state to ready even on error to prevent stuck states
       set({ 
-        error: error.message,
+        error: errorMessage,
         syncStatus: 'ready',
         lastVerified: Date.now()
       })

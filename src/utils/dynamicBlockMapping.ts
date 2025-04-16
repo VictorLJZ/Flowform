@@ -3,7 +3,15 @@
  * Maps frontend field names to database field names and vice versa
  */
 
-// Frontend to Database mapping
+// Frontend form builder settings interface
+export interface FormBuilderDynamicSettings {
+  startingPrompt?: string;
+  temperature?: number;
+  maxQuestions?: number;
+  contextInstructions?: string | null;
+}
+
+// Database representation interface
 export interface DynamicBlockConfig {
   starter_question: string;
   temperature: number;
@@ -12,7 +20,7 @@ export interface DynamicBlockConfig {
 }
 
 // Map frontend form builder settings to database dynamic block config
-export function mapToDynamicBlockConfig(settings: Record<string, any>): DynamicBlockConfig {
+export function mapToDynamicBlockConfig(settings: FormBuilderDynamicSettings): DynamicBlockConfig {
   return {
     starter_question: settings.startingPrompt || "How can I help you today?",
     temperature: settings.temperature !== undefined ? settings.temperature : 0.7,
@@ -22,7 +30,7 @@ export function mapToDynamicBlockConfig(settings: Record<string, any>): DynamicB
 }
 
 // Map database dynamic block config to frontend form builder settings
-export function mapToFormBuilderSettings(config: DynamicBlockConfig): Record<string, any> {
+export function mapToFormBuilderSettings(config: DynamicBlockConfig): FormBuilderDynamicSettings {
   return {
     startingPrompt: config.starter_question,
     temperature: config.temperature,

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { BlockPresentation } from "@/types/theme-types"
-import { SlideLayout, SlideLayoutType, getDefaultLayoutByType } from "@/types/layout-types"
+import { SlideLayout } from "@/types/layout-types"
 import { SlideAspectRatioContainer } from "./SlideAspectRatioContainer"
 import { StandardSlideLayout } from "./slide-layouts/StandardSlideLayout"
 import { MediaLeftLayout } from "./slide-layouts/MediaLeftLayout"
@@ -26,7 +26,11 @@ interface SlideWrapperProps {
     layout?: SlideLayout
     presentation?: BlockPresentation
   }
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{ 
+    title: string, 
+    description: string, 
+    settings: Record<string, unknown> 
+  }>) => void
   children: ReactNode
   className?: string
 }

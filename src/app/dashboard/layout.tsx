@@ -10,8 +10,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Initialize workspace for authenticated users
-  const { isInitializing } = useWorkspaceInit();
+  // Initialize workspace for authenticated users - call hook but don't use its return value
+  useWorkspaceInit();
   return (
     <DebugProvider>
       <SidebarProvider>

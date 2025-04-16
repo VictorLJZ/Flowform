@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { PlusCircle, ChevronLeft, ChevronRight, Trash2, Pencil, Check } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { getBlockDefinition } from "@/registry/blockRegistry"
+import { getBlockDefinition, BlockDefinition } from "@/registry/blockRegistry"
 import { cn } from "@/lib/utils"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { 
@@ -19,7 +19,6 @@ import {
   DragEndEvent
 } from "@dnd-kit/core"
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -39,10 +38,16 @@ const categoryColors: Record<string, string> = {
 
 // Sortable block item component
 function SortableBlockItem({ block, index, isSelected, blockDef }: { 
-  block: any, 
+  block: {
+    id: string;
+    title: string;
+    blockTypeId: string;
+    type?: string;
+    required?: boolean;
+  }, 
   index: number, 
   isSelected: boolean,
-  blockDef: any
+  blockDef: BlockDefinition | null
 }) {
   const { 
     setCurrentBlockId,
@@ -67,7 +72,7 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
   }
   
   // Block icon component from definition
-  const Icon = blockDef.icon
+  const Icon = blockDef?.icon || (() => null)
   
   return (
     <div 
@@ -98,8 +103,8 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
             sidebarOpen ? "h-6 px-2 w-11" : "h-6 px-1.5 w-9"
           )}
                style={{ 
-                 backgroundColor: `${categoryColors[blockDef.category] || categoryColors.input}20`,
-                 color: categoryColors[blockDef.category] || categoryColors.input
+                 backgroundColor: `${categoryColors[blockDef?.category || 'input'] || categoryColors.input}20`,
+                 color: categoryColors[blockDef?.category || 'input'] || categoryColors.input
                }}>
             <span className={cn(
               "font-medium",
@@ -107,7 +112,7 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
             )}>{index + 1}</span>
             <Icon 
               size={sidebarOpen ? 16 : 14} 
-              style={{ color: categoryColors[blockDef.category] || categoryColors.input }} 
+              style={{ color: categoryColors[blockDef?.category || 'input'] || categoryColors.input }} 
             />
           </div>
         </div>
@@ -116,10 +121,10 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
         {sidebarOpen && (
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div className="text-sm font-medium truncate">
-              {block.title || blockDef.defaultTitle}
+              {block.title || blockDef?.defaultTitle || 'Untitled Block'}
             </div>
             <div className="text-xs text-muted-foreground truncate">
-              {blockDef.name}
+              {blockDef?.name || block.blockTypeId}
             </div>
           </div>
         )}

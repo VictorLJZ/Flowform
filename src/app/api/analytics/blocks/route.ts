@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { BlockMetrics } from '@/types/supabase-types';
 
 // Get performance analytics for a specific block or all blocks in a form
 export async function GET(request: Request) {
@@ -18,7 +19,6 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createClient();
-    const now = new Date().toISOString();
     
     // First, get the blocks information
     let blocksQuery = supabase
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     }
 
     // Map of block ID to metrics
-    const metricsMap = (metrics || []).reduce<Record<string, any>>((acc, metric) => {
+    const metricsMap = (metrics || []).reduce<Record<string, BlockMetrics>>((acc, metric) => {
       acc[metric.block_id] = metric;
       return acc;
     }, {});
@@ -181,10 +181,11 @@ export async function GET(request: Request) {
     });
     
     return NextResponse.json(blockPerformance);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Error in block performance API:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: error.message || 'Unknown error occurred' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

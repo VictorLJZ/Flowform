@@ -2,7 +2,7 @@
  * Supabase RPC wrapper utility for handling special cases with PostgreSQL functions
  */
 import { SupabaseClient } from '@supabase/supabase-js';
-import { PostgreSQLRPCResponse } from '@/types/postgresql-types';
+import { PostgreSQLBlockData, PostgreSQLFormData, PostgreSQLRPCResponse } from '@/types/postgresql-types';
 
 /**
  * Wrapper for save_form_with_blocks RPC call that handles workspace_id separately
@@ -15,8 +15,8 @@ import { PostgreSQLRPCResponse } from '@/types/postgresql-types';
  */
 export async function saveFormWithBlocksRPC<T>(
   supabase: SupabaseClient,
-  formData: any,
-  blocksData: any[]
+  formData: PostgreSQLFormData,
+  blocksData: PostgreSQLBlockData[]
 ): Promise<PostgreSQLRPCResponse<T>> {
   // Extract workspace_id from form data
   const workspaceId = formData.workspace_id;

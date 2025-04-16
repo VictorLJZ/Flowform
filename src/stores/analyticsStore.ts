@@ -1,12 +1,9 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 import { 
-  FormResponse, 
-  StaticBlockAnswer, 
-  DynamicBlockResponse, 
-  FormBlock,
   CompleteResponse
 } from '@/types/supabase-types'
+import { PostgreSQLError } from '@/types/postgresql-types'
 
 type AnalyticsState = {
   responses: CompleteResponse[]
@@ -84,8 +81,11 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
       )
       
       set({ responses: completeResponses, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({
+        error: error instanceof Error ? error.message : 'Error fetching responses',
+        isLoading: false
+      })
     }
   },
   
@@ -137,8 +137,11 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
       } as CompleteResponse
       
       set({ currentResponse: completeResponse, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({
+        error: error instanceof Error ? error.message : 'Error fetching responses',
+        isLoading: false
+      })
     }
   },
   
@@ -155,8 +158,11 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
       console.log(`Exporting responses in ${format} format`)
       
       set({ isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({
+        error: error instanceof Error ? error.message : 'Error fetching responses',
+        isLoading: false
+      })
     }
   }
 }))

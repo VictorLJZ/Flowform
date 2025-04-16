@@ -1,4 +1,4 @@
-import { StaticQuestionContext, DynamicQuestionContext, FormContextData } from './getFormContext';
+import { FormContextData } from './getFormContext';
 
 /**
  * Get the context of a form including all questions - Client-side implementation

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormResponse, Form, FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
+import { FormResponse } from '@/types/supabase-types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export async function startFormResponse(
   formId: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, unknown> = {}
 ): Promise<{ response: FormResponse; starterQuestion: string }> {
   const supabase = createClient();
 

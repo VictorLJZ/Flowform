@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
-import { Send, ChevronLeft, ChevronRight, ChevronDown, ArrowRight, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronDown, Loader2 } from "lucide-react"
 import { Form, FormBlock } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+// import { Checkbox } from "@/components/ui/checkbox" - Removed unused import
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
@@ -44,7 +44,8 @@ export default function FormSessionPage() {
   
   // State for form and blocks
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState<Form | null>(null)
+  // Form state is set but not directly used in the component
+  const [, setForm] = useState<Form | null>(null)
   const [blocks, setBlocks] = useState<FormBlock[]>([])
   const [responseId, setResponseId] = useState<string>('')
   
@@ -70,9 +71,9 @@ export default function FormSessionPage() {
 
   // Initialize form and session
   useEffect(() => {
-    let isMounted = true;
-    const timeoutId = setTimeout(() => {
-      // Safety timeout to prevent infinite loading
+    const isMounted = true;
+    // Safety timeout to prevent infinite loading
+    setTimeout(() => {
       if (loading && isMounted) {
         setLoading(false);
         setError('Loading took too long. Please try refreshing the page.');
@@ -418,7 +419,10 @@ export default function FormSessionPage() {
         
       case 'multiple_choice':
         // Get options from block settings
-        const options = currentBlock.settings?.options || []
+        // Ensure options is always an array with proper typing
+        const options: Array<{value: string, label: string}> = Array.isArray(currentBlock.settings?.options) 
+          ? currentBlock.settings.options 
+          : []
         return (
           <RadioGroup
             value={currentAnswer}
@@ -579,7 +583,9 @@ export default function FormSessionPage() {
   };
   
   // Render the dynamic conversation history
-  const renderDynamicConversationHistory = () => {
+  // This function is defined but not used in the rendered UI
+  // Keeping it for future use but marking it as unused
+  const _renderDynamicConversationHistory = () => {
     if (!currentBlock || currentBlock.type !== 'dynamic' || !currentDynamicConversation) return null;
     
     const { conversation } = currentDynamicConversation;

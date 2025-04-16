@@ -5,7 +5,30 @@
  * and data transformation for database operations.
  */
 
-import { Form, BlockType, StaticBlockSubtype } from './supabase-types';
+import { BlockType, StaticBlockSubtype } from './supabase-types';
+
+/**
+ * Generic themes and settings interfaces to replace 'any' use
+ */
+export interface ThemeSettings {
+  colorScheme?: 'light' | 'dark' | 'auto';
+  primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  borderRadius?: number;
+  customCss?: string;
+  [key: string]: unknown;
+}
+
+export interface FormSettings {
+  allowAnonymousResponses?: boolean;
+  collectEmailAddresses?: boolean;
+  showProgressBar?: boolean;
+  confirmationMessage?: string;
+  redirectUrl?: string;
+  closedMessage?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Form data that requires special PostgreSQL compatibility handling
@@ -17,15 +40,26 @@ export interface PostgreSQLFormData {
   workspace_id?: string;
   created_by?: string;
   status?: 'draft' | 'published' | 'archived';
-  theme?: Record<string, any>;
-  settings?: Record<string, any>;
+  theme?: ThemeSettings;
+  settings?: FormSettings;
   updated_at?: string;
   published_at?: string;
 }
 
 /**
- * Block data that requires special PostgreSQL compatibility handling
+ * Block-specific settings interface
  */
+export interface BlockSettings {
+  placeholder?: string;
+  minValue?: number;
+  maxValue?: number;
+  defaultValue?: string | number | boolean;
+  allowMultipleSelections?: boolean;
+  includeOtherOption?: boolean;
+  // For other block-specific settings
+  [key: string]: unknown;
+}
+
 export interface PostgreSQLBlockData {
   id?: string;
   form_id?: string;
@@ -35,7 +69,7 @@ export interface PostgreSQLBlockData {
   description?: string | null;
   required?: boolean;
   order_index?: number;
-  settings?: Record<string, any>;
+  settings?: BlockSettings;
   dynamic_config?: {
     starter_question?: string;
     temperature?: number;
@@ -45,11 +79,22 @@ export interface PostgreSQLBlockData {
 }
 
 /**
+ * PostgreSQL error interface
+ */
+export interface PostgreSQLError {
+  code?: string;
+  message: string;
+  details?: string;
+  hint?: string;
+  position?: number;
+}
+
+/**
  * PostgreSQL RPC function response type
  */
 export interface PostgreSQLRPCResponse<T> {
   data: T | null;
-  error: any;
+  error: PostgreSQLError | null;
 }
 
 /**
@@ -59,7 +104,7 @@ export interface PostgreSQLEntity {
   id?: string;
   workspace_id?: string;
   created_by?: string;
-  title?: string;
-  status?: string;
-  [key: string]: any;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
 }

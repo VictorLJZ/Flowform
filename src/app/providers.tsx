@@ -1,19 +1,17 @@
 "use client"
 
-import { Session } from "@supabase/supabase-js"
+// Session import removed as it's no longer needed
 import { AuthProvider } from "@/providers/auth-provider"
-import { createClient } from "@/lib/supabase/client"
+// Import only what we actually use
 import { Toaster } from "@/components/ui/toaster"
 import { WorkspaceValidator } from "@/components/providers/workspace-validator"
 import { NetworkTracerProvider } from "@/components/providers/network-tracer-provider"
 import { TabFocusMonitor } from "@/components/providers/tab-focus-monitor"
 
 export function Providers({
-  children,
-  initialSession, // We'll keep this parameter for backward compatibility but won't use it directly
+  children
 }: {
   children: React.ReactNode
-  initialSession: Session | null
 }) {
   // We don't need to maintain session state here anymore 
   // AuthProvider will handle secure authentication verification

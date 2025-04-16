@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { DynamicBlockResponse, QAPair, DynamicBlockConfig } from '@/types/supabase-types';
+import { QAPair } from '@/types/supabase-types';
 import { processConversation } from '@/services/ai/processConversation';
 import { getFormContext } from './getFormContext';
 
@@ -145,11 +145,11 @@ export async function saveDynamicBlockResponse(input: SaveResponseInput): Promis
       }
     };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error saving dynamic block response:', error);
     return {
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
 }

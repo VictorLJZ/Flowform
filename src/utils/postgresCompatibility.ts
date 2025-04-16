@@ -7,7 +7,17 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { PostgreSQLEntity, PostgreSQLRPCResponse } from '@/types/postgresql-types';
+import { PostgreSQLEntity, PostgreSQLError, PostgreSQLRPCResponse } from '@/types/postgresql-types';
+import { SafeRecord } from '@/types/util-types';
+
+// For strongly-typed parameter access
+interface FormDataParams {
+  p_form_data?: {
+    workspace_id?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
 
 /**
  * Format data for PostgreSQL compatibility, handling empty arrays
@@ -16,7 +26,7 @@ import { PostgreSQLEntity, PostgreSQLRPCResponse } from '@/types/postgresql-type
  * @param data Any data structure to be sent to PostgreSQL
  * @returns A PostgreSQL-compatible version of the data
  */
-export function formatForPostgreSQL<T>(data: T): any {
+export function formatForPostgreSQL<T>(data: T): unknown {
   // Handle null/undefined
   if (data === null || data === undefined) {
     return null;
@@ -36,7 +46,7 @@ export function formatForPostgreSQL<T>(data: T): any {
   
   // Handle objects
   if (typeof data === 'object') {
-    const result: Record<string, any> = {};
+    const result: SafeRecord = {};
     
     for (const [key, value] of Object.entries(data)) {
       result[key] = formatForPostgreSQL(value);
@@ -61,10 +71,10 @@ export function formatForPostgreSQL<T>(data: T): any {
 export async function executePostgreSQLRPC<T>(
   supabase: SupabaseClient,
   functionName: string,
-  params: Record<string, any>
+  params: FormDataParams
 ): Promise<PostgreSQLRPCResponse<T>> {
   // Process parameters for PostgreSQL compatibility
-  const processedParams: Record<string, any> = {};
+  const processedParams: SafeRecord = {};
   
   console.log('🔍 RPC DIAGNOSTIC - Input params:', JSON.stringify(params));
   console.log('🔍 RPC DIAGNOSTIC - Input form_data workspace_id:', 
@@ -83,7 +93,7 @@ export async function executePostgreSQLRPC<T>(
       
       // Check if workspace_id was preserved after stringify (for diagnostic purposes)
       if (key === 'p_form_data') {
-        const parsedBack = JSON.parse(processedParams[key]);
+        const parsedBack = JSON.parse(processedParams[key] as string) as {workspace_id?: string};
         console.log('🔍 RPC DIAGNOSTIC - After stringify form_data workspace_id:', 
                   parsedBack.workspace_id, 'type:', typeof parsedBack.workspace_id);
       }
@@ -97,7 +107,7 @@ export async function executePostgreSQLRPC<T>(
   console.log('🔍 RPC DIAGNOSTIC - Final processed params:', processedParams);
   if (processedParams.p_form_data) {
     try {
-      const parsedFormData = JSON.parse(processedParams.p_form_data);
+      const parsedFormData = JSON.parse(processedParams.p_form_data as string) as {workspace_id?: string};
       console.log('🔍 RPC DIAGNOSTIC - Final parsed form_data workspace_id:', 
                 parsedFormData.workspace_id, 'type:', typeof parsedFormData.workspace_id);
     } catch (e) {
@@ -109,7 +119,7 @@ export async function executePostgreSQLRPC<T>(
   console.log('🔍 RPC DIAGNOSTIC - Final processed params:', processedParams);
   if (processedParams.p_form_data) {
     try {
-      const parsedFormData = JSON.parse(processedParams.p_form_data);
+      const parsedFormData = JSON.parse(processedParams.p_form_data as string) as {workspace_id?: string};
       console.log('🔍 RPC DIAGNOSTIC - Final parsed form_data workspace_id:', 
                 parsedFormData.workspace_id, 'type:', typeof parsedFormData.workspace_id);
     } catch (e) {
@@ -124,7 +134,11 @@ export async function executePostgreSQLRPC<T>(
     return { data: data as T, error };
   } catch (error) {
     console.error(`Error executing PostgreSQL RPC function ${functionName}:`, error);
-    return { data: null, error };
+    const pgError: PostgreSQLError = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: 'RPC_ERROR'
+    };
+    return { data: null, error: pgError };
   }
 }
 
@@ -137,7 +151,7 @@ export async function executePostgreSQLRPC<T>(
  * @param formData Form data with fields to preserve
  * @returns Form data with explicitly typed fields
  */
-export function ensureCriticalFields<T extends PostgreSQLEntity>(formData: T): T {
+export function ensureCriticalFields<T extends PostgreSQLEntity>(formData: T): T & {title?: string; status?: string} {
   if (!formData) return formData;
   
   // Create a new object to avoid mutating the original
@@ -158,11 +172,15 @@ export function ensureCriticalFields<T extends PostgreSQLEntity>(formData: T): T
   
   // Provide defaults for optional fields
   if ('title' in formData) {
-    enhanced.title = formData.title || 'Untitled';
+    // Use type assertion to safely access the title property
+    const titleValue = (formData as unknown as { title?: string }).title;
+    (enhanced as { title?: string }).title = titleValue || 'Untitled';
   }
   
   if ('status' in formData) {
-    enhanced.status = formData.status || 'draft';
+    // Use type assertion to safely access the status property
+    const statusValue = (formData as unknown as { status?: string }).status;
+    (enhanced as { status?: string }).status = statusValue || 'draft';
   }
 
   return enhanced;

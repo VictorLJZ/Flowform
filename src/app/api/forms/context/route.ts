@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { DynamicBlockConfig } from '@/types/supabase-types';
 
 // Get the context of a form including all questions
 export async function GET(request: Request) {
@@ -7,7 +8,6 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const formId = url.searchParams.get('formId');
     const currentBlockId = url.searchParams.get('currentBlockId') || '';
-    const forceRefresh = url.searchParams.get('forceRefresh') === 'true';
 
     if (!formId) {
       return NextResponse.json(
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
         .filter(block => block.type === 'dynamic')
         .map(block => block.id);
       
-      let dynamicConfigs: any[] = [];
+      let dynamicConfigs: DynamicBlockConfig[] = [];
       
       if (dynamicBlockIds.length > 0) {
         const { data: configs, error: configsError } = await supabase
@@ -114,17 +114,17 @@ export async function GET(request: Request) {
       
       return NextResponse.json(filteredContext);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[API] Error getting form context:', error);
       return NextResponse.json(
-        { error: error.message || 'Unknown error occurred' },
+        { error: error instanceof Error ? error.message : 'Unknown error occurred' },
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Unexpected error in form context API:', error);
     return NextResponse.json(
-      { error: error.message || 'Unknown error occurred' },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

@@ -61,11 +61,11 @@ export async function getDynamicBlockQuestion(blockId: string): Promise<GetQuest
       }
     };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting dynamic block question:', error);
     return {
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
 }

@@ -2,17 +2,14 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings2, LayoutGrid, Wrench, Sparkles, Code, Hash, Trash2, Columns } from "lucide-react"
+import { Settings2, Wrench, Sparkles, Trash2, Columns } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
-import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { BlockLayoutSettings } from "@/components/form/settings/BlockLayoutSettings"
 
@@ -28,7 +25,7 @@ export default function FormBuilderSettings() {
   
   const currentBlock = getCurrentBlock()
   const blockDefinition = useCurrentBlockDefinition()
-  const [selectedTab, setSelectedTab] = useState("settings")
+  const [, setSelectedTab] = useState("settings") // Using just setSelectedTab for tab switching
   
   // Handle block deletion with confirmation
   const handleDeleteBlock = () => {
@@ -274,7 +271,7 @@ export default function FormBuilderSettings() {
                   <h5 className="text-xs text-muted-foreground font-medium uppercase">Options</h5>
                   
                   <div className="space-y-2">
-                    {currentBlock.settings.options?.map((option: any, index: number) => (
+                    {currentBlock.settings.options?.map((option: { id: string; label: string; value: string }, index: number) => (
                       <div key={option.id} className="flex items-center gap-2">
                         <Input 
                           value={option.label}
@@ -291,7 +288,7 @@ export default function FormBuilderSettings() {
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={() => {
                             const updatedOptions = currentBlock.settings.options.filter(
-                              (_: any, i: number) => i !== index
+                              (_: { id: string; label: string; value: string }, i: number) => i !== index
                             )
                             updateBlockSettings(currentBlock.id, { options: updatedOptions })
                           }}

@@ -4,7 +4,7 @@ import React from "react"
 import { 
   FileText, MessageSquare, CheckSquare, List, 
   Mail, Hash, Calendar, User, ArrowUpRight, 
-  Bookmark, CreditCard, Image
+  Bookmark
 } from "lucide-react"
 
 // Block type definitions
@@ -23,15 +23,25 @@ export interface BlockDefinition {
   isPremium?: boolean
   
   // These will be implemented as needed for each block type
-  renderComponent?: React.ComponentType<any>
-  editComponent?: React.ComponentType<any>
-  settingsComponent?: React.ComponentType<any>
+  renderComponent?: React.ComponentType<{
+    block: FormBlock;
+    value?: unknown;
+    onChange?: (value: unknown) => void;
+  }>
+  editComponent?: React.ComponentType<{
+    block: FormBlock;
+    updateBlock: (updates: Partial<FormBlock>) => void;
+  }>
+  settingsComponent?: React.ComponentType<{
+    block: FormBlock;
+    updateSettings: (settings: Record<string, unknown>) => void;
+  }>
   
   // Default values when creating this block
-  getDefaultValues: () => Record<string, any>
+  getDefaultValues: () => Record<string, unknown>
   
   // Optional validation function
-  validate?: (values: Record<string, any>) => Record<string, string> | null
+  validate?: (values: Record<string, unknown>) => Record<string, string> | null
 }
 
 // Form block structure for instances in a form

@@ -1,6 +1,12 @@
 import { Workspace } from '@/types/supabase-types';
 import { networkLog } from '@/lib/debug-logger';
 
+interface ApiErrorResponse {
+  error?: string;
+  message?: string;
+  status?: number;
+}
+
 /**
  * Get all workspaces where the user is a member - Client-side implementation
  * Uses the API route to fetch workspaces data
@@ -23,24 +29,25 @@ export async function getUserWorkspacesClient(userId: string): Promise<Workspace
     
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `API returned status ${response.status}`);
+      const errorData = await response.json() as ApiErrorResponse;
+      throw new Error(errorData.error || errorData.message || `API returned status ${response.status}`);
     }
     
     // Parse the response data
-    const workspaces = await response.json();
+    const workspaces = await response.json() as Workspace[];
     
     // Log success
     console.log('[getUserWorkspacesClient] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map((w: any) => w.name) || []
+      names: workspaces?.map((w: Workspace) => w.name) || []
     });
     
     // Return workspaces or empty array
     return workspaces || [];
-  } catch (error: any) {
-    // Log any unexpected errors
-    console.error('[getUserWorkspacesClient] ERROR in workspace fetch:', error);
+  } catch (error) {
+    // Log any unexpected errors with proper type handling
+    console.error('[getUserWorkspacesClient] ERROR in workspace fetch:', 
+      error instanceof Error ? error.message : 'Unknown error');
     throw error;
   }
 }

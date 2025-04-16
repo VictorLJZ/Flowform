@@ -57,7 +57,8 @@ export default function Page() {
         console.log('[Dashboard] Auth check result:', result)
         // Make the auth check function available in console for debugging
         if (typeof window !== 'undefined') {
-          (window as any).checkAuth = checkAuthStatus
+          // Add custom property to window in a type-safe way
+          (window as Window & { checkAuth?: () => Promise<unknown> }).checkAuth = checkAuthStatus
           console.log('[Dashboard] Auth checker available in console as "checkAuth()"')
         }
       } catch (error) {

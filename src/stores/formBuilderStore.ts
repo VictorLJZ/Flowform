@@ -58,7 +58,7 @@ interface FormBuilderState {
   setBlocks: (blocks: FormBlock[]) => void
   addBlock: (blockTypeId: string) => void
   updateBlock: (blockId: string, updates: Partial<FormBlock>) => void
-  updateBlockSettings: (blockId: string, settings: Record<string, any>) => void
+  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => void
   updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void
   removeBlock: (blockId: string) => void
   reorderBlocks: (startIndex: number, endIndex: number) => void
@@ -416,15 +416,15 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           created_by: formData.created_by,
           status: formData.status || 'draft',
           settings: formData.settings ? {
-            showProgressBar: formData.settings.showProgressBar ?? defaultFormData.settings.showProgressBar,
-            requireSignIn: formData.settings.requireSignIn ?? defaultFormData.settings.requireSignIn,
-            theme: formData.settings.theme ?? defaultFormData.settings.theme,
-            primaryColor: formData.settings.primaryColor ?? defaultFormData.settings.primaryColor,
-            fontFamily: formData.settings.fontFamily ?? defaultFormData.settings.fontFamily,
-            estimatedTime: formData.settings.estimatedTime,
-            estimatedTimeUnit: formData.settings.estimatedTimeUnit,
-            redirectUrl: formData.settings.redirectUrl,
-            customCss: formData.settings.customCss
+            showProgressBar: typeof formData.settings.showProgressBar === 'boolean' ? formData.settings.showProgressBar : defaultFormData.settings.showProgressBar,
+            requireSignIn: typeof formData.settings.requireSignIn === 'boolean' ? formData.settings.requireSignIn : defaultFormData.settings.requireSignIn,
+            theme: typeof formData.settings.theme === 'string' ? formData.settings.theme : defaultFormData.settings.theme,
+            primaryColor: typeof formData.settings.primaryColor === 'string' ? formData.settings.primaryColor : defaultFormData.settings.primaryColor,
+            fontFamily: typeof formData.settings.fontFamily === 'string' ? formData.settings.fontFamily : defaultFormData.settings.fontFamily,
+            estimatedTime: typeof formData.settings.estimatedTime === 'number' ? formData.settings.estimatedTime : undefined,
+            estimatedTimeUnit: formData.settings.estimatedTimeUnit as 'minutes' | 'hours' | undefined,
+            redirectUrl: typeof formData.settings.redirectUrl === 'string' ? formData.settings.redirectUrl : undefined,
+            customCss: typeof formData.settings.customCss === 'string' ? formData.settings.customCss : undefined
           } : defaultFormData.settings
         },
         blocks: frontendBlocks,

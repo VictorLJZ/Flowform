@@ -1,9 +1,9 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
+import { 
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -13,14 +13,12 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
 import { useFormStore } from "@/stores/formStore"
 
 import { ResponsesTable } from "@/components/analytics/responses-table"
 
 export default function FormAnalyticsPage() {
   const params = useParams()
-  const router = useRouter()
   const formId = params.formId as string
   
   const { fetchFormById, currentForm, isLoading, error } = useFormStore()

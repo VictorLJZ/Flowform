@@ -49,10 +49,10 @@ export async function GET(request: Request) {
       hasPermission: roles.includes(data.role as WorkspaceRole),
       role: data.role
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Error in permissions API:', error);
     return NextResponse.json(
-      { error: error.message || 'Unknown error occurred' },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

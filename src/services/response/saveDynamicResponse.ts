@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { DynamicBlockResponse, FormBlock, DynamicBlockConfig, QAPair } from '@/types/supabase-types';
+import { DynamicBlockResponse, DynamicBlockConfig, QAPair } from '@/types/supabase-types';
 import { generateQuestion } from '@/services/ai/generateQuestion';
 
 /**
@@ -80,7 +80,7 @@ export async function saveDynamicResponse(
   }
   
   // Check if we've reached the maximum number of questions
-  const isComplete = conversation.length >= dynamicConfig.max_questions;
+  const isComplete = conversation.length >= (dynamicConfig?.max_questions || 5); // Default to 5 if not set
   
   // Generate the next question if we haven't reached the maximum
   let nextQuestion: string | null = null;
@@ -95,19 +95,19 @@ export async function saveDynamicResponse(
     // Add the AI instructions as a system message
     aiConversation.unshift({ 
       role: 'developer', 
-      content: dynamicConfig.ai_instructions || 'Generate a follow-up question based on the previous conversation.'
+      content: dynamicConfig?.ai_instructions || 'Generate a follow-up question based on the previous conversation.'
     });
     
     // Generate the next question
     try {
       const result = await generateQuestion(
         aiConversation, 
-        dynamicConfig.ai_instructions || '',
-        dynamicConfig.temperature
+        dynamicConfig?.ai_instructions || '',
+        dynamicConfig?.temperature || 0.7 // Default temperature if not set
       );
       
       if (result.success) {
-        nextQuestion = result.data;
+        nextQuestion = result.data || null; // Ensure null instead of undefined
       } else {
         throw new Error(result.error);
       }

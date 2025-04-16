@@ -23,7 +23,8 @@ export async function GET(request: Request) {
     
     // URL to redirect to after sign in process completes
     return NextResponse.redirect(new URL('/dashboard', request.url))
-  } catch (error) {
+  } catch {
+    // No error variable needed - just redirecting to login page with generic error
     return NextResponse.redirect(
       new URL('/login?error=An+unexpected+error+occurred', request.url)
     )

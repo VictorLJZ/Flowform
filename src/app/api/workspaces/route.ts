@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { Workspace } from '@/types/supabase-types';
 
 // Get all workspaces for the current user
 export async function GET(request: Request) {
@@ -61,15 +62,15 @@ export async function GET(request: Request) {
     // Log success
     console.log('[API] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map((w: any) => w.name) || []
+      names: workspaces?.map((w: Workspace) => w.name) || []
     });
 
     // Return workspaces
     return NextResponse.json(workspaces || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] ERROR in workspace fetch:', error);
     return NextResponse.json(
-      { error: error.message || 'Unknown error occurred' },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

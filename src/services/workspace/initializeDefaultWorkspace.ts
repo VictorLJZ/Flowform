@@ -4,7 +4,7 @@ import { getUserWorkspacesClient } from './getUserWorkspacesClient';
 import { createWorkspace } from './createWorkspace';
 
 // Keep track of initialization in progress
-let initializationInProgress: Record<string, Promise<any>> = {};
+const initializationInProgress: Record<string, Promise<Workspace | null>> = {};
 
 /**
  * Ensures a user has at least one workspace by creating a default one if none exists
@@ -30,10 +30,10 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
   }
 
   // Create a promise for this initialization
-  let promiseResolve!: (value: any) => void;
-  let promiseReject!: (reason?: any) => void;
+  let promiseResolve!: (value: Workspace | null) => void;
+  let promiseReject!: (reason?: Error) => void;
   
-  const initPromise = new Promise<any>((resolve, reject) => {
+  const initPromise = new Promise<Workspace | null>((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
   });
@@ -57,7 +57,7 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
       }
     } catch (error) {
       console.error('Error while checking existing workspaces:', error);
-      promiseReject(error);
+      promiseReject(error instanceof Error ? error : new Error('Unknown error checking workspaces'));
       throw error;
     }
     
@@ -100,7 +100,7 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
       return newWorkspace;
     } catch (createError) {
       console.error('Error creating default workspace:', createError);
-      promiseReject(createError);
+      promiseReject(createError instanceof Error ? createError : new Error('Error creating workspace'));
       throw createError;
     }
   } catch (error) {
@@ -109,8 +109,10 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
     console.error('Full error:', JSON.stringify(error, null, 2));
     if (error instanceof Error) {
       console.error('Stack trace:', error.stack);
+      promiseReject(error);
+    } else {
+      promiseReject(new Error('Unknown initialization error'));
     }
-    promiseReject(error);
     return null;
   } finally {
     // Remove the initialization promise once complete

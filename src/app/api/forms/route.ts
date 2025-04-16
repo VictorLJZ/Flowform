@@ -132,11 +132,14 @@ export async function POST(request: Request) {
     const form = data[0];
     logger.info('Form created successfully', { formId: form.form_id, userId });
     return NextResponse.json({ form_id: form.form_id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Structured error logging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     logger.error('Unhandled error in form creation', { 
-      error: error.message,
-      stack: error.stack,
+      error: errorMessage,
+      stack: errorStack,
     });
     
     // Return appropriate error response

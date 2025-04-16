@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Download, Filter, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react"
 import { useFormStore } from "@/stores/formStore"
 import { useAnalyticsStore } from "@/stores/analyticsStore"
-import { FormBlock, StaticBlockAnswer, QAPair } from "@/types/supabase-types"
+import { StaticBlockAnswer, QAPair } from "@/types/supabase-types"
 
 interface ResponsesTableProps {
   formId: string

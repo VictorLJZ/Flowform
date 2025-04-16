@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Form } from '@/types/supabase-types';
+import { DynamicBlockConfig } from '@/types/supabase-types';
 
 export type StaticQuestionContext = {
   id: string;
@@ -97,7 +97,7 @@ export async function getFormContext(
       .filter(block => block.type === 'dynamic')
       .map(block => block.id);
     
-    let dynamicConfigs: any[] = [];
+    let dynamicConfigs: DynamicBlockConfig[] = [];
     
     if (dynamicBlockIds.length > 0) {
       const { data: configs, error: configsError } = await supabase

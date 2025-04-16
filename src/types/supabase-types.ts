@@ -22,7 +22,7 @@ export interface Workspace {
   created_by: string; // UUID, references auth.users.id
   updated_at: string; // ISO date string
   logo_url: string | null;
-  settings: Record<string, any> | null; // JSONB
+  settings: Record<string, unknown> | null; // JSONB
 }
 
 export interface WorkspaceInvitation {
@@ -55,8 +55,8 @@ export interface Form {
   description: string | null;
   slug: string | null;
   status: 'draft' | 'published' | 'archived';
-  theme: Record<string, any> | null; // JSONB
-  settings: Record<string, any> | null; // JSONB
+  theme: Record<string, unknown> | null; // JSONB
+  settings: Record<string, unknown> | null; // JSONB
   created_at: string; // ISO date string
   created_by: string; // UUID, references auth.users.id
   updated_at: string; // ISO date string
@@ -85,7 +85,7 @@ export interface FormBlock {
   description: string | null;
   required: boolean;
   order_index: number;
-  settings: Record<string, any> | null; // JSONB
+  settings: Record<string, unknown> | null; // JSONB
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }
@@ -116,7 +116,7 @@ export interface FormResponse {
   status: 'in_progress' | 'completed' | 'abandoned';
   started_at: string; // ISO date string
   completed_at: string | null; // ISO date string
-  metadata: Record<string, any> | null; // JSONB
+  metadata: Record<string, unknown> | null; // JSONB
 }
 
 export interface StaticBlockAnswer {
@@ -189,7 +189,7 @@ export interface FormInteraction {
   interaction_type: 'view' | 'focus' | 'blur' | 'change' | 'submit' | 'error';
   timestamp: string; // ISO date string
   duration_ms: number | null;
-  metadata: Record<string, any> | null; // JSONB
+  metadata: Record<string, unknown> | null; // JSONB
 }
 
 export interface DynamicBlockAnalytics {
@@ -201,7 +201,7 @@ export interface DynamicBlockAnalytics {
   time_to_answer_seconds: number | null;
   answer_length: number | null;
   sentiment_score: number | null; // Float
-  topics: Record<string, any>[] | null; // JSONB
+  topics: { topic: string; confidence: number; relevance?: number }[] | null; // JSONB
 }
 
 // Type for joining tables and getting complete form data

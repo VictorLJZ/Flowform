@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 import { Search, X } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import { getAllBlocks, getBlocksByCategory, getBlockDefinition, BlockDefinition } from "@/registry/blockRegistry"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 

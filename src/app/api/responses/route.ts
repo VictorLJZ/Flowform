@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
 
 // Get all responses for a specific form
 export async function GET(request: Request) {
@@ -76,8 +77,8 @@ export async function GET(request: Request) {
     }
 
     // Group answers by response ID for easier access
-    const staticAnswersByResponse: Record<string, any[]> = {};
-    const dynamicResponsesByResponse: Record<string, any[]> = {};
+    const staticAnswersByResponse: Record<string, StaticBlockAnswer[]> = {};
+    const dynamicResponsesByResponse: Record<string, DynamicBlockResponse[]> = {};
 
     // Group static answers
     if (staticAnswers) {
@@ -105,10 +106,10 @@ export async function GET(request: Request) {
       dynamic_responses: dynamicResponsesByResponse,
       total: count || responses.length
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Error in responses API:', error);
     return NextResponse.json(
-      { error: error.message || 'Unknown error occurred' },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

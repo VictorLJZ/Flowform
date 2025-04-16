@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { Workspace, WorkspaceMember } from '@/types/supabase-types';
 
+// Interface for the specific fields returned by the workspace_members query
+interface WorkspaceMemberBasic {
+  workspace_id: string;
+  role: string;
+}
+
 /**
  * Get all workspaces where the user is a member
  * 
@@ -61,7 +67,7 @@ export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
     }
     
     // Get workspace IDs from memberships
-    const workspaceIds = memberships.map((m: any) => m.workspace_id);
+    const workspaceIds = memberships.map((m: WorkspaceMemberBasic) => m.workspace_id);
     console.log('[getUserWorkspaces] Found workspace IDs:', workspaceIds);
     
     // SECOND QUERY: Get workspaces with timeout protection
@@ -105,14 +111,15 @@ export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
     // Log success
     console.log('[getUserWorkspaces] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map((w: any) => w.name) || []
+      names: workspaces?.map((w: Workspace) => w.name) || []
     });
     
     // Return workspaces or empty array
     return workspaces || [];
-  } catch (error: any) {
-    // Log any unexpected errors
-    console.error('[getUserWorkspaces] ERROR in workspace fetch:', error);
+  } catch (error) {
+    // Log any unexpected errors with proper type handling
+    console.error('[getUserWorkspaces] ERROR in workspace fetch:', 
+      error instanceof Error ? error.message : 'Unknown error');
     throw error;
   }
 }

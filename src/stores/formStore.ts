@@ -8,6 +8,7 @@ import { deleteForm as deleteFormService } from '@/services/form/deleteForm'
 // import { invalidateFormCache } from '@/services/form/invalidateCache'
 import { createClient } from '@/lib/supabase/client'
 import { Form, CompleteForm } from '@/types/supabase-types'
+import { PostgreSQLError } from '@/types/postgresql-types'
 
 type FormState = {
   forms: Form[]
@@ -50,8 +51,11 @@ export const useFormStore = create<FormState>((set, get) => ({
       if (error) throw error
       
       set({ forms: data || [], isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
     }
   },
   
@@ -66,8 +70,11 @@ export const useFormStore = create<FormState>((set, get) => ({
       }
       
       set({ currentForm: form, isLoading: false })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
     }
   },
   
@@ -83,8 +90,11 @@ export const useFormStore = create<FormState>((set, get) => ({
         currentForm: { ...newForm, blocks: [] }, // Initialize with empty blocks array
         isLoading: false 
       })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
     }
   },
   
@@ -110,8 +120,11 @@ export const useFormStore = create<FormState>((set, get) => ({
       
       // Temporarily skipping cache invalidation to avoid AI dependency
       // invalidateFormCache(id)
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
     }
   },
   
@@ -127,8 +140,11 @@ export const useFormStore = create<FormState>((set, get) => ({
         currentForm: get().currentForm?.form_id === id ? null : get().currentForm,
         isLoading: false 
       })
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
     }
   },
   
@@ -155,8 +171,11 @@ export const useFormStore = create<FormState>((set, get) => ({
       }
       
       return true
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false })
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      })
       return false
     }
   },
@@ -207,7 +226,7 @@ export const useFormStore = create<FormState>((set, get) => ({
         
         // Process forms result
         if (results[0].status === 'fulfilled') {
-          const formsResult = results[0].value as { data: Form[] | null, error: any }
+          const formsResult = results[0].value as { data: Form[] | null, error: PostgreSQLError | null }
           if (!formsResult.error) {
             set({ forms: formsResult.data || [] })
           }
@@ -220,8 +239,8 @@ export const useFormStore = create<FormState>((set, get) => ({
             set({ currentForm: form })
           }
         }
-      } catch (error: any) {
-        console.error('Error in refetchAll:', error.message)
+      } catch (error: unknown) {
+        console.error('Error in refetchAll:', error instanceof Error ? error.message : 'Unknown error')
         // Don't set error state to prevent UI disruption
       } finally {
         set({ isLoading: false })

@@ -13,7 +13,7 @@ export async function getSentInvitations(workspaceId: string): Promise<Workspace
   
   try {
     // First check if the table exists by getting the table definition
-    const { data: tableInfo, error: tableError } = await supabase
+    const { error: tableError } = await supabase
       .from('workspace_invitations')
       .select('id')
       .limit(1);

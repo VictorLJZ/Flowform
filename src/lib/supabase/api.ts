@@ -1,12 +1,12 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { RequestCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 
 /**
  * Creates a Supabase client for API routes that can access the auth session
  * This preserves authentication context for server components and API routes
  */
 export async function createAPIClient() {
-  // Await the cookie store since it's now a Promise in newer Next.js versions
   const cookieStore = await cookies();
   
   return createServerClient(
@@ -15,8 +15,7 @@ export async function createAPIClient() {
     {
       cookies: {
         getAll() {
-          // Map the cookies to the format expected by Supabase
-          return cookieStore.getAll().map((cookie) => ({
+          return cookieStore.getAll().map((cookie: RequestCookie) => ({
             name: cookie.name,
             value: cookie.value,
           }))

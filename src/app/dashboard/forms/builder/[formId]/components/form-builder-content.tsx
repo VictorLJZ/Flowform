@@ -1,18 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { useAutosave } from "@/services/form/autosaveForm"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusCircle, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
+import { PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
-import { cn } from "@/lib/utils"
 // Import block components directly to avoid eager loading AI services
 import { TextInputBlock } from "@/components/form/blocks/TextInputBlock"
 import { TextAreaBlock } from "@/components/form/blocks/TextAreaBlock"
@@ -21,7 +12,6 @@ import { CheckboxGroupBlock } from "@/components/form/blocks/CheckboxGroupBlock"
 import { DropdownBlock } from "@/components/form/blocks/DropdownBlock"
 import { EmailBlock } from "@/components/form/blocks/EmailBlock"
 import { NumberBlock } from "@/components/form/blocks/NumberBlock"
-import { DateBlock } from "@/components/form/blocks/DateBlock"
 
 
 
@@ -33,8 +23,7 @@ export default function FormBuilderContent() {
     setCurrentBlockId,
     updateBlock,
     updateBlockSettings,
-    setBlockSelectorOpen,
-    formData
+    setBlockSelectorOpen
   } = useFormBuilderStore()
   
   const currentBlock = getCurrentBlock()

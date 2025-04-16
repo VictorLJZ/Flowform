@@ -12,8 +12,8 @@ interface SaveFormInput {
   workspace_id?: string;
   created_by?: string;
   status?: 'draft' | 'published' | 'archived';
-  theme?: Record<string, any>;
-  settings?: Record<string, any>;
+  theme?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
 }
 
 interface SaveFormOutput {
