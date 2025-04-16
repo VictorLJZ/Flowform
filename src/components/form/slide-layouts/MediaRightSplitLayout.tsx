@@ -16,11 +16,13 @@ interface MediaRightSplitLayoutProps {
   opacity?: number
   className?: string
   settings?: Partial<MediaRightSplitLayoutType>
-  onUpdate?: (updates: Partial<{ settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    settings: Partial<MediaRightSplitLayoutType>
+  }>) => void
 }
 
 export function MediaRightSplitLayout({
-  id,
+  // id param removed as it was unused
   children,
   textAlignment = 'left',
   spacing = 'normal',
@@ -28,8 +30,8 @@ export function MediaRightSplitLayout({
   sizingMode = 'cover',
   opacity = 100,
   className,
-  settings,
-  onUpdate,
+  settings
+  // onUpdate param removed as it was unused
 }: MediaRightSplitLayoutProps) {
   const { mode } = useFormBuilderStore()
   

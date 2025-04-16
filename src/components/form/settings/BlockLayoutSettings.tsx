@@ -3,12 +3,15 @@
 import React from "react"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+// Removed most unused imports, keeping only what's needed
 import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { SlideLayout, SlideLayoutType } from "@/types/layout-types"
+import {
+  SlideLayout,
+  SlideLayoutType,
+  MediaLeftLayout,
+  MediaBackgroundLayout
+} from "@/types/layout-types"
 import {
   StandardLayoutIcon,
   MediaLeftLayoutIcon,
@@ -140,9 +143,9 @@ export function MediaPositionSettings({ blockId, currentLayout }: MediaPositionS
   if (!isMediaLayout) return null;
   
   // Get settings or use defaults
-  const mediaProportion = (currentLayout as any)?.mediaProportion || 0.4;
-  const textAlignment = (currentLayout as any)?.textAlignment || 'left';
-  const spacing = (currentLayout as any)?.spacing || 'normal';
+  const mediaProportion = (currentLayout as MediaLeftLayout)?.mediaProportion || 0.4;
+  const textAlignment = (currentLayout as MediaLeftLayout)?.textAlignment || 'left';
+  const spacing = (currentLayout as MediaLeftLayout)?.spacing || 'normal';
   
   return (
     <div className="space-y-4">
@@ -216,11 +219,11 @@ export function MediaBackgroundSettings({ blockId, currentLayout }: MediaBackgro
   if (!isMediaBgLayout) return null;
   
   // Get settings or use defaults
-  const overlayColor = (currentLayout as any)?.overlayColor || '#000000';
-  const overlayOpacity = (currentLayout as any)?.overlayOpacity || 50;
-  const contentPosition = (currentLayout as any)?.contentPosition || 'center';
-  const textAlignment = (currentLayout as any)?.textAlignment || 'center';
-  const textColor = (currentLayout as any)?.textColor || 'light';
+  const overlayColor = (currentLayout as MediaBackgroundLayout)?.overlayColor || '#000000';
+  const overlayOpacity = (currentLayout as MediaBackgroundLayout)?.overlayOpacity || 50;
+  const contentPosition = (currentLayout as MediaBackgroundLayout)?.contentPosition || 'center';
+  const textAlignment = (currentLayout as MediaBackgroundLayout)?.textAlignment || 'center';
+  const textColor = (currentLayout as MediaBackgroundLayout)?.textColor || 'light';
   
   return (
     <div className="space-y-4">
@@ -329,9 +332,10 @@ export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
   if (!isMediaLayout) return null;
   
   // Get settings or use defaults
-  const mediaId = (currentLayout as any)?.mediaId || '';
-  const sizingMode = (currentLayout as any)?.sizingMode || 'cover';
-  const opacity = (currentLayout as any)?.opacity || 100;
+  // Use a type assertion to MediaLeftLayout which extends MediaConfig
+  const mediaId = (currentLayout as MediaLeftLayout)?.mediaId || '';
+  const sizingMode = (currentLayout as MediaLeftLayout)?.sizingMode || 'cover';
+  const opacity = (currentLayout as MediaLeftLayout)?.opacity || 100;
   
   return (
     <div className="space-y-4">

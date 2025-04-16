@@ -17,11 +17,13 @@ interface MediaLeftLayoutProps {
   opacity?: number
   className?: string
   settings?: Partial<MediaLeftLayoutType>
-  onUpdate?: (updates: Partial<{ settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    settings: Partial<MediaLeftLayoutType>
+  }>) => void
 }
 
 export function MediaLeftLayout({
-  id,
+  // id param removed as it was unused
   children,
   mediaProportion = 0.4,
   textAlignment = 'left',
@@ -30,8 +32,8 @@ export function MediaLeftLayout({
   sizingMode = 'cover',
   opacity = 100,
   className,
-  settings,
-  onUpdate,
+  settings
+  // onUpdate param removed as it was unused
 }: MediaLeftLayoutProps) {
   const { mode } = useFormBuilderStore()
   

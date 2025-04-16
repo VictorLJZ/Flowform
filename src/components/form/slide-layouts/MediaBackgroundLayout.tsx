@@ -19,11 +19,13 @@ interface MediaBackgroundLayoutProps {
   opacity?: number
   className?: string
   settings?: Partial<MediaBackgroundLayoutType>
-  onUpdate?: (updates: Partial<{ settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    settings: Partial<MediaBackgroundLayoutType>
+  }>) => void
 }
 
 export function MediaBackgroundLayout({
-  id,
+  // id param removed as it was unused
   children,
   overlayColor = '#000000',
   overlayOpacity = 50,
@@ -34,8 +36,8 @@ export function MediaBackgroundLayout({
   sizingMode = 'cover',
   opacity = 100,
   className,
-  settings,
-  onUpdate,
+  settings
+  // onUpdate param removed as it was unused
 }: MediaBackgroundLayoutProps) {
   const { mode } = useFormBuilderStore()
   

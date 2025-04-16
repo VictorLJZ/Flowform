@@ -24,13 +24,14 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ 
   children,
-  initialSession,
+  // initialSession removed as it was unused
 }: { 
   children: React.ReactNode
-  initialSession: Session | null
+  initialSession: Session | null // Keeping parameter in type for backward compatibility
 }) {
   // Use the authStore instead of local state
-  const { user, login, signUp, logout, setUser, error, isLoading: authLoading } = useAuthStore()
+  const { user, logout, setUser, isLoading: authLoading } = useAuthStore()
+  // login, signUp, and error removed as they were unused
   
   // Maintain session state for Supabase API calls
   const [session, setSession] = useState<Session | null>(null)
@@ -135,7 +136,7 @@ export function AuthProvider({
     }
     
     setupWorkspaceState()
-  }, [user])
+  }, [user, setUser])
   
   // Note: We no longer need tab visibility handling here
   // Tab focus detection and proper sequencing (reconnect -> auth -> data fetch)

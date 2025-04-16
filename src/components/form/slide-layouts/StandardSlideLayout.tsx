@@ -12,22 +12,21 @@ interface StandardSlideLayoutProps {
   spacing?: 'compact' | 'normal' | 'spacious'
   className?: string
   settings?: Partial<StandardSlideLayoutType>
-  onUpdate?: (updates: Partial<{ settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    settings: Partial<StandardSlideLayoutType>
+  }>) => void
 }
 
 export function StandardSlideLayout({
-  id,
   children,
-  alignment = 'center',
+  alignment = 'left',
   spacing = 'normal',
   className,
   settings,
-  onUpdate,
+  // onUpdate removed as it was unused
 }: StandardSlideLayoutProps) {
-  const { mode } = useFormBuilderStore()
-  
-  // Determine if we're in builder mode
-  const isBuilder = mode === 'builder'
+  // mode removed as it was unused
+  const { } = useFormBuilderStore()
   
   // Use settings if provided, otherwise use props
   const effectiveAlignment = settings?.alignment || alignment

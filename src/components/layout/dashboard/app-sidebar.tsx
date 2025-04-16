@@ -116,7 +116,7 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, session, isLoading } = useAuth();
+  const { user } = useAuth();
 
   const userData = user ? {
     name: user.user_metadata?.name || // Google auth name

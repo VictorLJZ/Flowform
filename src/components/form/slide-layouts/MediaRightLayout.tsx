@@ -17,11 +17,13 @@ interface MediaRightLayoutProps {
   opacity?: number
   className?: string
   settings?: Partial<MediaRightLayoutType>
-  onUpdate?: (updates: Partial<{ settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    settings: Partial<MediaRightLayoutType>
+  }>) => void
 }
 
 export function MediaRightLayout({
-  id,
+  // id param removed as it was unused
   children,
   mediaProportion = 0.4,
   textAlignment = 'left',
@@ -30,8 +32,8 @@ export function MediaRightLayout({
   sizingMode = 'cover',
   opacity = 100,
   className,
-  settings,
-  onUpdate,
+  settings
+  // onUpdate param removed as it was unused
 }: MediaRightLayoutProps) {
   const { mode } = useFormBuilderStore()
   

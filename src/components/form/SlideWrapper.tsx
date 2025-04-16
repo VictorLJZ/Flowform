@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { BlockPresentation } from "@/types/theme-types"
-import { SlideLayout } from "@/types/layout-types"
+import { 
+  SlideLayout, 
+  StandardSlideLayout as StandardSlideLayoutType, 
+  MediaLeftLayout as MediaLeftLayoutType, 
+  MediaRightLayout as MediaRightLayoutType, 
+  MediaBackgroundLayout as MediaBackgroundLayoutType,
+  MediaLeftSplitLayout as MediaLeftSplitLayoutType,
+  MediaRightSplitLayout as MediaRightSplitLayoutType
+} from "@/types/layout-types"
 import { SlideAspectRatioContainer } from "./SlideAspectRatioContainer"
 import { StandardSlideLayout } from "./slide-layouts/StandardSlideLayout"
 import { MediaLeftLayout } from "./slide-layouts/MediaLeftLayout"
@@ -170,7 +178,9 @@ export function SlideWrapper({
         <MediaLeftLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaLeftLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </MediaLeftLayout>
@@ -181,7 +191,9 @@ export function SlideWrapper({
         <MediaRightLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaRightLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </MediaRightLayout>
@@ -192,7 +204,9 @@ export function SlideWrapper({
         <MediaBackgroundLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaBackgroundLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </MediaBackgroundLayout>
@@ -203,7 +217,9 @@ export function SlideWrapper({
         <MediaLeftSplitLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaLeftSplitLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </MediaLeftSplitLayout>
@@ -214,7 +230,9 @@ export function SlideWrapper({
         <MediaRightSplitLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaRightSplitLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </MediaRightSplitLayout>
@@ -225,7 +243,9 @@ export function SlideWrapper({
         <StandardSlideLayout
           id={id}
           settings={slideLayout}
-          onUpdate={onUpdate ? updates => onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...updates } } }) : undefined}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<StandardSlideLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
         >
           {slideContent}
         </StandardSlideLayout>
