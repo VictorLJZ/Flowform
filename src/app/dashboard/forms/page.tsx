@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ViewAnalyticsButton } from "@/components/ui/view-analytics-button"
 
 export default function FormsPage() {
   const router = useRouter()
@@ -215,24 +216,31 @@ export default function FormsPage() {
                           </span>
                         )}
                       </p>
-                      {form.status !== 'published' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                      <div className="flex gap-2">
+                        <ViewAnalyticsButton
+                          formId={form.form_id}
+                          size="sm"
                           className="h-6 text-[10px] px-2"
-                          onClick={() => handlePublishForm(form.form_id)}
-                          disabled={publishingFormId === form.form_id}
-                        >
-                          {publishingFormId === form.form_id ? (
-                            <>
-                              <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                              Publishing...
-                            </>
-                          ) : (
-                            <>Publish</>
-                          )}
-                        </Button>
-                      )}
+                        />
+                        {form.status !== 'published' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 text-[10px] px-2"
+                            onClick={() => handlePublishForm(form.form_id)}
+                            disabled={publishingFormId === form.form_id}
+                          >
+                            {publishingFormId === form.form_id ? (
+                              <>
+                                <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                                Publishing...
+                              </>
+                            ) : (
+                              <>Publish</>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
