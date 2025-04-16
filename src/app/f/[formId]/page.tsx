@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
-import { ChevronLeft, ChevronDown, Loader2 } from "lucide-react"
+import { ChevronLeft, Loader2 } from "lucide-react"
 import { Form, FormBlock } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -58,11 +58,10 @@ export default function FormSessionPage() {
   
   // State for answers
   const [currentAnswer, setCurrentAnswer] = useState('')
-  const [staticAnswers, setStaticAnswers] = useState<BlockAnswer[]>([])
+  const [, setStaticAnswers] = useState<BlockAnswer[]>([])
   
   // State for dynamic blocks
   const [dynamicConversations, setDynamicConversations] = useState<Record<string, DynamicConversation>>({})  
-  const [showHistory, setShowHistory] = useState(false)
   
   // State for errors
   const [error, setError] = useState<string | null>(null)
@@ -169,7 +168,7 @@ export default function FormSessionPage() {
     if (formId) {
       initializeForm()
     }
-  }, [formId, toast])
+  }, [formId, toast, retryCount, loading])
   
   // Focus input on load and after navigation
   useEffect(() => {
@@ -475,46 +474,6 @@ export default function FormSessionPage() {
     }
   }
   
-  // Helper function to get all responses for the completed form view
-  const getAllResponses = () => {
-    const responses: { block: FormBlock; question: string; answer: string }[] = [];
-    
-    // Add static responses
-    staticAnswers.forEach(answer => {
-      const block = blocks.find(b => b.id === answer.blockId);
-      if (block) {
-        responses.push({
-          block,
-          question: block.title,
-          answer: answer.answer
-        });
-      }
-    });
-    
-    // Add dynamic conversation responses
-    Object.values(dynamicConversations).forEach(convo => {
-      const block = blocks.find(b => b.id === convo.blockId);
-      if (block) {
-        convo.conversation.forEach(qa => {
-          responses.push({
-            block,
-            question: qa.question,
-            answer: qa.answer
-          });
-        });
-      }
-    });
-    
-    // Sort by block order
-    responses.sort((a, b) => {
-      const aIndex = blocks.findIndex(block => block.id === a.block.id);
-      const bIndex = blocks.findIndex(block => block.id === b.block.id);
-      return aIndex - bIndex;
-    });
-    
-    return responses;
-  };
-  
   // Render the navigation buttons
   const renderNavigationButtons = () => {
     const isFirstBlock = currentBlockIndex === 0;
@@ -582,30 +541,6 @@ export default function FormSessionPage() {
     );
   };
   
-  // Render the dynamic conversation history
-  // This function is defined but not used in the rendered UI
-  // Keeping it for future use but marking it as unused
-  const _renderDynamicConversationHistory = () => {
-    if (!currentBlock || currentBlock.type !== 'dynamic' || !currentDynamicConversation) return null;
-    
-    const { conversation } = currentDynamicConversation;
-    if (conversation.length === 0) return null;
-    
-    return (
-      <div className="space-y-4 mb-6">
-        {conversation.map((item, index) => (
-          <div key={index} className="border-b pb-3 last:border-b-0">
-            <p className="font-medium text-gray-700">{item.question}</p>
-            <div className="flex gap-2 items-start mt-2">
-              <ChevronDown className="w-4 h-4 text-gray-400 mt-1" />
-              <p className="text-gray-600">{item.answer}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-  
   return (
     <div className="min-h-screen flex flex-col bg-white">
       {/* Minimal header with progress only */}
@@ -664,30 +599,10 @@ export default function FormSessionPage() {
               Your form has been submitted successfully. We appreciate your time and input.
             </p>
             <div className="flex gap-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowHistory(!showHistory)}
-              >
-                {showHistory ? "Hide Responses" : "View Your Responses"}
-              </Button>
               <Button onClick={() => window.location.href = '/'}>
                 Return Home
               </Button>
             </div>
-            
-            {showHistory && (
-              <div className="mt-6 w-full max-w-2xl border rounded-lg p-4 bg-white">
-                <h3 className="text-lg font-medium mb-4">Your Responses</h3>
-                <div className="space-y-4">
-                  {getAllResponses().map((item, index) => (
-                    <div key={index} className="border-b pb-3 last:border-b-0">
-                      <p className="font-medium text-gray-700">{item.question}</p>
-                      <p className="text-gray-600 mt-1">{item.answer}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col justify-center min-h-[calc(100vh-120px)]">

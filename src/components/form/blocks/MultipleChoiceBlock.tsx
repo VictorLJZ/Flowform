@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
@@ -30,7 +30,15 @@ interface MultipleChoiceBlockProps {
   }
   value?: string
   onChange?: (value: string) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      options?: Option[],
+      presentation?: BlockPresentation,
+      layout?: SlideLayout
+    }
+  }>) => void
 }
 
 export function MultipleChoiceBlock({

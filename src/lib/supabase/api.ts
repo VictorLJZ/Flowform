@@ -20,9 +20,10 @@ export async function createAPIClient() {
             value: cookie.value,
           }))
         },
-        setAll(cookiesToSet) {
+        setAll() {
           // API routes in App Router can't set cookies in the response
           // This is a no-op, but needed to match the interface
+          // Parameter removed since it's not used
         },
       },
     }

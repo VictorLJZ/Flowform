@@ -36,7 +36,7 @@ import { toast } from "@/components/ui/use-toast"
 
 export function WorkspaceSwitcher() {
   const { isMobile } = useSidebar()
-  const { currentWorkspace, workspaces, setCurrentWorkspace, fetchWorkspaces, isLoading, createWorkspace } = useWorkspaceStore()
+  const { currentWorkspace, workspaces, setCurrentWorkspace, isLoading, createWorkspace } = useWorkspaceStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspace, setNewWorkspace] = useState({ name: "", description: "" })

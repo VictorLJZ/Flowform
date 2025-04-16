@@ -32,7 +32,8 @@ export function SignupForm({
       } else if (result.url) {
         window.location.href = result.url
       }
-    } catch (err) {
+    } catch {
+      // Using empty catch block without variable since we don't need the error details
       toast({
         variant: "destructive",
         title: "Error",

@@ -26,7 +26,17 @@ interface DateBlockProps {
   }
   value?: string
   onChange?: (value: string) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      layout?: SlideLayout,
+      presentation?: BlockPresentation,
+      placeholder?: string,
+      min?: string,
+      max?: string
+    }
+  }>) => void
 }
 
 export function DateBlock({

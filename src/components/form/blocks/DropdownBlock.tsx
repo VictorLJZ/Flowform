@@ -29,7 +29,16 @@ interface DropdownBlockProps {
   }
   value?: string
   onChange?: (value: string) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      options?: Option[],
+      layout?: SlideLayout,
+      presentation?: BlockPresentation,
+      placeholder?: string
+    }
+  }>) => void
 }
 
 export function DropdownBlock({

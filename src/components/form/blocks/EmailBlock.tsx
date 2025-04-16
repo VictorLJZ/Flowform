@@ -23,7 +23,15 @@ interface EmailBlockProps {
   }
   value?: string
   onChange?: (value: string) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      placeholder?: string,
+      presentation?: BlockPresentation,
+      layout?: SlideLayout
+    }
+  }>) => void
 }
 
 export function EmailBlock({

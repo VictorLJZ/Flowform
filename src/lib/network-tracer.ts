@@ -9,7 +9,7 @@ import { networkLog } from './debug-logger';
 const isBrowser = typeof window !== 'undefined';
 
 // Map to store active requests
-let activeRequests = new Map<string, {
+const activeRequests = new Map<string, {
   startTime: number;
   requestId: string;
   url: string;
@@ -165,7 +165,7 @@ export function initNetworkTracer() {
     });
     
     // Make the tracer available globally for debugging
-    // @ts-ignore - Adding to window for debugging
+    // @ts-expect-error - Adding to window for debugging purposes
     window.__networkTracer = {
       getActiveRequests
     };

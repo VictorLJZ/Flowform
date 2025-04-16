@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
@@ -31,7 +31,15 @@ interface CheckboxGroupBlockProps {
   }
   value?: string[]
   onChange?: (value: string[]) => void
-  onUpdate?: (updates: Partial<{ title: string, description: string, settings: any }>) => void
+  onUpdate?: (updates: Partial<{
+    title: string,
+    description: string,
+    settings: {
+      options?: Option[],
+      layout?: SlideLayout,
+      presentation?: BlockPresentation
+    }
+  }>) => void
 }
 
 export function CheckboxGroupBlock({
