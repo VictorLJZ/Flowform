@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useToast } from "@/components/ui/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, X, AlertCircle, Loader2 } from "lucide-react"
+import { useAuthStore } from "@/stores/authStore"
+import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
+import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
 
 interface InvitePageClientProps {
   token: string
@@ -18,14 +20,7 @@ interface InvitePageClientProps {
 export function InvitePageClient({ token }: InvitePageClientProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const { 
-    // userId not used but keeping comment for clarity
-    setUserEmail,
-    acceptInvitation, 
-    declineInvitation, 
-    isLoadingInvitations, 
-    invitationError 
-  } = useWorkspaceStore()
+  const userId = useAuthStore((s) => s.user?.id)
   
   // Not using email state directly as it's handled by the invitation details
   // const [email, setEmail] = useState("")
@@ -69,8 +64,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           return
         }
         
-        // Store the user's email in the workspace store
-        setUserEmail(authData.user.email || "")
+        // AuthProvider handles global user state
         
         // Check if invitation has expired
         const isExpired = new Date(invitation.expires_at) < new Date()
@@ -96,39 +90,39 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     }
     
     validateInvitation()
-  }, [token, router, setUserEmail])
+  }, [token, router])
   
   const handleAcceptInvitation = async () => {
+    if (!userId) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication required" })
+      return
+    }
     try {
-      const result = await acceptInvitation(token)
-      
-      if (result) {
-        toast({
-          title: "Invitation accepted",
-          description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
-        })
-        
-        // Redirect to dashboard
-        router.push('/dashboard')
-      }
+      await acceptInvitationService(token, userId)
+      toast({
+        title: "Invitation accepted",
+        description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
+      })
+      // Redirect to dashboard
+      router.push('/dashboard')
     } catch (error) {
       console.error('Error accepting invitation:', error)
     }
   }
   
   const handleDeclineInvitation = async () => {
+    if (!userId) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication required" })
+      return
+    }
     try {
-      const result = await declineInvitation(token)
-      
-      if (result) {
-        toast({
-          title: "Invitation declined",
-          description: "You have declined the invitation.",
-        })
-        
-        // Redirect to homepage
-        router.push('/')
-      }
+      await declineInvitationService(token)
+      toast({
+        title: "Invitation declined",
+        description: "You have declined the invitation.",
+      })
+      // Redirect to homepage
+      router.push('/')
     } catch (error) {
       console.error('Error declining invitation:', error)
     }
@@ -202,12 +196,6 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {invitationError && (
-            <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-              {invitationError}
-            </div>
-          )}
-          
           <div className="space-y-2">
             <Label htmlFor="email">Your Email</Label>
             <Input
@@ -224,7 +212,6 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           <Button
             variant="outline"
             onClick={handleDeclineInvitation}
-            disabled={isLoadingInvitations}
             className="flex gap-1"
           >
             <X className="h-4 w-4" />
@@ -232,14 +219,9 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           </Button>
           <Button
             onClick={handleAcceptInvitation}
-            disabled={isLoadingInvitations}
             className="flex gap-1"
           >
-            {isLoadingInvitations ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4" />
-            )}
+            <CheckCircle className="h-4 w-4" />
             Accept Invitation
           </Button>
         </CardFooter>

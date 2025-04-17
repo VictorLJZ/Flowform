@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Download, Filter, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react"
-import { useFormStore } from "@/stores/formStore"
 import { useAnalyticsStore } from "@/stores/analyticsStore"
+import { useForm } from "@/hooks/useForm"
 import { StaticBlockAnswer, QAPair } from "@/types/supabase-types"
 
 interface ResponsesTableProps {
@@ -28,23 +28,15 @@ interface ResponsesTableProps {
 }
 
 export function ResponsesTable({ formId }: ResponsesTableProps) {
-  const { fetchFormById, currentForm, isLoading: isFormLoading } = useFormStore()
+  const { form: currentForm, isLoading: isFormLoading } = useForm(formId)
   const { fetchResponses, responses, isLoading: isResponsesLoading } = useAnalyticsStore()
   const [searchTerm, setSearchTerm] = useState("")
   
   const isLoading = isFormLoading || isResponsesLoading
 
   useEffect(() => {
-    // Fetch the form data if not already loaded
-    if (formId && (!currentForm || currentForm.form_id !== formId)) {
-      fetchFormById(formId)
-    }
-    
-    // Fetch responses
-    if (formId) {
-      fetchResponses(formId)
-    }
-  }, [formId, fetchFormById, fetchResponses, currentForm])
+    fetchResponses(formId)
+  }, [formId, fetchResponses])
 
   // Generate table headers based on form blocks
   const headers = currentForm?.blocks

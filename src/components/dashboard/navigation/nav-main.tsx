@@ -2,6 +2,7 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useWorkspaces } from "@/hooks/useWorkspaces"
 
 import {
   Collapsible,
@@ -19,56 +20,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { toast } from "@/components/ui/use-toast"
-
-// Function to create a new form via API
-async function createNewForm() {
-  try {
-    // Get the current workspace from the store
-    const currentWorkspace = useWorkspaceStore.getState().currentWorkspace;
-    console.log("[DEBUG] createNewForm - Current workspace from store:", currentWorkspace);
-    
-    // Get all workspaces from store for debugging
-    const allWorkspaces = useWorkspaceStore.getState().workspaces;
-    console.log("[DEBUG] createNewForm - All workspaces from store:", allWorkspaces);
-    
-    if (!currentWorkspace?.id) {
-      toast({
-        title: "No workspace selected",
-        description: "Please select a workspace before creating a form",
-        variant: "destructive"
-      });
-      return null;
-    }
-    
-    // Log the workspace ID being sent to the API
-    console.log("[DEBUG] createNewForm - Sending workspace_id to API:", currentWorkspace.id);
-    
-    // Use the current workspace ID from the store
-    // The middleware will automatically add the auth token to the request
-    const response = await fetch('/api/forms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        workspace_id: currentWorkspace.id
-      })
-    });
-    
-    // Check for response status first
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error creating form:', errorData.error || response.statusText);
-      return null;
-    }
-    
-    const { form_id } = await response.json();
-    return form_id;
-  } catch (error) {
-    console.error('Failed to create form:', error);
-    return null;
-  }
-}
 
 export function NavMain({
   items,
@@ -86,14 +38,33 @@ export function NavMain({
   }[]
 }) {
   const router = useRouter();
+  const { workspaces } = useWorkspaces();
   
   // Handle action items like form creation
   const handleAction = async (action: string) => {
     if (action === 'create-form') {
-      // Call API to create a form, then navigate
-      const formId = await createNewForm();
-      if (formId) {
-        router.push(`/dashboard/forms/builder/${formId}`);
+      const workspaceId = workspaces?.[0]?.id;
+      if (!workspaceId) {
+        toast({ title: "No workspace selected", description: "Please select a workspace first.", variant: "destructive" });
+        return;
+      }
+      try {
+        const response = await fetch('/api/forms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace_id: workspaceId }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error creating form:', errorData.error || response.statusText);
+          toast({ title: "Error", description: errorData.error || response.statusText, variant: "destructive" });
+          return;
+        }
+        const { form_id } = await response.json();
+        router.push(`/dashboard/forms/builder/${form_id}`);
+      } catch (error) {
+        console.error('Failed to create form:', error);
+        toast({ title: "Error", description: "Failed to create form", variant: "destructive" });
       }
     }
   };

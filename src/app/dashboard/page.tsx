@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { checkAuthStatus } from "@/lib/debug/authCheck"
 import { useRouter } from "next/navigation"
+import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   Breadcrumb,
@@ -28,36 +29,33 @@ import {
 import { RenameDialog } from "@/components/workspace/rename-dialog"
 import { ConfirmDialog } from "@/components/workspace/confirm-dialog"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
-import { InvitationList } from "@/components/workspace/invitation-list"
 
 export default function Page() {
   const router = useRouter()
   const { stats, recentActivity, recentForms, isLoading, error, fetchDashboardData } = useDashboardStore()
-  const { 
-    currentWorkspace, 
-    renameWorkspace, 
-    leaveWorkspace, 
-    deleteWorkspace 
-  } = useWorkspaceStore()
-  
-  // Dialog state
+  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
+
+  const { workspace, rename, leave, remove } = useCurrentWorkspace(currentWorkspaceId)
+
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
-  
+
   useEffect(() => {
-    fetchDashboardData()
-    
-    // Run auth diagnostic check when dashboard loads
+    if (currentWorkspaceId) {
+      console.log(`[Dashboard Page] Current workspace ID: ${currentWorkspaceId}. Fetching dashboard data...`);
+      fetchDashboardData(currentWorkspaceId)
+    } else {
+       console.log("[Dashboard Page] No workspace selected yet. Waiting for selection.");
+    }
+
     const runAuthCheck = async () => {
       console.log('[Dashboard] Running auth diagnostic check')
       try {
         const result = await checkAuthStatus()
         console.log('[Dashboard] Auth check result:', result)
-        // Make the auth check function available in console for debugging
         if (typeof window !== 'undefined') {
-          // Add custom property to window in a type-safe way
           (window as Window & { checkAuth?: () => Promise<unknown> }).checkAuth = checkAuthStatus
           console.log('[Dashboard] Auth checker available in console as "checkAuth()"')
         }
@@ -65,39 +63,22 @@ export default function Page() {
         console.error('[Dashboard] Auth check error:', error)
       }
     }
-    
+
     runAuthCheck()
-  }, [fetchDashboardData])
-  
-  const handleCreateForm = () => {
-    router.push('/dashboard/builder/new')
-  }
-  
-  const handleViewResponses = (formId: string) => {
-    router.push(`/dashboard/forms/${formId}/responses`)
-  }
+  }, [fetchDashboardData, currentWorkspaceId])
 
-  const handleRenameWorkspace = () => {
-    setIsRenameDialogOpen(true)
-  }
+  const handleCreateForm = () => { router.push('/dashboard/builder/new') }
+  const handleViewResponses = (formId: string) => { router.push(`/dashboard/forms/${formId}/responses`) }
+  const handleRenameWorkspace = () => { setIsRenameDialogOpen(true) }
+  const handleLeaveWorkspace = () => { setIsLeaveDialogOpen(true) }
+  const handleDeleteWorkspace = () => { setIsDeleteDialogOpen(true) }
+  const handleInviteToWorkspace = () => { setIsInviteDialogOpen(true) }
 
-  const handleLeaveWorkspace = () => {
-    setIsLeaveDialogOpen(true)
-  }
-
-  const handleDeleteWorkspace = () => {
-    setIsDeleteDialogOpen(true)
-  }
-  
-  const handleInviteToWorkspace = () => {
-    setIsInviteDialogOpen(true)
-  }
-  
   return (
     <>
       <div className="flex flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
+        <header className="relative flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
@@ -112,237 +93,182 @@ export default function Page() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Overview</BreadcrumbPage>
+                  <BreadcrumbPage className="truncate font-medium">
+                    {isLoading ? <Skeleton className="h-5 w-32" /> : workspace?.name || "Dashboard"}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "Dashboard"}</h1>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">More options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleRenameWorkspace}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Rename workspace
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLeaveWorkspace}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Leave workspace
-                  </DropdownMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {workspace ? (
+                <>
+                  <DropdownMenuItem onClick={handleRenameWorkspace}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleInviteToWorkspace}><Users className="mr-2 h-4 w-4" /> Invite Members</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete workspace
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <Button onClick={handleInviteToWorkspace}>
-              <Users className="mr-2 h-4 w-4" />
-              Invite
-            </Button>
-          </div>
-          
-          {error && (
-            <div className="bg-destructive/10 text-destructive p-4 mb-6 rounded-lg flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <p>Error loading dashboard data: {error}</p>
-            </div>
-          )}
-          
-          <div className="grid auto-rows-min gap-6 md:grid-cols-3">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-32 w-full rounded-xl" />
-                <Skeleton className="h-32 w-full rounded-xl" />
-                <Skeleton className="h-32 w-full rounded-xl" />
-              </>
-            ) : (
-              <>
-                <div className="bg-card rounded-xl p-6 shadow-sm border flex items-center justify-between">
-                  <div>
-                    <p className="text-muted-foreground text-sm">Total Forms</p>
-                    <h3 className="text-3xl font-bold mt-1">{stats.totalForms}</h3>
-                  </div>
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                
-                <div className="bg-card rounded-xl p-6 shadow-sm border flex items-center justify-between">
-                  <div>
-                    <p className="text-muted-foreground text-sm">Total Responses</p>
-                    <h3 className="text-3xl font-bold mt-1">{stats.totalResponses}</h3>
-                  </div>
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <BarChart3 className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                
-                <div className="bg-card rounded-xl p-6 shadow-sm border flex items-center justify-between">
-                  <div>
-                    <p className="text-muted-foreground text-sm">Active Users</p>
-                    <h3 className="text-3xl font-bold mt-1">ONE TRILLION USERS</h3>
-                  </div>
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-3 md:grid-rows-2">
-            {/* Invitation List */}
-            <div className="md:col-span-1 md:row-span-2">
-              {currentWorkspace && (
-                <InvitationList workspaceId={currentWorkspace.id} />
-              )}
-            </div>
-            
-            {/* Recent Activity */}
-            <div className="bg-card rounded-xl p-6 shadow-sm border md:col-span-2 md:row-span-2">
-              <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, index) => (
-                    <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded" />
-                        <div>
-                          <Skeleton className="h-4 w-32 mb-1" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : recentActivity.length > 0 ? (
-                <div className="space-y-4">
-                  {recentActivity.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-secondary p-2 rounded">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.form_title}</p>
-                          <p className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-sm rounded-full bg-secondary px-2 py-1"
-                        onClick={() => handleViewResponses(item.form_id)}
-                      >
-                        {item.completed ? "Completed" : "In Progress"}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                  <DropdownMenuItem onClick={handleLeaveWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><LogOut className="mr-2 h-4 w-4" /> Leave Workspace</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Workspace</DropdownMenuItem>
+                </>
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No recent activity</p>
-                </div>
+                <DropdownMenuItem disabled>Loading settings...</DropdownMenuItem>
               )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="bg-card rounded-xl p-6 shadow-sm border">
+                  <Skeleton className="h-6 w-3/4 mb-4" />
+                  <Skeleton className="h-4 w-1/2 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
             </div>
-            
-            <div className="bg-card rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold mb-4">Recent Forms</h2>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <Skeleton className="h-4 w-4" />
-                      <Skeleton className="h-4 w-40" />
-                    </div>
-                  ))}
-                </div>
-              ) : recentForms.length > 0 ? (
-                <div className="space-y-3">
-                  {recentForms.map((form) => (
-                    <div key={form.id} className="flex items-center gap-3">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.id)}>
-                        {form.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground">No forms yet</p>
-                </div>
-              )}
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+              <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Dashboard</h2>
+              <p className="text-muted-foreground">{error}</p>
+              <Button 
+                onClick={() => fetchDashboardData(currentWorkspaceId ?? '')} 
+                className="mt-4"
+                disabled={!currentWorkspaceId}
+              >
+                Retry
+              </Button>
             </div>
-            
-            <div className="bg-card rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-              <div className="space-y-3">
-                <button 
-                  className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors"
-                  onClick={handleCreateForm}
-                >
-                  <PlusCircle className="h-4 w-4" /> New Form
-                </button>
-                {recentForms.length > 0 && (
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="bg-card rounded-xl p-6 shadow-sm border">
+                <h2 className="text-lg font-semibold mb-4">Stats Overview</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold">{stats.totalForms}</p>
+                    <p className="text-sm text-muted-foreground">Total Forms</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold">{stats.totalResponses}</p>
+                    <p className="text-sm text-muted-foreground">Total Responses</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <p className="text-3xl font-bold">ONE TRILLION</p>
+                  <p className="text-sm text-muted-foreground">Active Users</p>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-xl p-6 shadow-sm border">
+                <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center gap-3">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">New response submitted</p>
+                          <p className="text-xs text-muted-foreground">
+                            For: {activity.form_title} - {new Date(activity.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleViewResponses(activity.form_id)}>
+                          View
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No recent activity</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-card rounded-xl p-6 shadow-sm border">
+                <h2 className="text-lg font-semibold mb-4">Recent Forms</h2>
+                {recentForms.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentForms.map((form) => (
+                      <div key={form.id} className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.id)}>
+                          {form.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">No forms yet</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-card rounded-xl p-6 shadow-sm border">
+                <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+                <div className="space-y-3">
                   <button 
                     className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors"
-                    onClick={() => handleViewResponses(recentForms[0].id)}
+                    onClick={handleCreateForm}
                   >
-                    <FileText className="h-4 w-4" /> View Latest Responses
+                    <PlusCircle className="h-4 w-4" /> New Form
                   </button>
-                )}
-                <button className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors">
-                  <Users className="h-4 w-4" /> Team Sharing
-                </button>
+                  {recentForms.length > 0 && (
+                    <button 
+                      className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors"
+                      onClick={() => handleViewResponses(recentForms[0].id)}
+                    >
+                      <FileText className="h-4 w-4" /> View Latest Responses
+                    </button>
+                  )}
+                  <button className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors">
+                    <Users className="h-4 w-4" /> Team Sharing
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
       
-      {/* Workspace Dialog Components */}
-      <RenameDialog 
-        open={isRenameDialogOpen} 
-        onOpenChange={setIsRenameDialogOpen} 
-        workspace={currentWorkspace}
-        onRename={renameWorkspace}
+      <RenameDialog
+        open={isRenameDialogOpen}
+        onOpenChange={setIsRenameDialogOpen}
+        workspace={workspace ?? null}
+        onRename={async (_id, newName) => { await rename(newName) }}
       />
       
       <ConfirmDialog
         open={isLeaveDialogOpen}
         onOpenChange={setIsLeaveDialogOpen}
         title="Leave Workspace"
-        description={`Are you sure you want to leave the "${currentWorkspace?.name}" workspace? You will no longer have access to this workspace's forms and data.`}
+        description={`Are you sure you want to leave the "${workspace?.name || 'this'}" workspace? You will no longer have access to this workspace's forms and data.`}
         confirmLabel="Leave Workspace"
-        onConfirm={() => currentWorkspace ? leaveWorkspace(currentWorkspace.id) : Promise.resolve()}
+        onConfirm={async () => { await leave() }}
       />
       
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete Workspace"
-        description={`Are you sure you want to delete the "${currentWorkspace?.name}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
+        description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
         confirmLabel="Delete Workspace"
         variant="destructive"
-        onConfirm={() => currentWorkspace ? deleteWorkspace(currentWorkspace.id) : Promise.resolve()}
+        onConfirm={async () => { await remove() }}
       />
       
       <InviteDialog
         open={isInviteDialogOpen}
         onOpenChange={setIsInviteDialogOpen}
+        currentWorkspace={workspace}
       />
     </>
   )

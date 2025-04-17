@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { ChevronsUpDown, Plus, Building2, Loader2 } from "lucide-react"
+import Image from 'next/image'
 
 import {
   DropdownMenu,
@@ -16,9 +17,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useWorkspaces } from "@/hooks/useWorkspaces"
+import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
 import { useEffect, useState } from "react"
 import {
   Dialog,
@@ -33,56 +34,49 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { useAuthStore } from "@/stores/authStore"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { createWorkspace } from "@/services/workspace/client"
 
 export function WorkspaceSwitcher() {
-  const { isMobile } = useSidebar()
-  const { currentWorkspace, workspaces, setCurrentWorkspace, isLoading, createWorkspace } = useWorkspaceStore()
+  const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
+  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
+  const setCurrentWorkspaceId = useWorkspaceStore((state) => state.setCurrentWorkspaceId)
+
+  const userId = useAuthStore((s) => s.user?.id)
+
+  useEffect(() => {
+    if (currentWorkspaceId === null && workspaces.length > 0 && !isLoadingWorkspaces) {
+      console.log("[WorkspaceSwitcher] No workspace selected in store, setting initial:", workspaces[0].id);
+      setCurrentWorkspaceId(workspaces[0].id)
+    }
+  }, [workspaces, currentWorkspaceId, isLoadingWorkspaces, setCurrentWorkspaceId])
+
+  const { workspace: currentWorkspace, isLoading: isLoadingCurrentWorkspace } = useCurrentWorkspace(currentWorkspaceId)
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspace, setNewWorkspace] = useState({ name: "", description: "" })
 
-  // Log workspace information when component mounts or updates
-  useEffect(() => {
-    console.log("⭐ [WorkspaceSwitcher] Rendering with workspace state:", {
-      currentWorkspaceId: currentWorkspace?.id,
-      isLoading: isLoading,
-      workspacesCount: workspaces.length,
-      tabVisible: document.visibilityState === 'visible',
-      timestamp: new Date().toISOString()
-    });
-  }, [currentWorkspace, workspaces, isLoading])
-  
-  // No longer fetching workspaces here - centralized in WorkspaceValidator
-
   const handleCreateWorkspace = async () => {
     if (!newWorkspace.name) return
-
-    // Get userId from the store to confirm it's available
-    const userId = useWorkspaceStore.getState().userId
     if (!userId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "User authentication required"
-      })
+      toast({ variant: "destructive", title: "Error", description: "User authentication required" })
       return
     }
-
     try {
       setIsCreating(true)
-      await createWorkspace(newWorkspace.name, newWorkspace.description)
+      const created = await createWorkspace({ name: newWorkspace.name, description: newWorkspace.description, created_by: userId, logo_url: "", settings: {} })
       setCreateDialogOpen(false)
       setNewWorkspace({ name: "", description: "" })
-      toast({
-        title: "Success",
-        description: "Workspace created successfully"
-      })
+      toast({ title: "Success", description: "Workspace created successfully" })
+      await mutateWorkspaces()
+      if (created && 'id' in created && created.id) {
+         console.log("[WorkspaceSwitcher] Setting newly created workspace as current:", created.id);
+         setCurrentWorkspaceId(created.id);
+      }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create workspace"
-      })
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create workspace" })
     } finally {
       setIsCreating(false)
     }
@@ -99,13 +93,15 @@ export function WorkspaceSwitcher() {
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  {isLoading ? (
+                  {isLoadingCurrentWorkspace ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : currentWorkspace?.logo_url ? (
-                    <img 
+                    <Image 
                       src={currentWorkspace.logo_url} 
                       alt={currentWorkspace.name} 
-                      className="size-4 rounded"
+                      width={16}
+                      height={16}
+                      className="rounded"
                     />
                   ) : (
                     <Building2 className="size-4" />
@@ -113,50 +109,41 @@ export function WorkspaceSwitcher() {
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">
-                    {isLoading ? "Loading..." : currentWorkspace?.name || "Select Workspace"}
+                    {isLoadingCurrentWorkspace ? "Loading..." : currentWorkspace?.name || "Select Workspace"}
                   </span>
                   <span className="truncate text-xs">Free Plan</span>
                 </div>
                 <ChevronsUpDown className="ml-auto" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-              align="start"
-              side={isMobile ? "bottom" : "right"}
-              sideOffset={4}
-            >
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Workspaces
-              </DropdownMenuLabel>
-              {isLoading ? (
-                <DropdownMenuItem disabled className="gap-2 p-2">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading workspaces...
-                </DropdownMenuItem>
-              ) : workspaces.length === 0 ? (
-                <DropdownMenuItem disabled className="gap-2 p-2">
-                  No workspaces found
-                </DropdownMenuItem>
+            <DropdownMenuContent sideOffset={16} align="start" className="w-[240px]">
+              <DropdownMenuLabel className="px-2 py-1.5">My Workspaces</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {isLoadingWorkspaces ? (
+                 <DropdownMenuItem disabled className="gap-2 p-2">
+                   <Loader2 className="mr-2 size-4 animate-spin" /> Loading...
+                 </DropdownMenuItem>
               ) : (
                 workspaces.map((workspace, index) => (
                   <DropdownMenuItem
                     key={workspace.id}
                     onClick={() => {
-                      console.log("[DEBUG] WorkspaceSwitcher - Switching to workspace:", workspace);
-                      setCurrentWorkspace(workspace);
+                       console.log("[WorkspaceSwitcher] Workspace selected via click:", workspace.id);
+                       setCurrentWorkspaceId(workspace.id)
                     }}
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border">
                       {workspace.logo_url ? (
-                        <img 
+                        <Image 
                           src={workspace.logo_url} 
                           alt={workspace.name} 
-                          className="size-3.5 rounded shrink-0"
+                          width={14}
+                          height={14}
+                          className="rounded shrink-0"
                         />
                       ) : (
-                        <Building2 className="size-3.5 shrink-0" />
+                        <Building2 className="size-3.5" />
                       )}
                     </div>
                     {workspace.name}

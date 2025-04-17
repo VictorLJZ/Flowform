@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { InvitationRow } from "@/components/workspace/invitation-row"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mail, LoaderCircle } from "lucide-react"
@@ -14,23 +13,11 @@ interface InvitationListProps {
 }
 
 export function InvitationList({ workspaceId }: InvitationListProps) {
-  const { 
-    sentInvitations, 
-    isLoadingInvitations, 
-    invitationError, 
-    fetchSentInvitations,
-    clearInvitationError 
-  } = useWorkspaceStore()
-  
-  useEffect(() => {
-    // Fetch invitations when component mounts
-    fetchSentInvitations(workspaceId)
-    
-    // Clear any errors when unmounting
-    return () => {
-      clearInvitationError()
-    }
-  }, [workspaceId, fetchSentInvitations, clearInvitationError])
+  const {
+    invitations: sentInvitations,
+    isLoading: isLoadingInvitations,
+    error: invitationError
+  } = useWorkspaceInvitations(workspaceId)
   
   // Filter invitations to show pending ones first, then others
   const sortedInvitations = [...sentInvitations].sort((a, b) => {

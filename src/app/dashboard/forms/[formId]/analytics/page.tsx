@@ -1,7 +1,6 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Breadcrumb,
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { useFormStore } from "@/stores/formStore"
+import { useForm } from "@/hooks/useForm"
 
 import { ResponsesTable } from "@/components/analytics/responses-table"
 
@@ -21,13 +20,7 @@ export default function FormAnalyticsPage() {
   const params = useParams()
   const formId = params.formId as string
   
-  const { fetchFormById, currentForm, isLoading, error } = useFormStore()
-
-  useEffect(() => {
-    if (formId) {
-      fetchFormById(formId)
-    }
-  }, [formId, fetchFormById])
+  const { form, isLoading, error } = useForm(formId)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -47,7 +40,7 @@ export default function FormAnalyticsPage() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink href={`/dashboard/forms/builder/${formId}`}>
-                    {currentForm?.title || "Form"}
+                    {form?.title || "Form"}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -63,7 +56,7 @@ export default function FormAnalyticsPage() {
       <div className="flex-1 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">
-            {isLoading ? "Loading..." : currentForm?.title || "Form Analytics"}
+            {isLoading ? "Loading..." : form?.title || "Form Analytics"}
           </h1>
           <p className="text-muted-foreground mt-1">
             View and analyze form responses and metrics
@@ -76,7 +69,7 @@ export default function FormAnalyticsPage() {
           <div className="w-full p-12 text-center text-destructive">
             Error loading form: {error}
           </div>
-        ) : !currentForm ? (
+        ) : !form ? (
           <div className="w-full p-12 text-center">Form not found</div>
         ) : (
           <Card className="p-4">

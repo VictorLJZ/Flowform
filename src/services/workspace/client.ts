@@ -4,6 +4,7 @@
 // Client-side implementations
 export * from './getUserWorkspacesClient';
 export * from './getWorkspaceMembersClient';
+export * from './getWorkspaceClient';
 
 // Direct services that don't use server-side imports
 export * from './createWorkspace';

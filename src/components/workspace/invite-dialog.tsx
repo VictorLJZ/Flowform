@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { Plus, Trash2, Send, Users } from "lucide-react"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useToast } from "@/components/ui/use-toast"
+import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
+import { Workspace } from "@/types/supabase-types"
 
 import {
   Dialog,
@@ -30,6 +31,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 type InviteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  currentWorkspace: Workspace | null | undefined
 }
 
 type InviteInput = {
@@ -37,17 +39,17 @@ type InviteInput = {
   role: 'owner' | 'admin' | 'editor' | 'viewer'
 }
 
-export function InviteDialog({ open, onOpenChange }: InviteDialogProps) {
+export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
-  const { 
-    currentWorkspace, 
-    sendInvitations, 
-    isLoadingInvitations, 
-    invitationError,
-    clearInvitationError, 
-    invitationLimit, 
-    sentInvitations 
-  } = useWorkspaceStore()
+  
+  const {
+    invitations: sentInvitations,
+    send,
+    isLoading,
+    error: invitationError,
+    clearError,
+    invitationLimit,
+  } = useWorkspaceInvitations(currentWorkspace?.id)
   
   // For storing the list of email/role pairs to invite
   const [invites, setInvites] = useState<InviteInput[]>([
@@ -100,7 +102,7 @@ export function InviteDialog({ open, onOpenChange }: InviteDialogProps) {
     }
     
     try {
-      await sendInvitations(validInvites)
+      await send(validInvites)
       
       toast({
         title: "Invitations sent",
@@ -122,7 +124,7 @@ export function InviteDialog({ open, onOpenChange }: InviteDialogProps) {
     <Dialog open={open} onOpenChange={(isOpen) => {
       // Clear any invitation errors when opening/closing dialog
       if (!isOpen) {
-        clearInvitationError()
+        clearError()
       }
       onOpenChange(isOpen)
     }}>
@@ -237,9 +239,9 @@ export function InviteDialog({ open, onOpenChange }: InviteDialogProps) {
             type="submit" 
             className="gap-1"
             onClick={handleSendInvitations}
-            disabled={isLoadingInvitations || invites.every(invite => !invite.email.trim())}
+            disabled={isLoading || invites.every(invite => !invite.email.trim())}
           >
-            {isLoadingInvitations ? (
+            {isLoading ? (
               "Sending..."
             ) : (
               <>

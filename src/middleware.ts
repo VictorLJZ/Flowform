@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   console.log("Middleware processing:", request.nextUrl.pathname, 
               "Search:", request.nextUrl.search || "none")
 
-  let supabaseResponse = NextResponse.next({
+  const supabaseResponse = NextResponse.next({
     request,
   })
 
@@ -19,11 +19,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          // Preserve options only on the response cookies, not request cookies
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )

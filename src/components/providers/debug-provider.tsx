@@ -1,6 +1,5 @@
 "use client"
 
-import { TabFocusMonitor } from './tab-focus-monitor'
 import { StorageMonitor } from './storage-monitor'
 import { AuthMonitor } from './auth-monitor'
 import { usePathname } from 'next/navigation'
@@ -65,7 +64,6 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
   
   return (
     <>
-      <TabFocusMonitor />
       <StorageMonitor />
       <AuthMonitor />
       {children}

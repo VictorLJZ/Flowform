@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -10,8 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CopyField } from "@/components/ui/copy-button"
 import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { useFormStore } from "@/stores/formStore"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useForms } from "@/hooks/useForms"
+import { useWorkspaces } from "@/hooks/useWorkspaces"
+import { useAuthStore } from "@/stores/authStore"
+import { updateForm } from "@/services/form/updateForm"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,95 +23,90 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ViewAnalyticsButton } from "@/components/ui/view-analytics-button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 export default function FormsPage() {
   const router = useRouter()
-  const { fetchForms, forms, isLoading, publishForm } = useFormStore()
+  const { workspaces } = useWorkspaces()
+  const workspaceId = workspaces?.[0]?.id
+  const { forms, isLoading, error, mutate } = useForms(workspaceId)
+  const userId = useAuthStore((s) => s.user?.id)
   const { toast } = useToast()
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
-  
+
   // Handle form publishing
   const handlePublishForm = async (formId: string) => {
+    setPublishingFormId(formId)
     try {
-      setPublishingFormId(formId);
-      const success = await publishForm(formId);
-      
-      if (success) {
-        toast({
-          title: "Form published",
-          description: "Your form is now publicly accessible via the share link.",
-          action: (
-            <Button variant="outline" size="sm" onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/f/${formId}`);
-              toast({
-                description: "Share link copied to clipboard",
-              });
-            }}>
-              Copy Link
-            </Button>
-          ),
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Publishing failed",
-          description: "There was an error publishing your form.",
-        });
-      }
-    } catch (error) {
-      console.error("Error publishing form:", error);
+      // publish via service
+      await updateForm(formId, { status: 'published', published_at: new Date().toISOString() })
+      // refresh list
+      await mutate()
       toast({
-        variant: "destructive",
-        title: "Publishing failed",
-        description: "There was an unexpected error publishing your form.",
-      });
+        title: "Form published",
+        description: "Your form is now publicly accessible via the share link.",
+        action: (
+          <Button variant="outline" size="sm" onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/f/${formId}`)
+            toast({ description: "Share link copied to clipboard" })
+          }}>
+            Copy Link
+          </Button>
+        ),
+      })
+    } catch (error) {
+      console.error("Error publishing form:", error)
+      toast({ variant: "destructive", title: "Publishing failed", description: "There was an unexpected error publishing your form." })
     } finally {
-      setPublishingFormId(null);
+      setPublishingFormId(null)
     }
   };
 
-  useEffect(() => {
-    fetchForms()
-  }, [fetchForms])
-
   const handleCreateForm = async () => {
     try {
-      // Get current workspace and user data from the workspace store
-      const { currentWorkspace, userId } = useWorkspaceStore.getState();
-      
-      if (!currentWorkspace?.id) {
+      if (!workspaceId) {
         console.error('No current workspace selected');
-        return; // Add proper error handling/toast in production
+        return;
       }
-      
       if (!userId) {
         console.error('No user ID available');
-        return; // Add proper error handling/toast in production
+        return;
       }
-      
-      // Create the form record using actual workspace and user IDs
       const response = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          workspace_id: currentWorkspace.id,
+        body: JSON.stringify({
+          workspace_id: workspaceId,
           user_id: userId
         })
       });
-      
+
       const { form_id, error } = await response.json();
-      
+
       if (error) {
         console.error('Error creating form:', error);
         return; // Add proper error handling/toast in production
       }
-      
+
       // Navigate to the newly created form
       router.push(`/dashboard/forms/builder/${form_id}`);
     } catch (error) {
       console.error('Failed to create form:', error);
       // Show error notification in production
     }
+  }
+
+  if (isLoading) {
+    return <div className="flex-1"><Skeleton className="h-48 w-full" /></div>
+  }
+  if (error) {
+    return (
+      <Alert variant="destructive" className="m-4">
+        <AlertTitle>Error loading forms</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
   }
 
   return (
@@ -143,12 +140,8 @@ export default function FormsPage() {
             <Plus className="mr-2 h-4 w-4" /> Create Form
           </Button>
         </div>
-        
-        {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="animate-pulse">Loading forms...</div>
-          </div>
-        ) : forms.length > 0 ? (
+
+        {forms.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {forms.map((form, index) => (
               <Card key={form.form_id || `form-${index}`} className="overflow-hidden flex flex-col">
@@ -193,7 +186,7 @@ export default function FormsPage() {
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="pt-0">
                   {/* Shareable link field */}
                   <div className="mt-2">

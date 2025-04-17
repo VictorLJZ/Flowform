@@ -24,7 +24,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/providers/auth-provider"
+import { useAuthSession } from "@/hooks/useAuthSession"
 
 // FlowForm application data
 const data = {
@@ -116,16 +116,24 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth();
+  const { user, isLoading, error } = useAuthSession();
+
+  if (isLoading) {
+     return null;
+  }
+  if (error) {
+     console.error("Error fetching auth session in AppSidebar:", error);
+     return null;
+  }
 
   const userData = user ? {
-    name: user.user_metadata?.name || // Google auth name
-          user.user_metadata?.full_name || // Fallback for other providers
+    name: user.user_metadata?.name || 
+          user.user_metadata?.full_name || 
           user.email?.split('@')[0] || 
           'User',
     email: user.email || '',
-    avatar: user.user_metadata?.picture || // Google auth avatar
-           user.user_metadata?.avatar_url || // Fallback for other providers
+    avatar: user.user_metadata?.picture || 
+           user.user_metadata?.avatar_url || 
            ''
   } : {
     name: "Guest",

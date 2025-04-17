@@ -1,8 +1,16 @@
-import { createClient } from '@/lib/supabase/client';
-import { Workspace } from '@/types/supabase-types';
-import { networkLog } from '@/lib/debug-logger';
-import { checkWorkspacePermissionClient } from '@/services/permissions/checkWorkspacePermissionClient';
+import { Workspace } from "@/types/supabase-types";
+import { checkWorkspacePermissionClient } from "@/services/permissions/checkWorkspacePermissionClient";
+import { networkLog } from "@/lib/debug-logger";
+import { SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * Update an existing workspace using an authenticated Supabase client
+ * 
+ * @param supabase - The authenticated Supabase client instance
+ * @param workspaceId - The ID of the workspace to update
+ * @param workspaceData - The workspace data to update
+ * @returns The updated workspace
+ */
 type WorkspaceUpdateInput = Partial<Pick<Workspace, 
   'name' | 
   'description' | 
@@ -10,43 +18,30 @@ type WorkspaceUpdateInput = Partial<Pick<Workspace,
   'settings'
 >>;
 
-/**
- * Update an existing workspace
- * 
- * @param workspaceId - The ID of the workspace to update
- * @param workspaceData - The workspace data to update
- * @returns The updated workspace
- */
 export async function updateWorkspace(
+  supabase: SupabaseClient,
   workspaceId: string,
   workspaceData: WorkspaceUpdateInput
 ): Promise<Workspace> {
   networkLog('Initializing workspace update request', { workspaceId, updates: workspaceData });
   
-  // Get user ID from the auth store (our single source of truth for auth state)
-  const { useAuthStore } = await import('@/stores/authStore');
-  const userId = useAuthStore.getState().user?.id;
-  
-  if (!userId) {
-    throw new Error('User not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("Supabase client is not authenticated.");
   }
-  
-  const supabase = createClient();
-  networkLog('Using verified user ID for permission check', { userId, workspaceId });
+  const userId = user.id;
+  networkLog('Using verified user ID from authenticated client', { userId, workspaceId });
 
-  // Check permissions using dedicated service with verified user ID
   const permissionCheck = await checkWorkspacePermissionClient(workspaceId, userId);
   if (!permissionCheck.hasPermission) {
     throw new Error('User does not have permission to update this workspace');
   }
 
-  // Add updated_at timestamp
   const updateData = {
     ...workspaceData,
     updated_at: new Date().toISOString()
   };
 
-  // Make a single database call for the update
   const { data, error } = await supabase
     .from('workspaces')
     .update(updateData)

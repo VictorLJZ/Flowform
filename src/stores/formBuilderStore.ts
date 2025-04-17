@@ -1,12 +1,12 @@
 "use client"
 
 import { create } from 'zustand'
+import { useAuthStore } from '@/stores/authStore'
 import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
 import { FormBlock as DbFormBlock } from '@/types/supabase-types'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 
@@ -252,7 +252,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     
     try {
       const { formData, blocks } = get()
-      const { currentWorkspace, userId } = useWorkspaceStore.getState()
+      const userId = useAuthStore.getState().user?.id
       
       // Prepare form data for saving - format for RPC function
       const saveData = {
@@ -260,9 +260,8 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         title: formData.title,
         description: formData.description || '',
         // Always ensure workspace_id and created_by are set
-        // Use stored values first, then fallback to current workspace/user
-        workspace_id: formData.workspace_id || currentWorkspace?.id,
-        created_by: formData.created_by || (userId || undefined),
+        workspace_id: formData.workspace_id,
+        created_by: formData.created_by || userId,
         status: formData.status || 'draft',
         theme: formData.settings ? {
           name: formData.settings.theme,

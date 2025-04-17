@@ -13,7 +13,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Loader2, Save, Globe } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { useFormStore } from "@/stores/formStore"
+import { useForm } from "@/hooks/useForm"
+import { getBlockDefinition } from "@/registry/blockRegistry"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { updateForm } from "@/services/form/updateForm"
 import { useToast } from "@/components/ui/use-toast"
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
@@ -24,23 +28,73 @@ export default function FormBuilderPage() {
   const params = useParams()
   const formId = params.formId as string
   
-  const { 
-    loadForm, 
-    isLoading, 
-    isSaving,
-    formData,
-    saveForm
-  } = useFormBuilderStore()
-  
-  const { publishForm } = useFormStore()
+  const { isSaving, formData, saveForm, setFormData, setBlocks, setCurrentBlockId } = useFormBuilderStore(state => ({
+    isSaving: state.isSaving,
+    formData: state.formData,
+    saveForm: state.saveForm,
+    setFormData: state.setFormData,
+    setBlocks: state.setBlocks,
+    setCurrentBlockId: state.setCurrentBlockId
+  }))
+  const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
   const [isPublishing, setIsPublishing] = useState(false)
   
-  // Load form data on mount
+  // Map SWR data to builder store
   useEffect(() => {
-    loadForm(formId)
-  }, [formId, loadForm])
+    if (form) {
+      // Map settings safely
+      const settingsObj = (form.settings ?? {}) as Record<string, unknown>
+      setFormData({
+        form_id: form.form_id,
+        title: form.title,
+        description: form.description ?? '',
+        workspace_id: form.workspace_id,
+        created_by: form.created_by,
+        status: form.status,
+        settings: {
+          showProgressBar: Boolean(settingsObj.showProgressBar),
+          requireSignIn: Boolean(settingsObj.requireSignIn),
+          theme: String(settingsObj.theme),
+          primaryColor: String(settingsObj.primaryColor),
+          fontFamily: String(settingsObj.fontFamily),
+          estimatedTime: typeof settingsObj.estimatedTime === 'number' ? settingsObj.estimatedTime : undefined,
+          estimatedTimeUnit: (settingsObj.estimatedTimeUnit as 'minutes' | 'hours') ?? undefined,
+          redirectUrl: settingsObj.redirectUrl as string | undefined,
+          customCss: settingsObj.customCss as string | undefined
+        }
+      })
+      // Map blocks
+      const mappedBlocks = form.blocks.map(block => {
+        const def = getBlockDefinition(block.subtype || 'text_short')
+        return {
+          id: block.id,
+          blockTypeId: block.subtype || 'text_short',
+          type: def.type,
+          title: block.title || def.defaultTitle,
+          description: block.description || def.defaultDescription || '',
+          required: block.required,
+          order: block.order_index,
+          settings: block.settings as Record<string, unknown>
+        }
+      })
+      setBlocks(mappedBlocks)
+      setCurrentBlockId(mappedBlocks[0]?.id ?? null)
+    }
+  }, [form, setFormData, setBlocks, setCurrentBlockId])
   
+  if (isLoading) {
+    return <div className="flex-1 flex items-center justify-center"><Skeleton className="h-48 w-full" /></div>
+  }
+  if (error) {
+    return (
+      <Alert variant="destructive" className="m-4">
+        <AlertTitle>Error loading form</AlertTitle>
+        <AlertDescription>{error.message || String(error)}</AlertDescription>
+      </Alert>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
@@ -101,25 +155,24 @@ export default function FormBuilderPage() {
               if (!formData.form_id) return;
               
               try {
-                setIsPublishing(true);
-                const success = await publishForm(formData.form_id);
-                
-                if (success) {
-                  toast({
-                    title: "Form published",
-                    description: "Your form is now publicly accessible",
-                    action: (
-                      <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/f/${formData.form_id}`);
-                        toast({
-                          description: "Share link copied to clipboard",
-                        });
-                      }}>
-                        Copy Link
-                      </Button>
-                    ),
-                  });
-                }
+                setIsPublishing(true)
+                // Publish via status update
+                await updateForm(formData.form_id, { status: 'published' })
+                await mutate()
+                toast({
+                  title: "Form published",
+                  description: "Your form is now publicly accessible",
+                  action: (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/f/${formData.form_id}`);
+                      toast({
+                        description: "Share link copied to clipboard",
+                      });
+                    }}>
+                      Copy Link
+                    </Button>
+                  ),
+                });
               } catch (error) {
                 console.error("Error publishing form:", error);
                 toast({
@@ -148,29 +201,19 @@ export default function FormBuilderPage() {
       </header>
       
       {/* Main content area */}
-      {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 size={30} className="animate-spin mx-auto mb-4 text-primary" />
-            <p className="font-medium">Loading form...</p>
-            <p className="text-sm text-muted-foreground mt-1">Preparing your form builder</p>
-          </div>
-        </div>
-      ) : (
-        <main className="flex-1 flex overflow-hidden">
-          {/* Left sidebar - list of blocks */}
-          <FormBuilderSidebar />
-          
-          {/* Main content - single block slide */}
-          <FormBuilderContent />
-          
-          {/* Right settings panel - block settings */}
-          <FormBuilderSettings />
-          
-          {/* Block selector dialog */}
-          <FormBuilderBlockSelector />
-        </main>
-      )}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left sidebar - list of blocks */}
+        <FormBuilderSidebar />
+        
+        {/* Main content - single block slide */}
+        <FormBuilderContent />
+        
+        {/* Right settings panel - block settings */}
+        <FormBuilderSettings />
+        
+        {/* Block selector dialog */}
+        <FormBuilderBlockSelector />
+      </main>
     </div>
   )
 }

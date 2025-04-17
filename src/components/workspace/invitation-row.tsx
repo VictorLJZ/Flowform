@@ -1,9 +1,9 @@
 "use client"
 
+import type { WorkspaceInvitation } from "@/types/supabase-types"
 import { useState } from "react"
 import { format } from "date-fns"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
-import { WorkspaceInvitation } from "@/types/supabase-types"
+import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ interface InvitationRowProps {
 
 export function InvitationRow({ invitation }: InvitationRowProps) {
   const { toast } = useToast()
-  const { resendInvitation, revokeInvitation, isLoadingInvitations } = useWorkspaceStore()
+  const { resend, revoke, isLoading } = useWorkspaceInvitations(invitation.workspace_id)
   const [isResending, setIsResending] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
@@ -62,7 +62,7 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
   const handleResendInvitation = async () => {
     setIsResending(true)
     try {
-      await resendInvitation(invitation.id)
+      await resend(invitation.id)
       toast({
         title: "Invitation resent",
         description: `Invitation to ${invitation.email} has been resent.`,
@@ -77,7 +77,7 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
   const handleRevokeInvitation = async () => {
     setIsRevoking(true)
     try {
-      await revokeInvitation(invitation.id)
+      await revoke(invitation.id)
       toast({
         title: "Invitation revoked",
         description: `Invitation to ${invitation.email} has been revoked.`,
@@ -128,7 +128,7 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
                     size="icon"
                     className="h-8 w-8"
                     onClick={handleCopyInviteLink}
-                    disabled={isLoadingInvitations}
+                    disabled={isLoading}
                   >
                     {isCopied ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -149,7 +149,7 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
                     size="icon"
                     className="h-8 w-8"
                     onClick={handleResendInvitation}
-                    disabled={isResending || isLoadingInvitations}
+                    disabled={isResending || isLoading}
                   >
                     <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
                   </Button>
@@ -169,7 +169,7 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
                   size="icon"
                   className="h-8 w-8"
                   onClick={handleRevokeInvitation}
-                  disabled={isRevoking || isLoadingInvitations}
+                  disabled={isRevoking || isLoading}
                 >
                   <X className="h-4 w-4 text-destructive" />
                 </Button>

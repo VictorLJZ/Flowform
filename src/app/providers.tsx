@@ -4,9 +4,9 @@
 import { AuthProvider } from "@/providers/auth-provider"
 // Import only what we actually use
 import { Toaster } from "@/components/ui/toaster"
-import { WorkspaceValidator } from "@/components/providers/workspace-validator"
-import { NetworkTracerProvider } from "@/components/providers/network-tracer-provider"
-import { TabFocusMonitor } from "@/components/providers/tab-focus-monitor"
+// NetworkTracerProvider import removed
+import { SWRConfig } from "swr"
+import { fetcher } from "@/lib/swr"
 
 export function Providers({
   children
@@ -18,19 +18,13 @@ export function Providers({
   // This eliminates security issues from using unverified session data
   
   return (
-    <>
-      {/* Pass null instead of potentially unverified session data */}
-      <AuthProvider initialSession={null}>
-        {/* Network tracer for debugging Supabase requests */}
-        <NetworkTracerProvider>
-          {/* Add workspace validator to validate workspace data */}
-          <WorkspaceValidator />
-          {/* Add TabFocusMonitor to handle tab switching and Supabase reconnection */}
-          <TabFocusMonitor />
-          {children}
-        </NetworkTracerProvider>
+    <SWRConfig value={{ fetcher, revalidateOnFocus: true }}>
+      {/* Fix: Remove initialSession prop as it's no longer used/accepted */}
+      <AuthProvider>
+        {/* NetworkTracerProvider wrapper removed */}
+        {children}
       </AuthProvider>
       <Toaster />
-    </>
+    </SWRConfig>
   )
 }

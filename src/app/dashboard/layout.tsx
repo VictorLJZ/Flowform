@@ -1,16 +1,15 @@
 "use client";
 import { AppSidebar } from "@/components/layout/dashboard/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { useWorkspaceInit } from "@/hooks/useWorkspaceInit";
 import { DebugProvider } from "@/components/providers/debug-provider";
+
+// useWorkspaceInit moved to SWR-based useWorkspaces or server init; removed obsolete hook
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Initialize workspace for authenticated users - call hook but don't use its return value
-  useWorkspaceInit();
   return (
     <DebugProvider>
       <SidebarProvider>
