@@ -59,8 +59,8 @@ export interface FormBlock {
 // Block registry
 const blockRegistry: Record<string, BlockDefinition> = {
   // Static input blocks
-  "text_short": {
-    id: "text_short",
+  "short_text": {
+    id: "short_text",
     type: "static",
     name: "Short Text",
     description: "Short answer text field for brief responses",
@@ -73,8 +73,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
     })
   },
   
-  "text_long": {
-    id: "text_long",
+  "long_text": {
+    id: "long_text",
     type: "static",
     name: "Long Text",
     description: "Paragraph text for longer responses",
@@ -274,11 +274,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
 }
 
 // Helper functions
-export const getBlockDefinition = (blockTypeId: string): BlockDefinition => {
+export const getBlockDefinition = (blockTypeId: string): BlockDefinition | undefined => {
   const block = blockRegistry[blockTypeId]
-  if (!block) {
-    throw new Error(`Block type ${blockTypeId} not found in registry`)
-  }
   return block
 }
 
@@ -296,12 +293,12 @@ export const createNewBlock = (blockTypeId: string, order: number): FormBlock =>
   return {
     id: `block-${Date.now()}`,
     blockTypeId,
-    type: blockDef.type,
-    title: blockDef.defaultTitle,
-    description: blockDef.defaultDescription || "",
+    type: blockDef?.type || 'static', // Valid default type
+    title: blockDef?.defaultTitle || "",
+    description: blockDef?.defaultDescription || "",
     required: false,
     order,
-    settings: blockDef.getDefaultValues()
+    settings: blockDef?.getDefaultValues() || {}
   }
 }
 

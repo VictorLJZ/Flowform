@@ -42,7 +42,8 @@ export function MediaLeftSplitLayout({
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId
-  const effectiveSizingMode = settings?.sizingMode || sizingMode
+  // Force cover for split layout, ignore settings
+  const effectiveSizingMode = 'cover' 
   const effectiveOpacity = settings?.opacity || opacity
   
   // Spacing classes
@@ -76,7 +77,7 @@ export function MediaLeftSplitLayout({
         alt="Slide media"
         fill
         style={{ 
-          objectFit: effectiveSizingMode,
+          objectFit: 'cover', // Force cover
           opacity: effectiveOpacity / 100
         }}
       />
@@ -86,19 +87,21 @@ export function MediaLeftSplitLayout({
   return (
     <div 
       className={cn(
-        "w-full h-full grid grid-cols-2",
+        "w-full h-full grid grid-cols-2 gap-0", // Ensure no gap
         className
       )}
     >
-      {/* Media section - fixed at 50% */}
-      <div className="w-1/2 h-full">
+      {/* Media section - First Column */}
+      <div className="col-span-1 h-full">
         {mediaElement}
       </div>
       
-      {/* Content section - fixed at 50% */}
-      <div className="w-1/2 h-full flex flex-col justify-center">
+      {/* Content section - Second Column */}
+      <div 
+        className="col-span-1 h-full flex flex-col justify-center py-[15%] px-[7.5%]"
+      >
         <div className={cn(
-          "px-8 py-8 w-full",
+          "w-full",
           alignmentClasses[effectiveTextAlignment],
           spacingClasses[effectiveSpacing],
         )}>

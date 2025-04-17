@@ -66,13 +66,13 @@ export default function FormBuilderPage() {
       })
       // Map blocks
       const mappedBlocks = form.blocks.map(block => {
-        const def = getBlockDefinition(block.subtype || 'text_short')
+        const def = getBlockDefinition(block.subtype || 'short_text')
         return {
           id: block.id,
-          blockTypeId: block.subtype || 'text_short',
-          type: def.type,
-          title: block.title || def.defaultTitle,
-          description: block.description || def.defaultDescription || '',
+          blockTypeId: block.subtype || 'short_text',
+          type: def?.type || 'static', // Provide default BlockType
+          title: block.title || def?.defaultTitle || '', // Ensure title is always string
+          description: block.description || def?.defaultDescription || '',
           required: block.required,
           order: block.order_index,
           settings: block.settings as Record<string, unknown>

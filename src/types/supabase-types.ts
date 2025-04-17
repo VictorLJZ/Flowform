@@ -65,8 +65,8 @@ export interface Form {
 
 export type BlockType = 'static' | 'dynamic' | 'layout' | 'integration';
 export type StaticBlockSubtype = 
-  'text_short' | 
-  'text_long' | 
+  'short_text' | 
+  'long_text' | 
   'email' | 
   'date' | 
   'multiple_choice' | 

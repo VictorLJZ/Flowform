@@ -119,7 +119,7 @@ export default function FormBuilderContent() {
             {/* Block specific components */}
             <div className="absolute top-0 left-0 w-full h-full">
               {/* Render different content based on block type */}
-              {currentBlock.blockTypeId === 'text_short' && (
+              {currentBlock.blockTypeId === 'short_text' && (
                 <TextInputBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -143,7 +143,7 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'text_long' && (
+              {currentBlock.blockTypeId === 'long_text' && (
                 <TextAreaBlock
                   id={currentBlock.id}
                   title={currentBlock.title}

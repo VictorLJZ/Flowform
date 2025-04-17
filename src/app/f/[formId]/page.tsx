@@ -1,17 +1,25 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { FormBlock } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { useForm } from "@/hooks/useForm"
+import { getBlockDefinition, BlockDefinition } from '@/registry/blockRegistry'
+import { StaticBlockSubtype } from '@/types/supabase-types'; // Import only StaticBlockSubtype
+
+// Import Block Components
+import { TextInputBlock } from "@/components/form/blocks/TextInputBlock"
+import { TextAreaBlock } from "@/components/form/blocks/TextAreaBlock"
+import { MultipleChoiceBlock } from "@/components/form/blocks/MultipleChoiceBlock"
+import { CheckboxGroupBlock } from "@/components/form/blocks/CheckboxGroupBlock"
+import { DropdownBlock } from "@/components/form/blocks/DropdownBlock"
+import { NumberBlock } from "@/components/form/blocks/NumberBlock"
+import { DateBlock } from "@/components/form/blocks/DateBlock"
+import { EmailBlock } from "@/components/form/blocks/EmailBlock";
 
 interface QAPair {
   question: string
@@ -39,13 +47,12 @@ export default function FormSessionPage() {
   const { toast } = useToast()
   
   // Use the SWR hook to fetch form data
-  const { form, isLoading: isFormLoading, error: formError, mutate: mutateForm } = useForm(formId)
+  const { form, isLoading: isFormLoading, error: formError } = useForm(formId)
   
   // Derive blocks from the fetched form data
   const blocks = form?.blocks?.slice().sort((a, b) => a.order_index - b.order_index) || [];
   
   // Refs
-  const answerInputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
   const blockContainerRef = useRef<HTMLDivElement>(null)
   
   // State for form and blocks
@@ -59,8 +66,7 @@ export default function FormSessionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // State for answers
-  const [currentAnswer, setCurrentAnswer] = useState('')
-  const [, setStaticAnswers] = useState<BlockAnswer[]>([])
+  const [answers, setAnswers] = useState<Record<string, any>>({}); // Unified state for all answers
   
   // State for dynamic blocks
   const [dynamicConversations, setDynamicConversations] = useState<Record<string, DynamicConversation>>({})  
@@ -111,64 +117,63 @@ export default function FormSessionPage() {
  
   // Focus input on load and after navigation
   useEffect(() => {
-    if (!isFormLoading && !completed && answerInputRef.current) {
-      setTimeout(() => {
-        answerInputRef.current?.focus()
-      }, 300)
-    }
-  }, [isFormLoading, currentBlockIndex, completed])
+    // Focusing needs refinement based on dynamically rendered component
+  }, [currentBlockIndex])
+  
+  // Calculate progress
+  useEffect(() => {
+    const newProgress = Math.min(100, ((currentBlockIndex + 1) / blocks.length) * 100)
+    setProgress(newProgress)
+  }, [currentBlockIndex, blocks.length])
+  
+  const currentBlock = blocks[currentBlockIndex]
+  const currentDynamicConversation = currentBlock?.id ? dynamicConversations[currentBlock.id] : null;
+  const currentQuestion = currentBlock?.type === 'dynamic' ? currentDynamicConversation?.currentQuestion : currentBlock?.title;
+  
+  // Handler for answer changes from block components
+  const handleAnswerChange = useCallback((blockId: string, value: any) => {
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [blockId]: value
+    }));
+  }, []);
   
   // Handle keyboard submit with Enter key
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmitAnswer()
+      if (currentBlock && !isSubmitting) {
+        handleSubmitAnswer();
+      }
     }
   }
   
-  // Get current block
-  const currentBlock = blocks[currentBlockIndex] || null
-  
-  // Get dynamic conversation for current block if it's a dynamic block
-  const currentDynamicConversation = currentBlock?.type === 'dynamic' 
-    ? dynamicConversations[currentBlock.id] 
-    : null
-    
-  // Get current question for dynamic blocks
-  const currentQuestion = currentDynamicConversation?.currentQuestion || ""
-
+  // Submit answer to the backend
   const handleSubmitAnswer = async () => {
-    if (!currentBlock || isSubmitting || !responseId) return
+    if (!currentBlock || isSubmitting) return;
     
-    // For static blocks, validate that we have an answer
-    if (currentBlock.type === 'static' && !currentAnswer.trim()) {
-      return
-    }
-    
-    // For dynamic blocks, validate that we have an answer and a current question
-    if (currentBlock.type === 'dynamic' && 
-        (!currentAnswer.trim() || !currentDynamicConversation?.currentQuestion)) {
-      return
-    }
-    
+    // Get the answer from the unified state
+    const answerValue = answers[currentBlock.id] || '';
+    console.log("ANSWER VALUE: ", answerValue)
+
     setIsSubmitting(true)
-    setAnimation('exit')
+    console.log(`Submitting answer for block ${currentBlockIndex}: ${currentBlock.id}, Response ID: ${responseId}`);
     
     try {
       // Prepare the request based on block type
-      if (currentBlock.type === 'static') {
+      if (currentBlock.type === 'static') { // Handle Static Block Submission
+        const staticPayload = {
+          block_id: currentBlock.id,
+          response_id: responseId,
+          answer: answerValue,
+          is_dynamic: false // Explicitly set for static
+        };
+
         // Submit static block answer
         const response = await fetch(`/api/forms/${formId}/sessions`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            responseId,
-            blockId: currentBlock.id,
-            blockType: 'static',
-            answer: currentAnswer.trim()
-          }),
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(staticPayload)
         })
         
         if (!response.ok) {
@@ -176,16 +181,6 @@ export default function FormSessionPage() {
         }
         
         const data = await response.json()
-        
-        // Save the answer locally for history
-        setStaticAnswers(prev => [...prev, {
-          blockId: currentBlock.id,
-          answer: currentAnswer.trim(),
-          timestamp: new Date().toISOString()
-        }])
-        
-        // Clear the input
-        setCurrentAnswer('')
         
         // Check if the form is completed
         if (data.completed) {
@@ -195,30 +190,26 @@ export default function FormSessionPage() {
           setTimeout(() => {
             setAnimation('enter')
             setCurrentBlockIndex(prev => prev + 1)
-            
-            // Update progress
-            const newProgress = Math.min(100, ((currentBlockIndex + 2) / blocks.length) * 100)
-            setProgress(newProgress)
           }, 300)
         }
       } else if (currentBlock.type === 'dynamic') {
-        // For dynamic blocks
-        const isFirstQuestion = !currentDynamicConversation?.conversation.length;
-        
+        // Handle Dynamic Block Submission
+        const isFirstQuestion = !currentDynamicConversation || currentDynamicConversation.conversation.length === 0
+
+        const dynamicPayload = {
+          block_id: currentBlock.id,
+          response_id: responseId,
+          answer: answerValue,
+          question: currentDynamicConversation?.currentQuestion, // Send the question being answered
+          is_dynamic: true, // Explicitly set for dynamic
+          is_first_question: isFirstQuestion // Indicate if it's the start of the dynamic interaction
+        };
+
         // Submit dynamic block response
         const response = await fetch(`/api/forms/${formId}/sessions`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            responseId,
-            blockId: currentBlock.id,
-            blockType: 'dynamic',
-            currentQuestion: currentDynamicConversation?.currentQuestion,
-            answer: currentAnswer.trim(),
-            isFirstQuestion
-          }),
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(dynamicPayload)
         })
         
         if (!response.ok) {
@@ -231,12 +222,9 @@ export default function FormSessionPage() {
         const updatedConversation = currentDynamicConversation?.conversation || []
         updatedConversation.push({
           question: currentDynamicConversation?.currentQuestion || '',
-          answer: currentAnswer.trim(),
+          answer: answerValue,
           timestamp: new Date().toISOString()
         })
-        
-        // Clear the input
-        setCurrentAnswer('')
         
         // Check if dynamic block is complete or form is completed
         if (data.completed) {
@@ -255,10 +243,6 @@ export default function FormSessionPage() {
           setTimeout(() => {
             setAnimation('enter')
             setCurrentBlockIndex(prev => prev + 1)
-            
-            // Update progress
-            const newProgress = Math.min(100, ((currentBlockIndex + 2) / blocks.length) * 100)
-            setProgress(newProgress)
           }, 300)
         } else {
           // Continue conversation with next question
@@ -277,14 +261,13 @@ export default function FormSessionPage() {
           }, 300)
         }
       }
-    } catch (error) {
-      console.error('Error submitting answer:', error)
-      toast({
-        title: "Error",
-        description: "Failed to submit your answer. Please try again.",
-        variant: "destructive"
+    } catch (err) {
+      console.error('Error submitting answer:', err)
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: `Failed to submit answer: ${err instanceof Error ? err.message : 'Unknown error'}` 
       })
-      setAnimation('enter') // Reset animation if there's an error
     } finally {
       setIsSubmitting(false)
     }
@@ -300,118 +283,102 @@ export default function FormSessionPage() {
     }
   }, [animation])
   
-  // Render function for static blocks based on subtype
-  const renderStaticBlockInput = () => {
-    if (!currentBlock || currentBlock.type !== 'static') return null
+  // --- START: New Block Rendering Logic ---
+  const renderBlockComponent = () => {
+    if (!currentBlock) return null;
     
-    const handleInputChange = (value: string) => {
-      setCurrentAnswer(value)
+    // Assuming block.subtype will always be valid after migration
+    // Get the block definition using the correct subtype union
+    const blockDefinition = getBlockDefinition(currentBlock.subtype as StaticBlockSubtype | 'dynamic');
+    
+    if (!blockDefinition) {
+      console.error(`Block definition not found for subtype: ${currentBlock.subtype}`);
+      return <div>Error: Block type not supported.</div>; // Handle missing definition
     }
-    
+  
+    // Common handlers and values
+    const value = answers[currentBlock.id] ?? '';
+    const handleChange = (val: any) => setAnswers(prev => ({ ...prev, [currentBlock.id]: val }));
+  
     switch (currentBlock.subtype) {
-      case 'text_short':
-      case 'email':
-        return (
-          <Input
-            ref={answerInputRef as React.RefObject<HTMLInputElement>}
-            value={currentAnswer}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder={currentBlock.description || `Enter your answer...`}
-            className="w-full text-base px-4 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-            type={currentBlock.subtype === 'email' ? 'email' : 'text'}
-            disabled={isSubmitting}
-          />
-        )
-        
-      case 'text_long':
-        return (
-          <Textarea
-            ref={answerInputRef as React.RefObject<HTMLTextAreaElement>}
-            value={currentAnswer}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={currentBlock.description || `Type your answer here...`}
-            className="min-h-28 w-full text-base px-4 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
-            disabled={isSubmitting}
-          />
-        )
-        
+      case 'short_text':
+        return <TextInputBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
+      case 'long_text':
+        return <TextAreaBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
+      case 'multiple_choice': 
+        return <MultipleChoiceBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value} 
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
+      case 'checkbox_group': 
+        return <CheckboxGroupBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value} 
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
+      case 'dropdown':
+        return <DropdownBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange} // Use onChange as confirmed by component definition
+          required={currentBlock.required}
+        />;
       case 'number':
-        return (
-          <Input
-            ref={answerInputRef as React.RefObject<HTMLInputElement>}
-            value={currentAnswer}
-            onChange={(e) => {
-              // Only allow numbers
-              if (/^\d*\.?\d*$/.test(e.target.value) || e.target.value === '') {
-                handleInputChange(e.target.value)
-              }
-            }}
-            placeholder={currentBlock.description || `Enter a number...`}
-            className="w-full p-3 text-base"
-            type="text"
-            inputMode="decimal"
-            disabled={isSubmitting}
-          />
-        )
-        
-      case 'multiple_choice':
-        // Get options from block settings
-        // Ensure options is always an array with proper typing
-        const options: Array<{value: string, label: string}> = Array.isArray(currentBlock.settings?.options) 
-          ? currentBlock.settings.options 
-          : []
-        return (
-          <RadioGroup
-            value={currentAnswer}
-            onValueChange={handleInputChange}
-            className="flex flex-col gap-3 mt-2"
-            disabled={isSubmitting}
-          >
-            {options.map((option: {value: string, label: string}, index: number) => (
-              <div key={option.value} className="flex items-center space-x-2 p-3 border rounded-md hover:bg-gray-50">
-                <RadioGroupItem value={option.value} id={`option-${index}`} />
-                <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer font-normal">
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )
-        
-      case 'yes_no':
-        return (
-          <RadioGroup
-            value={currentAnswer}
-            onValueChange={handleInputChange}
-            className="flex flex-col gap-3 mt-2"
-            disabled={isSubmitting}
-          >
-            <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-gray-50">
-              <RadioGroupItem value="yes" id="option-yes" />
-              <Label htmlFor="option-yes" className="flex-1 cursor-pointer font-normal">Yes</Label>
-            </div>
-            <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-gray-50">
-              <RadioGroupItem value="no" id="option-no" />
-              <Label htmlFor="option-no" className="flex-1 cursor-pointer font-normal">No</Label>
-            </div>
-          </RadioGroup>
-        )
-        
+        return <NumberBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
+      case 'date':
+        return <DateBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange} 
+          required={currentBlock.required}
+        />;
+      case 'email':
+        return <EmailBlock 
+          id={currentBlock.id}
+          title={currentBlock.title}
+          settings={currentBlock.settings || {}}
+          value={value}
+          onChange={handleChange}
+          required={currentBlock.required}
+        />;
       default:
-        return (
-          <Textarea
-            ref={answerInputRef as React.RefObject<HTMLTextAreaElement>}
-            value={currentAnswer}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your answer here..."
-            className="min-h-24 p-3 text-base resize-none"
-            disabled={isSubmitting}
-          />
-        )
+        console.warn(`Unsupported block subtype: ${currentBlock.subtype}`) // Log unsupported types
+        return <div>Unsupported block type: {currentBlock.subtype}</div>;
     }
-  }
+  };
+  // --- END: New Block Rendering Logic ---
   
   // Render the navigation buttons
   const renderNavigationButtons = () => {
@@ -421,8 +388,8 @@ export default function FormSessionPage() {
     const isDynamicComplete = hasDynamicConversation ? currentDynamicConversation?.isComplete : false;
     
     const canSubmit = 
-      (currentBlock?.type === 'static' && currentAnswer.trim()) || 
-      (currentBlock?.type === 'dynamic' && currentAnswer.trim() && !isDynamicComplete);
+      (currentBlock?.type === 'static' && answers[currentBlock.id]) || 
+      (currentBlock?.type === 'dynamic' && answers[currentBlock.id] && !isDynamicComplete);
     
     const handlePrevious = () => {
       if (currentBlockIndex > 0) {
@@ -512,7 +479,9 @@ export default function FormSessionPage() {
             </div>
             <h2 className="text-2xl font-bold">Error Loading Form</h2>
             <p className="text-gray-600 max-w-md">{formError.message || 'An unexpected error occurred.'}</p>
-            <Button onClick={() => mutateForm()} variant="outline">Retry</Button>
+            <Button onClick={() => window.location.href = '/'}>
+              Return Home
+            </Button>
           </div>
         ) : completed ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
@@ -579,19 +548,8 @@ export default function FormSessionPage() {
                   
                   {/* Input area */}
                   <div className="w-full max-w-lg mt-2 mb-8 flex flex-col items-center">
-                    {currentBlock.type === 'static' ? (
-                      renderStaticBlockInput()
-                    ) : (
-                      <Textarea
-                        ref={answerInputRef as React.RefObject<HTMLTextAreaElement>}
-                        value={currentAnswer}
-                        onChange={(e) => setCurrentAnswer(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type your answer here..."
-                        className="min-h-24 w-full border rounded-lg resize-none p-4 text-base shadow-sm"
-                        disabled={isSubmitting}
-                      />
-                    )}
+                    {/* Render the block component dynamically */} 
+                    {renderBlockComponent()}
                   </div>
                   
                   {/* Navigation buttons */}

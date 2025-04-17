@@ -108,7 +108,7 @@ Stores question blocks within forms.
 | id          | UUID                    | Primary key                       |
 | form_id     | UUID                    | References forms.form_id          |
 | type        | TEXT                    | Block type (static, dynamic)      |
-| subtype     | TEXT                    | Block subtype (text_short, text_long, etc.) |
+| subtype     | TEXT                    | Block subtype (short_text, long_text, etc.) |
 | title       | TEXT                    | Question title/text               |
 | description | TEXT                    | Help text/description             |
 | required    | BOOLEAN                 | Whether answer is required        |

@@ -28,7 +28,7 @@ export function mapToDbBlockType(blockTypeId: string): {
 
   // For layout blocks that might use a generic subtype
   if (blockTypeId === 'redirect' || blockTypeId === 'page_break') {
-    return { type: 'layout', subtype: 'text_short' };
+    return { type: 'layout', subtype: 'short_text' };
   }
 
   // For most other blocks, the blockTypeId is already the subtype
@@ -53,8 +53,8 @@ export function mapFromDbBlockType(type: BlockType, subtype: StaticBlockSubtype 
   
   // Explicitly handle each supported subtype
   switch (subtype) {
-    case 'text_short':
-    case 'text_long':
+    case 'short_text':
+    case 'long_text':
     case 'email':
     case 'date':
     case 'multiple_choice':

@@ -76,7 +76,7 @@ export function MediaRightSplitLayout({
         alt="Slide media"
         fill
         style={{ 
-          objectFit: effectiveSizingMode,
+          objectFit: 'cover',
           opacity: effectiveOpacity / 100
         }}
       />
@@ -86,14 +86,16 @@ export function MediaRightSplitLayout({
   return (
     <div 
       className={cn(
-        "w-full h-full grid grid-cols-2",
+        "w-full h-full grid grid-cols-2 gap-0",
         className
       )}
     >
-      {/* Content section - fixed at 50% */}
-      <div className="w-1/2 h-full flex flex-col justify-center">
+      {/* Content section - First Column */}
+      <div 
+        className="col-span-1 h-full flex flex-col justify-center py-[15%] px-[7.5%]"
+      >
         <div className={cn(
-          "px-8 py-8 w-full",
+          "w-full",
           alignmentClasses[effectiveTextAlignment],
           spacingClasses[effectiveSpacing],
         )}>
@@ -101,8 +103,8 @@ export function MediaRightSplitLayout({
         </div>
       </div>
       
-      {/* Media section - fixed at 50% */}
-      <div className="w-1/2 h-full">
+      {/* Media section - Second Column */}
+      <div className="col-span-1 h-full">
         {mediaElement}
       </div>
     </div>

@@ -2,11 +2,11 @@
 
 import { create } from 'zustand'
 import { useAuthStore } from '@/stores/authStore'
-import { createNewBlock, FormBlock, getBlockDefinition } from '@/registry/blockRegistry'
+import { createNewBlock, FormBlock, getBlockDefinition, BlockType } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
-import { FormBlock as DbFormBlock } from '@/types/supabase-types'
+import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 
@@ -111,23 +111,53 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   
   addBlock: (blockTypeId) => {
     const { blocks } = get()
-    const newBlock = createNewBlock(blockTypeId, blocks.length)
-    
+    const newBlockId = `block-${Date.now()}` // Generate string ID
+    const newOrder = blocks.length // Order is still based on length
+    const blockDef = getBlockDefinition(blockTypeId)
+ 
+    if (!blockDef) {
+      console.error(`Block definition not found for type: ${blockTypeId}`);
+      return // Don't add block if definition is missing
+    }
+ 
+    const newBlock: FormBlock = { 
+      id: newBlockId,
+      blockTypeId: blockTypeId,
+      type: blockDef.type || 'static', // Ensure type is valid
+      title: blockDef.defaultTitle || '', // Ensure title is string
+      description: blockDef.defaultDescription || '',
+      required: false,
+      order: newOrder,
+      settings: blockDef.getDefaultValues() || {}, // Ensure settings is object
+    }
+ 
+    const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order - b.order)
     set((state) => ({
-      blocks: [...state.blocks, newBlock],
-      currentBlockId: newBlock.id
+      blocks: updatedBlocks,
+      currentBlockId: newBlockId
     }))
   },
   
-  updateBlock: (blockId, updates) => set((state) => ({
-    blocks: state.blocks.map(block => 
-      block.id === blockId 
-        ? { ...block, ...updates } 
-        : block
-    )
-  })),
+  updateBlock: (blockId: string, updates: Partial<FormBlock>) => {
+    const blockDef = getBlockDefinition(updates.blockTypeId || get().blocks.find(b => b.id === blockId)?.blockTypeId || '')
+    set((state) => ({
+      blocks: state.blocks.map((block) => {
+        if (block.id === blockId) {
+          return {
+            ...block,
+            ...updates,
+            ...(updates.blockTypeId && {
+              type: blockDef?.type || 'static', // Update type based on new def, provide default
+              settings: blockDef?.getDefaultValues() || {}, // Reset settings based on new def, provide default
+            }),
+          }
+        }
+        return block
+      }),
+    }))
+  },
   
-  updateBlockSettings: (blockId, settings) => set((state) => ({
+  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => set((state) => ({
     blocks: state.blocks.map(block => 
       block.id === blockId 
         ? { ...block, settings: { ...block.settings, ...settings } } 
@@ -135,7 +165,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     )
   })),
   
-  updateBlockLayout: (blockId, layoutConfig) => set((state) => {
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => set((state) => {
     return {
       blocks: state.blocks.map(block => {
         if (block.id === blockId) {
@@ -166,7 +196,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     };
   }),
   
-  removeBlock: (blockId) => set((state) => {
+  removeBlock: (blockId: string) => set((state) => {
     const newBlocks = state.blocks.filter(block => block.id !== blockId)
     
     // Recalculate order for all blocks
@@ -291,7 +321,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       // Log detailed block information
       console.log('Detailed block information:');
       blocks.forEach((block, index) => {
-        console.log(`Block ${index} (${block.blockTypeId}):`, JSON.stringify(block, null, 2));
+        console.log(`Block ${index} (${block.id}):`, JSON.stringify(block, null, 2));
         
         // Check for non-standard properties that might cause DB issues
         const standardProps = ['id', 'blockTypeId', 'type', 'title', 'description', 'required', 'order', 'settings'];
@@ -372,34 +402,51 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
       const frontendBlocks = blocksData && blocksData.length > 0
         ? blocksData.map((block: DbFormBlock, index: number) => {
             // Get the block definition for validation and default values
-            const blockDef = getBlockDefinition(block.subtype || 'text_short')
-            
+            const blockTypeId = block.subtype as StaticBlockSubtype | 'dynamic'; // Use correct subtype union
+            const blockDef = getBlockDefinition(blockTypeId)
+             
             // Debug logging for this specific block
             console.log(`Block ${index + 1} (${block.id}):`);
-            console.log(`  - From DB: subtype = "${block.subtype}"`);
-            console.log(`  - Mapped to blockTypeId = "${block.subtype || 'text_short'}"`); 
-            console.log(`  - Block definition:`, {
-              id: blockDef.id,
+            console.log(`  - From DB: subtype = "${block.subtype}"`)
+            console.log(`  - Mapped to blockTypeId = "${blockTypeId}"`);
+            
+            if (!blockDef) {
+              console.error(`  - Block definition not found for typeId: ${blockTypeId}. Skipping detailed log.`);
+              // Return a minimal valid block if definition is missing
+              return {
+                id: block.id,
+                blockTypeId: blockTypeId,
+                type: 'static' as BlockType, // Ensure it matches BlockType
+                title: block.title || 'Untitled Block', // Default title
+                description: block.description || '',
+                required: block.required || false,
+                order: block.order_index || index,
+                settings: block.settings || {}
+              }
+            }
+            
+            console.log(`  - Found Block definition:`, {
+              id: blockDef.id, 
               name: blockDef.name,
               type: blockDef.type,
               category: blockDef.category,
               iconExists: blockDef.icon ? 'yes' : 'no',
               iconType: blockDef.icon ? typeof blockDef.icon : 'undefined'
             });
-            
+             
             // Create a block preserving original properties
             return {
               id: block.id,
-              blockTypeId: block.subtype || 'text_short',
-              type: blockDef.type,
-              title: block.title || blockDef.defaultTitle,
+              blockTypeId: blockTypeId,
+              type: blockDef.type || 'static', // Fallback type
+              title: block.title || blockDef.defaultTitle || '', // Fallback title
               description: block.description || blockDef.defaultDescription || '',
               required: block.required || false,
               order: block.order_index || index,
-              settings: block.settings || blockDef.getDefaultValues()
+              settings: block.settings || blockDef.getDefaultValues() || {} // Fallback settings
             }
           })
-        : []
+        : [] // Handle case where blocksData is null or empty
       
       // Theme data is available from formData.theme if needed
       

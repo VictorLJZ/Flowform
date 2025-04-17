@@ -29,7 +29,7 @@ export function MediaRightLayout({
   textAlignment = 'left',
   spacing = 'normal',
   mediaId,
-  sizingMode = 'cover',
+  sizingMode = 'contain', // Default to contain for this layout
   opacity = 100,
   className,
   settings
@@ -45,7 +45,7 @@ export function MediaRightLayout({
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId
-  const effectiveSizingMode = settings?.sizingMode || sizingMode
+  const effectiveSizingMode = settings?.sizingMode === 'cover' || settings?.sizingMode === 'fill' ? 'contain' : (settings?.sizingMode || sizingMode) // Force contain if cover/fill selected
   const effectiveOpacity = settings?.opacity || opacity
   
   // Spacing classes
@@ -74,12 +74,13 @@ export function MediaRightLayout({
   // Media element
   const mediaElement = effectiveMediaId ? (
     <div className="w-full h-full relative overflow-hidden">
+      {/* Note: Removed fill prop, using objectFit style directly. Added w-full, h-full and relative positioning for contained image sizing */}
       <Image 
         src={effectiveMediaId}
         alt="Slide media"
-        fill
+        layout="fill" // Use layout="fill" to make objectFit work correctly
         style={{ 
-          objectFit: effectiveSizingMode,
+          objectFit: effectiveSizingMode, // Should be 'contain'
           opacity: effectiveOpacity / 100
         }}
       />
@@ -89,17 +90,16 @@ export function MediaRightLayout({
   return (
     <div 
       className={cn(
-        "w-full h-full flex",
+        "w-full h-full grid grid-cols-2 gap-0", // Use grid layout
         className
       )}
     >
-      {/* Content section */}
+      {/* Content section - First Column */}
       <div 
-        className="h-full flex flex-col justify-center"
-        style={{ width: `${(1 - effectiveMediaProportion) * 100}%` }}
+        className="col-span-1 h-full flex flex-col justify-center py-[15%] pl-[15%] pr-[7.5%]" // Apply padding here
       >
         <div className={cn(
-          "px-8 py-8 w-full",
+          "w-full", // Remove padding here
           alignmentClasses[effectiveTextAlignment],
           spacingClasses[effectiveSpacing],
         )}>
@@ -107,12 +107,14 @@ export function MediaRightLayout({
         </div>
       </div>
       
-      {/* Media section */}
+      {/* Media section - Second Column with Padding */} 
       <div 
-        className="h-full"
-        style={{ width: `${effectiveMediaProportion * 100}%` }}
+        className="col-span-1 h-full flex items-center justify-center py-[15%] pr-[15%] pl-[7.5%]" // Takes second column, add padding and centering
       >
-        {mediaElement}
+        {/* Wrapper for the media element itself to control size within the padded area */} 
+        <div className="w-full h-full relative">
+          {mediaElement}
+        </div>
       </div>
     </div>
   )

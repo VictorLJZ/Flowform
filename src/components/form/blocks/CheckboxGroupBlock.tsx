@@ -122,7 +122,7 @@ export function CheckboxGroupBlock({
       index={index}
       totalBlocks={totalBlocks}
       settings={{
-        presentation: settings.presentation,
+        presentation: settings?.presentation,
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}

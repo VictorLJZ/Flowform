@@ -158,7 +158,7 @@ export default function FormBuilderSettings() {
               </h4>
               
               {/* Text input fields */}
-              {(currentBlock.blockTypeId === 'text_short' || currentBlock.blockTypeId === 'text_long' || currentBlock.blockTypeId === 'email') && (
+              {(currentBlock.blockTypeId === 'short_text' || currentBlock.blockTypeId === 'long_text' || currentBlock.blockTypeId === 'email') && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="input-placeholder">Placeholder</Label>
@@ -171,7 +171,7 @@ export default function FormBuilderSettings() {
                     />
                   </div>
                   
-                  {currentBlock.blockTypeId === 'text_short' && (
+                  {currentBlock.blockTypeId === 'short_text' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-length">Maximum Length</Label>
                       <Input 
@@ -188,7 +188,7 @@ export default function FormBuilderSettings() {
                     </div>
                   )}
                   
-                  {currentBlock.blockTypeId === 'text_long' && (
+                  {currentBlock.blockTypeId === 'long_text' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-rows">Maximum Rows</Label>
                       <Input 

@@ -67,12 +67,14 @@ export default function FormBuilderBlockSelector() {
   const getBlocksForCategory = (categoryId: string) => {
     // For recommended category, return a curated list of blocks
     if (categoryId === "recommended") {
-      return [
-        getBlockDefinition("text_short"),
-        getBlockDefinition("multiple_choice"), 
+      // Filter out undefined results from getBlockDefinition
+      const recommendedBlocks = [
+        getBlockDefinition("short_text"), // Use standardized ID
+        getBlockDefinition("multiple_choice"),
         getBlockDefinition("ai_conversation"),
         getBlockDefinition("email")
-      ]
+      ].filter((block): block is BlockDefinition => block !== undefined);
+      return recommendedBlocks;
     }
     return getBlocksByCategory(categoryId)
   }
