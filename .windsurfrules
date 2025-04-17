@@ -13,11 +13,14 @@ We are using OpenAI for AI integration
 We are using ShadCN for UI components
 We are using Motion (fka Framer Motion) for animation
 We are using Bun as the Javascript runtime
+We are using SWR for data fetching
 
 # Director Structure
 We are centralizing all state management in the stores, and inside the stores folder. New stores that need to be created should be added there.
 We are centralizing all of our types files inside the types folder. New types that need to be created should be added there.
 We are centralizing all services in the services folder. New services that need to be created should be added there.
+We are centralizing all hooks in the hooks folder. New hooks that need to be created should be added there.
+We are centralizing all providers in the providers folder. New providers that need to be created should be added there.
 
 # Responses API
 OpenAI recently released the responses API on March 11th 2025, replacing their legacy Chat Completions API. The documentation is referenced in the following files:

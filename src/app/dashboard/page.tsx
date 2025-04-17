@@ -16,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { BarChart3, FileText, PlusCircle, Users, AlertCircle, MoreHorizontal, Edit, LogOut, Trash2 } from "lucide-react"
-import { useDashboardStore } from "@/stores/dashboard-store"
+import { useDashboardData } from "@/hooks/useDashboardData"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,8 +32,12 @@ import { InviteDialog } from "@/components/workspace/invite-dialog"
 
 export default function Page() {
   const router = useRouter()
-  const { stats, recentActivity, recentForms, isLoading, error, fetchDashboardData } = useDashboardStore()
-  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
+  // Get workspace ID, converting null to undefined for hooks
+  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId) ?? undefined;
+  const { dashboardData, isLoading, error, mutate } = useDashboardData(currentWorkspaceId)
+  const stats = dashboardData?.stats
+  const recentActivity = dashboardData?.recentActivity
+  const recentForms = dashboardData?.recentForms
 
   const { workspace, rename, leave, remove } = useCurrentWorkspace(currentWorkspaceId)
 
@@ -43,13 +47,6 @@ export default function Page() {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
 
   useEffect(() => {
-    if (currentWorkspaceId) {
-      console.log(`[Dashboard Page] Current workspace ID: ${currentWorkspaceId}. Fetching dashboard data...`);
-      fetchDashboardData(currentWorkspaceId)
-    } else {
-       console.log("[Dashboard Page] No workspace selected yet. Waiting for selection.");
-    }
-
     const runAuthCheck = async () => {
       console.log('[Dashboard] Running auth diagnostic check')
       try {
@@ -65,7 +62,7 @@ export default function Page() {
     }
 
     runAuthCheck()
-  }, [fetchDashboardData, currentWorkspaceId])
+  }, [])
 
   const handleCreateForm = () => { router.push('/dashboard/builder/new') }
   const handleViewResponses = (formId: string) => { router.push(`/dashboard/forms/${formId}/responses`) }
@@ -137,11 +134,10 @@ export default function Page() {
             <div className="flex flex-col items-center justify-center h-full">
               <AlertCircle className="w-16 h-16 text-destructive mb-4" />
               <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Dashboard</h2>
-              <p className="text-muted-foreground">{error}</p>
+              <p className="text-muted-foreground">{error?.message || 'An unknown error occurred'}</p> {/* Display error message */}
               <Button 
-                onClick={() => fetchDashboardData(currentWorkspaceId ?? '')} 
+                onClick={() => mutate()} 
                 className="mt-4"
-                disabled={!currentWorkspaceId}
               >
                 Retry
               </Button>
@@ -151,12 +147,12 @@ export default function Page() {
               <div className="bg-card rounded-xl p-6 shadow-sm border">
                 <h2 className="text-lg font-semibold mb-4">Stats Overview</h2>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <p className="text-3xl font-bold">{stats.totalForms}</p>
+                  <div className="text-center"> {/* Safely access stats */}
+                    <p className="text-3xl font-bold">{stats?.totalForms ?? 0}</p>
                     <p className="text-sm text-muted-foreground">Total Forms</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-3xl font-bold">{stats.totalResponses}</p>
+                    <p className="text-3xl font-bold">{stats?.totalResponses ?? 0}</p>
                     <p className="text-sm text-muted-foreground">Total Responses</p>
                   </div>
                 </div>
@@ -168,9 +164,9 @@ export default function Page() {
 
               <div className="bg-card rounded-xl p-6 shadow-sm border">
                 <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-                {recentActivity.length > 0 ? (
+                {(recentActivity?.length ?? 0) > 0 ? ( // Check length safely
                   <div className="space-y-4">
-                    {recentActivity.map((activity) => (
+                    {(recentActivity ?? []).map((activity) => ( // Map over safely, defaulting to []
                       <div key={activity.id} className="flex items-center gap-3">
                         <BarChart3 className="h-5 w-5 text-primary" />
                         <div className="flex-1">
@@ -194,9 +190,9 @@ export default function Page() {
               
               <div className="bg-card rounded-xl p-6 shadow-sm border">
                 <h2 className="text-lg font-semibold mb-4">Recent Forms</h2>
-                {recentForms.length > 0 ? (
+                {(recentForms?.length ?? 0) > 0 ? ( // Check length safely
                   <div className="space-y-3">
-                    {recentForms.map((form) => (
+                    {(recentForms ?? []).map((form) => ( // Map over safely, defaulting to []
                       <div key={form.id} className="flex items-center gap-3">
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.id)}>
@@ -221,10 +217,10 @@ export default function Page() {
                   >
                     <PlusCircle className="h-4 w-4" /> New Form
                   </button>
-                  {recentForms.length > 0 && (
+                  {(recentForms?.length ?? 0) > 0 && ( // Check length safely
                     <button 
                       className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors"
-                      onClick={() => handleViewResponses(recentForms[0].id)}
+                      onClick={() => handleViewResponses(recentForms?.[0]?.id ?? '')} // Access safely
                     >
                       <FileText className="h-4 w-4" /> View Latest Responses
                     </button>
@@ -262,7 +258,10 @@ export default function Page() {
         description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
         confirmLabel="Delete Workspace"
         variant="destructive"
-        onConfirm={async () => { await remove() }}
+        onConfirm={async () => { 
+          await remove(); 
+          // Optionally, clear SWR cache or navigate away if needed after deletion 
+        }}
       />
       
       <InviteDialog

@@ -28,14 +28,14 @@ export default function FormBuilderPage() {
   const params = useParams()
   const formId = params.formId as string
   
-  const { isSaving, formData, saveForm, setFormData, setBlocks, setCurrentBlockId } = useFormBuilderStore(state => ({
-    isSaving: state.isSaving,
-    formData: state.formData,
-    saveForm: state.saveForm,
-    setFormData: state.setFormData,
-    setBlocks: state.setBlocks,
-    setCurrentBlockId: state.setCurrentBlockId
-  }))
+  // Select state slices individually to prevent infinite loops
+  const isSaving = useFormBuilderStore(state => state.isSaving);
+  const formData = useFormBuilderStore(state => state.formData);
+  const saveForm = useFormBuilderStore(state => state.saveForm);
+  const setFormData = useFormBuilderStore(state => state.setFormData);
+  const setBlocks = useFormBuilderStore(state => state.setBlocks);
+  const setCurrentBlockId = useFormBuilderStore(state => state.setCurrentBlockId);
+  
   const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
   const [isPublishing, setIsPublishing] = useState(false)

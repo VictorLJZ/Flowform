@@ -3,10 +3,25 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, LogOut, LayoutDashboard } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useRouter } from 'next/navigation'
+import { useAuthSession } from '@/hooks/useAuthSession'
+import { useAuth } from '@/providers/auth-provider'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Define the types for our navigation data
 type NavItem = {
@@ -239,57 +254,27 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function MegaNavbar() {
-  const router = useRouter();
+export default function MegaNavbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [menuTimeout, setMenuTimeout] = useState<NodeJS.Timeout | null>(null);
+  const router = useRouter();
+  const { session } = useAuthSession();
+  const { signOut } = useAuth();
+  const user = session?.user;
 
-  // Toggle a menu open/closed
-  // State for tracking hover timeouts
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [leaveTimeout, setLeaveTimeout] = useState<NodeJS.Timeout | null>(null);
-  
-  // Helper functions to handle hover behavior with timeouts for smoother interaction
-  const handleMenuEnter = (title: string) => {
-    // Clear any existing leave timeout
-    if (leaveTimeout) {
-      clearTimeout(leaveTimeout);
-      setLeaveTimeout(null);
-    }
-
-    // Set a small delay before opening to prevent flicker
-    const timeout = setTimeout(() => {
-      setActiveMenu(title);
-    }, 100);
-    
-    setHoverTimeout(timeout);
-  };
-  
-  const handleMenuLeave = () => {
-    // Clear any existing hover timeout
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-
-    // Small delay before closing to allow moving between items
-    const timeout = setTimeout(() => {
-      setActiveMenu(null);
-    }, 150);
-    
-    setLeaveTimeout(timeout);
-  };
-  
-  // Clean up timeouts on unmount
   useEffect(() => {
     return () => {
-      if (hoverTimeout) clearTimeout(hoverTimeout);
-      if (leaveTimeout) clearTimeout(leaveTimeout);
+      if (menuTimeout) clearTimeout(menuTimeout);
     };
-  }, [hoverTimeout, leaveTimeout]);
+  }, [menuTimeout]);
 
-  // Check if the current item has dropdown sections
-  const hasDropdown = (item: NavItem) => {
-    return item.sections && item.sections.length > 0;
+  const getInitials = (email?: string) => {
+    if (!email) return "U";
+    const parts = email.split('@')[0].split(/[._-]/);
+    if (parts.length > 1) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -315,10 +300,10 @@ export function MegaNavbar() {
               <ul className="flex space-x-1">
                 {navItems.map((item) => (
                   <li key={item.title} className="relative">
-                    {hasDropdown(item) ? (
+                    {item.sections && item.sections.length > 0 ? (
                       <div
-                        onMouseEnter={() => handleMenuEnter(item.title)}
-                        onClick={() => setActiveMenu(activeMenu === item.title ? null : item.title)} /* Add click support for mobile */
+                        onMouseEnter={() => setActiveMenu(item.title)}
+                        onClick={() => setActiveMenu(activeMenu === item.title ? null : item.title)}
                         className={cn(
                           "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors cursor-pointer",
                           activeMenu === item.title 
@@ -348,32 +333,70 @@ export function MegaNavbar() {
               </ul>
             </div>
 
-            {/* Right - Auth buttons */}
+            {/* Right - Auth buttons / User Menu */}
             <div className="flex-shrink-0 flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                className="text-gray-600 hover:text-gray-900"
-                onClick={() => router.push('/login')}
-              >
-                Log in
-              </Button>
-              <Button 
-                className="bg-primary text-white hover:bg-primary/90"
-                onClick={() => router.push('/signup')}
-              >
-                See a demo
-              </Button>
+              {user ? (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={user.user_metadata?.avatar_url || undefined} 
+                          alt={user.email || "User Avatar"} 
+                        />
+                        <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">Logged in as</p>
+                        <p className="text-xs leading-none text-muted-foreground truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-600 hover:text-gray-900"
+                    onClick={() => router.push('/login')}
+                  >
+                    Log in
+                  </Button>
+                  <Button 
+                    className="bg-primary text-white hover:bg-primary/90"
+                    onClick={() => router.push('/signup')}
+                  >
+                    Sign up
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* Mega menu dropdown */}
         {navItems.map((item) => (
-          hasDropdown(item) && (
+          item.sections && item.sections.length > 0 && (
             <div 
               key={`dropdown-${item.title}`}
-              onMouseEnter={() => handleMenuEnter(item.title)}
-              onMouseLeave={handleMenuLeave}
+              onMouseEnter={() => setActiveMenu(item.title)}
+              onMouseLeave={() => setActiveMenu(null)}
               className={cn(
                 "border-t border-gray-100 bg-white overflow-hidden transition-all duration-300",
                 activeMenu === item.title 
@@ -457,7 +480,7 @@ export function MegaNavbar() {
             ? "bg-opacity-15 backdrop-blur-[1px] pointer-events-auto" 
             : "bg-opacity-0 backdrop-blur-none pointer-events-none"
         )}
-        onMouseEnter={handleMenuLeave} // Close when hovering outside
+        onMouseEnter={() => setActiveMenu(null)}
       />
       
       {/* Space for fixed navbar */}
@@ -465,5 +488,3 @@ export function MegaNavbar() {
     </>
   );
 }
-
-export default MegaNavbar;

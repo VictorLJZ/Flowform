@@ -3,15 +3,15 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { ChevronLeft, Loader2 } from "lucide-react"
-import { Form, FormBlock } from "@/types/supabase-types"
+import { FormBlock } from "@/types/supabase-types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-// import { Checkbox } from "@/components/ui/checkbox" - Removed unused import
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
+import { useForm } from "@/hooks/useForm"
 
 interface QAPair {
   question: string
@@ -38,15 +38,17 @@ export default function FormSessionPage() {
   const formId = params.formId as string
   const { toast } = useToast()
   
+  // Use the SWR hook to fetch form data
+  const { form, isLoading: isFormLoading, error: formError, mutate: mutateForm } = useForm(formId)
+  
+  // Derive blocks from the fetched form data
+  const blocks = form?.blocks?.slice().sort((a, b) => a.order_index - b.order_index) || [];
+  
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
   const blockContainerRef = useRef<HTMLDivElement>(null)
   
   // State for form and blocks
-  const [loading, setLoading] = useState(true)
-  // Form state is set but not directly used in the component
-  const [, setForm] = useState<Form | null>(null)
-  const [blocks, setBlocks] = useState<FormBlock[]>([])
   const [responseId, setResponseId] = useState<string>('')
   
   // State for navigation
@@ -63,121 +65,58 @@ export default function FormSessionPage() {
   // State for dynamic blocks
   const [dynamicConversations, setDynamicConversations] = useState<Record<string, DynamicConversation>>({})  
   
-  // State for errors
-  const [error, setError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
-  const maxRetries = 3
-
-  // Initialize form and session
+  // Initialize form session AFTER form data is loaded
   useEffect(() => {
-    const isMounted = true;
-    // Safety timeout to prevent infinite loading
-    setTimeout(() => {
-      if (loading && isMounted) {
-        setLoading(false);
-        setError('Loading took too long. Please try refreshing the page.');
-      }
-    }, 15000); // 15 second timeout
-    
-    async function initializeForm() {
-      try {
-        if (retryCount > maxRetries) {
-          throw new Error('Maximum retry attempts reached')
-        }
-        
-        setLoading(true)
-        setError(null)
-        
-        // Fetch form data with blocks
-        const formResponse = await fetch(`/api/forms/${formId}`)
-        if (!formResponse.ok) {
-          const errorText = await formResponse.text();
-          console.error('Form fetch error response:', errorText);
-          throw new Error(`Failed to load form: ${formResponse.status} ${formResponse.statusText}`)
-        }
-        
-        const formData = await formResponse.json()
-        if (!formData.form) {
-          throw new Error('Invalid form data received')
-        }
-        
-        setForm(formData.form)
-        
-        // Sort blocks by order_index
-        const sortedBlocks = formData.form.blocks || []
-        sortedBlocks.sort((a: FormBlock, b: FormBlock) => a.order_index - b.order_index)
-        setBlocks(sortedBlocks)
-        
-        // Initialize a new session
-        const sessionResponse = await fetch(`/api/forms/${formId}/sessions`, {
-          method: 'POST',
-        })
-        if (!sessionResponse.ok) {
-          const errorText = await sessionResponse.text();
-          console.error('Session fetch error response:', errorText);
-          throw new Error(`Failed to start form session: ${sessionResponse.status} ${sessionResponse.statusText}`)
-        }
-        
-        const sessionData = await sessionResponse.json()
-        if (!sessionData.responseId) {
-          throw new Error('Invalid session data received')
-        }
-        
-        setResponseId(sessionData.responseId)
-        
-        // Initialize dynamic blocks if the first block is dynamic
-        if (sortedBlocks.length > 0 && sortedBlocks[0].type === 'dynamic') {
-          setDynamicConversations({
-            [sortedBlocks[0].id]: {
-              blockId: sortedBlocks[0].id,
-              conversation: [],
-              isComplete: false,
-              currentQuestion: sessionData.starterQuestion
-            }
-          })
-        }
-        
-        // Set initial progress
-        setProgress(sortedBlocks.length > 0 ? (1 / sortedBlocks.length) * 100 : 0)
-      } catch (error) {
-        console.error('Error initializing form:', error)
-        if (isMounted) {
-          setError(error instanceof Error ? error.message : 'An unknown error occurred')
-          // Retry logic (only for network-related errors)
-          if (retryCount < maxRetries) {
-            console.log(`Retrying form load (${retryCount + 1}/${maxRetries})...`)
-            setRetryCount(prev => prev + 1)
-            setTimeout(() => {
-              if (isMounted) initializeForm()
-            }, 1000 * Math.pow(2, retryCount)) // Exponential backoff
-          } else {
-            toast({
-              title: "Error",
-              description: "Failed to load the form. Please refresh the page.",
-              variant: "destructive"
-            })
+    if (form && blocks.length > 0 && !responseId) {
+      const initializeSession = async () => {
+        try {
+          const sessionResponse = await fetch(`/api/forms/${formId}/sessions`, {
+            method: 'POST',
+          });
+          if (!sessionResponse.ok) {
+            const errorText = await sessionResponse.text();
+            console.error('Session fetch error response:', errorText);
+            throw new Error(`Failed to initialize form session: ${sessionResponse.status} ${sessionResponse.statusText}`);
           }
+          const sessionData = await sessionResponse.json();
+          setResponseId(sessionData.responseId);
+
+          // Initialize dynamic conversations based on fetched blocks
+          const initialDynamicConversations: Record<string, DynamicConversation> = {};
+          blocks.forEach((block: FormBlock) => {
+            if (block.type === 'dynamic') {
+              const starterQuestion = block.settings?.starter_question as string || 'How can I help you?';
+              initialDynamicConversations[block.id] = {
+                blockId: block.id,
+                conversation: [],
+                isComplete: false,
+                currentQuestion: starterQuestion
+              };
+            }
+          });
+          setDynamicConversations(initialDynamicConversations);
+
+        } catch (err) {
+          console.error('Error initializing session:', err);
+          toast({ 
+            variant: "destructive", 
+            title: "Error", 
+            description: `Failed to start form session: ${err instanceof Error ? err.message : 'Unknown error'}` 
+          });
         }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
+      };
+      initializeSession();
     }
-    
-    if (formId) {
-      initializeForm()
-    }
-  }, [formId, toast, retryCount, loading])
-  
+  }, [form, blocks, formId, responseId, toast]); // Depend on form and blocks
+ 
   // Focus input on load and after navigation
   useEffect(() => {
-    if (!loading && !completed && answerInputRef.current) {
+    if (!isFormLoading && !completed && answerInputRef.current) {
       setTimeout(() => {
         answerInputRef.current?.focus()
       }, 300)
     }
-  }, [loading, currentBlockIndex, completed])
+  }, [isFormLoading, currentBlockIndex, completed])
   
   // Handle keyboard submit with Enter key
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -557,17 +496,14 @@ export default function FormSessionPage() {
       
       {/* Main content with extra top padding for the fixed header */}
       <main className="flex-1 flex flex-col max-w-[800px] mx-auto w-full p-6 pt-14">
-        {loading ? (
+        {isFormLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center">
               <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
               <p className="text-lg font-medium">Loading form...</p>
-              {retryCount > 0 && (
-                <p className="text-sm text-muted-foreground mt-2">Retrying... ({retryCount}/{maxRetries})</p>
-              )}
             </div>
           </div>
-        ) : error ? (
+        ) : formError ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
             <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
               <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -575,17 +511,8 @@ export default function FormSessionPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold">Error Loading Form</h2>
-            <p className="text-gray-600 max-w-md">{error}</p>
-            <Button 
-              onClick={() => {
-                setRetryCount(0);
-                setError(null);
-                setLoading(true);
-                window.location.reload();
-              }}
-            >
-              Try Again
-            </Button>
+            <p className="text-gray-600 max-w-md">{formError.message || 'An unexpected error occurred.'}</p>
+            <Button onClick={() => mutateForm()} variant="outline">Retry</Button>
           </div>
         ) : completed ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">

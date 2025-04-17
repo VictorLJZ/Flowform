@@ -116,7 +116,12 @@ export function WorkspaceSwitcher() {
                 <ChevronsUpDown className="ml-auto" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={16} align="start" className="w-[240px]">
+            <DropdownMenuContent 
+              className="w-64 rounded-xl border p-2 shadow-xl"
+              side="right" 
+              align="start"
+              sideOffset={8}
+            >
               <DropdownMenuLabel className="px-2 py-1.5">My Workspaces</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {isLoadingWorkspaces ? (

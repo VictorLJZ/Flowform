@@ -134,11 +134,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: user.email || '',
     avatar: user.user_metadata?.picture || 
            user.user_metadata?.avatar_url || 
-           ''
+           undefined
   } : {
     name: "Guest",
     email: "",
-    avatar: ""
+    avatar: undefined
   };
 
 
