@@ -37,6 +37,8 @@ interface DateBlockProps {
       max?: string
     }
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function DateBlock({
@@ -49,7 +51,9 @@ export function DateBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: DateBlockProps) {
   const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
@@ -88,6 +92,10 @@ export function DateBlock({
   }
 
   // The actual date input field component that will be wrapped
+  // Create a sample date for builder mode display
+  const currentDate = new Date().toISOString().split('T')[0];
+  const sampleDateTime = new Date().toISOString().slice(0, 16); // Format: YYYY-MM-DDThh:mm
+  
   const dateField = (
     <div className="w-full">
       <Input
@@ -95,7 +103,7 @@ export function DateBlock({
         placeholder={settings?.placeholder || "YYYY-MM-DD"}
         min={settings?.minDate}
         max={settings?.maxDate}
-        value={isBuilder ? '' : value}
+        value={isBuilder ? (settings?.includeTime ? sampleDateTime : currentDate) : value}
         onChange={handleInputChange}
         disabled={isBuilder}
         onFocus={() => setFocused(true)}
@@ -137,6 +145,8 @@ export function DateBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {dateField}
     </SlideWrapper>

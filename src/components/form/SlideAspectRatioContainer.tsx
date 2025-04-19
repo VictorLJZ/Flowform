@@ -16,9 +16,10 @@ export function SlideAspectRatioContainer({
   aspectRatio = "16:9",
   isBuilder = false
 }: SlideAspectRatioContainerProps) {
-  // Only apply aspect ratio container in builder mode
+  // Handle differently in builder vs viewer mode
   if (!isBuilder) {
-    return <>{children}</>
+    // In viewer mode, pass height through to children
+    return <div className="w-full h-full">{children}</div>
   }
   
   // Calculate padding-top based on aspect ratio to maintain proportion

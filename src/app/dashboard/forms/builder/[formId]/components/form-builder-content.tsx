@@ -12,7 +12,7 @@ import { CheckboxGroupBlock } from "@/components/form/blocks/CheckboxGroupBlock"
 import { DropdownBlock } from "@/components/form/blocks/DropdownBlock"
 import { EmailBlock } from "@/components/form/blocks/EmailBlock"
 import { NumberBlock } from "@/components/form/blocks/NumberBlock"
-
+import { DateBlock } from "@/components/form/blocks/DateBlock"
 
 
 export default function FormBuilderContent() {
@@ -249,6 +249,26 @@ export default function FormBuilderContent() {
               )}
                     {currentBlock.blockTypeId === 'number' && (
                 <NumberBlock
+                  id={currentBlock.id}
+                  title={currentBlock.title}
+                  description={currentBlock.description}
+                  required={currentBlock.required}
+                  index={currentIndex}
+                  totalBlocks={blocks.length}
+                  settings={currentBlock.settings}
+                  onUpdate={(updates) => {
+                    if (updates.title || updates.description) {
+                      updateBlock(currentBlock.id, updates);
+                    }
+                    if (updates.settings) {
+                      updateBlockSettings(currentBlock.id, updates.settings);
+                    }
+                    autosave.scheduleAutosave();
+                  }}
+                />
+              )}
+                    {currentBlock.blockTypeId === 'date' && (
+                <DateBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
                   description={currentBlock.description}

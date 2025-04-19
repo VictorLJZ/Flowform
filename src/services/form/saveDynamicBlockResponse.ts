@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { QAPair } from '@/types/supabase-types';
 import { processConversation } from '@/services/ai/processConversation';
-import { getFormContext } from './getFormContext';
+import { getFormContextClient } from './getFormContextClient';
 
 type SaveResponseInput = {
   responseId: string;   // form_responses.id
@@ -84,7 +84,7 @@ export async function saveDynamicBlockResponse(input: SaveResponseInput): Promis
       const prevAnswers = conversation.map(pair => pair.answer);
       
       // Get form context to help AI avoid redundant questions
-      const formContext = await getFormContext(input.formId, input.blockId);
+      const formContext = await getFormContextClient(input.formId, input.blockId);
       
       const result = await processConversation({
         prevQuestions,

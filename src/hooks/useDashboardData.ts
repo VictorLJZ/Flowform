@@ -14,7 +14,7 @@ export function useDashboardData(workspaceId?: string) {
 
   // Define the fetcher function for SWR. It receives the key as an argument.
   // We extract the workspaceId from the key.
-  const swrFetcher = async ([_keyType, id]: [string, string]): Promise<DashboardData> => {
+  const swrFetcher = async ([, id]: [string, string]): Promise<DashboardData> => {
     // Check again inside fetcher, though key check should prevent this call if id is undefined
     if (!id) {
         throw new Error("Workspace ID is required for fetching dashboard data.");

@@ -65,43 +65,6 @@ export async function GET(request: Request) {
       return acc;
     }, {});
 
-    // For dynamic blocks, get completion rates from dynamic_block_responses
-    const dynamicBlockIds = blocks
-      .filter(block => block.type === 'dynamic')
-      .map(block => block.id);
-    
-    const dynamicCompletionRates: Record<string, { total: number; completed: number }> = {};
-    
-    if (dynamicBlockIds.length > 0) {
-      const { data: dynamicResponses, error: dynamicError } = await supabase
-        .from('dynamic_block_responses')
-        .select('block_id, completed_at')
-        .in('block_id', dynamicBlockIds)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
-      
-      if (dynamicError) {
-        console.error('[API] Error getting dynamic block responses:', dynamicError);
-        return NextResponse.json(
-          { error: dynamicError.message },
-          { status: 500 }
-        );
-      }
-      
-      // Calculate completion rates for dynamic blocks
-      if (dynamicResponses && dynamicResponses.length > 0) {
-        dynamicBlockIds.forEach(id => {
-          const responses = dynamicResponses.filter(r => r.block_id === id);
-          const completed = responses.filter(r => r.completed_at !== null).length;
-          
-          dynamicCompletionRates[id] = {
-            total: responses.length,
-            completed
-          };
-        });
-      }
-    }
-    
     // For static blocks, get completion rates from static_block_answers
     const staticBlockIds = blocks
       .filter(block => block.type === 'static')
@@ -154,19 +117,8 @@ export async function GET(request: Request) {
     // Compile the performance data for each block
     const blockPerformance = blocks.map(block => {
       const blockMetrics = metricsMap[block.id];
-      let completionRate = 0;
-      let skipRate = 0;
-      
-      if (block.type === 'dynamic') {
-        const rates = dynamicCompletionRates[block.id];
-        if (rates) {
-          completionRate = rates.total > 0 ? rates.completed / rates.total : 0;
-          skipRate = rates.total > 0 ? 1 - (rates.completed / rates.total) : 0;
-        }
-      } else {
-        completionRate = staticCompletionRates[block.id] || 0;
-        skipRate = 1 - completionRate;
-      }
+      const completionRate = block.type === 'static' ? (staticCompletionRates[block.id] || 0) : 0;
+      const skipRate = block.type === 'static' ? (1 - completionRate) : 1; // Assume dynamic blocks are skipped
       
       return {
         block_id: block.id,

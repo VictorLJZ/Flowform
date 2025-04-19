@@ -40,6 +40,8 @@ interface CheckboxGroupBlockProps {
       presentation?: BlockPresentation
     }
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function CheckboxGroupBlock({
@@ -52,7 +54,9 @@ export function CheckboxGroupBlock({
   settings,
   value = [],
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: CheckboxGroupBlockProps) {
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
@@ -126,6 +130,8 @@ export function CheckboxGroupBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {checkboxGroupField}
     </SlideWrapper>

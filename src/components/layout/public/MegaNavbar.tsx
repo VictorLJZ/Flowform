@@ -256,7 +256,7 @@ const navItems: NavItem[] = [
 
 export default function MegaNavbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [menuTimeout, setMenuTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [menuTimeoutId, setMenuTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const { session } = useAuthSession();
   const { signOut } = useAuth();
@@ -264,9 +264,9 @@ export default function MegaNavbar() {
 
   useEffect(() => {
     return () => {
-      if (menuTimeout) clearTimeout(menuTimeout);
+      if (menuTimeoutId) clearTimeout(menuTimeoutId);
     };
-  }, [menuTimeout]);
+  }, [menuTimeoutId]);
 
   const getInitials = (email?: string) => {
     if (!email) return "U";
@@ -396,7 +396,9 @@ export default function MegaNavbar() {
             <div 
               key={`dropdown-${item.title}`}
               onMouseEnter={() => setActiveMenu(item.title)}
-              onMouseLeave={() => setActiveMenu(null)}
+              onMouseLeave={() => {
+                setMenuTimeoutId(setTimeout(() => setActiveMenu(null), 200));
+              }}
               className={cn(
                 "border-t border-gray-100 bg-white overflow-hidden transition-all duration-300",
                 activeMenu === item.title 

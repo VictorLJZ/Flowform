@@ -39,6 +39,8 @@ interface MultipleChoiceBlockProps {
       layout?: SlideLayout
     }
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function MultipleChoiceBlock({
@@ -51,7 +53,9 @@ export function MultipleChoiceBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: MultipleChoiceBlockProps) {
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
@@ -113,6 +117,8 @@ export function MultipleChoiceBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {radioGroupField}
     </SlideWrapper>

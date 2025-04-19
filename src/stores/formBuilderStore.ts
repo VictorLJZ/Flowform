@@ -2,10 +2,10 @@
 
 import { create } from 'zustand'
 import { useAuthStore } from '@/stores/authStore'
-import { createNewBlock, FormBlock, getBlockDefinition, BlockType } from '@/registry/blockRegistry'
+import { FormBlock, getBlockDefinition, BlockType } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
-import { getFormWithBlocks } from '@/services/form/getFormWithBlocks'
+import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
@@ -132,7 +132,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     }
  
     const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order - b.order)
-    set((state) => ({
+    set(() => ({
       blocks: updatedBlocks,
       currentBlockId: newBlockId
     }))
@@ -386,7 +386,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     
     try {
       // Use the getFormWithBlocks service to get the form and its blocks
-      const completeForm = await getFormWithBlocks(formId)
+      const completeForm = await getFormWithBlocksClient(formId)
       
       if (!completeForm) {
         console.error('Form not found')

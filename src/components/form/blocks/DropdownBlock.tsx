@@ -39,6 +39,8 @@ interface DropdownBlockProps {
       placeholder?: string
     }
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function DropdownBlock({
@@ -51,7 +53,9 @@ export function DropdownBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: DropdownBlockProps) {
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
@@ -99,6 +103,8 @@ export function DropdownBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {selectField}
     </SlideWrapper>

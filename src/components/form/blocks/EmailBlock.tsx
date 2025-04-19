@@ -32,6 +32,9 @@ interface EmailBlockProps {
       layout?: SlideLayout
     }
   }>) => void
+  // Navigation props
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function EmailBlock({
@@ -44,7 +47,9 @@ export function EmailBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: EmailBlockProps) {
   const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
@@ -112,6 +117,8 @@ export function EmailBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {emailField}
       {error && <div className="text-red-500 text-sm mt-1">{error}</div>}

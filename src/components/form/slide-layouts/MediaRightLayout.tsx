@@ -9,7 +9,6 @@ import Image from "next/image"
 interface MediaRightLayoutProps {
   id: string
   children: ReactNode
-  mediaProportion?: number
   textAlignment?: 'left' | 'center' | 'right'
   spacing?: 'compact' | 'normal' | 'spacious'
   mediaId?: string
@@ -23,9 +22,7 @@ interface MediaRightLayoutProps {
 }
 
 export function MediaRightLayout({
-  // id param removed as it was unused
   children,
-  mediaProportion = 0.4,
   textAlignment = 'left',
   spacing = 'normal',
   mediaId,
@@ -33,7 +30,6 @@ export function MediaRightLayout({
   opacity = 100,
   className,
   settings
-  // onUpdate param removed as it was unused
 }: MediaRightLayoutProps) {
   const { mode } = useFormBuilderStore()
   
@@ -41,7 +37,6 @@ export function MediaRightLayout({
   const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
-  const effectiveMediaProportion = settings?.mediaProportion || mediaProportion
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId

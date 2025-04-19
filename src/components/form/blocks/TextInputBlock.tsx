@@ -33,6 +33,9 @@ interface TextInputBlockProps {
       layout?: SlideLayout
     }
   }>) => void
+  // Navigation props
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function TextInputBlock({
@@ -45,7 +48,9 @@ export function TextInputBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: TextInputBlockProps) {
   const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
@@ -97,6 +102,8 @@ export function TextInputBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {inputField}
     </SlideWrapper>

@@ -12,7 +12,6 @@ interface MediaLeftSplitLayoutProps {
   textAlignment?: 'left' | 'center' | 'right'
   spacing?: 'compact' | 'normal' | 'spacious'
   mediaId?: string
-  sizingMode?: 'contain' | 'cover' | 'fill'
   opacity?: number
   className?: string
   settings?: Partial<MediaLeftSplitLayoutType>
@@ -27,7 +26,6 @@ export function MediaLeftSplitLayout({
   textAlignment = 'left',
   spacing = 'normal',
   mediaId,
-  sizingMode = 'cover',
   opacity = 100,
   className,
   settings
@@ -42,8 +40,6 @@ export function MediaLeftSplitLayout({
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId
-  // Force cover for split layout, ignore settings
-  const effectiveSizingMode = 'cover' 
   const effectiveOpacity = settings?.opacity || opacity
   
   // Spacing classes
@@ -84,10 +80,13 @@ export function MediaLeftSplitLayout({
     </div>
   ) : mediaPlaceholder
   
+  const isViewer = mode === 'viewer'
+
   return (
     <div 
       className={cn(
-        "w-full h-full grid grid-cols-2 gap-0", // Ensure no gap
+        "w-full h-full grid grid-cols-2 gap-0",
+        isViewer && "min-h-full",
         className
       )}
     >
@@ -98,7 +97,10 @@ export function MediaLeftSplitLayout({
       
       {/* Content section - Second Column */}
       <div 
-        className="col-span-1 h-full flex flex-col justify-center py-[15%] px-[7.5%]"
+        className={cn(
+          "col-span-1 h-full flex flex-col justify-center", 
+          isViewer ? "py-8 px-[7.5vw]" : "py-[15%] px-[7.5%]"
+        )}
       >
         <div className={cn(
           "w-full",

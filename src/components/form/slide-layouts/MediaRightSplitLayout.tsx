@@ -27,7 +27,6 @@ export function MediaRightSplitLayout({
   textAlignment = 'left',
   spacing = 'normal',
   mediaId,
-  sizingMode = 'cover',
   opacity = 100,
   className,
   settings
@@ -42,7 +41,6 @@ export function MediaRightSplitLayout({
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId
-  const effectiveSizingMode = settings?.sizingMode || sizingMode
   const effectiveOpacity = settings?.opacity || opacity
   
   // Spacing classes
@@ -83,16 +81,22 @@ export function MediaRightSplitLayout({
     </div>
   ) : mediaPlaceholder
   
+  const isViewer = mode === 'viewer'
+
   return (
     <div 
       className={cn(
         "w-full h-full grid grid-cols-2 gap-0",
+        isViewer && "min-h-full",
         className
       )}
     >
       {/* Content section - First Column */}
       <div 
-        className="col-span-1 h-full flex flex-col justify-center py-[15%] px-[7.5%]"
+        className={cn(
+          "col-span-1 h-full flex flex-col justify-center", 
+          isViewer ? "py-8 px-[7.5vw]" : "py-[15%] px-[7.5%]"
+        )}
       >
         <div className={cn(
           "w-full",

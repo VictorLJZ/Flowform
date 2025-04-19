@@ -39,6 +39,8 @@ interface NumberBlockProps {
       layout?: SlideLayout
     }
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
 }
 
 export function NumberBlock({
@@ -51,7 +53,9 @@ export function NumberBlock({
   settings,
   value,
   onChange,
-  onUpdate
+  onUpdate,
+  onNext,
+  isNextDisabled
 }: NumberBlockProps) {
   const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
@@ -156,6 +160,8 @@ export function NumberBlock({
         layout: settings.layout || { type: 'standard' }
       }}
       onUpdate={onUpdate}
+      onNext={onNext}
+      isNextDisabled={isNextDisabled}
     >
       {numberField}
     </SlideWrapper>

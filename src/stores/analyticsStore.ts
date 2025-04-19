@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { createClient } from '@/lib/supabase/client'
 
 // State related to data fetching (responses, currentResponse, isLoading, error)
 // has been moved to SWR hooks (useFormResponses, useFormResponse).
@@ -15,7 +14,7 @@ type AnalyticsState = {
   exportResponses: (formId: string, format: 'csv' | 'excel') => Promise<void>
 }
 
-export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
+export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   isExporting: false,
   exportError: null,
 

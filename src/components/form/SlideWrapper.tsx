@@ -39,6 +39,8 @@ interface SlideWrapperProps {
     description: string, 
     settings: Record<string, unknown> 
   }>) => void
+  onNext?: () => void
+  isNextDisabled?: boolean
   children: ReactNode
   className?: string
 }
@@ -52,6 +54,8 @@ export function SlideWrapper({
   totalBlocks,
   settings,
   onUpdate,
+  onNext,
+  isNextDisabled = false,
   children,
   className
 }: SlideWrapperProps) {
@@ -67,6 +71,11 @@ export function SlideWrapper({
   
   // Determine if we're in builder mode
   const isBuilder = mode === 'builder'
+  
+  // Debug the mode and onNext props
+  useEffect(() => {
+    console.log('[SlideWrapper] Mode:', mode, 'isBuilder:', isBuilder, 'onNext exists:', !!onNext)
+  }, [mode, isBuilder, onNext])
   
   // Update title ref when title prop changes
   useEffect(() => {
@@ -100,8 +109,8 @@ export function SlideWrapper({
   // Prepare the content of the slide
   const slideContent = (
     <>
-      {/* Slide counter with arrow - only in builder mode */}
-      {isBuilder && typeof index === 'number' && typeof totalBlocks === 'number' && (
+      {/* Slide counter with progress indicator */}
+      {typeof index === 'number' && typeof totalBlocks === 'number' && (
         <div className="flex items-center mb-5">
           <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-medium">
@@ -161,6 +170,19 @@ export function SlideWrapper({
       <div className={cn("mt-4", className)}>
         {children}
       </div>
+      
+      {/* Next button - shown when onNext callback is provided */}
+      {onNext && (
+        <div className="mt-6">
+          <button
+            disabled={isNextDisabled}
+            onClick={onNext}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </>
   )
   

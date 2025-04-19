@@ -25,7 +25,6 @@ interface MediaLeftLayoutProps {
 export function MediaLeftLayout({
   // id param removed as it was unused
   children,
-  mediaProportion = 0.4,
   textAlignment = 'left',
   spacing = 'normal',
   mediaId,
@@ -35,13 +34,12 @@ export function MediaLeftLayout({
   settings
   // onUpdate param removed as it was unused
 }: MediaLeftLayoutProps) {
-  const { mode } = useFormBuilderStore()
+  const { mode } = useFormBuilderStore();
   
   // Determine if we're in builder mode
   const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
-  const effectiveMediaProportion = settings?.mediaProportion || mediaProportion
   const effectiveTextAlignment = settings?.textAlignment || textAlignment
   const effectiveSpacing = settings?.spacing || spacing
   const effectiveMediaId = settings?.mediaId || mediaId

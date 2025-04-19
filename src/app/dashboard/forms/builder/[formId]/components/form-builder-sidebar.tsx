@@ -333,7 +333,7 @@ export default function FormBuilderSidebar() {
                       block={block}
                       index={index}
                       isSelected={isSelected}
-                      blockDef={blockDef}
+                      blockDef={blockDef ?? null}
                     />
                   )
                 })}

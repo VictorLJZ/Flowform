@@ -46,15 +46,21 @@ export function StandardSlideLayout({
     'right': 'text-right',
   }
   
+  // Get mode from store to adapt to viewer vs builder
+  const { mode } = useFormBuilderStore()
+  const isViewer = mode === 'viewer'
+  
   return (
     <div 
       className={cn(
         "w-full h-full flex flex-col justify-center items-center",
+        isViewer && "min-h-[calc(100vh-60px)]",  // Full height in viewer mode
         className
       )}
     >
       <div className={cn(
         "w-full max-w-2xl px-6 py-8",
+        isViewer && "flex-1 flex flex-col",  // Full height content area in viewer mode
         alignmentClasses[effectiveAlignment],
         spacingClasses[effectiveSpacing],
       )}>
