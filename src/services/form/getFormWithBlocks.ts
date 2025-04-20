@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/types/supabase-types';
 
 /**
@@ -8,7 +8,7 @@ import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/type
  * @returns The complete form with blocks or null if not found
  */
 export async function getFormWithBlocks(formId: string): Promise<CompleteForm | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // First get the form
   const { data: form, error: formError } = await supabase

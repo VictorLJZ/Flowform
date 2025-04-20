@@ -24,10 +24,15 @@ import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
 import FormBuilderBlockSelector from "./components/form-builder-block-selector"
 
+// Wrapper that provides an isolated store per formId
 export default function FormBuilderPage() {
   const params = useParams()
   const formId = params.formId as string
-  
+  return <FormBuilderPageContent formId={formId} />
+}
+
+interface FormBuilderPageContentProps { formId: string }
+function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Select state slices individually to prevent infinite loops
   const isSaving = useFormBuilderStore(state => state.isSaving);
   const formData = useFormBuilderStore(state => state.formData);

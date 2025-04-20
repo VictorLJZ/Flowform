@@ -7,7 +7,7 @@ import { CompleteForm } from '@/types/supabase-types';
 export async function getFormWithBlocksClient(
   formId: string
 ): Promise<CompleteForm | null> {
-  const res = await fetch(`/api/forms/${formId}`);
+  const res = await fetch(`/api/forms/${formId}`, { credentials: 'include' });
   if (res.status === 404) {
     return null;
   }

@@ -1,77 +1,16 @@
 "use client"
 
-import { create } from 'zustand'
+import { create, StateCreator } from 'zustand'
 import { useAuthStore } from '@/stores/authStore'
-import { FormBlock, getBlockDefinition, BlockType } from '@/registry/blockRegistry'
+import { getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
-
-interface FormData {
-  form_id: string
-  title: string
-  description?: string
-  workspace_id?: string  // Added for Supabase integration
-  created_by?: string    // Added for Supabase integration
-  status?: 'draft' | 'published' | 'archived' // Added for Supabase integration
-  settings: {
-    showProgressBar: boolean
-    requireSignIn: boolean
-    theme: string
-    primaryColor: string
-    fontFamily: string
-    estimatedTime?: number
-    estimatedTimeUnit?: 'minutes' | 'hours'
-    redirectUrl?: string
-    customCss?: string
-  }
-  // WYSIWYG theme data
-  theme?: FormTheme
-}
-
-interface FormBuilderState {
-  // Form data
-  formData: FormData
-  blocks: FormBlock[]
-  currentBlockId: string | null
-  isLoading: boolean
-  isSaving: boolean
-  
-  // UI state
-  sidebarOpen: boolean
-  blockSelectorOpen: boolean
-  
-  // WYSIWYG state
-  mode: 'builder' | 'viewer'
-  defaultBlockPresentation: BlockPresentation
-  getBlockPresentation: (blockId: string) => BlockPresentation
-  setBlockPresentation: (blockId: string, presentation: Partial<BlockPresentation>) => void
-  setFormTheme: (theme: Partial<FormTheme>) => void
-  setMode: (mode: 'builder' | 'viewer') => void
-  
-  // Actions
-  setFormData: (data: Partial<FormData>) => void
-  setBlocks: (blocks: FormBlock[]) => void
-  addBlock: (blockTypeId: string) => void
-  updateBlock: (blockId: string, updates: Partial<FormBlock>) => void
-  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => void
-  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void
-  removeBlock: (blockId: string) => void
-  reorderBlocks: (startIndex: number, endIndex: number) => void
-  setCurrentBlockId: (blockId: string | null) => void
-  setSidebarOpen: (open: boolean) => void
-  setBlockSelectorOpen: (open: boolean) => void
-  
-  // Form operations
-  saveForm: () => Promise<void>
-  loadForm: (formId: string) => Promise<void>
-  
-  // Helper getters
-  getCurrentBlock: () => FormBlock | null
-}
+import type { FormBlock, BlockType } from '@/types/block-types'
+import type { FormData, FormBuilderState } from '@/types/form-builder-types'
 
 // Initial empty form data
 const defaultFormData: FormData = {
@@ -88,7 +27,7 @@ const defaultFormData: FormData = {
   theme: defaultFormTheme
 }
 
-export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
+export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set, get) => ({
   // Initial state
   formData: { ...defaultFormData },
   blocks: [],
@@ -103,13 +42,13 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   defaultBlockPresentation: defaultBlockPresentation,
   
   // Actions
-  setFormData: (data) => set((state) => ({
+  setFormData: (data: Partial<FormData>) => set((state: FormBuilderState) => ({
     formData: { ...state.formData, ...data }
   })),
   
-  setBlocks: (blocks) => set({ blocks }),
+  setBlocks: (blocks: FormBlock[]) => set({ blocks }),
   
-  addBlock: (blockTypeId) => {
+  addBlock: (blockTypeId: string) => {
     const { blocks } = get()
     const newBlockId = `block-${Date.now()}` // Generate string ID
     const newOrder = blocks.length // Order is still based on length
@@ -139,10 +78,10 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   },
   
   updateBlock: (blockId: string, updates: Partial<FormBlock>) => {
-    const blockDef = getBlockDefinition(updates.blockTypeId || get().blocks.find(b => b.id === blockId)?.blockTypeId || '')
-    set((state) => ({
-      blocks: state.blocks.map((block) => {
-        if (block.id === blockId) {
+    const blockDef = getBlockDefinition(updates.blockTypeId || get().blocks.find((b: FormBlock) => b.id === blockId)?.blockTypeId || '')
+    set((state: FormBuilderState) => ({
+      blocks: state.blocks.map((block: FormBlock) => {
+        if ((block as FormBlock).id === blockId) {
           return {
             ...block,
             ...updates,
@@ -157,17 +96,23 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     }))
   },
   
-  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => set((state) => ({
-    blocks: state.blocks.map(block => 
+  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => set((state: FormBuilderState) => ({
+    blocks: state.blocks.map((block: FormBlock) => 
       block.id === blockId 
-        ? { ...block, settings: { ...block.settings, ...settings } } 
+        ? { 
+            ...block, 
+            settings: { 
+              ...block.settings, 
+              ...settings 
+            } 
+          } 
         : block
     )
   })),
   
-  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => set((state) => {
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => set((state: FormBuilderState) => {
     return {
-      blocks: state.blocks.map(block => {
+      blocks: state.blocks.map((block: FormBlock) => {
         if (block.id === blockId) {
           // If layout type is changing, get the default settings for the new layout type
           let updatedLayout: SlideLayout;
@@ -196,8 +141,8 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     };
   }),
   
-  removeBlock: (blockId: string) => set((state) => {
-    const newBlocks = state.blocks.filter(block => block.id !== blockId)
+  removeBlock: (blockId: string) => set((state: FormBuilderState) => {
+    const newBlocks = state.blocks.filter((block: FormBlock) => block.id !== blockId)
     
     // Recalculate order for all blocks
     const updatedBlocks = newBlocks.map((block, index) => ({
@@ -221,7 +166,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     }
   }),
   
-  reorderBlocks: (startIndex, endIndex) => set((state) => {
+  reorderBlocks: (startIndex: number, endIndex: number) => set((state: FormBuilderState) => {
     const result = Array.from(state.blocks)
     const [removed] = result.splice(startIndex, 1)
     result.splice(endIndex, 0, removed)
@@ -235,27 +180,27 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     return { blocks: updatedBlocks }
   }),
   
-  setCurrentBlockId: (blockId) => set({ currentBlockId: blockId }),
+  setCurrentBlockId: (blockId: string | null) => set({ currentBlockId: blockId }),
   
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
   
-  setBlockSelectorOpen: (open) => set({ blockSelectorOpen: open }),
+  setBlockSelectorOpen: (open: boolean) => set({ blockSelectorOpen: open }),
   
   // WYSIWYG methods
-  getBlockPresentation: (blockId) => {
-    const block = get().blocks.find(b => b.id === blockId)
+  getBlockPresentation: (blockId: string) => {
+    const block = get().blocks.find((b: FormBlock) => b.id === blockId)
     return (block?.settings?.presentation as BlockPresentation | undefined) || get().defaultBlockPresentation
   },
   
-  setBlockPresentation: (blockId, presentation) => set((state) => ({
-    blocks: state.blocks.map(block => 
+  setBlockPresentation: (blockId: string, presentation: Partial<BlockPresentation>) => set((state: FormBuilderState) => ({
+    blocks: state.blocks.map((block: FormBlock) => 
       block.id === blockId 
         ? { 
             ...block, 
             settings: { 
               ...block.settings, 
               presentation: { 
-                ...(block.settings.presentation || defaultBlockPresentation), 
+                ...((block.settings.presentation as BlockPresentation) || defaultBlockPresentation), 
                 ...presentation 
               } 
             } 
@@ -264,7 +209,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     )
   })),
   
-  setFormTheme: (theme) => set((state) => ({
+  setFormTheme: (theme: Partial<FormTheme>) => set((state: FormBuilderState) => ({
     formData: { 
       ...state.formData, 
       theme: { 
@@ -274,7 +219,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     }
   })),
   
-  setMode: (mode) => set({ mode }),
+  setMode: (mode: 'builder' | 'viewer') => set({ mode }),
   
   // Form operations with actual Supabase API calls
   saveForm: async () => {
@@ -381,7 +326,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     }
   },
   
-  loadForm: async (formId) => {
+  loadForm: async (formId: string) => {
     set({ isLoading: true })
     
     try {
@@ -485,9 +430,12 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   // Helper getters
   getCurrentBlock: () => {
     const { blocks, currentBlockId } = get()
-    return blocks.find(block => block.id === currentBlockId) || null
+    return blocks.find((block: FormBlock) => block.id === currentBlockId) || null
   }
-}))
+})
+
+// Singleton store hook
+export const useFormBuilderStore = create<FormBuilderState>(formBuilderStoreInitializer)
 
 // Hook to get block definition for the current block
 export const useCurrentBlockDefinition = () => {

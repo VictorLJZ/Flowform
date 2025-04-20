@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useForm } from "@/hooks/useForm"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { SlideWrapper } from "@/components/form/SlideWrapper"
+import type { FormBuilderState } from "@/types/form-builder-types"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -31,13 +31,13 @@ export default function FormViewerPage() {
   const [currentAnswer, setCurrentAnswer] = useState<string | number | string[]>("")
   const [direction, setDirection] = useState<number>(1)
 
-  const setBlocks = useFormBuilderStore(s => s.setBlocks)
-  const setMode = useFormBuilderStore(s => s.setMode)
-  const blocks = useFormBuilderStore(s => s.blocks)
+  const setBlocks = useFormBuilderStore((s: FormBuilderState) => s.setBlocks)
+  const setMode = useFormBuilderStore((s: FormBuilderState) => s.setMode)
+  const blocks = useFormBuilderStore((s: FormBuilderState) => s.blocks)
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`
-  const [savedAnswers, setSavedAnswers] = useState<Record<string, any>>({})
+  const [savedAnswers, setSavedAnswers] = useState<Record<string, string | number | string[]>>({})
 
   // derive current block and index (non-null assert)
   const total = blocks.length
@@ -48,7 +48,7 @@ export default function FormViewerPage() {
     const blk = blocks[currentIndex]
     if (!blk) return
     if (savedAnswers[blk.id] !== undefined) {
-      setCurrentAnswer(savedAnswers[blk.id])
+      setCurrentAnswer(savedAnswers[blk.id] as string | number | string[])
     } else {
       switch (blk.blockTypeId) {
         case "number": setCurrentAnswer(0); break
@@ -74,7 +74,7 @@ export default function FormViewerPage() {
       }))
       setBlocks(mapped)
     }
-  }, [form, setBlocks, setMode])
+  }, [form, formId, storageKey, setBlocks, setMode])
 
   useEffect(() => {
     if (!form) return
@@ -92,7 +92,7 @@ export default function FormViewerPage() {
         })
         .catch(console.error)
     }
-  }, [form])
+  }, [form, formId, storageKey])
 
   useEffect(() => {
     if (!responseId || blocks.length === 0) return
@@ -100,7 +100,7 @@ export default function FormViewerPage() {
       .then(res => res.json())
       .then(data => setSavedAnswers(data.answers || {}))
       .catch(console.error)
-  }, [responseId, blocks])
+  }, [responseId, blocks, formId])
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -129,7 +129,7 @@ export default function FormViewerPage() {
       if (data.completed) {
         setCompleted(true)
       } else {
-        setSavedAnswers((prev: Record<string, any>) => ({ ...prev, [block.id]: currentAnswer }))
+        setSavedAnswers((prev: Record<string, string | number | string[]>) => ({ ...prev, [block.id]: currentAnswer }))
         setDirection(1)
         setCurrentIndex(idx => {
           const newIdx = idx + 1

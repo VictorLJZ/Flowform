@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getFormWithBlocks } from "@/services/form/getFormWithBlocks"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   // Extract formId from URL
   const formId = request.nextUrl.pathname.split('/').pop();
   try {
     // formId is already extracted from the URL
-    const supabase = createClient();
+    const supabase = await createClient();
     
     if (!formId) {
       return NextResponse.json(

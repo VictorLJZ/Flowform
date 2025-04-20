@@ -5,7 +5,8 @@ import { motion } from "motion/react"
 import { Search, X } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Input } from "@/components/ui/input"
-import { getAllBlocks, getBlocksByCategory, getBlockDefinition, BlockDefinition } from "@/registry/blockRegistry"
+import { getAllBlocks, getBlocksByCategory, getBlockDefinition } from "@/registry/blockRegistry"
+import type { BlockDefinition } from '@/types/block-types'
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 
 // Map of category IDs to colors for UI styling

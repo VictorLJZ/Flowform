@@ -219,6 +219,10 @@ export interface CompleteResponse extends FormResponse {
   form: Form;
 }
 
+// Selection record types for session API routes
+export type StaticAnswerRecord = Pick<StaticBlockAnswer, 'block_id' | 'answer'>
+export type DynamicResponseRecord = Pick<DynamicBlockResponse, 'block_id' | 'conversation'>
+
 /**
  * Legacy Form Type (used in existing components)
  * This matches the form structure expected by components like FormSessionPage

@@ -1,60 +1,11 @@
 "use client"
 
-import React from "react"
 import { 
   FileText, MessageSquare, CheckSquare, List, 
   Mail, Hash, Calendar, User, ArrowUpRight, 
   Bookmark
 } from "lucide-react"
-
-// Block type definitions
-export type BlockType = "static" | "dynamic" | "integration" | "layout"
-
-// Base block definition
-export interface BlockDefinition {
-  id: string
-  type: BlockType
-  name: string
-  description: string
-  icon: React.ElementType
-  defaultTitle: string
-  defaultDescription?: string
-  category: "input" | "choice" | "advanced" | "integration" | "layout"
-  isPremium?: boolean
-  
-  // These will be implemented as needed for each block type
-  renderComponent?: React.ComponentType<{
-    block: FormBlock;
-    value?: unknown;
-    onChange?: (value: unknown) => void;
-  }>
-  editComponent?: React.ComponentType<{
-    block: FormBlock;
-    updateBlock: (updates: Partial<FormBlock>) => void;
-  }>
-  settingsComponent?: React.ComponentType<{
-    block: FormBlock;
-    updateSettings: (settings: Record<string, unknown>) => void;
-  }>
-  
-  // Default values when creating this block
-  getDefaultValues: () => Record<string, unknown>
-  
-  // Optional validation function
-  validate?: (values: Record<string, unknown>) => Record<string, string> | null
-}
-
-// Form block structure for instances in a form
-export interface FormBlock {
-  id: string
-  blockTypeId: string
-  type: BlockType
-  title: string
-  description?: string
-  required: boolean
-  order: number
-  settings: Record<string, unknown>
-}
+import type { BlockDefinition, FormBlock } from '@/types/block-types'
 
 // Block registry
 const blockRegistry: Record<string, BlockDefinition> = {

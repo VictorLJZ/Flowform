@@ -6,7 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { PlusCircle, ChevronLeft, ChevronRight, Trash2, Pencil, Check } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { getBlockDefinition, BlockDefinition } from "@/registry/blockRegistry"
+import { getBlockDefinition } from "@/registry/blockRegistry"
+import type { FormBlock, BlockDefinition } from '@/types/block-types'
 import { cn } from "@/lib/utils"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { 
@@ -38,14 +39,8 @@ const categoryColors: Record<string, string> = {
 
 // Sortable block item component
 function SortableBlockItem({ block, index, isSelected, blockDef }: { 
-  block: {
-    id: string;
-    title: string;
-    blockTypeId: string;
-    type?: string;
-    required?: boolean;
-  }, 
-  index: number, 
+  block: FormBlock;
+  index: number; 
   isSelected: boolean,
   blockDef: BlockDefinition | null
 }) {
@@ -224,8 +219,8 @@ export default function FormBuilderSidebar() {
     
     if (over && active.id !== over.id) {
       // Find the index of the dragged item and the drop target
-      const oldIndex = blocks.findIndex(block => block.id === active.id)
-      const newIndex = blocks.findIndex(block => block.id === over.id)
+      const oldIndex = blocks.findIndex((block: FormBlock) => block.id === active.id)
+      const newIndex = blocks.findIndex((block: FormBlock) => block.id === over.id)
       
       // Call the reorder function from the store
       reorderBlocks(oldIndex, newIndex)
@@ -319,10 +314,10 @@ export default function FormBuilderSidebar() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={blocks.map(block => block.id)}
+                items={blocks.map((block: FormBlock) => block.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {blocks.map((block, index) => {
+                {blocks.map((block: FormBlock, index: number) => {
                   // Get the block definition for additional info
                   const blockDef = getBlockDefinition(block.blockTypeId)
                   const isSelected = block.id === currentBlockId

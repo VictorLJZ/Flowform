@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Form, FormBlock } from '@/types/supabase-types';
-import { FormBlock as FrontendFormBlock } from '@/registry/blockRegistry';
+import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
 

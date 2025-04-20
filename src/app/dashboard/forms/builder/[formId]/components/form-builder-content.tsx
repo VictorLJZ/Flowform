@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
+import type { FormBlock } from '@/types/block-types'
 // Import block components directly to avoid eager loading AI services
 import { TextInputBlock } from "@/components/form/blocks/TextInputBlock"
 import { TextAreaBlock } from "@/components/form/blocks/TextAreaBlock"
@@ -34,7 +35,7 @@ export default function FormBuilderContent() {
   const goToBlock = (direction: 'prev' | 'next') => {
     if (!currentBlockId || blocks.length === 0) return
     
-    const currentIndex = blocks.findIndex(block => block.id === currentBlockId)
+    const currentIndex = blocks.findIndex((block: FormBlock) => block.id === currentBlockId)
     if (currentIndex === -1) return
     
     if (direction === 'prev' && currentIndex > 0) {
@@ -72,7 +73,7 @@ export default function FormBuilderContent() {
   }
   
   // Current block index for navigation display
-  const currentIndex = blocks.findIndex(block => block.id === currentBlockId)
+  const currentIndex = blocks.findIndex((block: FormBlock) => block.id === currentBlockId)
   
   return (
     <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
@@ -294,4 +295,3 @@ export default function FormBuilderContent() {
     </div>
   )
 }
-

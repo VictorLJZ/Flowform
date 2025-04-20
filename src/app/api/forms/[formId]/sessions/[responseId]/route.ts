@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/client"
+import type { StaticAnswerRecord, DynamicResponseRecord } from '@/types/supabase-types'
 
 export async function GET(request: NextRequest) {
   const parts = request.nextUrl.pathname.split("/")
@@ -17,10 +18,11 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
 
     // Fetch static answers
-    const { data: staticData, error: staticError } = await supabase
+    const { data: staticRaw, error: staticError } = await supabase
       .from("static_block_answers")
       .select("block_id, answer")
       .eq("response_id", responseId)
+    const staticData = (staticRaw ?? []) as StaticAnswerRecord[]
 
     if (staticError) {
       console.error("Error fetching static answers:", staticError)
@@ -31,10 +33,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch dynamic responses
-    const { data: dynamicData, error: dynamicError } = await supabase
+    const { data: dynamicRaw, error: dynamicError } = await supabase
       .from("dynamic_block_responses")
       .select("block_id, conversation")
       .eq("response_id", responseId)
+    const dynamicData = (dynamicRaw ?? []) as DynamicResponseRecord[]
 
     if (dynamicError) {
       console.error("Error fetching dynamic responses:", dynamicError)
@@ -45,12 +48,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Combine answers
-    const answers: Record<string, any> = {}
-    staticData?.forEach(item => {
-      answers[item.block_id] = item.answer
+    const answers: Record<string, StaticAnswerRecord['answer'] | DynamicResponseRecord['conversation']> = {}
+    staticData.forEach(({ block_id, answer }) => {
+      answers[block_id] = answer
     })
-    dynamicData?.forEach(item => {
-      answers[item.block_id] = item.conversation
+    dynamicData.forEach(({ block_id, conversation }) => {
+      answers[block_id] = conversation
     })
 
     return NextResponse.json({ answers }, { status: 200 })
