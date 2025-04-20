@@ -60,7 +60,7 @@ export function StandardSlideLayout({
     >
       <div className={cn(
         "w-full max-w-2xl px-6 py-8",
-        isViewer && "flex-1 flex flex-col",  // Full height content area in viewer mode
+        isViewer && "flex-1 flex flex-col justify-center",
         alignmentClasses[effectiveAlignment],
         spacingClasses[effectiveSpacing],
       )}>

@@ -16,14 +16,17 @@ export async function saveStaticAnswer(
 ): Promise<StaticBlockAnswer> {
   const supabase = createClient();
 
+  // Upsert to avoid duplicate answers (unique on response_id+block_id)
+  const payload = {
+    response_id: responseId,
+    block_id: blockId,
+    answer,
+    answered_at: new Date().toISOString()
+  };
   const { data, error } = await supabase
     .from('static_block_answers')
-    .insert({
-      response_id: responseId,
-      block_id: blockId,
-      answer,
-      answered_at: new Date().toISOString()
-    })
+    // Use comma-separated string for onConflict to satisfy TS signature
+    .upsert(payload, { onConflict: 'response_id,block_id' })
     .select()
     .single();
 

@@ -76,21 +76,11 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     
     // Process the answer based on block type
     if (blockType === 'static') {
-      // For static blocks, simply save the answer
-      if (!answer) {
-        return NextResponse.json(
-          { error: "Answer is required for static blocks" },
-          { status: 400 }
-        )
-      }
-      
-      await saveStaticAnswer(responseId, blockId, answer);
-      
-      // Get the next block in sequence
+      // For static blocks, optionally save the answer based on the 'required' flag
       const supabase = createClient();
       const { data: currentBlock } = await supabase
         .from('form_blocks')
-        .select('order_index')
+        .select('order_index, required')
         .eq('id', blockId)
         .single();
       
@@ -98,7 +88,20 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         throw new Error('Block not found');
       }
       
-      // Get the next block in order
+      // Enforce answer only if block is marked required
+      if (currentBlock.required && (!answer || (typeof answer === 'string' && answer.trim() === ''))) {
+        return NextResponse.json(
+          { error: "Answer is required for static blocks" },
+          { status: 400 }
+        )
+      }
+      
+      // Save non-empty answers
+      if (answer) {
+        await saveStaticAnswer(responseId, blockId, answer as string);
+      }
+      
+      // Get the next block in sequence
       const { data: nextBlock } = await supabase
         .from('form_blocks')
         .select('*')

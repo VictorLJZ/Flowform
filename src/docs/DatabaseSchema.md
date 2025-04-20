@@ -159,6 +159,7 @@ Stores form submissions.
 | metadata      | JSONB                   | Browser, device, source info      |
 
 ### 10. static_block_answers
++**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
 Stores answers to static blocks.
 
@@ -501,7 +502,7 @@ const { data, error } = await supabase.rpc('save_form_with_blocks_typed', {
 
 **Problem it Solves:** 
 1. Eliminates the PostgreSQL array dimension parsing error with empty JSONB arrays
-2. Resolves UUID type casting issues when passing block IDs from frontend to database
+2. Resolves UUID type casting issues between frontend and database
 3. Provides safe fallback for invalid UUID formats by auto-generating valid ones
 
 **Parameters:**
