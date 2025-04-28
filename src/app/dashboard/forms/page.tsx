@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -12,8 +12,9 @@ import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText } from 
 import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
-import { useAuthStore } from "@/stores/authStore"
+import { useAuthSession } from "@/hooks/useAuthSession"
 import { updateForm } from "@/services/form/updateForm"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,12 +29,29 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 export default function FormsPage() {
   const router = useRouter()
+  // Get workspaces and current workspace ID from store
   const { workspaces } = useWorkspaces()
-  const workspaceId = workspaces?.[0]?.id
-  const { forms, isLoading, error, mutate } = useForms(workspaceId)
-  const userId = useAuthStore((s) => s.user?.id)
+  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
+  
+  // Use selected workspace if available, otherwise fallback to first workspace
+  const workspaceId = currentWorkspaceId || workspaces?.[0]?.id
+  const { forms, isLoading: isFormsLoading, error: formsError, mutate } = useForms(workspaceId)
+  const { user, isLoading: isAuthLoading } = useAuthSession()
+  const userId = user?.id
   const { toast } = useToast()
+  
+  // Combine loading states
+  const isLoading = isFormsLoading || isAuthLoading
+  const error = formsError
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
+  
+  // Refresh forms when workspace changes
+  useEffect(() => {
+    console.log("[FormsPage] Workspace changed, refreshing forms for:", workspaceId)
+    if (workspaceId) {
+      mutate()
+    }
+  }, [workspaceId, mutate])
 
   // Handle form publishing
   const handlePublishForm = async (formId: string) => {
@@ -67,18 +85,19 @@ export default function FormsPage() {
     try {
       if (!workspaceId) {
         console.error('No current workspace selected');
+        toast({
+          variant: "destructive",
+          title: "No workspace selected",
+          description: "Please select a workspace to create a form."
+        });
         return;
       }
-      if (!userId) {
-        console.error('No user ID available');
-        return;
-      }
+      // Authorization will be handled by the API using the session
       const response = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspace_id: workspaceId,
-          user_id: userId
+          workspace_id: workspaceId
         })
       });
 

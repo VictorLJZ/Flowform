@@ -45,7 +45,9 @@ export async function POST(request: Request) {
         theme: 'default',
         primaryColor: '#0284c7',
         fontFamily: 'inter'
-      }
+      },
+      // This field is now optional and only used for backwards compatibility
+      user_id: requestProvidedUserId = null
     } = requestBody;
     
     logger.info('Form creation request received', { workspace_id });
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : '';
     
-    // 4. Get the authenticated user ID
+    // 4. Get the authenticated user ID from the session token
     let userId;
     
     if (token) {
@@ -66,9 +68,15 @@ export async function POST(request: Request) {
       const { data } = await adminClient.auth.getUser(token);
       userId = data?.user?.id;
       logger.debug('Authenticated user for form creation', { userId });
+    } else {
+      // Check for backwards compatibility with old clients
+      userId = requestProvidedUserId;
+      if (userId) {
+        logger.warn('Using user ID from request body (deprecated)', { userId });
+      }
     }
     
-    // If no valid user was found, use secure fallback for dev/testing
+    // If no valid user was found, use secure fallback for dev/testing or return error
     if (!userId) {
       if (process.env.NODE_ENV === 'production') {
         logger.warn('Unauthorized form creation attempt');

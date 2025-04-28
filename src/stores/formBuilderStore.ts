@@ -1,10 +1,10 @@
 "use client"
 
 import { create, StateCreator } from 'zustand'
-import { useAuthStore } from '@/stores/authStore'
 import { getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
+import { getCurrentUserId } from '@/services/auth/getCurrentUser'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
@@ -227,7 +227,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     
     try {
       const { formData, blocks } = get()
-      const userId = useAuthStore.getState().user?.id
+      const userId = await getCurrentUserId()
       
       // Prepare form data for saving - format for RPC function
       const saveData = {
@@ -236,7 +236,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         description: formData.description || '',
         // Always ensure workspace_id and created_by are set
         workspace_id: formData.workspace_id,
-        created_by: formData.created_by || userId,
+        created_by: formData.created_by || userId || undefined, // Handle null safely
         status: formData.status || 'draft',
         theme: formData.settings ? {
           name: formData.settings.theme,
@@ -404,6 +404,8 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           workspace_id: formData.workspace_id,
           created_by: formData.created_by,
           status: formData.status || 'draft',
+          // Always use defaultFormTheme as the base and merge with any available theme properties
+          theme: defaultFormTheme,
           settings: formData.settings ? {
             showProgressBar: typeof formData.settings.showProgressBar === 'boolean' ? formData.settings.showProgressBar : defaultFormData.settings.showProgressBar,
             requireSignIn: typeof formData.settings.requireSignIn === 'boolean' ? formData.settings.requireSignIn : defaultFormData.settings.requireSignIn,

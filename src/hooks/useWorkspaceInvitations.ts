@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { getSentInvitations, inviteToWorkspace, resendInvitation, revokeInvitation } from '@/services/workspace/client'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthSession } from '@/hooks/useAuthSession'
 
 const DEFAULT_INVITATION_LIMIT = 10
 
@@ -8,7 +8,8 @@ const DEFAULT_INVITATION_LIMIT = 10
  * Hook to manage workspace invitations (sent invites) via SWR
  */
 export function useWorkspaceInvitations(workspaceId: string | null | undefined) {
-  const userId = useAuthStore((s) => s.user?.id)
+  const { user, isLoading: isAuthLoading } = useAuthSession()
+  const userId = user?.id
   const key = workspaceId && userId ? ['workspaceInvitations', workspaceId] : null
   const fetcher = async ([, id]: [string, string]) => {
     return await getSentInvitations(id)
@@ -40,7 +41,8 @@ export function useWorkspaceInvitations(workspaceId: string | null | undefined) 
   return {
     invitations: data ?? [],
     error,
-    isLoading,
+    isLoading: isLoading || isAuthLoading,
+    isAuthLoading,
     send,
     resend,
     revoke,

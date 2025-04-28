@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, X, AlertCircle, Loader2 } from "lucide-react"
-import { useAuthStore } from "@/stores/authStore"
+import { useAuthSession } from "@/hooks/useAuthSession"
 import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
 import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
 
@@ -20,7 +20,8 @@ interface InvitePageClientProps {
 export function InvitePageClient({ token }: InvitePageClientProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const userId = useAuthStore((s) => s.user?.id)
+  const { user, isLoading: isAuthLoading } = useAuthSession()
+  const userId = user?.id
   
   // Not using email state directly as it's handled by the invitation details
   // const [email, setEmail] = useState("")
@@ -93,6 +94,10 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
   }, [token, router])
   
   const handleAcceptInvitation = async () => {
+    if (isAuthLoading) {
+      toast({ title: "Please wait", description: "Verifying your authentication..." })
+      return
+    }
     if (!userId) {
       toast({ variant: "destructive", title: "Error", description: "Authentication required" })
       return
@@ -111,6 +116,10 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
   }
   
   const handleDeclineInvitation = async () => {
+    if (isAuthLoading) {
+      toast({ title: "Please wait", description: "Verifying your authentication..." })
+      return
+    }
     if (!userId) {
       toast({ variant: "destructive", title: "Error", description: "Authentication required" })
       return

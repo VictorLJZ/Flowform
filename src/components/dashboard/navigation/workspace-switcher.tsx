@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
-import { useAuthStore } from "@/stores/authStore"
+import { useAuthSession } from "@/hooks/useAuthSession"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { createWorkspace } from "@/services/workspace/client"
 
@@ -43,7 +43,8 @@ export function WorkspaceSwitcher() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
   const setCurrentWorkspaceId = useWorkspaceStore((state) => state.setCurrentWorkspaceId)
 
-  const userId = useAuthStore((s) => s.user?.id)
+  const { user, isLoading: isLoadingAuth } = useAuthSession()
+  const userId = user?.id
 
   useEffect(() => {
     if (currentWorkspaceId === null && workspaces.length > 0 && !isLoadingWorkspaces) {
@@ -60,6 +61,10 @@ export function WorkspaceSwitcher() {
 
   const handleCreateWorkspace = async () => {
     if (!newWorkspace.name) return
+    if (isLoadingAuth) {
+      toast({ title: "Please wait", description: "Authentication in progress..." })
+      return
+    }
     if (!userId) {
       toast({ variant: "destructive", title: "Error", description: "User authentication required" })
       return
@@ -133,8 +138,20 @@ export function WorkspaceSwitcher() {
                   <DropdownMenuItem
                     key={workspace.id}
                     onClick={() => {
-                       console.log("[WorkspaceSwitcher] Workspace selected via click:", workspace.id);
-                       setCurrentWorkspaceId(workspace.id)
+                      if (workspace.id === currentWorkspaceId) {
+                        console.log(`[WorkspaceSwitcher] Already on workspace: ${workspace.id}`);
+                        return; // Don't switch if already on this workspace
+                      }
+                      console.log(`[WorkspaceSwitcher] Switching to workspace: ${workspace.id}`);
+                      setCurrentWorkspaceId(workspace.id);
+                      
+                      // Close the dropdown menu after selection
+                      const closeEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                      });
+                      document.dispatchEvent(closeEvent);
                     }}
                     className="gap-2 p-2"
                   >
