@@ -5,6 +5,7 @@ import {
   Mail, Hash, Calendar, User, ArrowUpRight, 
   Bookmark
 } from "lucide-react"
+import dynamic from "next/dynamic"
 import type { BlockDefinition, FormBlock } from '@/types/block-types'
 
 // Block registry
@@ -176,7 +177,8 @@ const blockRegistry: Record<string, BlockDefinition> = {
       contextInstructions: "You are a helpful assistant responding to form submissions.",
       temperature: 0.7,
       maxQuestions: 5
-    })
+    }),
+    settingsComponent: dynamic(() => import('@/components/form/settings').then(mod => mod.AIConversationSettings))
   },
   
   // Integration blocks
@@ -226,8 +228,16 @@ const blockRegistry: Record<string, BlockDefinition> = {
 
 // Helper functions
 export const getBlockDefinition = (blockTypeId: string): BlockDefinition | undefined => {
-  const block = blockRegistry[blockTypeId]
-  return block
+  // First try a direct lookup
+  let block = blockRegistry[blockTypeId];
+  
+  // If the direct lookup fails, but blockTypeId is 'dynamic', try to find the dynamic block
+  if (!block && (blockTypeId === 'dynamic' || blockTypeId.includes('dynamic'))) {
+    // Get the AI conversation block as a fallback for any dynamic block
+    block = blockRegistry['ai_conversation'];
+  }
+  
+  return block;
 }
 
 export const getBlocksByCategory = (category: string) => {

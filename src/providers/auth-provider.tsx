@@ -8,6 +8,7 @@ import {
   useCallback,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getVerifiedUser } from "@/services/auth/verifiedAuth";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { mutate } from 'swr'; 
@@ -68,9 +69,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []); 
 
+  /**
+   * Securely sign out the user and clear authentication state
+   */
   const signOut = useCallback(async () => {
-    console.log("[AuthProvider] Signing out...");
-    await supabase.auth.signOut();
+    console.log("[AuthProvider] Signing out user");
+    // Verify user is authenticated before attempting sign out
+    const user = await getVerifiedUser();
+    
+    if (user) {
+      await supabase.auth.signOut();
+      console.log("[AuthProvider] User signed out successfully");
+      // Force revalidation of auth state
+      mutate(AUTH_SWR_KEY);
+    } else {
+      console.log("[AuthProvider] Sign out called but no verified user found");
+    }
+    // Router navigation happens via the onAuthStateChange listener
   }, [supabase]);
 
   const value = {
@@ -89,7 +104,11 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-export const useSupabase = (): SupabaseClient => {
+/**
+ * React hook to access the Supabase client and auth functions
+ * @returns The Supabase client and auth functions
+ */
+export function useSupabase() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useSupabase must be used within an AuthProvider");

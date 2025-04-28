@@ -32,27 +32,18 @@ export function StorageMonitor() {
     // Monitor storage events (which fire when changes happen in OTHER tabs)
     window.addEventListener('storage', handleStorageChange)
 
-    // Create a MutationObserver to monitor when DOM changes after tab focus
-    const observer = new MutationObserver((mutations) => {
-      storageLog('DOM mutations after storage/tab change:', { 
-        mutations: mutations.length,
-        timestamp: new Date().toISOString()
-      })
+    // DOM mutation observer disabled to reduce console noise
+    const observer = new MutationObserver(() => {
+      // Mutations tracking disabled
     })
-
-    // Start observing the document with the configured parameters
-    observer.observe(document.body, { 
-      childList: true, 
-      subtree: true,
-      attributes: true,
-      characterData: true
-    })
+    
+    // Not actually observing anything - kept for reference
     
     storageLog('StorageMonitor initialized')
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      observer.disconnect()
+      // observer.disconnect() - observer not active
     }
   }, [])
   

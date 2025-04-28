@@ -18,16 +18,25 @@ export function useAuthSession() {
   const supabase = useSupabase(); // Get the current supabase client
 
   const fetcher = async (): Promise<AuthSessionData> => {
+    // Get verified user data from the Supabase auth server
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error("[useAuthSession] Error fetching verified user:", userError);
+      throw userError; // Throw error for SWR to catch
+    }
+
+    // We still need the session for token access
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       console.error("[useAuthSession] Error fetching session:", sessionError);
-      throw sessionError; // Throw error for SWR to catch
+      throw sessionError;
     }
-
+    
     const session = sessionData.session;
-    const supabaseUser = session?.user;
+    const supabaseUser = userData.user; // Using verified user data
 
-    // Transform Supabase user to our UserType
+    // Transform verified Supabase user to our UserType
     const user = supabaseUser ? {
       id: supabaseUser.id,
       email: supabaseUser.email ?? '',
@@ -38,7 +47,7 @@ export function useAuthSession() {
     // Placeholder for profile fetching if needed later
     const profile = null;
 
-    console.log("[useAuthSession] Fetched session:", session ? 'Active' : 'Inactive', "User:", user?.email);
+    console.log("[useAuthSession] Fetched verified user:", user?.email, "Session active:", !!session);
 
     return { session, user, profile };
   };

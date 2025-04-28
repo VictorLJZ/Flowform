@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
+import { useState, useEffect } from "react"
 import type { FormBlock } from '@/types/block-types'
 // Import block components directly to avoid eager loading AI services
 import { TextInputBlock } from "@/components/form/blocks/TextInputBlock"
@@ -14,6 +15,7 @@ import { DropdownBlock } from "@/components/form/blocks/DropdownBlock"
 import { EmailBlock } from "@/components/form/blocks/EmailBlock"
 import { NumberBlock } from "@/components/form/blocks/NumberBlock"
 import { DateBlock } from "@/components/form/blocks/DateBlock"
+import { AIConversationBlock } from "@/components/form/blocks/AIConversationBlock"
 
 
 export default function FormBuilderContent() {
@@ -28,10 +30,10 @@ export default function FormBuilderContent() {
   } = useFormBuilderStore()
   
   const currentBlock = getCurrentBlock()
+  
   const blockDefinition = useCurrentBlockDefinition()
   const autosave = useAutosave()
   
-  // Function to navigate to prev/next block
   const goToBlock = (direction: 'prev' | 'next') => {
     if (!currentBlockId || blocks.length === 0) return
     
@@ -45,7 +47,6 @@ export default function FormBuilderContent() {
     }
   }
   
-  // If no blocks or no selected block, show empty state
   if (blocks.length === 0 || !currentBlock || !blockDefinition) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 text-center p-6">
@@ -72,12 +73,10 @@ export default function FormBuilderContent() {
     )
   }
   
-  // Current block index for navigation display
   const currentIndex = blocks.findIndex((block: FormBlock) => block.id === currentBlockId)
   
   return (
     <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
-      {/* Preview header - fixed at top */}
       <div className="p-2 flex justify-between items-center flex-shrink-0 sticky top-0 z-10 bg-slate-50">
         <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center space-x-1 shadow-sm">
           <Button 
@@ -111,15 +110,10 @@ export default function FormBuilderContent() {
         </div>
       </div>
       
-      {/* Main content - Scrollable container with vertical centering */}
       <div className="flex-1 overflow-auto flex items-center px-4">
-        {/* Content centered in scrollable area */}
         <div className="w-full min-h-fit py-4">
-          {/* 16:9 aspect ratio wrapper */}
           <div className="relative w-full mx-auto" style={{ maxWidth: '1200px', paddingTop: 'min(56.25%, calc(100vh - 10rem))' }}>
-            {/* Block specific components */}
             <div className="absolute top-0 left-0 w-full h-full">
-              {/* Render different content based on block type */}
               {currentBlock.blockTypeId === 'short_text' && (
                 <TextInputBlock
                   id={currentBlock.id}
@@ -130,15 +124,12 @@ export default function FormBuilderContent() {
                   totalBlocks={blocks.length}
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
-                    // Handle updates to block content
                     if (updates.title || updates.description) {
                       updateBlock(currentBlock.id, updates);
                     }
-                    // Handle updates to block settings
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
                     }
-                    // Trigger autosave when changes are made
                     autosave.scheduleAutosave();
                   }}
                 />
@@ -165,7 +156,7 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-                    {currentBlock.blockTypeId === 'multiple_choice' && (
+              {currentBlock.blockTypeId === 'multiple_choice' && (
                 <MultipleChoiceBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -186,7 +177,7 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-                    {currentBlock.blockTypeId === 'checkbox_group' && (
+              {currentBlock.blockTypeId === 'checkbox_group' && (
                 <CheckboxGroupBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -207,7 +198,7 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-                    {currentBlock.blockTypeId === 'dropdown' && (
+              {currentBlock.blockTypeId === 'dropdown' && (
                 <DropdownBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -228,7 +219,7 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-                    {currentBlock.blockTypeId === 'email' && (
+              {currentBlock.blockTypeId === 'email' && (
                 <EmailBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
@@ -286,6 +277,62 @@ export default function FormBuilderContent() {
                     }
                     autosave.scheduleAutosave();
                   }}
+                />
+              )}
+              
+              {/* Add a useEffect in the main component to handle this debug logging */}
+              
+              {currentBlock.blockTypeId === 'ai_conversation' && (
+                <AIConversationBlock
+                  id={currentBlock.id}
+                  title={currentBlock.title}
+                  description={currentBlock.description}
+                  required={currentBlock.required}
+                  index={blocks.findIndex(b => b.id === currentBlock.id) + 1}
+                  totalBlocks={blocks.length}
+                  settings={{
+                    startingPrompt: (currentBlock.settings?.startingPrompt as string) || "How can I help you today?",
+                    maxQuestions: (currentBlock.settings?.maxQuestions as number) || 5,
+                    temperature: (currentBlock.settings?.temperature as number) || 0.7,
+                    contextInstructions: currentBlock.settings?.contextInstructions as string,
+                    presentation: currentBlock.settings?.presentation ? 
+                      currentBlock.settings.presentation as any : 
+                      {
+                        layout: 'centered',  // Using valid values from BlockPresentation
+                        spacing: 'normal',    // Using valid values from BlockPresentation
+                        titleSize: 'large'    // Using valid values from BlockPresentation
+                      },
+                    layout: currentBlock.settings?.layout ? 
+                      currentBlock.settings.layout as any : 
+                      { type: 'standard' } as any
+                  }}
+                  // Add sample data for the builder preview
+                  value={[
+                    {
+                      question: (currentBlock.settings?.startingPrompt as string) || "How can I help you today?", 
+                      answer: "This is a sample answer in the form builder preview.", 
+                      timestamp: new Date().toISOString(),
+                      is_starter: true
+                    }
+                  ]}
+                  onChange={() => {
+                    // This is just a preview in the builder, no real changes needed
+                  }}
+                  onUpdate={(updates) => {
+                    console.log('AIConversationBlock onUpdate called with:', updates);
+                    if (updates.title || updates.description) {
+                      updateBlock(currentBlock.id, updates);
+                    }
+                    if (updates.settings) {
+                      updateBlockSettings(currentBlock.id, updates.settings);
+                    }
+                    autosave.scheduleAutosave();
+                  }}
+                  onNext={() => {
+                    console.log('AIConversationBlock onNext called');
+                    // This is just a preview, so no actual navigation is needed
+                  }}
+                  isNextDisabled={false}
                 />
               )}
             </div>

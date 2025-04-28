@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useForm } from "@/hooks/useForm"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import type { FormBuilderState } from "@/types/form-builder-types"
+import type { QAPair } from "@/types/supabase-types"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -15,7 +16,8 @@ import {
   DropdownBlock,
   EmailBlock,
   NumberBlock,
-  DateBlock
+  DateBlock,
+  AIConversationBlock
 } from "@/components/form"
 
 export default function FormViewerPage() {
@@ -24,11 +26,11 @@ export default function FormViewerPage() {
 
   const { form, isLoading, error } = useForm(formId)
   const [responseId, setResponseId] = useState<string | null>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [completed, setCompleted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState<number>(0)
+  const [completed, setCompleted] = useState<boolean>(false)
+  const [submitting, setSubmitting] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[]>("")
+  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | QAPair[]>("")
   const [direction, setDirection] = useState<number>(1)
 
   const setBlocks = useFormBuilderStore((s: FormBuilderState) => s.setBlocks)
@@ -37,7 +39,7 @@ export default function FormViewerPage() {
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`
-  const [savedAnswers, setSavedAnswers] = useState<Record<string, string | number | string[]>>({})
+  const [savedAnswers, setSavedAnswers] = useState<Record<string, string | number | string[] | QAPair[]>>({})
 
   // derive current block and index (non-null assert)
   const total = blocks.length
@@ -62,17 +64,26 @@ export default function FormViewerPage() {
     setMode("viewer")
     
     if (form) {
-      const mapped = form.blocks.map(b => ({
-        id: b.id,
-        blockTypeId: b.subtype,
-        type: b.type,
-        title: b.title,
-        description: b.description ?? undefined,
-        required: b.required,
-        order: b.order_index,
-        settings: (b.settings || {}) as Record<string, unknown>
-      }))
+      const mapped = form.blocks.map(b => {
+        // Properly map dynamic blocks to ai_conversation blockTypeId
+        // Use type assertion to handle the mapping between database and frontend types
+        // Database uses 'dynamic' as the type, but our frontend uses 'ai_conversation' as the blockTypeId
+        let blockTypeId = b.type === 'dynamic' ? 'ai_conversation' as string : b.subtype
+        
+        return {
+          id: b.id,
+          blockTypeId,
+          type: b.type,
+          title: b.title,
+          description: b.description ?? undefined,
+          required: b.required,
+          order: b.order_index,
+          settings: (b.settings || {}) as Record<string, unknown>
+        }
+      })
+      
       setBlocks(mapped)
+      console.log('[FormViewer] Loaded blocks:', mapped)
     }
   }, [form, formId, storageKey, setBlocks, setMode])
 
@@ -119,17 +130,91 @@ export default function FormViewerPage() {
     setSubmitError(null)
     setSubmitting(true)
     try {
-      const requestBody = { responseId, blockId: block.id, blockType: block.type, answer: currentAnswer }
+      // Determine the current question for AI conversations
+      let additionalData = {}
+      
+      // For AI conversations, we need to include current question info
+      if (block.blockTypeId === 'ai_conversation') {
+        // Get the current conversation state
+        const conversation = currentAnswer as QAPair[] || []
+        const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1
+        const isFirstQuestion = currentQuestionIndex === -1
+        const currentQuestion = isFirstQuestion
+          ? (block.settings?.startingPrompt as string || "How can I help you today?")
+          : conversation[currentQuestionIndex]?.question
+          
+        additionalData = {
+          currentQuestion,
+          isFirstQuestion
+        }
+        
+        console.log('AI Conversation data:', {
+          conversation,
+          currentQuestionIndex,
+          isFirstQuestion,
+          currentQuestion
+        })
+      }
+      
+      const requestBody = { 
+        responseId, 
+        blockId: block.id, 
+        blockType: block.type, 
+        answer: currentAnswer,
+        ...additionalData
+      }
       
       console.log('Submitting form data:', requestBody)
       
-      const res = await fetch(`/api/forms/${formId}/sessions`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) })
+      const res = await fetch(`/api/forms/${formId}/sessions`, { 
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(requestBody) 
+      })
+      
       const data = await res.json()
       
-      if (data.completed) {
+      // Special handling for AI conversations
+      if (block.blockTypeId === 'ai_conversation' && data.nextQuestion && !data.dynamicComplete) {
+        // Update the conversation with the next question
+        const conversation = currentAnswer as QAPair[] || []
+        const updatedConversation = [...conversation]
+        
+        // If this is a new conversation, add the first QA pair
+        if (conversation.length === 0) {
+          updatedConversation.push({
+            question: block.settings?.startingPrompt as string || "How can I help you today?",
+            answer: currentAnswer as string,
+            timestamp: new Date().toISOString(),
+            is_starter: true
+          })
+        }
+        
+        // Add the next AI question
+        updatedConversation.push({
+          question: data.nextQuestion,
+          answer: "",
+          timestamp: new Date().toISOString(),
+          is_starter: false
+        })
+        
+        // Update the current answer with the new conversation
+        setCurrentAnswer(updatedConversation)
+        setSavedAnswers((prev: Record<string, string | number | string[] | QAPair[]>) => ({ 
+          ...prev, 
+          [block.id]: updatedConversation 
+        }))
+      } 
+      else if (data.completed) {
         setCompleted(true)
-      } else {
-        setSavedAnswers((prev: Record<string, string | number | string[]>) => ({ ...prev, [block.id]: currentAnswer }))
+      } 
+      else {
+        // For regular blocks or when AI conversation is complete
+        setSavedAnswers((prev: Record<string, string | number | string[] | QAPair[]>) => ({ 
+          ...prev, 
+          [block.id]: currentAnswer 
+        }))
+        
         setDirection(1)
         setCurrentIndex(idx => {
           const newIdx = idx + 1
@@ -170,6 +255,22 @@ export default function FormViewerPage() {
         return typeof v === "string" && v !== "";
       case "checkbox_group":
         return Array.isArray(v) && (v as string[]).length > 0;
+      case "ai_conversation":
+        // For AI conversation blocks, check if the most recent question has an answer
+        if (Array.isArray(v) && (v as QAPair[]).length > 0) {
+          const conversation = v as QAPair[];
+          const currentQuestion = conversation[conversation.length - 1];
+          
+          // If there's no current question yet, only need starter question to be answered
+          if (!currentQuestion) {
+            return conversation.some(qa => qa.is_starter && qa.answer && qa.answer.trim() !== "");
+          }
+          
+          // If a question exists without an answer, that means we're on that question
+          // and it needs to be answered
+          return currentQuestion.answer && currentQuestion.answer.trim() !== "";
+        }
+        return false;
       default:
         return true;
     }
@@ -189,24 +290,55 @@ export default function FormViewerPage() {
     isNextDisabled: isNextDisabled
   }
 
-  function renderBlock() {
+  const renderBlock = () => {
+    const blockProps = { 
+      id: block.id, 
+      title: block.title,
+      description: block.description,
+      required: block.required,
+      settings: block.settings as Record<string, unknown>
+    }
+    
     switch (block.blockTypeId) {
       case "short_text":
-        return <TextInputBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <TextInputBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
       case "long_text":
-        return <TextAreaBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <TextAreaBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
       case "multiple_choice":
-        return <MultipleChoiceBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <MultipleChoiceBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
       case "checkbox_group":
-        return <CheckboxGroupBlock {...commonProps} value={currentAnswer as string[]} onChange={(v: string[]) => setCurrentAnswer(v)} />
+        return <CheckboxGroupBlock {...blockProps} value={currentAnswer as string[]} onChange={(v: string[]) => setCurrentAnswer(v)} />
       case "dropdown":
-        return <DropdownBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <DropdownBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
       case "email":
-        return <EmailBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <EmailBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
       case "number":
-        return <NumberBlock {...commonProps} value={currentAnswer as number} onChange={(v: string | number) => setCurrentAnswer(typeof v === 'string' ? Number(v) : v)} />
+        return <NumberBlock {...blockProps} value={currentAnswer as number} onChange={(v: string | number) => setCurrentAnswer(typeof v === 'string' ? Number(v) : v)} />
       case "date":
-        return <DateBlock {...commonProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <DateBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+      case "ai_conversation":
+        return <AIConversationBlock 
+          {...commonProps} 
+          settings={{
+            startingPrompt: (block.settings?.startingPrompt as string) || "How can I help you today?",
+            maxQuestions: (block.settings?.maxQuestions as number) || 5,
+            temperature: (block.settings?.temperature as number) || 0.7,
+            contextInstructions: block.settings?.contextInstructions as string,
+            // Add default presentation and layout for SlideWrapper
+            presentation: {
+              layout: 'centered',
+              spacing: 'normal',
+              titleSize: 'large'
+            },
+            layout: { type: 'standard' }
+          }}
+          value={currentAnswer as QAPair[]} 
+          onChange={(v: QAPair[]) => setCurrentAnswer(v)}
+          onUpdate={(updates) => {
+            // In viewer mode we don't update block settings but we need this prop
+            console.log('Block update requested', updates);
+          }}
+        />
       default:
         return null
     }

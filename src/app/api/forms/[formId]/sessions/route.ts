@@ -4,6 +4,7 @@ import { saveStaticAnswer } from "@/services/response/saveStaticAnswer"
 import { saveDynamicResponse } from "@/services/response/saveDynamicResponse"
 import { completeResponse } from "@/services/response/completeResponse"
 import { createClient } from "@/lib/supabase/client"
+import { QAPair } from '@/types/supabase-types'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Extract formId from URL
@@ -127,7 +128,12 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     } 
     else if (blockType === 'dynamic') {
       // For dynamic blocks, process conversation
-      if (!currentQuestion || !answer) {
+      // We need to handle both string answers (for first submissions) and QAPair[] for ongoing conversations
+      
+      // Check if we have either a direct answer string or complete conversation data
+      const hasValidAnswerData = answer !== undefined && (typeof answer === 'string' || Array.isArray(answer));
+      
+      if (!currentQuestion || !hasValidAnswerData) {
         return NextResponse.json(
           { error: "Current question and answer are required for dynamic blocks" },
           { status: 400 }
@@ -135,13 +141,40 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       }
       
       const isFirstQuestion = body.isFirstQuestion === true;
+      let answerText: string;
       
-      // Process the dynamic response
+      // Extract the answer text based on what format we received
+      if (typeof answer === 'string') {
+        // Direct answer as string (typically for first question)
+        answerText = answer;
+      } else if (Array.isArray(answer)) {
+        // QAPair[] format - extract the answer to the current question
+        const conversation = answer as QAPair[];
+        const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1;
+        
+        // Use the last conversation item's answer if available
+        if (currentQuestionIndex >= 0 && conversation[currentQuestionIndex]?.answer) {
+          answerText = conversation[currentQuestionIndex].answer;
+        } else {
+          // Fallback if structure isn't as expected
+          answerText = typeof conversation[conversation.length - 1] === 'string' 
+            ? conversation[conversation.length - 1] as unknown as string 
+            : '';
+        }
+      } else {
+        // Invalid format
+        return NextResponse.json(
+          { error: "Invalid answer format for dynamic block" },
+          { status: 400 }
+        )
+      }
+      
+      // Process the dynamic response with the extracted answer text
       const result = await saveDynamicResponse(
         responseId,
         blockId,
         currentQuestion,
-        answer,
+        answerText,
         isFirstQuestion
       );
       

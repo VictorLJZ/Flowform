@@ -57,7 +57,8 @@ export async function middleware(request: NextRequest) {
   // If this is an API route, add the auth token to the request headers
   // This ensures our API routes have access to the user's authentication token
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    // Get the session to extract the access token
+    // We already have the verified user from above, now get the token
+    // Note: We still need getSession for the token, but we've verified the user with getUser() above
     const { data: { session }} = await supabase.auth.getSession();
     const accessToken = session?.access_token;
     

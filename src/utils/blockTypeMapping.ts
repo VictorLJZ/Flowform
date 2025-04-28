@@ -40,14 +40,18 @@ export function mapToDbBlockType(blockTypeId: string): {
 
 /**
  * Map database type and subtype to the block type ID
- * This function is for compatibility with any legacy code
+ * This is the reverse of mapToDbBlockType and handles the
+ * special case of mapping dynamic blocks back to their specific types
  * 
  * @param type - The database block type
  * @param subtype - The database block subtype
  * @returns Block type ID for the registry
  */
-export function mapFromDbBlockType(type: BlockType, subtype: StaticBlockSubtype | 'dynamic'): string {
-  if (type === 'dynamic' && subtype === 'dynamic') {
+export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic'): string {
+  // Check for dynamic blocks with more permissive matching
+  // This covers case variations and whitespace issues
+  if (String(type).toLowerCase().trim() === 'dynamic' && 
+      String(subtype).toLowerCase().trim() === 'dynamic') {
     return 'ai_conversation';
   }
   

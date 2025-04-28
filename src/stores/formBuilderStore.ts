@@ -6,6 +6,7 @@ import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getCurrentUserId } from '@/services/auth/getCurrentUser'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
+import { mapFromDbBlockType, mapToDbBlockType } from '@/utils/blockTypeMapping'
 import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
@@ -223,104 +224,70 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   // Form operations with actual Supabase API calls
   saveForm: async () => {
+    const { formData, blocks, isSaving } = get()
+    
+    // Prevent multiple save operations
+    if (isSaving) {
+      return
+    }
+    
     set({ isSaving: true })
     
     try {
-      const { formData, blocks } = get()
-      const userId = await getCurrentUserId()
+      // Make a copy of the blocks with only the essential properties
+      // and map frontend block types to database types
+      const blocksToSave = blocks.map((block: FormBlock, index: number) => {
+        // Map the block type to database format
+        const { type, subtype } = mapToDbBlockType(block.blockTypeId)
+        
+        return {
+          id: block.id,
+          form_id: formData.form_id,
+          type,
+          subtype,
+          title: block.title,
+          description: block.description,
+          required: block.required,
+          order_index: index, // Use index directly for order
+          settings: block.settings,
+          blockTypeId: block.blockTypeId,
+          order: index
+        }
+      })
       
-      // Prepare form data for saving - format for RPC function
-      const saveData = {
+      const result = await saveFormWithBlocks({
         form_id: formData.form_id,
         title: formData.title,
         description: formData.description || '',
-        // Always ensure workspace_id and created_by are set
         workspace_id: formData.workspace_id,
-        created_by: formData.created_by || userId || undefined, // Handle null safely
+        created_by: formData.created_by,
         status: formData.status || 'draft',
-        theme: formData.settings ? {
-          name: formData.settings.theme,
-          primaryColor: formData.settings.primaryColor,
-          fontFamily: formData.settings.fontFamily
-        } : {},
-        settings: {
-          showProgressBar: formData.settings?.showProgressBar ?? true,
-          requireSignIn: formData.settings?.requireSignIn ?? false,
-          estimatedTime: formData.settings?.estimatedTime,
-          estimatedTimeUnit: formData.settings?.estimatedTimeUnit,
-          redirectUrl: formData.settings?.redirectUrl,
-          customCss: formData.settings?.customCss
-        }
-      }
+        theme: formData.theme as unknown as Record<string, unknown>,
+        settings: formData.settings
+      }, blocksToSave)
       
-      // Validate workspace_id is available
-      if (!saveData.workspace_id) {
-        throw new Error('No workspace selected. Please select a workspace before saving.')
-      }
-      
-      // Debug logs before saving
-      console.log('==== DEBUG: FormBuilder saveForm ====');
-      console.log('Save Data being prepared:', JSON.stringify(saveData, null, 2));
-      console.log('Form theme data:', JSON.stringify(formData.theme, null, 2));
-      
-      // Log detailed block information
-      console.log('Detailed block information:');
-      blocks.forEach((block, index) => {
-        console.log(`Block ${index} (${block.id}):`, JSON.stringify(block, null, 2));
+      // After saving the form, also save any dynamic block configurations separately
+      if (result.success) {
+        console.log('Form saved successfully')
         
-        // Check for non-standard properties that might cause DB issues
-        const standardProps = ['id', 'blockTypeId', 'type', 'title', 'description', 'required', 'order', 'settings'];
-        const unusualProps = Object.keys(block).filter(key => !standardProps.includes(key));
+        // Find any dynamic blocks that need their config saved separately
+        const dynamicBlocks = blocks.filter(block => 
+          block.type === 'dynamic' || block.blockTypeId === 'ai_conversation')
         
-        if (unusualProps.length > 0) {
-          console.log(`⚠️ Block ${index} has non-standard properties:`, unusualProps);
-        }
-      });
-      
-      console.log('Blocks being sent to database:', blocks);
-      
-      // Additional logging to check for any empty arrays in settings
-      blocks.forEach((block, index) => {
-        console.log(`FormBuilder Block ${index} settings:`, block.settings);
-        // Check if any values in settings are empty arrays
-        if (block.settings) {
-          Object.entries(block.settings).forEach(([key, value]) => {
-            if (Array.isArray(value) && value.length === 0) {
-              console.log(`Empty array found in block ${index} settings.${key}`);
-            }
-          });
-        }
-      });
-      
-      // Save the form and blocks using RPC transaction
-      const result = await saveFormWithBlocks(saveData, blocks)
-      
-      console.log('Form saved successfully with transaction:', result)
-      
-      // Handle dynamic blocks - save their specialized configuration
-      const dynamicBlocksToProcess = blocks.filter(block => block.type === 'dynamic')
-      
-      // Process dynamic blocks to save their configuration
-      if (dynamicBlocksToProcess.length > 0) {
-        console.log(`Processing ${dynamicBlocksToProcess.length} dynamic blocks for configuration`)
-        
-        // Find the corresponding saved blocks with proper UUIDs
-        for (const frontendBlock of dynamicBlocksToProcess) {
-          // Find the matching saved block by comparing properties, since IDs may have changed
-          const savedBlock = result.blocks.find(b => 
-            b.title === frontendBlock.title && 
-            b.order_index === frontendBlock.order
-          )
+        if (dynamicBlocks.length > 0) {
+          console.log(`Saving configurations for ${dynamicBlocks.length} dynamic blocks`)
           
-          if (savedBlock) {
-            // Save the dynamic block configuration
-            await saveDynamicBlockConfig(savedBlock.id, frontendBlock.settings)
-            console.log(`Saved configuration for dynamic block: ${savedBlock.id}`)
+          // Save each dynamic block's configuration
+          for (const block of dynamicBlocks) {
+            await saveDynamicBlockConfig(block.id, block.settings)
+            console.log(`Saved configuration for dynamic block: ${block.id}`)
           }
         }
+      } else {
+        console.error('Error saving form')
       }
     } catch (error) {
-      console.error('Error saving form:', error)
+      console.error('Error in saveForm:', error)
     } finally {
       set({ isSaving: false })
     }
@@ -335,65 +302,56 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       
       if (!completeForm) {
         console.error('Form not found')
-        throw new Error('Form not found')
+        return
       }
       
-      const formData = completeForm
-      const blocksData = completeForm.blocks
+      const { blocks: blocksData, ...formData } = completeForm
       
-      console.log('==== DEBUG: FormBuilder loadForm - Block Mapping ====');
-      
-      // Map database blocks to frontend format preserving their original properties
-      const frontendBlocks = blocksData && blocksData.length > 0
-        ? blocksData.map((block: DbFormBlock, index: number) => {
-            // Get the block definition for validation and default values
-            const blockTypeId = block.subtype as StaticBlockSubtype | 'dynamic'; // Use correct subtype union
-            const blockDef = getBlockDefinition(blockTypeId)
-             
-            // Debug logging for this specific block
-            console.log(`Block ${index + 1} (${block.id}):`);
-            console.log(`  - From DB: subtype = "${block.subtype}"`)
-            console.log(`  - Mapped to blockTypeId = "${blockTypeId}"`);
+      // Map blocks from database blocks to frontend blocks
+      const frontendBlocks = Array.isArray(blocksData)
+        ? blocksData.map((block: any, index: number) => {
+            // Map database block type/subtype to correct frontend blockTypeId
+            const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
             
-            if (!blockDef) {
-              console.error(`  - Block definition not found for typeId: ${blockTypeId}. Skipping detailed log.`);
-              // Return a minimal valid block if definition is missing
-              return {
-                id: block.id,
-                blockTypeId: blockTypeId,
-                type: 'static' as BlockType, // Ensure it matches BlockType
-                title: block.title || 'Untitled Block', // Default title
-                description: block.description || '',
-                required: block.required || false,
-                order: block.order_index || index,
-                settings: block.settings || {}
-              }
+            // Get the block definition using the mapped blockTypeId
+            const blockDef = getBlockDefinition(blockTypeId);
+            
+            // Get base settings from block or fallback to defaults
+            let baseSettings = block.settings || (blockDef?.getDefaultValues ? blockDef.getDefaultValues() : {}) || {};
+            
+            // For dynamic blocks, merge in the dynamic_config properties with appropriate name mapping
+            if (block.type === 'dynamic' && block.dynamic_config) {
+              const dynamicSettings = {
+                startingPrompt: block.dynamic_config.starter_question || "How can I help you today?",
+                temperature: block.dynamic_config.temperature || 0.7,
+                maxQuestions: block.dynamic_config.max_questions || 5,
+                contextInstructions: block.dynamic_config.ai_instructions || ''
+              };
+              
+              // Merge dynamic settings with any existing settings
+              baseSettings = {
+                ...baseSettings,
+                ...dynamicSettings
+              };
+              
+              console.log('Dynamic block settings loaded for block:', block.id);
             }
             
-            console.log(`  - Found Block definition:`, {
-              id: blockDef.id, 
-              name: blockDef.name,
-              type: blockDef.type,
-              category: blockDef.category,
-              iconExists: blockDef.icon ? 'yes' : 'no',
-              iconType: blockDef.icon ? typeof blockDef.icon : 'undefined'
-            });
-             
             // Create a block preserving original properties
-            return {
+            const frontendBlock = {
               id: block.id,
-              blockTypeId: blockTypeId,
-              type: blockDef.type || 'static', // Fallback type
-              title: block.title || blockDef.defaultTitle || '', // Fallback title
-              description: block.description || blockDef.defaultDescription || '',
+              blockTypeId: blockTypeId, // This is the key ID used to look up in the registry
+              type: blockDef?.type || block.type || 'static', // Use registry type if available or preserve DB type
+              title: block.title || blockDef?.defaultTitle || '', // Fallback title
+              description: block.description || blockDef?.defaultDescription || '',
               required: block.required || false,
               order: block.order_index || index,
-              settings: block.settings || blockDef.getDefaultValues() || {} // Fallback settings
-            }
+              settings: baseSettings // Use settings with dynamic config merged in if applicable
+            };
+            
+            return frontendBlock
           })
         : [] // Handle case where blocksData is null or empty
-      
-      // Theme data is available from formData.theme if needed
       
       // Update the store with form and blocks
       set({
@@ -421,7 +379,6 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         blocks: frontendBlocks,
         currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null
       })
-      
     } catch (error) {
       console.error('Error loading form:', error)
     } finally {

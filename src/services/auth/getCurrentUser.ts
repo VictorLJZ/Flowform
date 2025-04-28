@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { getVerifiedUser } from './verifiedAuth';
 
 /**
  * Get the current authenticated user
@@ -6,15 +7,20 @@ import { createClient } from '@/lib/supabase/client';
  * @returns The current user or null if not authenticated
  */
 export async function getCurrentUser() {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.getUser();
-  
-  if (error) {
-    console.error('Error getting current user:', error);
+  try {
+    console.log('[getCurrentUser] Fetching verified user');
+    const user = await getVerifiedUser();
+    
+    if (!user) {
+      console.log('[getCurrentUser] No authenticated user found');
+      return null;
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('[getCurrentUser] Error:', error);
     return null;
   }
-  
-  return data.user;
 }
 
 /**
