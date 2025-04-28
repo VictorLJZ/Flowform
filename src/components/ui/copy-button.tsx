@@ -41,12 +41,12 @@ export function CopyField({ value, className, readOnly = true, onCopy }: CopyFie
   }
   
   return (
-    <div className="flex w-full max-w-sm items-center space-x-2">
-      <div className="relative flex-1">
+    <div className="flex w-full items-center space-x-2">
+      <div className="relative w-full">
         <Input 
           value={value} 
           readOnly={readOnly}
-          className={`pr-10 ${className}`}
+          className={`pr-10 w-full ${className}`}
         />
         <Button
           type="button"

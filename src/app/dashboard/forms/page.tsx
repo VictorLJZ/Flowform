@@ -8,7 +8,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CopyField } from "@/components/ui/copy-button"
-import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText } from "lucide-react"
+import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText, Grid, List } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
@@ -36,14 +36,14 @@ export default function FormsPage() {
   // Use selected workspace if available, otherwise fallback to first workspace
   const workspaceId = currentWorkspaceId || workspaces?.[0]?.id
   const { forms, isLoading: isFormsLoading, error: formsError, mutate } = useForms(workspaceId)
-  const { user, isLoading: isAuthLoading } = useAuthSession()
-  const userId = user?.id
+  const { isLoading: isAuthLoading } = useAuthSession()
   const { toast } = useToast()
   
   // Combine loading states
   const isLoading = isFormsLoading || isAuthLoading
   const error = formsError
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   
   // Refresh forms when workspace changes
   useEffect(() => {
@@ -152,33 +152,58 @@ export default function FormsPage() {
           </Breadcrumb>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-6 p-6 pt-3">
+      <div className="flex flex-1 flex-col gap-6 p-6 pb-6 pt-3">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">My Forms</h1>
-          <Button onClick={handleCreateForm}>
-            <Plus className="mr-2 h-4 w-4" /> Create Form
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button onClick={handleCreateForm} className="mr-2">
+              <Plus className="mr-2 h-4 w-4" /> Create Form
+            </Button>
+            <div className="border rounded-md overflow-hidden flex">
+              <Button 
+                variant={viewMode === 'grid' ? "default" : "ghost"} 
+                size="sm" 
+                className="rounded-none px-3 h-9" 
+                onClick={() => setViewMode('grid')}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant={viewMode === 'list' ? "default" : "ghost"} 
+                size="sm" 
+                className="rounded-none px-3 h-9" 
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         {forms.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full" 
+            : "flex flex-col space-y-2 h-full"
+          }>
             {forms.map((form, index) => (
-              <Card key={form.form_id || `form-${index}`} className="overflow-hidden flex flex-col">
-                {/* Thumbnail preview */}
-                <div className="h-32 bg-muted flex items-center justify-center border-b">
-                  {/* Form preview placeholder */}
-                  <div className="text-muted-foreground text-sm flex flex-col items-center">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 mb-2">
-                      <FileText className="h-5 w-5 text-primary" />
+              <Card key={form.form_id || `form-${index}`} className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} h-full ${viewMode === 'list' ? 'p-3' : '!pt-0'}`}>
+                {viewMode !== 'list' && (
+                  /* Thumbnail preview - only in grid view */
+                  <div className="h-32 w-full bg-muted flex items-center justify-center border-b">
+                    {/* Form preview placeholder */}
+                    <div className="text-muted-foreground text-sm flex flex-col items-center">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 mb-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <span>Form Preview</span>
                     </div>
-                    <span>Form Preview</span>
                   </div>
-                </div>
-                <CardHeader className="pb-3">
+                )}
+                <CardHeader className={`pb-3 ${viewMode === 'list' ? 'flex-1 !px-0 !py-0' : ''}`}>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="line-clamp-1">{form.title}</CardTitle>
-                      <CardDescription className="mt-1 text-xs">Last edited: {new Date(form.updated_at).toLocaleDateString()}</CardDescription>
+                      <CardDescription className={`mt-1 text-xs ${viewMode === 'list' ? 'inline-block ml-2' : ''}`}>Last edited: {new Date(form.updated_at).toLocaleDateString()}</CardDescription>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -206,13 +231,13 @@ export default function FormsPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-0">
+                <CardContent className={`pt-0 ${viewMode === 'list' ? 'flex-1 !px-0' : ''}`}>
                   {/* Shareable link field */}
-                  <div className="mt-2">
+                  <div className={`${viewMode === 'list' ? 'mt-0' : 'mt-2'} w-full`}>
                     <p className="text-xs text-muted-foreground mb-1.5">Share link</p>
                     <CopyField 
                       value={`${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`} 
-                      className="text-xs bg-muted h-8" 
+                      className="text-xs bg-muted h-8 w-full" 
                     />
                     <div className="flex items-center justify-between mt-1.5">
                       <p className="text-[10px] text-muted-foreground">

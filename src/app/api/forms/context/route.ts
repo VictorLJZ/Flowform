@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { DynamicBlockConfig } from '@/types/supabase-types';
 
+export const dynamic = 'force-dynamic';
+
 // Get the context of a form including all questions
 export async function GET(request: Request) {
   try {
