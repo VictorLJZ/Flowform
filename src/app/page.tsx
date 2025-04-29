@@ -1,6 +1,7 @@
 "use client";
 
 import MegaNavbar from "@/components/layout/public/MegaNavbar";
+import FooterBar from "@/components/layout/public/FooterBar";
 import Hero from "@/components/sections/Hero";
 import Features from "@/components/sections/Features";
 import Testimonials from "@/components/sections/Testimonials";
@@ -16,6 +17,7 @@ export default function Home() {
         <Testimonials />
         <CallToAction />
       </main>
+      <FooterBar />
     </>
   );
 }

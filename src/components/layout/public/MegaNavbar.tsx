@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronDown, ChevronRight, LogOut, LayoutDashboard } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useRouter } from 'next/navigation'
@@ -65,26 +66,26 @@ const navItems: NavItem[] = [
           },
           {
             title: "Form builder",
-            description: "Signups and orders",
+            description: "Create custom forms to collect data and insights from your users.",
             href: "/Features/form-builder",
             icon: "form"
           },
           {
-            title: "Survey maker",
-            description: "Research and feedback",
+            title: "Powerful branching",
+            description: "Branching logic that allows you to control the flow of your form with utmost precision.",
             href: "/Features/survey-maker",
             icon: "survey"
           },
           {
-            title: "Quiz maker",
-            description: "Trivia and product match",
-            href: "/Features/quiz-maker",
+            title: "Integrations",
+            description: "Find the apps your team is already using or discover new ways to get work done with FlowForm.",
+            href: "/Features/integrations",
             icon: "quiz"
           },
           {
-            title: "Test maker",
-            description: "Assessments and knowledge tests",
-            href: "/Features/test-maker",
+            title: "Analytics",
+            description: "Track and analyze the performance of your forms and surveys with powerful features all on one platform.",
+            href: "/Features/analytics",
             icon: "test"
           },
         ],
@@ -104,70 +105,54 @@ const navItems: NavItem[] = [
     title: "Solutions",
     sections: [
       {
-        title: "TEAMS",
+        title: "SOLUTIONS THAT HELP YOU ", // The ending will be animated
+        animatedEndings: ["SUCCEED", "INNOVATE", "TRANSFORM"],
         items: [
           {
-            title: "Marketing",
-            href: "/solutions/teams/marketing",
+            title: "Enterprise solutions",
+            description: "Secure, scalable solutions for organizations with complex needs.",
+            href: "/solutions/enterprise",
+            icon: "overview"
           },
           {
-            title: "Product",
-            href: "/solutions/teams/product",
+            title: "Collaboration features",
+            description: "Work together with your team to build the perfect form experience.",
+            href: "/solutions/collaboration",
+            icon: "ai"
           },
           {
-            title: "Human resources",
-            href: "/solutions/teams/hr",
+            title: "Advanced security",
+            description: "Enterprise-grade security features to protect your data and users.",
+            href: "/solutions/security",
+            icon: "form"
           },
           {
-            title: "Customer success",
-            href: "/solutions/teams/customer-success",
+            title: "API access",
+            description: "Build custom integrations and workflows with our powerful API.",
+            href: "/solutions/api",
+            icon: "survey"
           },
           {
-            title: "Business",
-            href: "/solutions/teams/business",
-          },
-        ],
-      },
-      {
-        title: "USE CASES",
-        items: [
-          {
-            title: "Application form",
-            href: "/solutions/use-cases/application",
+            title: "Scalable infrastructure",
+            description: "Our platform grows with your needs, from startups to enterprise.",
+            href: "/solutions/infrastructure",
+            icon: "quiz"
           },
           {
-            title: "Gather feedback",
-            href: "/solutions/use-cases/feedback",
-          },
-          {
-            title: "Landing page",
-            href: "/solutions/use-cases/landing",
-          },
-          {
-            title: "Lead generation",
-            href: "/solutions/use-cases/leads",
-          },
-          {
-            title: "Market research",
-            href: "/solutions/use-cases/research",
-          },
-          {
-            title: "NPS form",
-            href: "/solutions/use-cases/nps",
-          },
-          {
-            title: "Registration form",
-            href: "/solutions/use-cases/registration",
-          },
-          {
-            title: "Short form builder",
-            href: "/solutions/use-cases/short-form",
+            title: "Compliance & privacy",
+            description: "GDPR, HIPAA, and SOC2 compliant solutions for regulated industries.",
+            href: "/solutions/compliance",
+            icon: "test"
           },
         ],
       },
       {
         title: "WORKFLOWS",
         items: [
+          {
+            title: "Integrations",
+            href: "/solutions/integrations",
+          },
           {
             title: "Apps that integrate with FlowForm",
             href: "/solutions/integrations",
@@ -195,16 +180,8 @@ const navItems: NavItem[] = [
             href: "/resources/help",
           },
           {
-            title: "API documentation",
-            href: "/resources/api",
-          },
-          {
             title: "Guides",
             href: "/resources/guides",
-          },
-          {
-            title: "Webinars",
-            href: "/resources/webinars",
           },
         ],
       },
@@ -212,8 +189,8 @@ const navItems: NavItem[] = [
         title: "COMPANY",
         items: [
           {
-            title: "About us",
-            href: "/company/about",
+            title: "Partner with us",
+            href: "/company/partners",
           },
           {
             title: "Careers",
@@ -367,9 +344,9 @@ export default function MegaNavbar() {
     <>
       <nav className="fixed top-0 w-full bg-white z-50 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="grid grid-cols-3 items-center h-16">
             {/* Left - Logo */}
-            <div className="flex-shrink-0 flex items-center">
+            <div className="flex items-center">
               <Link href="/" className="flex items-center">
                 <Image 
                   src="/logo.svg" 
@@ -382,7 +359,7 @@ export default function MegaNavbar() {
             </div>
 
             {/* Center - Main navigation */}
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center justify-center">
               <ul className="flex space-x-1">
                 {navItems.map((item) => (
                   <li key={item.title} className="relative">
@@ -420,7 +397,7 @@ export default function MegaNavbar() {
             </div>
 
             {/* Right - Auth buttons / User Menu */}
-            <div className="flex-shrink-0 flex items-center space-x-4">
+            <div className="flex items-center justify-end space-x-4">
               {user ? (
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
@@ -495,7 +472,7 @@ export default function MegaNavbar() {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-4 gap-8">
                   {item.sections?.map((section) => (
-                    <div key={section.title} className={`flex flex-col space-y-4 ${section.title === "FEATURES THAT HELP YOU " && item.title === "Features" ? "col-span-3" : ""}`}>
+                    <div key={section.title} className={`flex flex-col space-y-4 ${(section.title === "FEATURES THAT HELP YOU " && item.title === "Features") || (section.title === "SOLUTIONS THAT HELP YOU " && item.title === "Solutions") ? "col-span-3" : ""}`}>
                       <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         {section.animatedEndings ? (
                           <TypedTitle baseTitle={section.title} endings={section.animatedEndings} />
@@ -504,11 +481,11 @@ export default function MegaNavbar() {
                         )}
                       </h3>
                       
-                      {section.title === "FEATURES THAT HELP YOU " && item.title === "Features" ? (
-                        <div className="grid grid-cols-3 gap-5 w-full">
+                      {(section.title === "FEATURES THAT HELP YOU " && item.title === "Features") || (section.title === "SOLUTIONS THAT HELP YOU " && item.title === "Solutions") ? (
+                        <div className="grid grid-cols-3 gap-5 w-full h-full">
                           {section.items.map((subitem) => (
-                            <Link href={subitem.href} key={subitem.title} className="group">
-                              <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors">
+                            <Link href={subitem.href} key={subitem.title} className="group h-full">
+                              <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors h-full flex flex-col">
                                 <div className="flex items-center mb-2">
                                   <div className="mr-3 text-primary">
                                     {subitem.icon ? (
@@ -527,7 +504,7 @@ export default function MegaNavbar() {
                                   <h4 className="text-sm font-medium">{subitem.title}</h4>
                                 </div>
                                 {subitem.description && (
-                                  <p className="text-xs text-gray-500">{subitem.description}</p>
+                                  <p className="text-xs text-gray-500 mt-1">{subitem.description}</p>
                                 )}
                               </div>
                             </Link>
@@ -571,14 +548,21 @@ export default function MegaNavbar() {
                           {section.items.map((subitem) => (
                             <li key={subitem.title}>
                               <Link href={subitem.href} className="group flex flex-col">
-                                <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
-                                  {subitem.title}
-                                </div>
-                                {subitem.description && (
-                                  <p className="text-xs text-gray-500">
-                                    {subitem.description}
-                                  </p>
-                                )}
+                                <motion.div
+                                  className="flex flex-col"
+                                  initial={{ x: 0 }}
+                                  whileHover={{ x: 4 }}
+                                  transition={{ type: 'tween', duration: 0.2 }}
+                                >
+                                  <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                                    {subitem.title}
+                                  </div>
+                                  {subitem.description && (
+                                    <p className="text-xs text-gray-500">
+                                      {subitem.description}
+                                    </p>
+                                  )}
+                                </motion.div>
                               </Link>
                             </li>
                           ))}
