@@ -41,6 +41,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "immer": "^10.1.1",
+    "lightningcss-linux-x64-gnu": "^1.29.3",
     "lucide-react": "^0.487.0",
     "motion": "^12.6.5",
     "next": "15.2.4",
