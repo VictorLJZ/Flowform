@@ -90,11 +90,30 @@ export async function middleware(request: NextRequest) {
       });
     }
     
+    // For debugging: Log the path and conditions to trace the issue
+    // Allow both form API and sessions API
+    const isFormApiEndpoint = request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+/) !== null;
+    const isFormSessionsEndpoint = request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+\/sessions/) !== null;
+    const isPublicApiEndpoint = request.nextUrl.pathname.startsWith('/api/public/');
+    const isFEndpoint = request.nextUrl.pathname.startsWith('/api/f/');
+    
+    console.log('AUTH CHECK for API route:', {
+      path: request.nextUrl.pathname,
+      isAuthenticated: !!user,
+      isFormApiEndpoint,
+      isFormSessionsEndpoint,
+      isPublicApiEndpoint,
+      isFEndpoint,
+      shouldAllow: !!user || isPublicApiEndpoint || isFormApiEndpoint || isFEndpoint
+    });
+    
     // For API routes, if no token is found and route requires authentication,
-    // return a 401 Unauthorized response
+    // return a 401 Unauthorized response UNLESS the route is explicitly public
     if (
       !user && 
-      !request.nextUrl.pathname.startsWith('/api/public/')
+      !isPublicApiEndpoint &&
+      !isFormApiEndpoint && // Allow all form API endpoints for public access
+      !isFEndpoint
     ) {
       return NextResponse.json(
         { error: 'Authentication required' },

@@ -71,7 +71,7 @@ export const fetchFormResponses = async (formId: string): Promise<CompleteRespon
     .from('form_responses')
     .select('*')
     .eq('form_id', formId)
-    .order('created_at', { ascending: false });
+    .order('started_at', { ascending: false });
 
   if (responseError) throw responseError;
   if (!responseData || responseData.length === 0) {

@@ -88,20 +88,53 @@ export default function FormViewerPage() {
   }, [form, formId, storageKey, setBlocks, setMode])
 
   useEffect(() => {
+    console.log('[Session Init] Starting session initialization, form loaded:', !!form);
     if (!form) return
+    
+    console.log('[Session Init] Checking localStorage for existing session:', storageKey);
     const saved = localStorage.getItem(storageKey)
+    
     if (saved) {
-      const { sessionId: sid, currentIndex: idx } = JSON.parse(saved)
-      setResponseId(sid)
-      setCurrentIndex(idx)
+      console.log('[Session Init] Found existing session in localStorage:', saved);
+      try {
+        const { sessionId: sid, currentIndex: idx } = JSON.parse(saved)
+        console.log('[Session Init] Parsed session data:', { sessionId: sid, currentIndex: idx });
+        setResponseId(sid)
+        setCurrentIndex(idx)
+      } catch (error) {
+        console.error('[Session Init] Failed to parse session data:', error);
+        // Clear invalid session data
+        localStorage.removeItem(storageKey);
+        // Fallback to creating new session
+        createNewSession();
+      }
     } else {
+      console.log('[Session Init] No existing session found, creating new session');
+      createNewSession();
+    }
+    
+    function createNewSession() {
+      console.log('[Session Init] Making API request to create session for form:', formId);
       fetch(`/api/forms/${formId}/sessions`, { method: "POST" })
-        .then(res => res.json())
+        .then(res => {
+          console.log('[Session Init] Session API response status:', res.status);
+          if (!res.ok) {
+            throw new Error(`Failed to create session: ${res.status} ${res.statusText}`);
+          }
+          return res.json();
+        })
         .then(data => {
+          console.log('[Session Init] Session created successfully:', data);
+          if (!data.sessionId) {
+            throw new Error('API returned success but no sessionId was provided');
+          }
           setResponseId(data.sessionId)
           localStorage.setItem(storageKey, JSON.stringify({ sessionId: data.sessionId, currentIndex: 0 }))
         })
-        .catch(console.error)
+        .catch(error => {
+          console.error('[Session Init] Failed to create session:', error);
+          setSubmitError('Failed to initialize form session. Please try refreshing the page.');
+        })
     }
   }, [form, formId, storageKey])
 
@@ -126,7 +159,16 @@ export default function FormViewerPage() {
   }
   
   const handleAnswer = async () => {
-    if (!responseId) return
+    console.log('handleAnswer called', { 
+      responseId, 
+      blockId: block?.id, 
+      currentAnswer, 
+      isNextDisabled 
+    });
+    if (!responseId) {
+      console.error('No responseId available');
+      return;
+    }
     setSubmitError(null)
     setSubmitting(true)
     try {
@@ -240,6 +282,11 @@ export default function FormViewerPage() {
   }
 
   const hasValidAnswer = (() => {
+    console.log('Checking if answer is valid:', { 
+      blockTypeId: block.blockTypeId, 
+      required: block.required, 
+      currentAnswer 
+    });
     if (!block.required) return true;
     const v = currentAnswer;
     switch (block.blockTypeId) {
@@ -277,6 +324,13 @@ export default function FormViewerPage() {
   })();
   
   const isNextDisabled = block.required && !hasValidAnswer || submitting;
+  console.log('Next button state:', { 
+    isNextDisabled, 
+    required: block.required, 
+    hasValidAnswer, 
+    submitting, 
+    isLastQuestion
+  });
 
   const commonProps = {
     id: block.id,
@@ -422,7 +476,14 @@ export default function FormViewerPage() {
         </button>
         
         <button 
-          onClick={handleAnswer}
+          onClick={() => {
+            console.log('Next button clicked', {
+              disabled: isNextDisabled || isLastQuestion,
+              isNextDisabled,
+              isLastQuestion
+            });
+            handleAnswer();
+          }}
           disabled={isNextDisabled || isLastQuestion}
           className="w-10 h-10 rounded-full bg-white/80 shadow-md flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Next question"
