@@ -1,6 +1,7 @@
 "use client"
 
-import { StaticBlockSubtype, BlockType } from '@/types/supabase-types';
+import { BlockType } from '@/types/block-types';
+import { StaticBlockSubtype } from '@/types/supabase-types';
 
 /**
  * Map block types to database type and subtype

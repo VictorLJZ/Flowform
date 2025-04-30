@@ -193,9 +193,9 @@ export default function Page() {
                 {(recentForms?.length ?? 0) > 0 ? ( // Check length safely
                   <div className="space-y-3">
                     {(recentForms ?? []).map((form) => ( // Map over safely, defaulting to []
-                      <div key={form.id} className="flex items-center gap-3">
+                      <div key={form.form_id} className="flex items-center gap-3">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.id)}>
+                        <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.form_id)}>
                           {form.title}
                         </span>
                       </div>
@@ -220,7 +220,7 @@ export default function Page() {
                   {(recentForms?.length ?? 0) > 0 && ( // Check length safely
                     <button 
                       className="w-full text-left flex items-center gap-2 p-2 hover:bg-secondary rounded-md transition-colors"
-                      onClick={() => handleViewResponses(recentForms?.[0]?.id ?? '')} // Access safely
+                      onClick={() => handleViewResponses(recentForms?.[0]?.form_id ?? '')} // Access safely
                     >
                       <FileText className="h-4 w-4" /> View Latest Responses
                     </button>

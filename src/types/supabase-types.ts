@@ -1,6 +1,8 @@
 // FlowForm-neo Supabase Database Types
 // Defines TypeScript interfaces for all database tables
 
+import type { BlockType } from './block-types';
+
 /**
  * Database Tables - Workspace Management
  */
@@ -63,7 +65,7 @@ export interface Form {
   published_at: string | null; // ISO date string
 }
 
-export type BlockType = 'static' | 'dynamic' | 'layout' | 'integration';
+// BlockType definition moved to block-types.ts
 export type StaticBlockSubtype = 
   'short_text' | 
   'long_text' | 
@@ -223,22 +225,4 @@ export interface CompleteResponse extends FormResponse {
 export type StaticAnswerRecord = Pick<StaticBlockAnswer, 'block_id' | 'answer'>
 export type DynamicResponseRecord = Pick<DynamicBlockResponse, 'block_id' | 'conversation'>
 
-/**
- * Legacy Form Type (used in existing components)
- * This matches the form structure expected by components like FormSessionPage
- */
-export interface FormRecord {
-  id: string; // Legacy ID field (maps to form_id in new schema)
-  title: string;
-  description?: string;
-  status: 'draft' | 'published' | 'archived';
-  workspace_id: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  published_at?: string;
-  max_questions: number; // Maximum questions for dynamic conversations
-  starter_question: string; // Initial question to ask
-  temperature: number; // AI temperature setting
-  ai_instructions?: string; // Instructions for the AI
-}
+// FormRecord has been removed - use Form + DynamicBlockConfig combination instead

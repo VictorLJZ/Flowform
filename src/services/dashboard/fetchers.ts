@@ -14,29 +14,30 @@ export interface RecentActivity {
   completed: boolean;
 }
 
-// Assuming FormRecord is already defined elsewhere, if not, define it here
-// import { FormRecord } from '@/types/supabase-types';
-// For simplicity, let's use a minimal version if FormRecord isn't easily available
-export interface SimpleFormRecord {
-  id: string;
+// Represents a form with its dynamic configuration
+export interface DashboardFormData {
+  form_id: string;
   title: string;
-  description: string;
+  description: string | null;
   status: 'draft' | 'published' | 'archived';
   workspace_id: string;
   created_by: string;
   created_at: string;
   updated_at: string;
   published_at: string | null;
-  max_questions: number;
-  starter_question: string;
-  temperature: number;
+  // Dynamic block configuration properties
+  dynamicConfig?: {
+    max_questions: number;
+    starter_question: string;
+    temperature: number;
+  };
 }
 
 
 export interface DashboardData {
   stats: DashboardStats;
   recentActivity: RecentActivity[];
-  recentForms: SimpleFormRecord[]; // Use SimpleFormRecord or import FormRecord
+  recentForms: DashboardFormData[]; // Forms with their dynamic configuration
 }
 
 /**
@@ -65,10 +66,40 @@ export const fetchDashboardData = async (workspaceId: string): Promise<Dashboard
     { id: '1', form_id: 'form1', form_title: 'Customer Feedback (Placeholder)', created_at: new Date().toISOString(), completed: true },
     { id: '2', form_id: 'form2', form_title: 'Product Survey (Placeholder)', created_at: new Date(Date.now() - 86400000).toISOString(), completed: true }
   ];
-  // Using SimpleFormRecord for now
-  const placeholderForms: SimpleFormRecord[] = [
-    { id: 'form1', title: 'Customer Feedback (Placeholder)', description: 'Collect feedback', status: 'published' as const, workspace_id: workspaceId, created_by: 'user1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), published_at: new Date().toISOString(), max_questions: 5, starter_question: 'How was your experience?', temperature: 0.7 },
-    { id: 'form2', title: 'Product Survey (Placeholder)', description: 'Product feedback', status: 'published' as const, workspace_id: workspaceId, created_by: 'user1', created_at: new Date(Date.now() - 86400000).toISOString(), updated_at: new Date(Date.now() - 86400000).toISOString(), published_at: new Date(Date.now() - 86400000).toISOString(), max_questions: 5, starter_question: 'Thoughts on product?', temperature: 0.7 }
+  // Forms with dynamic configuration
+  const placeholderForms: DashboardFormData[] = [
+    { 
+      form_id: 'form1', 
+      title: 'Customer Feedback (Placeholder)', 
+      description: 'Collect feedback', 
+      status: 'published' as const, 
+      workspace_id: workspaceId, 
+      created_by: 'user1', 
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString(), 
+      published_at: new Date().toISOString(), 
+      dynamicConfig: {
+        max_questions: 5, 
+        starter_question: 'How was your experience?', 
+        temperature: 0.7
+      }
+    },
+    { 
+      form_id: 'form2', 
+      title: 'Product Survey (Placeholder)', 
+      description: 'Product feedback', 
+      status: 'published' as const, 
+      workspace_id: workspaceId, 
+      created_by: 'user1', 
+      created_at: new Date(Date.now() - 86400000).toISOString(), 
+      updated_at: new Date(Date.now() - 86400000).toISOString(), 
+      published_at: new Date(Date.now() - 86400000).toISOString(), 
+      dynamicConfig: {
+        max_questions: 5, 
+        starter_question: 'Thoughts on product?', 
+        temperature: 0.7
+      }
+    }
   ];
 
   // In a real scenario, you'd fetch and potentially filter based on workspaceId here.

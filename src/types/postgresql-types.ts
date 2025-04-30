@@ -5,7 +5,8 @@
  * and data transformation for database operations.
  */
 
-import { BlockType, StaticBlockSubtype } from './supabase-types';
+import { BlockType } from './block-types';
+import { StaticBlockSubtype } from './supabase-types';
 
 /**
  * Generic themes and settings interfaces to replace 'any' use

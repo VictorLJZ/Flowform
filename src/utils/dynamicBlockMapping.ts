@@ -2,6 +2,7 @@
  * Mapping utilities for dynamic block settings
  * Maps frontend field names to database field names and vice versa
  */
+import { DynamicBlockConfig } from '@/types/supabase-types';
 
 // Frontend form builder settings interface
 export interface FormBuilderDynamicSettings {
@@ -11,16 +12,18 @@ export interface FormBuilderDynamicSettings {
   contextInstructions?: string | null;
 }
 
-// Database representation interface
-export interface DynamicBlockConfig {
-  starter_question: string;
-  temperature: number;
-  max_questions: number;
-  ai_instructions: string | null;
-}
+// Using DynamicBlockConfig from supabase-types.ts
+
+// Type for partial DynamicBlockConfig since we can't always provide all fields
+export type DynamicBlockConfigInput = Pick<DynamicBlockConfig, 
+  'starter_question' | 
+  'temperature' | 
+  'max_questions' | 
+  'ai_instructions'
+>;
 
 // Map frontend form builder settings to database dynamic block config
-export function mapToDynamicBlockConfig(settings: FormBuilderDynamicSettings): DynamicBlockConfig {
+export function mapToDynamicBlockConfig(settings: FormBuilderDynamicSettings): DynamicBlockConfigInput {
   return {
     starter_question: settings.startingPrompt || "How can I help you today?",
     temperature: settings.temperature !== undefined ? settings.temperature : 0.7,
