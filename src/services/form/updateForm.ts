@@ -1,15 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { Form } from '@/types/supabase-types';
+import { FormUpdateInput } from '@/types/form-service-types';
 import { invalidateFormCacheClient } from './invalidateCacheClient';
-
-type FormUpdateInput = Partial<Pick<Form, 
-  'title' | 
-  'description' | 
-  'status' | 
-  'theme' | 
-  'settings' | 
-  'published_at'
->>;
 
 /**
  * Update an existing form

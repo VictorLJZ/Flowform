@@ -1,26 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 import { Form, FormBlock } from '@/types/supabase-types';
+import { SaveFormInput, SaveFormOutput } from '@/types/form-service-types';
 import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
-
-// Input types for saveFormWithBlocks
-interface SaveFormInput {
-  form_id: string;
-  title: string;
-  description?: string;
-  workspace_id?: string;
-  created_by?: string;
-  status?: 'draft' | 'published' | 'archived';
-  theme?: Record<string, unknown>;
-  settings?: Record<string, unknown>;
-}
-
-interface SaveFormOutput {
-  form: Form;
-  blocks: FormBlock[];
-  success: boolean;
-}
 
 /**
  * Save a complete form with all its blocks

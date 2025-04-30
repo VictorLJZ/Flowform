@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useForm } from "@/hooks/useForm"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import type { FormBuilderState } from "@/types/form-builder-types"
+import type { FormBuilderState } from "@/types/store-types"
 import type { QAPair } from "@/types/supabase-types"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from 'framer-motion'

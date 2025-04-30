@@ -1,15 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
+import { FormBlockUpdateInput, FormBlockCreationResult } from '@/types/form-service-types';
 import { invalidateFormCache } from './invalidateCache';
 
-type FormBlockUpdateInput = Partial<Pick<FormBlock, 
-  'title' | 
-  'description' | 
-  'required' | 
-  'order_index' | 
-  'settings'
->>;
+// Using the existing FormBlockUpdateInput from centralized types
 
+// Define this one here as it was not included in our centralized types
 type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,
   'starter_question' |
   'temperature' |
@@ -27,9 +23,9 @@ type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,
  */
 export async function updateFormBlock(
   blockId: string,
-  blockData: FormBlockUpdateInput,
+  blockData: Omit<FormBlockUpdateInput, 'id'>,
   dynamicConfig?: DynamicConfigUpdateInput
-): Promise<FormBlock & { dynamic_config?: DynamicBlockConfig }> {
+): Promise<FormBlockCreationResult> {
   const supabase = createClient();
 
   // First, fetch the current block to check its type

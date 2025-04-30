@@ -1,24 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
+import { FormBlockInput, DynamicConfigInput, FormBlockCreationResult } from '@/types/form-service-types';
 import { invalidateFormCache } from './invalidateCache';
-
-type FormBlockInput = Pick<FormBlock, 
-  'form_id' | 
-  'type' | 
-  'subtype' | 
-  'title' | 
-  'description' | 
-  'required' | 
-  'order_index' | 
-  'settings'
->;
-
-type DynamicConfigInput = Pick<DynamicBlockConfig,
-  'starter_question' |
-  'temperature' |
-  'max_questions' |
-  'ai_instructions'
->;
 
 /**
  * Create a new form block
@@ -30,7 +13,7 @@ type DynamicConfigInput = Pick<DynamicBlockConfig,
 export async function createFormBlock(
   blockData: FormBlockInput,
   dynamicConfig?: DynamicConfigInput
-): Promise<FormBlock & { dynamic_config?: DynamicBlockConfig }> {
+): Promise<FormBlockCreationResult> {
   const supabase = createClient();
 
   // Validate that dynamic blocks have config

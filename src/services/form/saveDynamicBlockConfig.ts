@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { mapToDynamicBlockConfig } from '@/utils/dynamicBlockMapping';
+import { SaveDynamicConfigInput, SaveDynamicConfigResult, ServiceResponse } from '@/types/form-service-types';
 
 /**
  * Save dynamic block configuration after a form block is saved
@@ -12,7 +13,7 @@ import { mapToDynamicBlockConfig } from '@/utils/dynamicBlockMapping';
 export async function saveDynamicBlockConfig(
   blockId: string,
   settings: Record<string, unknown>
-): Promise<{ success: boolean }> {
+): Promise<SaveDynamicConfigResult> {
   const supabase = createClient();
   
   try {
@@ -67,9 +68,9 @@ export async function saveDynamicBlockConfig(
       }
     }
     
-    return { success: true };
+    return { success: true, data: existingConfig || dynamicConfig };
   } catch (error) {
     console.error('Failed to save dynamic block config:', error);
-    return { success: false };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }

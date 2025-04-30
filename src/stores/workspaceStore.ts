@@ -1,11 +1,7 @@
 // src/stores/workspaceStore.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-
-interface WorkspaceState {
-  currentWorkspaceId: string | null;
-  setCurrentWorkspaceId: (workspaceId: string | null) => void;
-}
+import type { WorkspaceState } from '@/types/store-types';
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   // Persist the selected workspace ID in localStorage
@@ -13,7 +9,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     (set) => ({
       currentWorkspaceId: null,
       setCurrentWorkspaceId: (workspaceId) => {
-        console.log(`[workspaceStore] Setting currentWorkspaceId: ${workspaceId}`);
         set({ currentWorkspaceId: workspaceId });
       },
     }),
@@ -25,5 +20,4 @@ export const useWorkspaceStore = create<WorkspaceState>()(
   )
 );
 
-// Optional: Selector for convenience
-export const selectCurrentWorkspaceId = (state: WorkspaceState) => state.currentWorkspaceId;
+// Selector function moved to store-types.ts

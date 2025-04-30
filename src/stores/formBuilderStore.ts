@@ -10,7 +10,8 @@ import type { CompleteForm } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 import type { FormBlock, BlockType } from '@/types/block-types'
-import type { FormData, FormBuilderState } from '@/types/form-builder-types'
+import type { FormData } from '@/types/form-builder-types'
+import type { FormBuilderState } from '@/types/store-types'
 
 // Initial empty form data
 const defaultFormData: FormData = {

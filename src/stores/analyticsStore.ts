@@ -1,18 +1,10 @@
 import { create } from 'zustand'
+import type { AnalyticsState } from '@/types/store-types'
 
 // State related to data fetching (responses, currentResponse, isLoading, error)
 // has been moved to SWR hooks (useFormResponses, useFormResponse).
 // This store might still be useful for UI state or actions not directly tied to fetching,
 // like the export functionality.
-
-type AnalyticsState = {
-  // Keep state related to non-fetching actions if needed
-  isExporting: boolean;
-  exportError: string | null;
-
-  // Actions
-  exportResponses: (formId: string, format: 'csv' | 'excel') => Promise<void>
-}
 
 export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   isExporting: false,

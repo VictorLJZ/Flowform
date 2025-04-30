@@ -1,57 +1,68 @@
-import { Workspace, WorkspaceInvitation, WorkspaceMember } from './supabase-types'
+import type { FormBlock } from './block-types';
+import type { SlideLayout } from './layout-types';
+/**
+ * Analytics store state and actions
+ */
+export type AnalyticsState = {
+  // Keep state related to non-fetching actions if needed
+  isExporting: boolean;
+  exportError: string | null;
+
+  // Actions
+  exportResponses: (formId: string, format: 'csv' | 'excel') => Promise<void>
+}
 
 /**
- * Workspace Store Types
+ * Sidebar store state and actions
  */
+export type SidebarState = {
+  isOpen: boolean;
+  setSidebarOpen: (isOpen: boolean) => void;
+  toggleSidebar: () => void;
+}
 
-// Complete store state
-export interface WorkspaceStoreState {
-  // Core Workspace State
-  currentWorkspace: Workspace | null;
-  workspaces: Workspace[];
+/**
+ * Workspace store state and actions
+ */
+export interface WorkspaceState {
+  currentWorkspaceId: string | null;
+  setCurrentWorkspaceId: (workspaceId: string | null) => void;
+}
+
+/**
+ * Form builder store state and actions
+ */
+export interface FormBuilderState {
+  formData: FormData;
+  blocks: FormBlock[];
+  currentBlockId: string | null;
   isLoading: boolean;
-  error: string | null;
-  userId: string | null;
-  userEmail: string | null;
-  
-  // Invitation State
-  pendingInvitations: WorkspaceInvitation[];
-  sentInvitations: WorkspaceInvitation[];
-  isLoadingInvitations: boolean;
-  invitationError: string | null;
-  invitationLimit: number;
+  isSaving: boolean;
+  sidebarOpen: boolean;
+  blockSelectorOpen: boolean;
+  defaultBlockPresentation: import('./theme-types').BlockPresentation;
+  mode: 'builder' | 'viewer';
+
+  // actions
+  setFormData: (data: Partial<FormData>) => void;
+  setBlocks: (blocks: FormBlock[]) => void;
+  addBlock: (blockTypeId: string) => void;
+  updateBlock: (blockId: string, updates: Partial<FormBlock>) => void;
+  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => void;
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void;
+  removeBlock: (blockId: string) => void;
+  reorderBlocks: (startIndex: number, endIndex: number) => void;
+  setCurrentBlockId: (blockId: string | null) => void;
+  setSidebarOpen: (open: boolean) => void;
+  setBlockSelectorOpen: (open: boolean) => void;
+  getBlockPresentation: (blockId: string) => import('./theme-types').BlockPresentation;
+  setBlockPresentation: (blockId: string, presentation: Partial<import('./theme-types').BlockPresentation>) => void;
+  setFormTheme: (theme: Partial<import('./theme-types').FormTheme>) => void;
+  setMode: (mode: 'builder' | 'viewer') => void;
+  saveForm: () => Promise<void>;
+  loadForm: (formId: string) => Promise<void>;
+  getCurrentBlock: () => FormBlock | null;
 }
 
-// Action interfaces for each slice
-export interface CoreWorkspaceActions {
-  setCurrentWorkspace: (workspace: Workspace | null) => void;
-  fetchWorkspaces: () => Promise<void>;
-  createWorkspace: (name: string, description?: string) => Promise<Workspace>;
-  renameWorkspace: (workspaceId: string, name: string) => Promise<void>;
-  deleteWorkspace: (workspaceId: string) => Promise<void>;
-}
-
-export interface MembershipActions {
-  setUserId: (userId: string) => void;
-  setUserEmail: (email: string) => void;
-  ensureDefaultWorkspace: () => Promise<void>;
-  leaveWorkspace: (workspaceId: string) => Promise<void>;
-}
-
-export interface InvitationActions {
-  fetchPendingInvitations: () => Promise<void>;
-  fetchSentInvitations: (workspaceId: string) => Promise<void>;
-  sendInvitations: (invites: { email: string; role: 'owner' | 'admin' | 'editor' | 'viewer' }[]) => Promise<WorkspaceInvitation[]>;
-  resendInvitation: (invitationId: string) => Promise<WorkspaceInvitation | null>;
-  acceptInvitation: (token: string) => Promise<WorkspaceMember | null>;
-  declineInvitation: (token: string) => Promise<boolean>;
-  revokeInvitation: (invitationId: string) => Promise<boolean>;
-  clearInvitationError: () => void;
-}
-
-// Complete store type combining all slices
-export type WorkspaceStore = 
-  WorkspaceStoreState & 
-  CoreWorkspaceActions & 
-  MembershipActions & 
-  InvitationActions;
+// Selector functions
+export const selectCurrentWorkspaceId = (state: WorkspaceState) => state.currentWorkspaceId;

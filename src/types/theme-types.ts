@@ -20,7 +20,7 @@ export interface FormTheme {
     border: string;
   };
   
-  // Typography settings
+  // Typography styling
   typography: {
     fontFamily: string;
     headingSize: string;
@@ -28,7 +28,7 @@ export interface FormTheme {
     lineHeight: string;
   };
   
-  // Layout settings
+  // Layout styling
   layout: {
     spacing: 'compact' | 'normal' | 'spacious';
     containerWidth: string;

@@ -1,16 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-
-type GetQuestionResult = {
-  success: boolean;
-  data?: {
-    question: string;
-    blockId: string;
-    temperature: number;
-    maxQuestions: number;
-    aiInstructions: string | null;
-  };
-  error?: string;
-};
+import { GetQuestionResult } from '@/types/form-service-types';
 
 /**
  * Get the starter question for a dynamic block

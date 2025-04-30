@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Form } from '@/types/supabase-types';
-
-type FormInput = Pick<Form, 'workspace_id' | 'title' | 'description' | 'created_by' | 'status' | 'theme' | 'settings'>;
+import { FormInput } from '@/types/form-service-types';
 
 /**
  * Create a new form in a workspace

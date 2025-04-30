@@ -1,28 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { DynamicBlockConfig } from '@/types/supabase-types';
-
-export type StaticQuestionContext = {
-  id: string;
-  title: string;
-  description: string | null;
-  type: 'static';
-  subtype: string;
-};
-
-export type DynamicQuestionContext = {
-  id: string;
-  title: string;
-  description: string | null;
-  type: 'dynamic';
-  starter_question: string;
-};
-
-export type FormContextData = {
-  formId: string;
-  formTitle: string;
-  staticQuestions: StaticQuestionContext[];
-  dynamicBlocks: DynamicQuestionContext[];
-};
+import { FormContextData, StaticQuestionContext, DynamicQuestionContext } from '@/types/form-service-types';
 
 // Cache for form context data - key is formId
 const formContextCache = new Map<string, { 

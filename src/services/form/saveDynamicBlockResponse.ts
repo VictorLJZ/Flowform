@@ -1,26 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { QAPair } from '@/types/supabase-types';
+import { SaveDynamicResponseInput, SaveDynamicResponseResult, DynamicResponseData } from '@/types/form-service-types';
 import { processConversation } from '@/services/ai/processConversation';
 import { getFormContextClient } from './getFormContextClient';
-
-type SaveResponseInput = {
-  responseId: string;   // form_responses.id
-  blockId: string;      // form_blocks.id
-  formId: string;       // forms.form_id
-  question: string;     // The current question
-  answer: string;       // The user's answer
-  isStarterQuestion?: boolean; // Whether this is the first question
-};
-
-type SaveResponseResult = {
-  success: boolean;
-  data?: {
-    conversation: QAPair[];
-    nextQuestion?: string;
-    isComplete: boolean;
-  };
-  error?: string;
-};
 
 /**
  * Save a response to a dynamic block and generate the next question if needed
@@ -28,7 +10,7 @@ type SaveResponseResult = {
  * @param input - Object containing response data
  * @returns Success status with conversation data and next question (if available)
  */
-export async function saveDynamicBlockResponse(input: SaveResponseInput): Promise<SaveResponseResult> {
+export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput): Promise<SaveDynamicResponseResult> {
   const supabase = createClient();
   
   try {
@@ -136,13 +118,15 @@ export async function saveDynamicBlockResponse(input: SaveResponseInput): Promis
       }
     }
     
+    const responseData: DynamicResponseData = {
+      conversation,
+      nextQuestion,
+      isComplete
+    };
+
     return {
       success: true,
-      data: {
-        conversation,
-        nextQuestion,
-        isComplete
-      }
+      data: responseData
     };
     
   } catch (error: unknown) {
