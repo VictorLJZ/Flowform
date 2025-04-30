@@ -291,31 +291,56 @@ export default function FormViewerPage() {
   }
 
   const renderBlock = () => {
-    const blockProps = { 
-      id: block.id, 
-      title: block.title,
-      description: block.description,
-      required: block.required,
-      settings: block.settings as Record<string, unknown>
-    }
-    
+    // Use commonProps for all block types to ensure consistent navigation
     switch (block.blockTypeId) {
       case "short_text":
-        return <TextInputBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <TextInputBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "long_text":
-        return <TextAreaBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <TextAreaBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "multiple_choice":
-        return <MultipleChoiceBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <MultipleChoiceBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "checkbox_group":
-        return <CheckboxGroupBlock {...blockProps} value={currentAnswer as string[]} onChange={(v: string[]) => setCurrentAnswer(v)} />
+        return <CheckboxGroupBlock 
+          {...commonProps} 
+          value={currentAnswer as string[]} 
+          onChange={(v: string[]) => setCurrentAnswer(v)} 
+        />
       case "dropdown":
-        return <DropdownBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <DropdownBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "email":
-        return <EmailBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <EmailBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "number":
-        return <NumberBlock {...blockProps} value={currentAnswer as number} onChange={(v: string | number) => setCurrentAnswer(typeof v === 'string' ? Number(v) : v)} />
+        return <NumberBlock 
+          {...commonProps} 
+          value={currentAnswer as number} 
+          onChange={(v: string | number) => setCurrentAnswer(typeof v === 'string' ? Number(v) : v)} 
+        />
       case "date":
-        return <DateBlock {...blockProps} value={currentAnswer as string} onChange={(v: string) => setCurrentAnswer(v)} />
+        return <DateBlock 
+          {...commonProps} 
+          value={currentAnswer as string} 
+          onChange={(v: string) => setCurrentAnswer(v)} 
+        />
       case "ai_conversation":
         return <AIConversationBlock 
           {...commonProps} 
