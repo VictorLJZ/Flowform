@@ -25,11 +25,11 @@ const fetchRelatedDataForResponse = async (
   if (dynamicError) throw dynamicError;
 
   // Get the specific form data associated with this response
-  // Assuming 'id' is the PK of the forms table and response.form_id refers to it
+  // The forms table uses form_id as its primary key (not the standard 'id')
   const { data: formData, error: formError } = await supabase
     .from('forms')
     .select('*')
-    .eq('id', formId)
+    .eq('form_id', formId)
     .single();
 
   // Handle form fetching errors

@@ -158,6 +158,15 @@ Stores form submissions.
 | completed_at  | TIMESTAMP WITH TIME ZONE| When response was completed (nullable) |
 | metadata      | JSONB                   | Browser, device, source info      |
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Anyone can create responses to published forms | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published')` |
+| Respondents can update their own responses | UPDATE | `true` | null |
+| Respondents can view their own responses | SELECT | `true` | null |
+| Form owners and workspace members can view responses | SELECT | `form_id IN (SELECT f.form_id FROM forms f WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
+
 ### 10. static_block_answers
 +**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
@@ -171,6 +180,12 @@ Stores answers to static blocks.
 | answer      | TEXT                    | Answer content                    |
 | answered_at | TIMESTAMP WITH TIME ZONE| When question was answered        |
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners and workspace members can view static answers | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
+
 ### 11. dynamic_block_responses
 
 Stores AI-driven conversations.
@@ -183,6 +198,12 @@ Stores AI-driven conversations.
 | conversation | JSONB                   | Array of Q&A objects              |
 | started_at   | TIMESTAMP WITH TIME ZONE| When conversation was started     |
 | completed_at | TIMESTAMP WITH TIME ZONE| When conversation was completed   |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners and workspace members can view dynamic responses | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
 ## Analytics Tables
 

@@ -32,6 +32,17 @@ export function ResponsesTable({ formId }: ResponsesTableProps) {
   const { responses, error: responsesError, isLoading: isResponsesLoading } = useFormResponses(formId)
   const [searchTerm, setSearchTerm] = useState("")
 
+  // Debug logs to investigate response data
+  console.log('[ResponsesTable] Responses data:', responses)
+  console.log('[ResponsesTable] Responses error:', responsesError)
+  
+  // Check if responses array has data but empty answers arrays
+  if (responses && responses.length > 0) {
+    console.log('[ResponsesTable] First response:', responses[0])
+    console.log('[ResponsesTable] Static answers array:', responses[0].static_answers)
+    console.log('[ResponsesTable] Dynamic responses array:', responses[0].dynamic_responses)
+  }
+
   const isLoading = isFormLoading || isResponsesLoading
 
   // Generate table headers based on form blocks
@@ -286,7 +297,14 @@ export function ResponsesTable({ formId }: ResponsesTableProps) {
 }
 
 const findAnswerForBlock = (staticAnswers: StaticBlockAnswer[], blockId: string) => {
-  const answer = staticAnswers.find((sa) => sa.block_id === blockId)?.answer
+  // Debug log for finding answers
+  console.log('[findAnswerForBlock] Looking for answer for block:', blockId)
+  console.log('[findAnswerForBlock] Available answers:', staticAnswers)
+  
+  const matchingAnswer = staticAnswers.find((sa) => sa.block_id === blockId)
+  console.log('[findAnswerForBlock] Found matching answer:', matchingAnswer)
+  
+  const answer = matchingAnswer?.answer
   if (typeof answer === 'boolean') {
     return answer ? 'Yes' : 'No'
   }
