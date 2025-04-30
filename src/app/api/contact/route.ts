@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Initialize Resend with API key (will be read from environment variables)
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: Request) {
+  // Initialize Resend with API key at runtime, not build time
+  const resend = new Resend(process.env.RESEND_API_KEY);
   try {
     // Parse the request body
     const { name, email, subject, message } = await request.json();
