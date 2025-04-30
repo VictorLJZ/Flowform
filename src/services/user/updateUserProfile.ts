@@ -1,13 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/types/supabase-types';
-
-type ProfileUpdateInput = Partial<Pick<Profile, 
-  'full_name' | 
-  'avatar_url'
-> & {
-  bio?: string;
-  settings?: Record<string, unknown>;
-}>;
+import { ProfileUpdateInput } from '@/types/user-types';
 
 /**
  * Update a user's profile

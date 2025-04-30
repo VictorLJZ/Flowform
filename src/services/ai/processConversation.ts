@@ -1,5 +1,6 @@
 import { generateQuestion } from './generateQuestion';
-import { FormContextData, formatFormContext } from '../form/getFormContext';
+import { formatFormContext } from '../form/getFormContext';
+import { FormContextData } from '@/types/form-service-types';
 
 type ProcessConversationParams = {
   prevQuestions: string[];

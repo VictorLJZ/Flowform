@@ -1,4 +1,4 @@
-import type { FormContextData } from './getFormContext';
+import { FormContextData } from '@/types/form-service-types';
 
 /**
  * Get the context of a form including all questions - Client-side implementation

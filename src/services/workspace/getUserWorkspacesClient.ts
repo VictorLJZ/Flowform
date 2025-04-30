@@ -1,11 +1,6 @@
 import { Workspace } from '@/types/supabase-types';
 import { networkLog } from '@/lib/debug-logger';
-
-interface ApiErrorResponse {
-  error?: string;
-  message?: string;
-  status?: number;
-}
+import { ApiErrorResponse } from '@/types/workspace-types';
 
 /**
  * Get all workspaces where the user is a member - Client-side implementation

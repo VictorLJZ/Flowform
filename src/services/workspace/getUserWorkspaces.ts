@@ -1,11 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { Workspace } from '@/types/supabase-types';
-
-// Interface for the specific fields returned by the workspace_members query
-interface WorkspaceMemberBasic {
-  workspace_id: string;
-  role: string;
-}
+import { WorkspaceMemberBasic } from '@/types/workspace-types';
 
 /**
  * Get all workspaces where the user is a member

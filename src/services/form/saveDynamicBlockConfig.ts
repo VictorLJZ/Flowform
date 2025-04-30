@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { mapToDynamicBlockConfig } from '@/utils/dynamicBlockMapping';
-import { SaveDynamicConfigInput, SaveDynamicConfigResult, ServiceResponse } from '@/types/form-service-types';
+import { SaveDynamicConfigResult } from '@/types/form-service-types';
 
 /**
  * Save dynamic block configuration after a form block is saved

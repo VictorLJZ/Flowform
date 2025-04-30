@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
 import { FormBlockInput, DynamicConfigInput, FormBlockCreationResult } from '@/types/form-service-types';
 import { invalidateFormCache } from './invalidateCache';
 

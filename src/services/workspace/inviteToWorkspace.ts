@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { WorkspaceInvitation } from '@/types/supabase-types';
+import { WorkspaceRole } from '@/types/workspace-types';
 import { v4 as uuidv4 } from 'uuid';
-
-type WorkspaceRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 /**
  * Send an invitation to join a workspace

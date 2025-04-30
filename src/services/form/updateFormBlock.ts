@@ -1,9 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormBlock, DynamicBlockConfig } from '@/types/supabase-types';
+import { DynamicBlockConfig } from '@/types/supabase-types';
 import { FormBlockUpdateInput, FormBlockCreationResult } from '@/types/form-service-types';
 import { invalidateFormCache } from './invalidateCache';
-
-// Using the existing FormBlockUpdateInput from centralized types
 
 // Define this one here as it was not included in our centralized types
 type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,

@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Workspace } from '@/types/supabase-types';
-
-type WorkspaceInput = Pick<Workspace, 'name' | 'description' | 'created_by' | 'logo_url' | 'settings'>;
+import { WorkspaceInput } from '@/types/workspace-types';
 
 /**
  * Create a new workspace and automatically add the creator as an owner

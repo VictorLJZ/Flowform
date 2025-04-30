@@ -2,6 +2,7 @@ import { Workspace } from "@/types/supabase-types";
 import { checkWorkspacePermissionClient } from "@/services/permissions/checkWorkspacePermissionClient";
 import { networkLog } from "@/lib/debug-logger";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { WorkspaceUpdateInput } from "@/types/workspace-types";
 
 /**
  * Update an existing workspace using an authenticated Supabase client
@@ -11,12 +12,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
  * @param workspaceData - The workspace data to update
  * @returns The updated workspace
  */
-type WorkspaceUpdateInput = Partial<Pick<Workspace, 
-  'name' | 
-  'description' | 
-  'logo_url' | 
-  'settings'
->>;
 
 export async function updateWorkspace(
   supabase: SupabaseClient,

@@ -1,9 +1,4 @@
-import { WorkspaceMember, Profile } from '@/types/supabase-types';
-
-// Define the expected return type matching the server implementation
-type WorkspaceMemberWithProfile = WorkspaceMember & {
-  profile: Pick<Profile, 'full_name' | 'avatar_url'> & { title?: string | null };
-};
+import { WorkspaceMemberWithProfile } from '@/types/workspace-types';
 
 /**
  * Get all members of a workspace with their profile information - Client-side implementation
