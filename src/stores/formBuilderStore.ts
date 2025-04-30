@@ -4,10 +4,9 @@ import { create, StateCreator } from 'zustand'
 import { getBlockDefinition } from '@/registry/blockRegistry'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
-import { getCurrentUserId } from '@/services/auth/getCurrentUser'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 import { mapFromDbBlockType, mapToDbBlockType } from '@/utils/blockTypeMapping'
-import { FormBlock as DbFormBlock, StaticBlockSubtype } from '@/types/supabase-types'
+import type { CompleteForm } from '@/types/supabase-types'
 import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentation } from '@/types/theme-types'
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 import type { FormBlock, BlockType } from '@/types/block-types'
@@ -305,11 +304,11 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         return
       }
       
-      const { blocks: blocksData, ...formData } = completeForm
+      const { blocks: blocksData, ...formData } = completeForm as CompleteForm
       
       // Map blocks from database blocks to frontend blocks
       const frontendBlocks = Array.isArray(blocksData)
-        ? blocksData.map((block: any, index: number) => {
+        ? blocksData.map((block, index: number) => {
             // Map database block type/subtype to correct frontend blockTypeId
             const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
             

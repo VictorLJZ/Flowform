@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
 import { getVerifiedUser } from './verifiedAuth';
 
 /**

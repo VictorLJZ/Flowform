@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     // Send the email using Resend
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: 'FlowForm Contact <onboarding@resend.dev>', // Update to your verified domain later
       to: ['phemonoex@gmail.com'], // Replace with your support email
       subject: subject || `New contact form submission from ${name}`,

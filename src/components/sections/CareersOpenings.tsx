@@ -18,10 +18,10 @@ export default function CareersOpenings() {
         <div className="bg-gray-50 rounded-xl p-8 md:p-12 text-center max-w-3xl mx-auto">
           <h3 className="text-2xl font-semibold mb-3">No Open Positions</h3>
           <p className="text-gray-500 mb-6">
-            We don't have any open positions at the moment, but we're always looking for talented individuals to join our team.
+            We don&apos;t have any open positions at the moment, but we&apos;re always looking for talented individuals to join our team.
           </p>
           <p className="text-gray-500 mb-8">
-            If you believe you'd be a great fit for FlowForm, feel free to send us your resume and we'll keep it on file for future opportunities.
+            If you believe you&apos;d be a great fit for FlowForm, feel free to send us your resume and we&apos;ll keep it on file for future opportunities.
           </p>
           <Button className="flex items-center mx-auto">
             <Mail className="h-4 w-4 mr-2" />

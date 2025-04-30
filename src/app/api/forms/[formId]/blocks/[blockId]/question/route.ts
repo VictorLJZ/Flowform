@@ -1,16 +1,19 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/client"
 import { generateQuestion } from "@/services/ai/generateQuestion"
 import type { QAPair } from "@/types/supabase-types"
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { formId: string; blockId: string } }
-) {
+// For Next.js App Router, we use this format for route handlers
+export async function POST(request: Request) {
   try {
-    const { formId, blockId } = params
-    const body = await request.json()
-    const { conversation, previousResponseId } = body
+    // Extract formId and blockId from URL path
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const formId = pathParts[pathParts.indexOf('forms') + 1];
+    const blockId = pathParts[pathParts.indexOf('blocks') + 1];
+    
+    const body = await request.json();
+    const { conversation, previousResponseId } = body;
 
     if (!formId || !blockId) {
       return NextResponse.json(

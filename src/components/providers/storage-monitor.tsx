@@ -33,9 +33,10 @@ export function StorageMonitor() {
     window.addEventListener('storage', handleStorageChange)
 
     // DOM mutation observer disabled to reduce console noise
-    const observer = new MutationObserver(() => {
-      // Mutations tracking disabled
-    })
+    // Kept as comment for reference:
+    // const observer = new MutationObserver(() => {
+    //   // Mutations tracking disabled
+    // })
     
     // Not actually observing anything - kept for reference
     

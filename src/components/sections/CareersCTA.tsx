@@ -12,7 +12,7 @@ export default function CareersCTA() {
           Interested in joining our team?
         </h2>
         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-          Even though we don't have open positions right now, we're always looking to connect with talented individuals who share our vision
+          Even though we don&apos;t have open positions right now, we&apos;re always looking to connect with talented individuals who share our vision
         </p>
         <Button size="lg" className="flex items-center mx-auto">
           <Mail className="h-4 w-4 mr-2" />

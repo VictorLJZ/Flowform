@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, ArrowRight, Send, Loader2 } from "lucide-react"
+import { MessageSquare, Send, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useCallback } from "react"
@@ -101,10 +101,6 @@ export function AIConversationBlock({
   const handleSubmit = useCallback(async () => {
     if (!userInput.trim() || isSubmitting) return
     
-    const currentQuestion = isFirstQuestion 
-      ? starterPrompt 
-      : conversation[currentQuestionIndex].question
-    
     setIsSubmitting(true)
     setError(null)
     
@@ -193,6 +189,7 @@ export function AIConversationBlock({
     } finally {
       setIsSubmitting(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInput, isSubmitting, isFirstQuestion, starterPrompt, currentQuestionIndex, conversation, hasReachedMaxQuestions, onChange, id, formId])
   
   // Handle Enter key to submit

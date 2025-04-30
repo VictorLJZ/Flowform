@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 
 export default function CareersHero() {
   return (
@@ -10,15 +11,18 @@ export default function CareersHero() {
           Join our mission to make forms better
         </h1>
         <p className="text-xl text-gray-500 mb-8 max-w-3xl mx-auto">
-          We're building the next generation of intelligent form tools that help businesses connect with their users
+          We&apos;re building the next generation of intelligent form tools that help businesses connect with their users
         </p>
         <div className="mt-8">
-          <img 
+          <Image 
             src="/images/team.jpg" 
             alt="FlowForm Team" 
+            width={1200}
+            height={600}
             className="rounded-lg shadow-md max-w-4xl mx-auto"
-            onError={(e) => {
-              e.currentTarget.src = "https://placehold.co/1200x600/f9fafb/475569?text=FlowForm+Team";
+            onError={() => {
+              // This will be handled by Next.js built-in error handling
+              console.log('Image failed to load, falling back to placeholder');
             }}
           />
         </div>

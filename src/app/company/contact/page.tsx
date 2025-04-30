@@ -17,8 +17,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Mail, Check, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Check, AlertCircle } from 'lucide-react'
 
 // Form validation schema
 const contactFormSchema = z.object({
@@ -89,7 +88,7 @@ export default function ContactPage() {
                 Get in Touch
               </h1>
               <p className="text-xl text-gray-500 max-w-3xl mx-auto">
-                Have questions about FlowForm? We're here to help. Fill out the form below and our team will get back to you as soon as possible.
+                Have questions about FlowForm? We&apos;re here to help. Fill out the form below and our team will get back to you as soon as possible.
               </p>
             </div>
 
@@ -148,7 +147,7 @@ export default function ContactPage() {
                         <FormItem>
                           <FormLabel>Subject (Optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="What's this about?" {...field} />
+                            <Input placeholder="What&apos;s this about?" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -35,7 +35,7 @@ export default function HelpCenterPlaceholder() {
           <div className="mt-12 pt-6 border-t border-gray-100">
             <p className="text-sm text-gray-500">
               Thank you for your patience as we improve our support resources.
-              We're committed to providing you with the best possible assistance.
+              We&apos;re committed to providing you with the best possible assistance.
             </p>
           </div>
         </div>

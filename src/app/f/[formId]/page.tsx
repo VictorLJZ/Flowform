@@ -68,7 +68,7 @@ export default function FormViewerPage() {
         // Properly map dynamic blocks to ai_conversation blockTypeId
         // Use type assertion to handle the mapping between database and frontend types
         // Database uses 'dynamic' as the type, but our frontend uses 'ai_conversation' as the blockTypeId
-        let blockTypeId = b.type === 'dynamic' ? 'ai_conversation' as string : b.subtype
+        const blockTypeId = b.type === 'dynamic' ? 'ai_conversation' as string : b.subtype
         
         return {
           id: b.id,

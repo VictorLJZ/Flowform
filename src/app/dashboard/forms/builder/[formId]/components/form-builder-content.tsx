@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
-import { useState, useEffect } from "react"
 import type { FormBlock } from '@/types/block-types'
+import type { BlockPresentation } from '@/types/theme-types'
+import type { SlideLayout } from '@/types/layout-types'
 // Import block components directly to avoid eager loading AI services
 import { TextInputBlock } from "@/components/form/blocks/TextInputBlock"
 import { TextAreaBlock } from "@/components/form/blocks/TextAreaBlock"
@@ -296,15 +297,15 @@ export default function FormBuilderContent() {
                     temperature: (currentBlock.settings?.temperature as number) || 0.7,
                     contextInstructions: currentBlock.settings?.contextInstructions as string,
                     presentation: currentBlock.settings?.presentation ? 
-                      currentBlock.settings.presentation as any : 
+                      currentBlock.settings.presentation as BlockPresentation : 
                       {
                         layout: 'centered',  // Using valid values from BlockPresentation
                         spacing: 'normal',    // Using valid values from BlockPresentation
                         titleSize: 'large'    // Using valid values from BlockPresentation
                       },
                     layout: currentBlock.settings?.layout ? 
-                      currentBlock.settings.layout as any : 
-                      { type: 'standard' } as any
+                      currentBlock.settings.layout as SlideLayout : 
+                      { type: 'standard' } as SlideLayout
                   }}
                   // Add sample data for the builder preview
                   value={[
