@@ -29,6 +29,7 @@ import {
 import { RenameDialog } from "@/components/workspace/rename-dialog"
 import { ConfirmDialog } from "@/components/workspace/confirm-dialog"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
+import { RecentActivity, DashboardFormData } from "@/types/dashboard-types"
 
 export default function Page() {
   const router = useRouter()
@@ -166,7 +167,7 @@ export default function Page() {
                 <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
                 {(recentActivity?.length ?? 0) > 0 ? ( // Check length safely
                   <div className="space-y-4">
-                    {(recentActivity ?? []).map((activity) => ( // Map over safely, defaulting to []
+                    {(recentActivity ?? []).map((activity: RecentActivity) => ( // Map over safely, defaulting to []
                       <div key={activity.id} className="flex items-center gap-3">
                         <BarChart3 className="h-5 w-5 text-primary" />
                         <div className="flex-1">
@@ -192,7 +193,7 @@ export default function Page() {
                 <h2 className="text-lg font-semibold mb-4">Recent Forms</h2>
                 {(recentForms?.length ?? 0) > 0 ? ( // Check length safely
                   <div className="space-y-3">
-                    {(recentForms ?? []).map((form) => ( // Map over safely, defaulting to []
+                    {(recentForms ?? []).map((form: DashboardFormData) => ( // Map over safely, defaulting to []
                       <div key={form.form_id} className="flex items-center gap-3">
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <span className="cursor-pointer hover:text-primary" onClick={() => handleViewResponses(form.form_id)}>

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { WorkspaceRole } from '@/services/permissions/checkWorkspacePermission';
+import { WorkspaceRole } from '@/types/workspace-types';
 
 // API endpoint to check user permissions for a workspace
 export async function GET(request: Request) {

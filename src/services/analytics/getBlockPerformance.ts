@@ -1,16 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
+import { BlockPerformance } from '@/types/analytics-types';
 import { BlockMetrics } from '@/types/supabase-types';
-
-type BlockPerformance = {
-  block_id: string;
-  form_id: string;
-  block_type: string;
-  block_subtype: string | null;
-  completion_rate: number;
-  average_time_spent: number;
-  skip_rate: number;
-  metrics: BlockMetrics | null;
-};
 
 /**
  * Get performance analytics for a specific block or all blocks in a form

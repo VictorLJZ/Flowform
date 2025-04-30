@@ -1,15 +1,6 @@
 import { generateQuestion } from './generateQuestion';
 import { formatFormContext } from '../form/getFormContext';
-import { FormContextData } from '@/types/form-service-types';
-
-type ProcessConversationParams = {
-  prevQuestions: string[];
-  prevAnswers: string[];
-  instructions: string;
-  temperature?: number;
-  previousResponseId?: string;
-  formContext?: FormContextData;
-};
+import { ProcessConversationParams } from '@/types/ai-types';
 
 /**
  * Process a conversation and generate the next question

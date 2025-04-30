@@ -1,23 +1,10 @@
 import OpenAI from "openai";
+import { GenerateQuestionResponse, OpenAIMessage } from '@/types/ai-types';
 
 // Initialize OpenAI client with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
-
-// Response type for generate question function
-interface GenerateQuestionResponse {
-  success: boolean;
-  data?: string;
-  error?: string;
-  responseId?: string;
-}
-
-// Define types for OpenAI Responses API parameters
-type OpenAIMessage = {
-  role: string;
-  content: string;
-};
 
 /**
  * Generate a question using the OpenAI Responses API

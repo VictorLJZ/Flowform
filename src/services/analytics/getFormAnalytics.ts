@@ -1,15 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { FormMetrics } from '@/types/supabase-types';
-
-type Analytics = {
-  form_id: string;
-  total_views: number;
-  total_completions: number;
-  completion_rate: number;
-  average_time_spent: number;
-  metrics: FormMetrics | null;
-  views_over_time: { date: string; count: number }[];
-};
+import { Analytics } from '@/types/analytics-types';
 
 /**
  * Get analytics data for a specific form

@@ -1,6 +1,7 @@
 // src/hooks/useDashboardData.ts
 import useSWR from 'swr'
-import { fetchDashboardData, DashboardData } from '@/services/dashboard/fetchers'
+import { fetchDashboardData } from '@/services/dashboard/fetchers'
+import { DashboardData } from '@/types/dashboard-types'
 
 /**
  * Fetches dashboard data (stats, recent activity, recent forms) for a given workspace using SWR.

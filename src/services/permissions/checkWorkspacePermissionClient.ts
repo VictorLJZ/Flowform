@@ -1,4 +1,4 @@
-import { WorkspaceRole } from './checkWorkspacePermission';
+import { WorkspaceRole } from '@/types/workspace-types';
 import { networkLog } from '@/lib/debug-logger';
 
 /**

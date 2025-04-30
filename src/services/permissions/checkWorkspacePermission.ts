@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { networkLog } from '@/lib/debug-logger';
-
-export type WorkspaceRole = 'owner' | 'admin' | 'editor' | 'viewer';
+import { WorkspaceRole } from '@/types/workspace-types';
 
 /**
  * Check if user has permission to perform operations on a workspace
