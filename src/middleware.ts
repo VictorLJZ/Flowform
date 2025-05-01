@@ -122,14 +122,30 @@ export async function middleware(request: NextRequest) {
     }
   } else {
     // For non-API routes, check authentication and redirect to login if needed
-    // Allow public routes: '/', '/f/*', '/login', '/auth/*'
-    if (
-      !user && 
-      !request.nextUrl.pathname.startsWith('/f/') && 
-      !request.nextUrl.pathname.startsWith('/login') && 
-      !request.nextUrl.pathname.startsWith('/auth') &&
-      request.nextUrl.pathname !== '/'
-    ) {
+    // Public routes that don't require authentication
+    const publicRoutes = [
+      '/',
+      '/pricing',
+      '/features',
+      '/about',
+      '/contact',
+      '/blog',
+      '/privacy',
+      '/terms',
+    ];
+    
+    // Check if the path starts with any of these prefixes
+    const publicPathPrefixes = [
+      '/f/',
+      '/login',
+      '/auth/',
+      '/signup',
+    ];
+    
+    const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname) || 
+                         publicPathPrefixes.some(prefix => request.nextUrl.pathname.startsWith(prefix));
+    
+    if (!user && !isPublicRoute) {
       // For protected routes, redirect to login
       console.log("Redirecting to login (not authenticated)")
       const url = request.nextUrl.clone()

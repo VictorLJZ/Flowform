@@ -23,12 +23,12 @@ const plans = [
     ],
   },
   {
-    name: 'Basic',
+    name: 'Pro',
     description: 'For professionals and small teams',
-    price: { monthly: 29, annually: 24 },
-    ctaText: 'Get Basic',
-    ctaLink: '/signup?plan=basic',
-    popular: false,
+    price: { monthly: 20, annually: 17 },
+    ctaText: 'Get Pro',
+    ctaLink: '/signup?plan=pro',
+    popular: true,
     features: [
       '1,000 responses/mo',
       '3 users',
@@ -42,36 +42,16 @@ const plans = [
     ],
   },
   {
-    name: 'Plus',
-    description: 'For growing teams and businesses',
-    price: { monthly: 59, annually: 49 },
-    ctaText: 'Get Plus',
-    ctaLink: '/signup?plan=plus',
-    popular: true,
-    features: [
-      '5,000 responses/mo',
-      '5 users',
-      'Everything in Basic',
-      'Conditional logic',
-      'Hidden fields',
-      'API access',
-      'Advanced analytics',
-      'Custom styling',
-      'Custom success page',
-      'Form collaboration',
-    ],
-  },
-  {
     name: 'Business',
-    description: 'For organizations needing advanced features',
-    price: { monthly: 99, annually: 83 },
+    description: 'For orgs needing advanced features',
+    price: { monthly: 60, annually: 50 },
     ctaText: 'Get Business',
     ctaLink: '/signup?plan=business',
     popular: false,
     features: [
       '10,000 responses/mo',
       '10 users',
-      'Everything in Plus',
+      'Everything in Pro',
       'Drop-off rates',
       'Conversion tracking',
       'Salesforce integration',
@@ -83,7 +63,7 @@ const plans = [
   },
   {
     name: 'Enterprise',
-    description: 'Custom solution for large organizations',
+    description: 'Custom solutions for large orgs',
     price: { monthly: null, annually: null },
     ctaText: 'Contact Sales',
     ctaLink: '/contact',
@@ -111,7 +91,7 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
   return (
     <section className="py-16 bg-gray-50">
       <div className="container px-4 md:px-6 mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan) => (
             <div 
               key={plan.name} 
@@ -148,23 +128,25 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
                 )}
               </div>
               
-              <Button 
-                className={`mb-6 ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
-                variant={plan.popular ? 'default' : 'outline'}
-                asChild
-              >
-                <Link href={plan.ctaLink}>
-                  {plan.ctaText}
-                </Link>
-              </Button>
-              
-              <div className="space-y-3 mt-auto">
+              <div className="space-y-3 flex-grow">
                 {plan.features.map((feature, i) => (
                   <div key={i} className="flex items-start">
                     <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-sm">{feature}</span>
                   </div>
                 ))}
+              </div>
+              
+              <div className="mt-6">
+                <Button 
+                  className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
+                  variant={plan.popular ? 'default' : 'outline'}
+                  asChild
+                >
+                  <Link href={plan.ctaLink}>
+                    {plan.ctaText}
+                  </Link>
+                </Button>
               </div>
             </div>
           ))}
