@@ -1,8 +1,11 @@
 "use client";
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useCallback, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 // Pricing plans data
 const plans = [
@@ -27,7 +30,10 @@ const plans = [
     description: 'For professionals and small teams',
     price: { monthly: 20, annually: 17 },
     ctaText: 'Get Pro',
-    ctaLink: '/signup?plan=pro',
+    ctaLinks: {
+      monthly: 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU',
+      annually: 'https://buy.stripe.com/00g5mg0j6d9w1X228a'
+    },
     popular: true,
     features: [
       '1,000 responses/mo',
@@ -46,7 +52,10 @@ const plans = [
     description: 'For orgs needing advanced features',
     price: { monthly: 60, annually: 50 },
     ctaText: 'Get Business',
-    ctaLink: '/signup?plan=business',
+    ctaLinks: {
+      monthly: 'https://buy.stripe.com/14kaGAfe0c5s1X2145',
+      annually: 'https://buy.stripe.com/00gdSMfe03yWgRW003'
+    },
     popular: false,
     features: [
       '10,000 responses/mo',
@@ -88,6 +97,51 @@ interface PricingPlansProps {
 }
 
 export default function PricingPlans({ isAnnual }: PricingPlansProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  
+  // Function to handle payment button clicks
+  const handlePaymentClick = useCallback(async (planName: string, planData: { monthly: string, annually: string }) => {
+    // Mark this button as loading
+    setIsLoading(planName);
+    
+    // Select the appropriate payment link based on billing cycle
+    const paymentLink = isAnnual ? planData.annually : planData.monthly;
+    
+    try {
+      // Check if user is logged in
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('Auth error:', error);
+        // If there's an auth error, redirect to login
+        router.push(`/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}&annual=${isAnnual}`);
+        return;
+      }
+      
+      if (!user) {
+        // Not logged in - redirect to login with return URL
+        const loginUrl = `/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}&annual=${isAnnual}`;
+        console.log('Redirecting to login with parameters:', { planName, isAnnual, loginUrl });
+        router.push(loginUrl);
+      } else {
+        // User is logged in - proceed to payment
+        if (paymentLink.startsWith('http')) {
+          // External payment link - open in new tab
+          window.open(paymentLink, '_blank');
+        } else {
+          // Internal link - navigate within the app
+          router.push(paymentLink);
+        }
+      }
+    } catch (err) {
+      console.error('Payment click error:', err);
+    } finally {
+      setIsLoading(null);
+    }
+  }, [router, isAnnual]);
+  
   return (
     <section className="py-16 bg-gray-50">
       <div className="container px-4 md:px-6 mx-auto max-w-7xl">
@@ -141,11 +195,10 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
                 <Button 
                   className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
                   variant={plan.popular ? 'default' : 'outline'}
-                  asChild
+                  onClick={() => plan.ctaLinks ? handlePaymentClick(plan.name, plan.ctaLinks) : handlePaymentClick(plan.name, { monthly: plan.ctaLink, annually: plan.ctaLink })}
+                  disabled={isLoading === plan.name}
                 >
-                  <Link href={plan.ctaLink}>
-                    {plan.ctaText}
-                  </Link>
+                  {isLoading === plan.name ? 'Loading...' : plan.ctaText}
                 </Button>
               </div>
             </div>

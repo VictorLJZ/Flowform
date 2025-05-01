@@ -16,12 +16,15 @@ export function LoginForm({
   const searchParams = useSearchParams()
   const error = searchParams?.get("error")
   const message = searchParams?.get("message")
+  const returnTo = searchParams?.get("returnTo")
+  const plan = searchParams?.get("plan")
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleGoogleLogin() {
     setIsLoading(true)
     try {
-      const result = await loginWithGoogle()
+      // Pass returnTo and plan parameters to the Google login function
+      const result = await loginWithGoogle({ returnTo, plan })
       
       if (result.error) {
         toast({
@@ -45,7 +48,12 @@ export function LoginForm({
   }
 
   return (
-    <form action={login} className={cn("flex flex-col gap-6", className)} {...props}>
+    <form action={(formData) => {
+      // Pass the returnTo and plan parameters to the login function
+      formData.append('returnTo', returnTo || '');
+      formData.append('plan', plan || '');
+      return login(formData);
+    }} className={cn("flex flex-col gap-6", className)} {...props}>
       {error && (
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}

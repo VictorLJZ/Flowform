@@ -1,10 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Helper function to get the Stripe checkout URL for a plan
+function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
+  // Using the actual Stripe payment links from PricingPlans.tsx
+  switch (plan.toLowerCase()) {
+    case 'pro':
+      return isAnnual 
+        ? 'https://buy.stripe.com/00g5mg0j6d9w1X228a' // Annual Pro plan
+        : 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU'; // Monthly Pro plan
+    case 'business':
+      return isAnnual 
+        ? 'https://buy.stripe.com/00gdSMfe03yWgRW003' // Annual Business plan
+        : 'https://buy.stripe.com/14kaGAfe0c5s1X2145'; // Monthly Business plan
+    default:
+      return '/dashboard';
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
+    const returnTo = requestUrl.searchParams.get('returnTo')
+    const plan = requestUrl.searchParams.get('plan')
+    const annual = requestUrl.searchParams.get('annual')
+    const isAnnual = annual === 'true'
+    
+    // Debug logging
+    console.log('Auth callback parameters:', {
+      returnTo,
+      plan,
+      annual,
+      isAnnual,
+      fullUrl: request.url,
+      searchParams: Object.fromEntries(requestUrl.searchParams.entries())
+    })
     
     if (!code) {
       return NextResponse.redirect(new URL('/login?error=Missing+authorization+code', request.url))
@@ -21,8 +52,20 @@ export async function GET(request: Request) {
       )
     }
     
-    // URL to redirect to after sign in process completes
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Determine where to redirect after successful login
+    let redirectUrl = '/dashboard' // Default redirect
+    
+    // Handle specific plan checkout if plan parameter exists
+    if (plan && (plan === 'pro' || plan === 'business')) {
+      // Redirect to the appropriate Stripe checkout
+      redirectUrl = getStripeCheckoutUrl(plan, isAnnual)
+    } 
+    // Or use the returnTo parameter if it exists and is a relative URL (security check)
+    else if (returnTo && returnTo.startsWith('/')) {
+      redirectUrl = returnTo
+    }
+    
+    return NextResponse.redirect(new URL(redirectUrl, request.url))
   } catch {
     // No error variable needed - just redirecting to login page with generic error
     return NextResponse.redirect(
