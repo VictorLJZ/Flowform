@@ -89,10 +89,12 @@ export async function loginWithGoogle(params?: LoginParams) {
   
   const supabase = await createClient()
   
-  // Get the current origin for local development or production
-  const origin = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  // Use the official site URL for authentication flows
+  // This is critical to ensure auth callbacks go to the right domain
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://useflowform.com'
+  
+  // Debug log the origin being used
+  console.log('Using origin for auth:', origin)
   
   // Build the callback URL with the returnTo and plan parameters if present
   let callbackUrl = `${origin}/auth/callback`;
