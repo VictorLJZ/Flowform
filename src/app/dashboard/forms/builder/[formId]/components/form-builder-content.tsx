@@ -292,7 +292,9 @@ export default function FormBuilderContent() {
                   index={blocks.findIndex(b => b.id === currentBlock.id) + 1}
                   totalBlocks={blocks.length}
                   settings={{
-                    startingPrompt: (currentBlock.settings?.startingPrompt as string) || "How can I help you today?",
+                    // Need to pass startingPrompt for TypeScript compatibility until interface is updated
+                    // But the component will actually use the block title instead
+                    startingPrompt: currentBlock.title,
                     maxQuestions: (currentBlock.settings?.maxQuestions as number) || 5,
                     temperature: (currentBlock.settings?.temperature as number) || 0.7,
                     contextInstructions: currentBlock.settings?.contextInstructions as string,
@@ -310,7 +312,7 @@ export default function FormBuilderContent() {
                   // Add sample data for the builder preview
                   value={[
                     {
-                      question: (currentBlock.settings?.startingPrompt as string) || "How can I help you today?", 
+                      question: currentBlock.title, 
                       answer: "This is a sample answer in the form builder preview.", 
                       timestamp: new Date().toISOString(),
                       is_starter: true
