@@ -65,10 +65,21 @@ export default function FormViewerPage() {
     
     if (form) {
       const mapped = form.blocks.map(b => {
+        // Log raw block data from the database
+        console.log(`[Block Debug] Raw block data:`, {
+          id: b.id,
+          type: b.type,
+          subtype: b.subtype,
+          dynamic_config: b.dynamic_config
+        });
+        
         // Properly map dynamic blocks to ai_conversation blockTypeId
         // Use type assertion to handle the mapping between database and frontend types
         // Database uses 'dynamic' as the type, but our frontend uses 'ai_conversation' as the blockTypeId
         const blockTypeId = b.type === 'dynamic' ? 'ai_conversation' as string : b.subtype
+        
+        // Log the result of mapping
+        console.log(`[Block Debug] Mapped blockTypeId for ${b.id}:`, blockTypeId);
         
         return {
           id: b.id,
@@ -83,7 +94,9 @@ export default function FormViewerPage() {
       })
       
       setBlocks(mapped)
-      console.log('[FormViewer] Loaded blocks:', mapped)
+      console.log('[FormViewer] Loaded blocks (detailed):', 
+        mapped.map(b => ({ id: b.id, type: b.type, blockTypeId: b.blockTypeId }))
+      )
     }
   }, [form, formId, storageKey, setBlocks, setMode])
 
@@ -332,19 +345,32 @@ export default function FormViewerPage() {
     isLastQuestion
   });
 
-  const commonProps = {
-    id: block.id,
-    title: block.title,
-    description: block.description,
-    required: block.required,
-    index: currentIndex,
-    totalBlocks: blocks.length,
-    settings: block.settings, // Use the actual settings from the database
-    onNext: handleAnswer,
-    isNextDisabled: isNextDisabled
-  }
-
   const renderBlock = () => {
+    console.log(`[RenderBlock] Attempting to render block:`, {
+      index: currentIndex,
+      blockId: block?.id,
+      blockTypeId: block?.blockTypeId,
+      type: block?.type,
+      settings: block?.settings
+    });
+    
+    if (!block) return null
+
+    // Create common props for all block types
+    const commonProps = {
+      id: block.id,
+      title: block.title,
+      description: block.description,
+      required: block.required,
+      index: currentIndex,
+      totalBlocks: blocks.length,
+      settings: block.settings, // Use the actual settings from the database
+      onNext: handleAnswer,
+      isNextDisabled: isNextDisabled
+    }
+    
+    console.log(`[RenderBlock] Block ${block.id} commonProps:`, commonProps);
+
     // Use commonProps for all block types to ensure consistent navigation
     switch (block.blockTypeId) {
       case "short_text":
@@ -396,12 +422,18 @@ export default function FormViewerPage() {
           onChange={(v: string) => setCurrentAnswer(v)} 
         />
       case "ai_conversation":
+        console.log(`[RenderBlock] Rendering AI Conversation block with settings:`, {
+          id: block.id,
+          blockTypeId: block.blockTypeId,
+          settings: block.settings,
+          currentAnswer: currentAnswer
+        });
         return <AIConversationBlock 
           {...commonProps} 
           settings={{
-            startingPrompt: (block.settings?.startingPrompt as string) || "How can I help you today?",
-            maxQuestions: (block.settings?.maxQuestions as number) || 5,
-            temperature: (block.settings?.temperature as number) || 0.7,
+            startingPrompt: block.title as string,
+            maxQuestions: block.settings?.maxQuestions as number || 5,
+            temperature: block.settings?.temperature as number || 0.7,
             contextInstructions: block.settings?.contextInstructions as string,
             // Add default presentation and layout for SlideWrapper
             presentation: {

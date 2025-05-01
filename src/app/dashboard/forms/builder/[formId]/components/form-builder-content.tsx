@@ -281,7 +281,16 @@ export default function FormBuilderContent() {
                 />
               )}
               
-              {/* Add a useEffect in the main component to handle this debug logging */}
+              {/* Debug logging for AI conversation blocks */}
+              <>{(() => {
+                console.log('Current Block:', { 
+                  id: currentBlock.id,
+                  blockTypeId: currentBlock.blockTypeId,
+                  type: currentBlock.type,
+                  shouldRenderAIBlock: currentBlock.blockTypeId === 'ai_conversation'
+                });
+                return null;
+              })()}</>
               
               {currentBlock.blockTypeId === 'ai_conversation' && (
                 <AIConversationBlock

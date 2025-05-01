@@ -355,8 +355,16 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       // Map blocks from database blocks to frontend blocks
       const frontendBlocks = Array.isArray(blocksData)
         ? blocksData.map((block, index: number) => {
-            // Map database block type/subtype to correct frontend blockTypeId
-            const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
+            // Try to map the database type to our frontend block type ID
+            const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype)
+            
+            // DEBUG: Log block mapping details
+            console.log('Block mapping:', { 
+              blockId: block.id,
+              dbType: block.type, 
+              dbSubtype: block.subtype,
+              mappedBlockTypeId: blockTypeId 
+            });
             
             // Get the block definition using the mapped blockTypeId
             const blockDef = getBlockDefinition(blockTypeId);
@@ -364,14 +372,16 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
             // Get base settings from block or fallback to defaults
             let baseSettings = block.settings || (blockDef?.getDefaultValues ? blockDef.getDefaultValues() : {}) || {};
             
-            // For dynamic blocks, merge in the dynamic_config properties with appropriate name mapping
+            // For dynamic blocks, merge in the dynamic_config properties
             if (block.type === 'dynamic' && block.dynamic_config) {
+              console.log('Dynamic block config found:', block.dynamic_config);
               const dynamicSettings = {
                 startingPrompt: block.dynamic_config.starter_question || "How can I help you today?",
                 temperature: block.dynamic_config.temperature || 0.7,
                 maxQuestions: block.dynamic_config.max_questions || 5,
                 contextInstructions: block.dynamic_config.ai_instructions || ''
               };
+              console.log('Processed dynamic settings:', dynamicSettings);
               
               // Merge dynamic settings with any existing settings
               baseSettings = {

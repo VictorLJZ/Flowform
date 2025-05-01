@@ -49,10 +49,14 @@ export function mapToDbBlockType(blockTypeId: string): {
  * @returns Block type ID for the registry
  */
 export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic'): string {
+  // Log input values for debugging
+  console.log('Mapping DB -> Frontend:', { type, subtype });
+  
   // Check for dynamic blocks with more permissive matching
   // This covers case variations and whitespace issues
   if (String(type).toLowerCase().trim() === 'dynamic' && 
       String(subtype).toLowerCase().trim() === 'dynamic') {
+    console.log('Dynamic block identified, mapping to ai_conversation');
     return 'ai_conversation';
   }
   

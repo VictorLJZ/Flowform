@@ -15,6 +15,7 @@ import { Loader2, Save, Globe } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useForm } from "@/hooks/useForm"
 import { getBlockDefinition } from "@/registry/blockRegistry"
+import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { updateForm } from "@/services/form/updateForm"
@@ -71,16 +72,49 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       })
       // Map blocks
       const mappedBlocks = form.blocks.map(block => {
-        const def = getBlockDefinition(block.subtype || 'short_text')
+        // Use mapFromDbBlockType to get the correct blockTypeId for all block types
+        // This properly handles mapping dynamic blocks to 'ai_conversation'
+        const blockTypeId = mapFromDbBlockType(block.type || 'static', block.subtype || 'short_text');
+        console.log('Block mapping in useEffect:', { 
+          id: block.id,
+          dbType: block.type, 
+          dbSubtype: block.subtype,
+          mappedBlockTypeId: blockTypeId 
+        });
+        
+        // Get block definition using the mapped blockTypeId
+        const def = getBlockDefinition(blockTypeId)
+        
+        // Prepare base settings from the block
+        let settings = block.settings as Record<string, unknown> || {};
+        
+        // Special handling for dynamic blocks to merge dynamic_config
+        if (block.type === 'dynamic' && block.dynamic_config) {
+          console.log('Dynamic block config found in useEffect:', block.dynamic_config);
+          const dynamicSettings = {
+            startingPrompt: block.dynamic_config.starter_question || 'How can I help you today?',
+            temperature: block.dynamic_config.temperature || 0.7,
+            maxQuestions: block.dynamic_config.max_questions || 5,
+            contextInstructions: block.dynamic_config.ai_instructions || ''
+          };
+          
+          // Merge dynamic settings with any existing settings
+          settings = {
+            ...settings,
+            ...dynamicSettings
+          };
+          console.log('Merged dynamic settings:', settings);
+        }
+        
         return {
           id: block.id,
-          blockTypeId: block.subtype || 'short_text',
-          type: def?.type || 'static', // Provide default BlockType
+          blockTypeId,
+          type: def?.type || block.type || 'static', // Use the correct type
           title: block.title || def?.defaultTitle || '', // Ensure title is always string
           description: block.description || def?.defaultDescription || '',
           required: block.required,
           order: block.order_index,
-          settings: block.settings as Record<string, unknown>
+          settings
         }
       })
       setBlocks(mappedBlocks)
