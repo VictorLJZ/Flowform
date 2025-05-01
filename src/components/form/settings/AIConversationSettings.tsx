@@ -16,7 +16,6 @@ interface AIConversationSettingsProps {
 
 export function AIConversationSettings({ block, updateSettings }: AIConversationSettingsProps) {
   const settings = block.settings || {}
-  const startingPrompt = (settings.startingPrompt as string) || "How can I help you today?"
   const temperature = (settings.temperature as number) || 0.7
   const maxQuestions = (settings.maxQuestions as number) || 5
   const contextInstructions = (settings.contextInstructions as string) || "You are a helpful assistant responding to form submissions."
@@ -30,19 +29,6 @@ export function AIConversationSettings({ block, updateSettings }: AIConversation
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="startingPrompt">Starting Question</Label>
-        <Textarea
-          id="startingPrompt"
-          placeholder="How can I help you today?"
-          value={startingPrompt}
-          onChange={(e) => handleChange("startingPrompt", e.target.value)}
-          className="min-h-[100px]"
-        />
-        <p className="text-sm text-muted-foreground">
-          The first question that will be shown to the user
-        </p>
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="maxQuestions">Maximum Follow-up Questions</Label>

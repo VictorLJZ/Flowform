@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Send, Loader2 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { Send, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCallback } from "react"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
@@ -68,27 +67,30 @@ export function AIConversationBlock({
   isNextDisabled
 }: AIConversationBlockProps) {
 
+  // states
   const [userInput, setUserInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conversation, setConversation] = useState<QAPair[]>(value)
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
+  const [isTyping, setIsTyping] = useState(false)
+  const [displayedText, setDisplayedText] = useState<string>("")
   
-
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  // refs
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const formId = window.location.pathname.split('/').pop() || ""
 
+  // computed
   const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1
   const isFirstQuestion = currentQuestionIndex === -1
   const hasReachedMaxQuestions = settings.maxQuestions > 0 && currentQuestionIndex >= settings.maxQuestions - 1
-  const starterPrompt = settings.startingPrompt || "How can I help you today?"
-
-  // Scroll to bottom of chat when conversation updates
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [conversation])
+  // Use the block title as the starter prompt instead of a separate setting
+  const starterPrompt = title
+  
+  // Get the current question to display
+  const activeQuestion = isFirstQuestion 
+    ? starterPrompt 
+    : (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : "")
 
   // Focus textarea when component mounts
   useEffect(() => {
@@ -97,6 +99,20 @@ export function AIConversationBlock({
     }
   }, [])
 
+  // Navigation between questions
+  const handlePrevious = useCallback(() => {
+    if (activeQuestionIndex > 0) {
+      setActiveQuestionIndex(activeQuestionIndex - 1)
+    }
+  }, [activeQuestionIndex])
+  
+  const handleNext = useCallback(() => {
+    // If we're not on the last question, go to next question
+    if (activeQuestionIndex < currentQuestionIndex) {
+      setActiveQuestionIndex(activeQuestionIndex + 1)
+    }
+  }, [activeQuestionIndex, currentQuestionIndex])
+  
   // Handle form submission
   const handleSubmit = useCallback(async () => {
     if (!userInput.trim() || isSubmitting) return
@@ -109,7 +125,7 @@ export function AIConversationBlock({
       const timestamp = new Date().toISOString()
       
       // Add user's answer to conversation
-      const updatedConversation = [...conversation]
+      let updatedConversation = [...conversation]
       
       // If this is the first question, add the starter prompt
       if (isFirstQuestion) {
@@ -120,11 +136,24 @@ export function AIConversationBlock({
           is_starter: true
         })
       } else {
-        // Update the answer for the current question
-        updatedConversation[currentQuestionIndex] = {
-          ...updatedConversation[currentQuestionIndex],
-          answer: userInput,
-          timestamp
+        // Check if we're editing a previous answer
+        if (activeQuestionIndex < currentQuestionIndex) {
+          // Update the answer for the active question
+          updatedConversation[activeQuestionIndex] = {
+            ...updatedConversation[activeQuestionIndex],
+            answer: userInput,
+            timestamp
+          }
+          
+          // Remove all subsequent questions as they need to be regenerated
+          updatedConversation = updatedConversation.slice(0, activeQuestionIndex + 1)
+        } else {
+          // Update the answer for the current question
+          updatedConversation[currentQuestionIndex] = {
+            ...updatedConversation[currentQuestionIndex],
+            answer: userInput,
+            timestamp
+          }
         }
       }
       
@@ -151,7 +180,7 @@ export function AIConversationBlock({
           blockId: id,
           blockType: "dynamic",
           answer: userInput,
-          currentQuestion,
+          currentQuestion: activeQuestion,
           isFirstQuestion
         })
       })
@@ -180,6 +209,9 @@ export function AIConversationBlock({
         if (onChange) {
           onChange(newConversation)
         }
+        
+        // Move to the new question
+        setActiveQuestionIndex(newConversation.length - 1)
       }
       
       setUserInput("")
@@ -200,137 +232,77 @@ export function AIConversationBlock({
     }
   }
   
-  // Get current question text
-  const currentQuestion = isFirstQuestion 
-    ? starterPrompt 
-    : conversation[currentQuestionIndex]?.question || ""
+  // Check if the active question has been answered
+  const isActiveQuestionAnswered = !isFirstQuestion && 
+    activeQuestionIndex < conversation.length && 
+    !!conversation[activeQuestionIndex]?.answer
+  
+  // Check if we should show the input field (only if we haven't answered the active question yet)
+  const showInput = isFirstQuestion || (activeQuestionIndex <= currentQuestionIndex && !isActiveQuestionAnswered)
+  
+  // Check if we can navigate to next/previous questions
+  const canGoNext = activeQuestionIndex < currentQuestionIndex
+  const canGoPrevious = activeQuestionIndex > 0
+  
+  // Focus textarea when new question is rendered or active question changes
+  useEffect(() => {
+    if (showInput && textareaRef.current && !isTyping) {
+      textareaRef.current.focus()
+    }
+  }, [activeQuestionIndex, showInput, isTyping])
 
-  // Check if we should show the input field (only if we haven't answered the current question yet)
-  const showInput = isFirstQuestion || (currentQuestionIndex >= 0 && !conversation[currentQuestionIndex]?.answer)
 
-
-  // Build the conversation UI component
-  const conversationContent = (
-    <div className="space-y-4">
-      <div className="overflow-y-auto max-h-[400px] mb-4 bg-white rounded-lg border shadow-sm p-4">
-        <div className="space-y-4">
-          <AnimatePresence>
-            {/* Show conversation history or starter prompt */}
-            {isFirstQuestion ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-gray-100 p-4 rounded-lg"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                    <MessageSquare className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-gray-800">{starterPrompt}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              conversation.map((item, idx) => (
-                <React.Fragment key={idx}>
-                  {/* AI Question */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="bg-gray-100 p-4 rounded-lg"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                        <MessageSquare className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-gray-800">{item.question}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  {/* User Answer (if provided) */}
-                  {item.answer && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="bg-primary/10 p-4 rounded-lg ml-6"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <p className="text-gray-800">{item.answer}</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </React.Fragment>
-              ))
-            )}
-          </AnimatePresence>
-          <div ref={chatEndRef} />
-        </div>
-      </div>
+  // Use typing animation for title when showing new questions
+  useEffect(() => {
+    // Don't animate for the first question (starter prompt)
+    if (isFirstQuestion) {
+      setDisplayedText(starterPrompt)
+      return
+    }
+    
+    // If we have a valid question to show
+    if (activeQuestionIndex < conversation.length && conversation[activeQuestionIndex]?.question) {
+      const questionText = conversation[activeQuestionIndex].question
       
-      {/* Input area - only show if waiting for an answer and not reached max questions */}
-      {showInput && !hasReachedMaxQuestions && (
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your answer here..."
-            className="min-h-[100px] pr-12 resize-none"
-            disabled={isSubmitting}
-          />
-          <Button
-            size="icon"
-            className={cn(
-              "absolute bottom-2 right-2 h-8 w-8",
-              !userInput.trim() && "opacity-50 cursor-not-allowed"
-            )}
-            onClick={handleSubmit}
-            disabled={!userInput.trim() || isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      )}
-      
-      {/* Completed message when reached max questions */}
-      {hasReachedMaxQuestions && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="p-4">
-            <p className="text-green-700 text-center">
-              Conversation complete! Please proceed to the next question.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* Error display */}
-      {error && (
-        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
-          {error}
-        </div>
-      )}
-    </div>
-  );
-
-
+      // If this is a newly added question (last in the conversation) and it's not answered yet
+      if (activeQuestionIndex === currentQuestionIndex && !conversation[activeQuestionIndex].answer) {
+        // Start typing animation
+        setIsTyping(true)
+        setDisplayedText("")
+        
+        let i = 0
+        const typingSpeed = 30 // ms per character
+        
+        const typingInterval = setInterval(() => {
+          if (i < questionText.length) {
+            setDisplayedText(prev => prev + questionText.charAt(i))
+            i++
+          } else {
+            clearInterval(typingInterval)
+            setIsTyping(false)
+          }
+        }, typingSpeed)
+        
+        return () => clearInterval(typingInterval)
+      } else {
+        // For existing questions, show them immediately
+        setDisplayedText(questionText)
+      }
+    }
+  }, [activeQuestionIndex, conversation, isFirstQuestion, starterPrompt, currentQuestionIndex])
+  
+  // Determine the current title to display based on the active question
+  const displayTitle = isTyping ? 
+    `${displayedText}${isTyping ? '|' : ''}` : 
+    (isFirstQuestion ? 
+      starterPrompt : 
+      (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : title))
+  
   // Wrap conversation in SlideWrapper for consistent styling and layout
   return (
     <SlideWrapper
       id={id}
-      title={title}
+      title={displayTitle}
       description={description}
       required={required}
       index={index}
@@ -343,7 +315,92 @@ export function AIConversationBlock({
       onNext={onNext}
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
     >
-      {conversationContent}
+      <div className="space-y-4">
+        {/* Subtle navigation controls, only visible if we have multiple questions */}
+        {conversation.length > 1 && (
+          <div className="flex items-center justify-end gap-2 text-gray-500 text-sm">
+            <span>
+              {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, conversation.length)}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handlePrevious}
+                disabled={!canGoPrevious || isSubmitting}
+                className="h-6 w-6 p-0"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleNext}
+                disabled={!canGoNext || isSubmitting}
+                className="h-6 w-6 p-0"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Previously answered question */}
+        {isActiveQuestionAnswered && (
+          <div className="bg-primary/10 p-4 rounded-lg mb-4">
+            <p className="text-sm text-gray-500 mb-1">Your answer:</p>
+            <p className="text-gray-800">{conversation[activeQuestionIndex].answer}</p>
+          </div>
+        )}
+        
+        {/* Input area - only show if waiting for an answer and not reached max questions */}
+        {showInput && !hasReachedMaxQuestions && (
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your answer here..."
+              className="min-h-[100px] pr-12 resize-none"
+              disabled={isSubmitting || isTyping}
+            />
+            <Button
+              size="icon"
+              className={cn(
+                "absolute bottom-2 right-2 h-8 w-8",
+                (!userInput.trim() || isTyping) && "opacity-50 cursor-not-allowed"
+              )}
+              onClick={handleSubmit}
+              disabled={!userInput.trim() || isSubmitting || isTyping}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        )}
+        
+        {/* Completed message when reached max questions */}
+        {hasReachedMaxQuestions && activeQuestionIndex === currentQuestionIndex && (
+          <Card className="border-green-200 bg-green-50 mt-4">
+            <CardContent className="p-4">
+              <p className="text-green-700 text-center">
+                Conversation complete! Please proceed to the next question.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Error display */}
+        {error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+      </div>
     </SlideWrapper>
   )
 }

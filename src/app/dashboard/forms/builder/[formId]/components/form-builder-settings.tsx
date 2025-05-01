@@ -357,20 +357,6 @@ export default function FormBuilderSettings() {
               {/* AI Conversation */}
               {currentBlock.blockTypeId === 'ai_conversation' && (
                 <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="starting-prompt">Starting Prompt</Label>
-                    <Textarea 
-                      id="starting-prompt" 
-                      value={(blockSettings as { startingPrompt: string }).startingPrompt || ''}
-                      onChange={(e) => updateBlockSettings(currentBlock.id, { 
-                        startingPrompt: e.target.value 
-                      } as Record<string, unknown>)}
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This is the initial message the AI will use to start the conversation.
-                    </p>
-                  </div>
                   
                   <div className="space-y-1.5">
                     <Label htmlFor="context-instructions">AI Instructions</Label>
