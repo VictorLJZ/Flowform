@@ -278,6 +278,34 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       if (result.success) {
         console.log('Form saved successfully')
         
+        // Create a mapping of original block IDs to database IDs
+        const blockIdMap = new Map();
+        
+        // If we received blocks from the database response, update our local block IDs
+        if (result.blocks && Array.isArray(result.blocks)) {
+          // Create a new array for updated blocks
+          const updatedBlocks = [...blocks];
+          
+          // For each block in the response, map the original ID to the database ID
+          result.blocks.forEach((dbBlock, index) => {
+            if (index < blocks.length) {
+              const originalBlock = blocks[index];
+              // Store the mapping from frontend ID to database ID
+              blockIdMap.set(originalBlock.id, dbBlock.id);
+              console.log(`Block ID mapping: ${originalBlock.id} -> ${dbBlock.id}`);
+              
+              // Update the block in our local state with the new ID
+              updatedBlocks[index] = {
+                ...originalBlock,
+                id: dbBlock.id
+              };
+            }
+          });
+          
+          // Update the blocks in the store with the new IDs
+          set({ blocks: updatedBlocks });
+        }
+        
         // Find any dynamic blocks that need their config saved separately
         const dynamicBlocks = blocks.filter(block => 
           block.type === 'dynamic' || block.blockTypeId === 'ai_conversation')
@@ -285,10 +313,19 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         if (dynamicBlocks.length > 0) {
           console.log(`Saving configurations for ${dynamicBlocks.length} dynamic blocks`)
           
-          // Save each dynamic block's configuration
+          // Save each dynamic block's configuration using the database ID
           for (const block of dynamicBlocks) {
-            await saveDynamicBlockConfig(block.id, block.settings)
-            console.log(`Saved configuration for dynamic block: ${block.id}`)
+            // Use the database ID if it exists in our mapping, otherwise use the original ID
+            const dbBlockId = blockIdMap.get(block.id) || block.id;
+            
+            // Ensure the block title is used as the startingPrompt in settings
+            const settingsWithPrompt = {
+              ...block.settings,
+              startingPrompt: block.title // Use the block title as the starting prompt
+            };
+            
+            await saveDynamicBlockConfig(dbBlockId, settingsWithPrompt);
+            console.log(`Saved configuration for dynamic block: ${dbBlockId} (original ID: ${block.id})`)
           }
         }
       } else {
