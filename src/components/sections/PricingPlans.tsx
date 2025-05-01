@@ -49,7 +49,7 @@ const plans = [
     description: 'For orgs needing advanced features',
     price: { monthly: 60, annually: 50 },
     ctaText: 'Get Business',
-    ctaLink: '/signup?plan=business',
+    ctaLink: 'https://buy.stripe.com/14kaGAfe0c5s1X2145',
     popular: false,
     features: [
       '10,000 responses/mo',
