@@ -126,7 +126,7 @@ export async function middleware(request: NextRequest) {
     const publicRoutes = [
       '/',
       '/pricing',
-      '/features',
+      '/features',  // Always lowercase
       '/about',
       '/contact',
       '/blog',
@@ -140,6 +140,9 @@ export async function middleware(request: NextRequest) {
       '/login',
       '/auth/',
       '/signup',
+      '/company/',
+      '/features/',  // Always lowercase
+      '/resources/',
     ];
     
     const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname) || 

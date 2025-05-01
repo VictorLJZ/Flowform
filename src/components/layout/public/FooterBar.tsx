@@ -49,27 +49,27 @@ export default function FooterBar() {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Features</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/Features/dynamic-responses" className="text-sm text-gray-500 hover:text-primary transition-colors">
+                <Link href="/features/dynamic-responses" className="text-sm text-gray-500 hover:text-primary transition-colors">
                   Dynamic questions
                 </Link>
               </li>
               <li>
-                <Link href="/Features/templates" className="text-sm text-gray-500 hover:text-primary transition-colors">
+                <Link href="/features/templates" className="text-sm text-gray-500 hover:text-primary transition-colors">
                   Templates
                 </Link>
               </li>
               <li>
-                <Link href="/Features/form-builder" className="text-sm text-gray-500 hover:text-primary transition-colors">
+                <Link href="/features/form-builder" className="text-sm text-gray-500 hover:text-primary transition-colors">
                   Form builder
                 </Link>
               </li>
               <li>
-                <Link href="/Features/survey-maker" className="text-sm text-gray-500 hover:text-primary transition-colors">
+                <Link href="/features/survey-maker" className="text-sm text-gray-500 hover:text-primary transition-colors">
                   Powerful branching
                 </Link>
               </li>
               <li>
-                <Link href="/Features/integrations" className="text-sm text-gray-500 hover:text-primary transition-colors">
+                <Link href="/features/integrations" className="text-sm text-gray-500 hover:text-primary transition-colors">
                   Integrations
                 </Link>
               </li>

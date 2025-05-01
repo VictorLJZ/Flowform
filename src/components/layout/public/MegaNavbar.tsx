@@ -55,37 +55,37 @@ const navItems: NavItem[] = [
           {
             title: "Dynamic questions",
             description: "Questions that adapt to your users in real time using AI. Follow-up questions have never been more powerful.",
-            href: "/Features/dynamic-responses",
+            href: "/features/dynamic-responses",
             icon: "overview"
           },
           {
             title: "Templates",
             description: "Out of the box templates to help you get up and going at the speed of thought.",
-            href: "/Features/templates",
+            href: "/features/templates",
             icon: "ai"
           },
           {
             title: "Form builder",
             description: "Create custom forms to collect data and insights from your users.",
-            href: "/Features/form-builder",
+            href: "/features/form-builder",
             icon: "form"
           },
           {
             title: "Powerful branching",
             description: "Branching logic that allows you to control the flow of your form with utmost precision.",
-            href: "/Features/survey-maker",
+            href: "/features/survey-maker",
             icon: "survey"
           },
           {
             title: "Integrations",
             description: "Find the apps your team is already using or discover new ways to get work done with FlowForm.",
-            href: "/Features/integrations",
+            href: "/features/integrations",
             icon: "quiz"
           },
           {
             title: "Analytics",
             description: "Track and analyze the performance of your forms and surveys with powerful features all on one platform.",
-            href: "/Features/analytics",
+            href: "/features/analytics",
             icon: "test"
           },
         ],
