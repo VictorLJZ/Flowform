@@ -92,7 +92,8 @@ function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
 export async function loginWithGoogle(params?: LoginParams) {
   // Debug logging
   console.log('Google login parameters:', params)
-  const isAnnual = params?.annual === 'true'
+  // Note: isAnnual is used in the URL building, but we don't need it directly here
+  // We'll just pass the raw 'annual' parameter through to the callback
   
   const supabase = await createClient()
   

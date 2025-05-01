@@ -140,7 +140,7 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
     } finally {
       setIsLoading(null);
     }
-  }, [router]);
+  }, [router, isAnnual]);
   
   return (
     <section className="py-16 bg-gray-50">
