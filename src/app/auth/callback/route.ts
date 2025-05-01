@@ -2,13 +2,17 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // Helper function to get the Stripe checkout URL for a plan
-function getStripeCheckoutUrl(plan: string): string {
+function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
   // Using the actual Stripe payment links from PricingPlans.tsx
   switch (plan.toLowerCase()) {
     case 'pro':
-      return 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU';
+      return isAnnual 
+        ? 'https://buy.stripe.com/00g5mg0j6d9w1X228a' // Annual Pro plan
+        : 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU'; // Monthly Pro plan
     case 'business':
-      return 'https://buy.stripe.com/14kaGAfe0c5s1X2145';
+      return isAnnual 
+        ? 'https://buy.stripe.com/00gdSMfe03yWgRW003' // Annual Business plan
+        : 'https://buy.stripe.com/14kaGAfe0c5s1X2145'; // Monthly Business plan
     default:
       return '/dashboard';
   }
@@ -20,11 +24,15 @@ export async function GET(request: Request) {
     const code = requestUrl.searchParams.get('code')
     const returnTo = requestUrl.searchParams.get('returnTo')
     const plan = requestUrl.searchParams.get('plan')
+    const annual = requestUrl.searchParams.get('annual')
+    const isAnnual = annual === 'true'
     
     // Debug logging
     console.log('Auth callback parameters:', {
       returnTo,
       plan,
+      annual,
+      isAnnual,
       fullUrl: request.url,
       searchParams: Object.fromEntries(requestUrl.searchParams.entries())
     })
@@ -50,7 +58,7 @@ export async function GET(request: Request) {
     // Handle specific plan checkout if plan parameter exists
     if (plan && (plan === 'pro' || plan === 'business')) {
       // Redirect to the appropriate Stripe checkout
-      redirectUrl = getStripeCheckoutUrl(plan)
+      redirectUrl = getStripeCheckoutUrl(plan, isAnnual)
     } 
     // Or use the returnTo parameter if it exists and is a relative URL (security check)
     else if (returnTo && returnTo.startsWith('/')) {

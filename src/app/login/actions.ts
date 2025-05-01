@@ -8,9 +8,10 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string
   const returnTo = formData.get('returnTo') as string
   const plan = formData.get('plan') as string
+  const isAnnual = formData.get('annual') === 'true'
   
   // Debug logging
-  console.log('Login parameters:', { returnTo, plan });
+  console.log('Login parameters:', { returnTo, plan, isAnnual });
   
   const supabase = await createClient()
   
@@ -29,7 +30,7 @@ export async function login(formData: FormData) {
     // If we have a plan parameter, this is probably coming from the pricing page
     if (plan && (plan === 'pro' || plan === 'business')) {
       // Redirect to the appropriate Stripe checkout for the selected plan
-      const checkoutUrl = getStripeCheckoutUrl(plan);
+      const checkoutUrl = getStripeCheckoutUrl(plan, isAnnual);
       return redirect(checkoutUrl);
     }
     
@@ -68,16 +69,21 @@ export async function signup(formData: FormData) {
 interface LoginParams {
   returnTo?: string | null;
   plan?: string | null;
+  annual?: string | null;
 }
 
 // Helper function to get the Stripe checkout URL for a plan
-function getStripeCheckoutUrl(plan: string): string {
+function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
   // Using the actual Stripe payment links from PricingPlans.tsx
   switch (plan.toLowerCase()) {
     case 'pro':
-      return 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU';
+      return isAnnual 
+        ? 'https://buy.stripe.com/00g5mg0j6d9w1X228a' // Annual Pro plan
+        : 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU'; // Monthly Pro plan
     case 'business':
-      return 'https://buy.stripe.com/14kaGAfe0c5s1X2145';
+      return isAnnual 
+        ? 'https://buy.stripe.com/00gdSMfe03yWgRW003' // Annual Business plan
+        : 'https://buy.stripe.com/14kaGAfe0c5s1X2145'; // Monthly Business plan
     default:
       return '/dashboard';
   }
@@ -86,6 +92,7 @@ function getStripeCheckoutUrl(plan: string): string {
 export async function loginWithGoogle(params?: LoginParams) {
   // Debug logging
   console.log('Google login parameters:', params)
+  const isAnnual = params?.annual === 'true'
   
   const supabase = await createClient()
   
@@ -98,7 +105,7 @@ export async function loginWithGoogle(params?: LoginParams) {
   
   // Build the callback URL with the returnTo and plan parameters if present
   let callbackUrl = `${origin}/auth/callback`;
-  if (params?.returnTo || params?.plan) {
+  if (params?.returnTo || params?.plan || params?.annual) {
     callbackUrl += '?';
     const queryParams = [];
     if (params.returnTo) {
@@ -106,6 +113,9 @@ export async function loginWithGoogle(params?: LoginParams) {
     }
     if (params.plan) {
       queryParams.push(`plan=${encodeURIComponent(params.plan)}`);
+    }
+    if (params.annual) {
+      queryParams.push(`annual=${params.annual}`);
     }
     callbackUrl += queryParams.join('&');
   }

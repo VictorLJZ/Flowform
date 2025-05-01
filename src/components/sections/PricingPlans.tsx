@@ -30,7 +30,10 @@ const plans = [
     description: 'For professionals and small teams',
     price: { monthly: 20, annually: 17 },
     ctaText: 'Get Pro',
-    ctaLink: 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU',
+    ctaLinks: {
+      monthly: 'https://buy.stripe.com/cN2eWQc1O4D08lqeUU',
+      annually: 'https://buy.stripe.com/00g5mg0j6d9w1X228a'
+    },
     popular: true,
     features: [
       '1,000 responses/mo',
@@ -49,7 +52,10 @@ const plans = [
     description: 'For orgs needing advanced features',
     price: { monthly: 60, annually: 50 },
     ctaText: 'Get Business',
-    ctaLink: 'https://buy.stripe.com/14kaGAfe0c5s1X2145',
+    ctaLinks: {
+      monthly: 'https://buy.stripe.com/14kaGAfe0c5s1X2145',
+      annually: 'https://buy.stripe.com/00gdSMfe03yWgRW003'
+    },
     popular: false,
     features: [
       '10,000 responses/mo',
@@ -95,9 +101,12 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   
   // Function to handle payment button clicks
-  const handlePaymentClick = useCallback(async (planName: string, paymentLink: string) => {
+  const handlePaymentClick = useCallback(async (planName: string, planData: { monthly: string, annually: string }) => {
     // Mark this button as loading
     setIsLoading(planName);
+    
+    // Select the appropriate payment link based on billing cycle
+    const paymentLink = isAnnual ? planData.annually : planData.monthly;
     
     try {
       // Check if user is logged in
@@ -107,14 +116,14 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
       if (error) {
         console.error('Auth error:', error);
         // If there's an auth error, redirect to login
-        router.push(`/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}`);
+        router.push(`/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}&annual=${isAnnual}`);
         return;
       }
       
       if (!user) {
         // Not logged in - redirect to login with return URL
-        const loginUrl = `/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}`;
-        console.log('Redirecting to login with parameters:', { planName, loginUrl });
+        const loginUrl = `/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}&annual=${isAnnual}`;
+        console.log('Redirecting to login with parameters:', { planName, isAnnual, loginUrl });
         router.push(loginUrl);
       } else {
         // User is logged in - proceed to payment
@@ -186,7 +195,7 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
                 <Button 
                   className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
                   variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handlePaymentClick(plan.name, plan.ctaLink)}
+                  onClick={() => plan.ctaLinks ? handlePaymentClick(plan.name, plan.ctaLinks) : handlePaymentClick(plan.name, { monthly: plan.ctaLink, annually: plan.ctaLink })}
                   disabled={isLoading === plan.name}
                 >
                   {isLoading === plan.name ? 'Loading...' : plan.ctaText}
