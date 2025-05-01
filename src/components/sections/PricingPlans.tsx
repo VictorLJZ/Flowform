@@ -113,7 +113,9 @@ export default function PricingPlans({ isAnnual }: PricingPlansProps) {
       
       if (!user) {
         // Not logged in - redirect to login with return URL
-        router.push(`/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}`);
+        const loginUrl = `/login?returnTo=${encodeURIComponent('/pricing')}&plan=${encodeURIComponent(planName.toLowerCase())}`;
+        console.log('Redirecting to login with parameters:', { planName, loginUrl });
+        router.push(loginUrl);
       } else {
         // User is logged in - proceed to payment
         if (paymentLink.startsWith('http')) {

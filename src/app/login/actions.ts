@@ -9,6 +9,9 @@ export async function login(formData: FormData) {
   const returnTo = formData.get('returnTo') as string
   const plan = formData.get('plan') as string
   
+  // Debug logging
+  console.log('Login parameters:', { returnTo, plan });
+  
   const supabase = await createClient()
   
   const { error } = await supabase.auth.signInWithPassword({
@@ -81,6 +84,9 @@ function getStripeCheckoutUrl(plan: string): string {
 }
 
 export async function loginWithGoogle(params?: LoginParams) {
+  // Debug logging
+  console.log('Google login parameters:', params)
+  
   const supabase = await createClient()
   
   // Get the current origin for local development or production
@@ -101,6 +107,9 @@ export async function loginWithGoogle(params?: LoginParams) {
     }
     callbackUrl += queryParams.join('&');
   }
+  
+  // Debug logging
+  console.log('Built callback URL:', callbackUrl);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

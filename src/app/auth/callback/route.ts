@@ -21,6 +21,14 @@ export async function GET(request: Request) {
     const returnTo = requestUrl.searchParams.get('returnTo')
     const plan = requestUrl.searchParams.get('plan')
     
+    // Debug logging
+    console.log('Auth callback parameters:', {
+      returnTo,
+      plan,
+      fullUrl: request.url,
+      searchParams: Object.fromEntries(requestUrl.searchParams.entries())
+    })
+    
     if (!code) {
       return NextResponse.redirect(new URL('/login?error=Missing+authorization+code', request.url))
     }
