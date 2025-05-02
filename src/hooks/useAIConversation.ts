@@ -70,7 +70,7 @@ export const fetchers = {
  * This wrapper hook prevents API calls in builder mode by providing a null key to SWR
  * Only performs real API calls in viewer mode
  */
-export function useSafeAIConversation(responseId: string, blockId: string, formId: string, isBuilder: boolean) {
+export function useAIConversation(responseId: string, blockId: string, formId: string, isBuilder: boolean) {
   const { mutate } = useSWRConfig();
   const conversationKey = isBuilder ? null : `${CONVERSATION_KEY_PREFIX}:${responseId}:${blockId}`;
   

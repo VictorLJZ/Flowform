@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
 import { SlideLayout } from "@/types/layout-types"
-import { useSafeAIConversation } from "@/hooks/useAIConversation"
+import { useAIConversation } from "@/hooks/useAIConversation"
 import { QAPair } from "@/types/supabase-types"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 
@@ -96,7 +96,7 @@ export function AIConversationBlock({
     isSubmitting, 
     error, 
     submitAnswer
-  } = useSafeAIConversation(responseId, id, formId, isBuilder);
+  } = useAIConversation(responseId, id, formId, isBuilder);
   
   // Default to value prop in builder mode, but don't use it for UI display in builder
   // Using useMemo to prevent creating a new array reference on every render
