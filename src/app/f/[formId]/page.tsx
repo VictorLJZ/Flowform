@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { BlockType } from "@/types/block-types"
 import type { FormBuilderState } from "@/types/store-types"
 import type { QAPair } from "@/types/supabase-types"
+import { BlockPresentation } from '@/types/theme-types'
+import { SlideLayout } from '@/types/layout-types'
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -469,7 +471,18 @@ export default function FormViewerPage() {
           }}
           value={currentAnswer as QAPair[]} 
           onChange={(v: QAPair[]) => setCurrentAnswer(v)}
-          onUpdate={(updates: any) => {
+          onUpdate={(updates: Partial<{
+            title: string,
+            description: string,
+            settings: {
+              startingPrompt?: string,
+              maxQuestions?: number,
+              temperature?: number,
+              contextInstructions?: string,
+              presentation?: BlockPresentation,
+              layout?: SlideLayout
+            }
+          }>) => {
             // In viewer mode we don't update block settings but we need this prop
             console.log('Block update requested', updates)
           }}
