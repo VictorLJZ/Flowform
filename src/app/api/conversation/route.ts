@@ -7,7 +7,6 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const responseId = url.searchParams.get('responseId')
     const blockId = url.searchParams.get('blockId')
-    const mode = 'viewer'
     
     if (!blockId) {
       return NextResponse.json(

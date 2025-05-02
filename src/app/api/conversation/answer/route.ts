@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       formId: input.formId,
       question: input.question,
       answer: input.answer,
-      isStarterQuestion: input.isStarterQuestion
+      isStarterQuestion: input.isStarterQuestion,
+      isComplete: input.isComplete // Pass the isComplete flag from frontend
     })
     
     if (!result.success) {

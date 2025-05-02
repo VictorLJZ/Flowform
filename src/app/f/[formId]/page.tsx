@@ -27,7 +27,7 @@ export default function FormViewerPage() {
   const formId = params.formId as string
 
   const { form, isLoading, error } = useVersionedForm(formId)
-  const [responseId, setResponseId] = useState<string | null>(null)
+  const [responseId, setResponseId] = useState<string>("")
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [completed, setCompleted] = useState<boolean>(false)
   const [submitting, setSubmitting] = useState<boolean>(false)
@@ -233,13 +233,6 @@ export default function FormViewerPage() {
           currentQuestion,
           isFirstQuestion
         }
-        
-        console.log('AI Conversation data:', {
-          conversation,
-          currentQuestionIndex,
-          isFirstQuestion,
-          currentQuestion
-        })
       }
       
       const requestBody = { 
@@ -476,7 +469,7 @@ export default function FormViewerPage() {
           }}
           value={currentAnswer as QAPair[]} 
           onChange={(v: QAPair[]) => setCurrentAnswer(v)}
-          onUpdate={(updates) => {
+          onUpdate={(updates: any) => {
             // In viewer mode we don't update block settings but we need this prop
             console.log('Block update requested', updates)
           }}

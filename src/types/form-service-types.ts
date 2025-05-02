@@ -76,6 +76,7 @@ export interface SaveDynamicResponseInput {
   question: string;     // The current question
   answer: string;       // The user's answer
   isStarterQuestion?: boolean; // Whether this is the first question
+  isComplete?: boolean; // Override completion status (for special cases)
 }
 
 /**

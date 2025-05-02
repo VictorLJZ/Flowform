@@ -42,12 +42,10 @@ export interface AIConversationBlockProps {
       layout?: SlideLayout
     }
   }>) => void
-  // Navigation props
   onNext?: () => void
   isNextDisabled?: boolean
-  // Response tracking props
-  responseId?: string | null
-  formId?: string | null
+  responseId: string
+  formId: string
 }
 
 export function AIConversationBlock({
@@ -70,8 +68,6 @@ export function AIConversationBlock({
   // Local component state
   const [userInput, setUserInput] = useState("")
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
-  const [isTyping, setIsTyping] = useState(false)
-  const [displayedText, setDisplayedText] = useState<string>("")
 
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
@@ -80,12 +76,18 @@ export function AIConversationBlock({
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
+
+
+
+
+
+
+
+
   // Initialize variables with default values for builder mode
   let conversation = value || [];
   let nextQuestion = "";
-  let isComplete = false;
   let maxQuestions = settings.maxQuestions || 5;
-  let isLoading = false;
   let isSubmitting = false;
   let error: string | null = null;
   let submitAnswer: (question: string, answer: string, isStarterQuestion?: boolean) => Promise<any> = 
@@ -94,52 +96,62 @@ export function AIConversationBlock({
       return Promise.resolve(undefined);
     };
   
-  // Only use the hook in viewer mode and when required props are available
-  if (!isBuilder && responseId && formId) {
-    // Use the AIConversation hook in viewer mode
-    const hookResult = useAIConversation(responseId, id, formId);
+  const hookResult = useAIConversation(responseId, id, formId);
+  if (!isBuilder) {
     conversation = hookResult.conversation;
     nextQuestion = hookResult.nextQuestion || '';
-    isComplete = hookResult.isComplete;
     maxQuestions = hookResult.maxQuestions;
-    isLoading = hookResult.isLoading;
     isSubmitting = hookResult.isSubmitting;
     error = hookResult.error;
     submitAnswer = hookResult.submitAnswer;
   }
 
+
+
+
+
+
+
+
   // Computed values
-  const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1;
-  const isFirstQuestion = currentQuestionIndex === -1;
-  const effectiveMaxQuestions = maxQuestions || settings.maxQuestions || 5;
-  const hasReachedMaxQuestions = effectiveMaxQuestions > 0 && currentQuestionIndex >= effectiveMaxQuestions - 1;
+  const isFirstQuestion = activeQuestionIndex === 0;
+  const hasReachedMaxQuestions = maxQuestions > 0 && activeQuestionIndex >= maxQuestions - 1;
   const starterPrompt = title || '';
-  
-  // Navigation capabilities will be defined in handlePrevious/handleNext section
 
   // Get the current question to display
-  const activeQuestion = isFirstQuestion 
-    ? starterPrompt 
-    : (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : "");
-
+  let activeQuestion = "";
+  if (isFirstQuestion) {
+    activeQuestion = starterPrompt;
+  } else if (conversation[activeQuestionIndex] !== undefined) {
+    activeQuestion = conversation[activeQuestionIndex].question;
+  } else {
+    activeQuestion = nextQuestion;
+  }
+    
   // Calculate display title
-  const displayTitle = isTyping ? 
-    `${displayedText}${isTyping ? '|' : ''}` : 
-    (isFirstQuestion ? 
-      starterPrompt : 
-    (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : title));
+  const displayTitle = activeQuestion;
 
   // Determine if we should show input field
   const isActiveQuestionAnswered = activeQuestionIndex < conversation.length && !!conversation[activeQuestionIndex]?.answer;
     
   // Only show input if we're on the latest question and it needs an answer
-  const showInput = !isActiveQuestionAnswered && (activeQuestionIndex === currentQuestionIndex || isFirstQuestion);
+  const showInput = true;
   
+
+
+
+
+
+
+
+
+
+
   useEffect(() => {
-    if (showInput && textareaRef.current && !isTyping) {
+    if (showInput && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [showInput, isTyping]);
+  }, [showInput]);
 
   // Focus textarea when component mounts
   useEffect(() => {
@@ -155,27 +167,6 @@ export function AIConversationBlock({
     }
   }, [conversation, onChange])
 
-  // Handle typing animation effect for new questions
-  useEffect(() => {
-    if (nextQuestion && !isTyping && activeQuestionIndex === currentQuestionIndex) {
-      setIsTyping(true)
-      setDisplayedText("")
-      
-      let index = 0
-      const intervalId = setInterval(() => {
-        if (index < nextQuestion.length) {
-          setDisplayedText(prev => prev + nextQuestion.charAt(index))
-          index++
-        } else {
-          clearInterval(intervalId)
-          setIsTyping(false)
-        }
-      }, 30)
-      
-      return () => clearInterval(intervalId)
-    }
-  }, [nextQuestion, isTyping, activeQuestionIndex, currentQuestionIndex])
-  
 
 
 
@@ -185,7 +176,7 @@ export function AIConversationBlock({
 
   // Compute navigation status
   const canGoPrevious = activeQuestionIndex > 0
-  const canGoNext = activeQuestionIndex < currentQuestionIndex
+  const canGoNext = activeQuestionIndex < conversation.length - 1
 
   // Navigation between questions
   const handlePrevious = () => {
@@ -219,7 +210,7 @@ export function AIConversationBlock({
       
       // Clear input and update state
       setUserInput("")
-      setActiveQuestionIndex(currentQuestionIndex + 1)
+      setActiveQuestionIndex(activeQuestionIndex + 1)
     } catch (err) {
       console.error("Error submitting answer:", err)
     }

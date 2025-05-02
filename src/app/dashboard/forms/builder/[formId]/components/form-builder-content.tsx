@@ -345,6 +345,8 @@ export default function FormBuilderContent() {
                     // This is just a preview, so no actual navigation is needed
                   }}
                   isNextDisabled={false}
+                  responseId=""
+                  formId=""
                 />
               )}
             </div>
