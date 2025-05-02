@@ -9,6 +9,13 @@ import { BlockPresentation } from "@/types/theme-types"
 import { SlideLayout } from "@/types/layout-types"
 
 interface EmailBlockProps {
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
   id: string
   title: string
   description?: string
@@ -38,6 +45,7 @@ interface EmailBlockProps {
 }
 
 export function EmailBlock({
+  analytics,
   id,
   title,
   description,
@@ -51,21 +59,35 @@ export function EmailBlock({
   onNext,
   isNextDisabled
 }: EmailBlockProps) {
-  const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
   
+  // Helper to validate email format
+  const isValidEmail = (email: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const emailValue = e.target.value
-    
+    const newValue = e.target.value;
     if (onChange) {
-      onChange(emailValue)
+      onChange(newValue);
+    }
+    
+    // Track value change for analytics
+    if (analytics?.trackChange) {
+      analytics.trackChange({
+        input_type: 'email',
+        value_length: newValue.length,
+        has_value: newValue.trim().length > 0,
+        is_valid: isValidEmail(newValue)
+      });
     }
     
     // Validate email format if enabled and not empty
-    if (settings?.validateFormat && emailValue && !isBuilder) {
-      const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)
+    if (settings?.validateFormat && newValue && !isBuilder) {
+      const isValid = isValidEmail(newValue)
       
       if (!isValid) {
         setError('Please enter a valid email address')
@@ -86,8 +108,24 @@ export function EmailBlock({
         value={isBuilder ? '' : value}
         onChange={handleInputChange}
         disabled={isBuilder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          // Track focus event for analytics
+          if (analytics?.trackFocus) {
+            analytics.trackFocus({ field_type: 'email' });
+          }
+        }}
+        onBlur={() => {
+          setFocused(false);
+          // Track blur event for analytics
+          if (analytics?.trackBlur) {
+            analytics.trackBlur({
+              field_type: 'email',
+              input_length: value?.length || 0,
+              is_valid: value ? isValidEmail(value) : false
+            });
+          }
+        }}
         className={cn(
           "w-full text-base placeholder:text-gray-500 placeholder:text-left transition-all",
           isBuilder && "opacity-70 cursor-not-allowed",

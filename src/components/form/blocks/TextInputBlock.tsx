@@ -36,6 +36,13 @@ interface TextInputBlockProps {
   // Navigation props
   onNext?: () => void
   isNextDisabled?: boolean
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
 }
 
 export function TextInputBlock({
@@ -50,15 +57,26 @@ export function TextInputBlock({
   onChange,
   onUpdate,
   onNext,
-  isNextDisabled
+  isNextDisabled,
+  analytics
 }: TextInputBlockProps) {
   const { mode } = useFormBuilderStore()
   const [focused, setFocused] = useState(false)
   const isBuilder = mode === 'builder'
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
     if (onChange) {
-      onChange(e.target.value)
+      onChange(newValue);
+    }
+    
+    // Track value change for analytics
+    if (analytics?.trackChange) {
+      analytics.trackChange({
+        input_type: 'text',
+        value_length: newValue.length,
+        has_value: newValue.trim().length > 0
+      });
     }
   }
 
@@ -72,8 +90,23 @@ export function TextInputBlock({
         value={isBuilder ? '' : value}
         onChange={handleInputChange}
         disabled={isBuilder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          // Track focus event for analytics
+          if (analytics?.trackFocus) {
+            analytics.trackFocus({ field_type: 'text_input' });
+          }
+        }}
+        onBlur={() => {
+          setFocused(false);
+          // Track blur event for analytics
+          if (analytics?.trackBlur) {
+            analytics.trackBlur({ 
+              field_type: 'text_input',
+              input_length: value?.length || 0
+            });
+          }
+        }}
         className={cn(
           "w-full transition-all",
           isBuilder && "opacity-70 cursor-not-allowed",

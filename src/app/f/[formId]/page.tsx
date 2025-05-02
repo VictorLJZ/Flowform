@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useVersionedForm } from "@/hooks/useVersionedForm"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { useAnalytics } from "@/hooks/useAnalytics"
 import { v4 as uuidv4 } from 'uuid'
 import { BlockType } from "@/types/block-types"
 import type { FormBuilderState } from "@/types/store-types"
@@ -27,6 +28,12 @@ import {
 export default function FormViewerPage() {
   const params = useParams()
   const formId = params.formId as string
+  
+  // Initialize analytics hooks
+  const analytics = useAnalytics({
+    formId,
+    metadata: { source: 'public_form_view' }
+  })
 
   const { form, isLoading, error } = useVersionedForm(formId)
   const [responseId, setResponseId] = useState<string>("")
@@ -70,6 +77,8 @@ export default function FormViewerPage() {
     setMode("viewer")
     
     if (form) {
+      // Form view is tracked automatically when the component mounts through the useAnalytics hook
+      // The hook already has the formId and source in its metadata
       console.log('[FormViewer] Loading form version:', form.version_id || 'original version');
       
       // Safely map blocks with thorough error handling
@@ -163,6 +172,10 @@ export default function FormViewerPage() {
     
     function createNewSession() {
       console.log('[Session Init] Making API request to create session for form:', formId);
+      
+      // Start timing measurement for session creation
+      analytics.timing.startTimer();
+      
       fetch(`/api/forms/${formId}/sessions`, { method: "POST" })
         .then(res => {
           console.log('[Session Init] Session API response status:', res.status);
@@ -178,10 +191,23 @@ export default function FormViewerPage() {
           }
           setResponseId(data.sessionId)
           localStorage.setItem(storageKey, JSON.stringify({ sessionId: data.sessionId, currentIndex: 0 }))
+          
+          // Track form start when session is created
+          analytics.blockInteraction.trackInteraction('submit', {
+            response_id: data.sessionId,
+            action: 'session_created',
+            event_type: 'form_start'
+          });
         })
         .catch(error => {
           console.error('[Session Init] Failed to create session:', error);
           setSubmitError('Failed to initialize form session. Please try refreshing the page.');
+          
+          // Track error for analytics
+          analytics.blockInteraction.handleError({
+            error_message: error.message,
+            error_type: 'session_creation_error'
+          });
         })
     }
   }, [form, formId, storageKey])
@@ -225,6 +251,15 @@ export default function FormViewerPage() {
     }
     setSubmitError(null)
     setSubmitting(true)
+    
+    // Track block interaction when user answers
+    analytics.blockInteraction.trackInteraction('submit', {
+      block_id: block.id,
+      block_type: block.blockTypeId,
+      response_id: responseId,
+      has_value: currentAnswer !== undefined && currentAnswer !== '',
+      event_type: isLastQuestion ? 'form_submission' : 'block_submission'
+    })
     try {
       // Determine the current question for AI conversations
       let additionalData = {}
@@ -295,6 +330,12 @@ export default function FormViewerPage() {
         }))
       } 
       else if (data.completed) {
+        // Track form completion
+        const elapsedTime = analytics.timing.stopTimer();
+        analytics.trackFormSession({
+          elapsed_time_ms: elapsedTime,
+          completion_type: 'full'
+        });
         setCompleted(true)
       } 
       else {
@@ -389,6 +430,18 @@ export default function FormViewerPage() {
     });
     
     if (!block) return null
+    
+    // Configure block-specific analytics when a new block is rendered
+    const blockAnalytics = useAnalytics({
+      formId,
+      blockId: block.id,
+      responseId,
+      metadata: {
+        block_type: block.blockTypeId,
+        block_index: currentIndex,
+        is_required: block.required
+      }
+    })
 
     // Create common props for all block types
     const commonProps = {
@@ -400,7 +453,14 @@ export default function FormViewerPage() {
       totalBlocks: blocks.length,
       settings: block.settings, // Use the actual settings from the database
       onNext: handleAnswer,
-      isNextDisabled: isNextDisabled
+      isNextDisabled: isNextDisabled,
+      // Add analytics props to track interactions within block components
+      analytics: {
+        trackFocus: blockAnalytics.trackFocus,
+        trackBlur: blockAnalytics.trackBlur,
+        trackChange: blockAnalytics.trackChange,
+        blockRef: blockAnalytics.blockRef
+      }
     }
     
     console.log(`[RenderBlock] Block ${block.id} commonProps:`, commonProps);
@@ -508,6 +568,26 @@ export default function FormViewerPage() {
     exit: (dir: number) => ({ y: dir > 0 ? '-100%' : '100%', opacity: 0 }),
   }
 
+  // Add event listener for beforeunload to track form abandonment
+  useEffect(() => {
+    if (!completed && responseId) {
+      const handleBeforeUnload = () => {
+        // Track form abandonment when page is closed/refreshed
+        if (!completed && currentIndex > 0) {
+          analytics.blockInteraction.trackInteraction('blur', {
+            response_id: responseId,
+            last_block_id: block?.id,
+            completion_percentage: Math.round((currentIndex / total) * 100),
+            event_type: 'form_abandonment'
+          });
+        }
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [completed, responseId, currentIndex, total, block?.id]);
+  
   if (completed) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">

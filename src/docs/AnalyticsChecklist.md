@@ -4,72 +4,84 @@ This checklist outlines the step-by-step process to implement the event-driven a
 
 ## Phase 1: Analytics Service Layer
 
-- [ ] Create core analytics service
-  - [ ] Create file: `/src/services/analytics/trackEvents.ts`
-  - [ ] Implement `trackFormView()` function
-  - [ ] Implement `trackBlockView()` function 
-  - [ ] Implement `trackBlockInteraction()` function
-  - [ ] Implement `trackFormCompletion()` function
+- [x] Create core analytics service
+  - [x] ~~Create file: `/src/services/analytics/trackEvents.ts`~~ Created individual files in tracking directory instead
+  - [x] Implement `trackFormView()` function - Updated existing file
+  - [x] Implement `trackBlockView()` function - Created in `/src/services/analytics/tracking/trackBlockView.ts`
+  - [x] Implement `trackBlockInteraction()` function - Created in `/src/services/analytics/tracking/trackBlockInteraction.ts`
+  - [x] Implement `trackFormCompletion()` function - Created in `/src/services/analytics/tracking/trackFormCompletion.ts`
+  - [x] Implement `trackDynamicBlockAnalytics()` function - Added bonus function for AI blocks
 
-- [ ] Create visitor identification system
-  - [ ] Create file: `/src/lib/analytics/visitorId.ts`
-  - [ ] Implement function to generate/retrieve anonymous visitor IDs
-  - [ ] Add browser storage integration for persistent IDs
+- [x] Create visitor identification system
+  - [x] Create file: `/src/lib/analytics/visitorId.ts`
+  - [x] Implement function to generate/retrieve anonymous visitor IDs
+  - [x] Add browser storage integration for persistent IDs
 
-- [ ] Create event queuing mechanism
-  - [ ] Create file: `/src/lib/analytics/eventQueue.ts`
-  - [ ] Implement batching for multiple events
-  - [ ] Add retry mechanism for network failures
+- [x] Create event queuing mechanism
+  - [x] Create file: `/src/lib/analytics/eventQueue.ts`
+  - [x] Implement batching for multiple events
+  - [x] Add retry mechanism for network failures
 
 ## Phase 2: API Endpoints for Analytics
 
-- [ ] Create API routes to receive tracking events
-  - [ ] Create file: `/src/app/api/analytics/track/form-view/route.ts`
-  - [ ] Create file: `/src/app/api/analytics/track/block-interaction/route.ts`
-  - [ ] Create file: `/src/app/api/analytics/track/form-completion/route.ts`
+- [x] Create API routes to receive tracking events
+  - [x] Create file: `/src/app/api/analytics/track/form-view/route.ts`
+  - [x] Create file: `/src/app/api/analytics/track/block-interaction/route.ts`
+  - [x] Create file: `/src/app/api/analytics/track/form-completion/route.ts`
+  - [x] Create file: `/src/app/api/analytics/track/batch/route.ts` (Added for batch processing)
 
-- [ ] Implement database operations in API routes
-  - [ ] Add Supabase insert operations for `form_views` table
-  - [ ] Add Supabase insert operations for `form_interactions` table
-  - [ ] Add operations to update response status on completion
+- [x] Implement database operations in API routes
+  - [x] Add Supabase insert operations for `form_views` table
+  - [x] Add Supabase insert operations for `form_interactions` table
+  - [x] Add operations to update response status on completion
+  - [x] Add support for batch event processing
 
 ## Phase 3: React Hooks for Analytics
 
-- [ ] Create custom React hooks for analytics
-  - [ ] Create file: `/src/hooks/useAnalytics.ts`
-  - [ ] Implement `useFormViewTracking(formId)` hook
-  - [ ] Implement `useBlockViewTracking(blockId, formId)` hook
-  - [ ] Implement `useBlockInteractionTracking(blockId, formId)` hook
-  - [ ] Implement `useFormCompletionTracking(formId, responseId)` hook
+- [x] Create custom React hooks for analytics
+  - [x] Create file: `/src/hooks/useAnalytics.ts` - Unified analytics hook
+  - [x] Implement `useFormViewTracking(formId)` hook - Created in `/src/hooks/analytics/useFormViewTracking.ts`
+  - [x] Implement `useBlockViewTracking(blockId, formId)` hook - Created in `/src/hooks/analytics/useBlockViewTracking.ts`
+  - [x] Implement `useBlockInteractionTracking(blockId, formId)` hook - Created in `/src/hooks/analytics/useBlockInteractionTracking.ts`
+  - [x] Implement `useFormCompletionTracking(formId, responseId)` hook - Created in `/src/hooks/analytics/useFormCompletionTracking.ts`
 
-- [ ] Create utilities for timing and measurement
-  - [ ] Add functions to measure time spent on blocks
-  - [ ] Add functions to track scroll depth in form
+- [x] Create utilities for timing and measurement
+  - [x] Add functions to measure time spent on blocks - Created in `/src/hooks/analytics/useTimingMeasurement.ts`
+  - [x] Add barrel exports file in `/src/hooks/analytics/index.ts` for easy imports
 
 ## Phase 4: Integration with Form Components
 
-- [ ] Update form container component
-  - [ ] Edit file: `/src/components/form/form-container.tsx` (or similar)
-  - [ ] Integrate form view tracking
-  - [ ] Integrate completion tracking
+- [x] Update Public Form Viewer
+  - [x] Edit file: `/src/app/f/[formId]/page.tsx`
+  - [x] Add `useFormViewTracking` hook in the initial useEffect
+  - [x] Add block view tracking in the `renderBlock` function
+  - [x] Add interaction tracking in the `handleAnswer` function
+  - [x] Add form completion tracking when form is submitted
 
-- [ ] Update block components
-  - [ ] Edit static block components to track visibility and interactions
-  - [ ] Edit dynamic conversation blocks to track interactions
-  - [ ] Add timing metrics to block interactions
+- [x] Update individual block components in `/src/components/form/blocks/`
+  - [x] Edit `TextInputBlock.tsx` to track text input interactions
+  - [x] Edit `MultipleChoiceBlock.tsx` to track selection interactions
+  - [x] Edit `CheckboxGroupBlock.tsx` to track checkbox interactions
+  - [x] Edit `AIConversationBlock.tsx` to track AI conversation interactions
+  - [x] Edit `EmailBlock.tsx` to track email input interactions
+  - [x] Add timing and validity metrics to all block interactions
 
-- [ ] Update form submission handling
-  - [ ] Add analytics events when forms are submitted
-  - [ ] Track partial completions vs full completions
+- [x] Enhance form session handling
+  - [x] Update `createNewSession` function to track session starts
+  - [x] Track partial completions in navigation functions
+  - [x] Add abandonment tracking for users who leave the form
 
 ## Phase 5: Aggregated Metrics & Background Processing
 
 - [ ] Create database functions for aggregation
-  - [ ] Create SQL function to update `form_metrics` table
-  - [ ] Create SQL function to update `block_metrics` table
+  - [ ] Create SQL function for daily aggregation of `form_metrics`
+  - [ ] Create SQL function for daily aggregation of `block_metrics`
+  - [ ] Create SQL function for funnel analysis across form blocks
 
-- [ ] Implement scheduled jobs (if using Supabase Edge Functions)
+- [ ] Implement scheduled jobs with Supabase Edge Functions
   - [ ] Create function to run daily metrics calculations
+  - [ ] Create function to identify abandoned forms
+  - [ ] Create function to generate weekly reports
   - [ ] Create function to clean up old raw event data
 
 - [ ] Create dashboard components to display metrics

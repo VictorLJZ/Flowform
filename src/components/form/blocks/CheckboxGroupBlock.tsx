@@ -15,6 +15,13 @@ interface Option {
 }
 
 interface CheckboxGroupBlockProps {
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
   id: string
   title: string
   description?: string
@@ -45,6 +52,7 @@ interface CheckboxGroupBlockProps {
 }
 
 export function CheckboxGroupBlock({
+  analytics,
   id,
   title,
   description,
@@ -62,22 +70,36 @@ export function CheckboxGroupBlock({
   const isBuilder = mode === 'builder'
   
   const handleCheckboxChange = (checked: boolean, optionId: string) => {
-    if (!onChange) return;
+    if (isBuilder || !onChange) return
+
+    // Clone current values array
+    const currentValues = [...(value || [])]
     
-    const selectedCount = value.filter(id => id === optionId).length + (checked ? 1 : -1);
+    // If max selections is set, enforce it
+    if (checked && settings?.maxSelected && currentValues.length >= settings.maxSelected) {
+      return; // Don't update if it exceeds max selections
+    }
     
+    // Update the values
+    let newValues: string[];
     if (checked) {
-      const newValue = [...value, optionId];
-      
-      // If max selections is set, enforce it
-      const maxError = typeof settings?.maxSelected === 'number' && selectedCount > settings.maxSelected;
-      if (maxError) {
-        return; // Don't update if it exceeds max selections
-      }
-      
-      onChange(newValue);
+      newValues = [...currentValues, optionId];
     } else {
-      onChange(value.filter(id => id !== optionId));
+      newValues = currentValues.filter(id => id !== optionId);
+    }
+    
+    // Send the update
+    onChange(newValues);
+    
+    // Track checkbox interaction for analytics
+    if (analytics?.trackChange) {
+      analytics.trackChange({
+        input_type: 'checkbox_group',
+        action: checked ? 'checked' : 'unchecked',
+        option_id: optionId,
+        selected_count: newValues.length,
+        total_options: (settings?.options || []).length
+      });
     }
   }
 

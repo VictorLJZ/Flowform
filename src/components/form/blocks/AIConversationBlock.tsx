@@ -14,6 +14,13 @@ import { QAPair } from "@/types/supabase-types"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 
 export interface AIConversationBlockProps {
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
   id: string
   title: string
   description?: string
@@ -49,6 +56,7 @@ export interface AIConversationBlockProps {
 }
 
 export function AIConversationBlock({
+  analytics,
   id,
   title,
   description,
@@ -230,6 +238,18 @@ export function AIConversationBlock({
       // If this is the first question, use the starter prompt
       const questionToAnswer = isFirstQuestion ? starterPrompt : activeQuestion
       
+      // Track the conversation submission for analytics
+      if (analytics?.trackChange) {
+        analytics.trackChange({
+          input_type: 'ai_conversation',
+          action: 'submit_response',
+          question_index: activeQuestionIndex,
+          response_length: userInput.trim().length,
+          is_first_question: isFirstQuestion,
+          conversation_length: effectiveConversation.length
+        });
+      }
+      
       // Save the current input in our record before submitting
       setQuestionInputs(prev => ({
         ...prev,
@@ -262,8 +282,19 @@ export function AIConversationBlock({
       setUserInput("")
       setActiveQuestionIndex(activeQuestionIndex + 1)
       setIsLocalSubmitting(false)
-    } catch (err) {
-      console.error("Error submitting answer:", err)
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error("Error submitting answer:", error)
+      
+      // Track error for analytics
+      if (analytics?.trackChange) {
+        analytics.trackChange({
+          input_type: 'ai_conversation',
+          action: 'error',
+          error_message: error.message || 'Unknown error'
+        });
+      }
+      
       setIsLocalSubmitting(false)
     }
   }
@@ -344,6 +375,24 @@ export function AIConversationBlock({
               placeholder="Type your answer here..."
               className="min-h-[100px] pr-12 resize-none"
               disabled={isSubmitting}
+              onFocus={() => {
+                if (analytics?.trackFocus) {
+                  analytics.trackFocus({
+                    input_type: 'ai_conversation',
+                    question_index: activeQuestionIndex,
+                    is_first_question: isFirstQuestion
+                  });
+                }
+              }}
+              onBlur={() => {
+                if (analytics?.trackBlur) {
+                  analytics.trackBlur({
+                    input_type: 'ai_conversation',
+                    has_draft: userInput.trim().length > 0,
+                    draft_length: userInput.length
+                  });
+                }
+              }}
             />
             <Button
               size="icon"

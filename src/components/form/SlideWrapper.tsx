@@ -30,18 +30,15 @@ interface SlideWrapperProps {
   required: boolean
   index?: number
   totalBlocks?: number
-  settings?: {
-    layout?: SlideLayout
+  settings: {
     presentation?: BlockPresentation
+    layout: SlideLayout
   }
-  onUpdate?: (updates: Partial<{ 
-    title: string, 
-    description: string, 
-    settings: Record<string, unknown> 
-  }>) => void
+  children: React.ReactNode
+  onUpdate?: (updates: Partial<any>) => void
   onNext?: () => void
   isNextDisabled?: boolean
-  children: ReactNode
+  blockRef?: React.RefObject<HTMLDivElement>
   className?: string
 }
 
@@ -57,6 +54,7 @@ export function SlideWrapper({
   onNext,
   isNextDisabled = false,
   children,
+  blockRef,
   className
 }: SlideWrapperProps) {
   const titleRef = useRef<HTMLDivElement>(null)
@@ -105,6 +103,9 @@ export function SlideWrapper({
       autosave.scheduleAutosave()
     }
   }
+  
+  // Create a container div that will be tracked by analytics
+  const containerRef = blockRef || useRef<HTMLDivElement>(null);
   
   // Prepare the content of the slide
   const slideContent = (
@@ -189,9 +190,11 @@ export function SlideWrapper({
   // Render the appropriate layout based on the slide layout type
   // Wrap all slide layouts in the aspect ratio container when in builder mode
   const wrappedContent = (layoutComponent: React.ReactNode) => (
-    <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
-      {layoutComponent}
-    </SlideAspectRatioContainer>
+    <div ref={containerRef} data-block-id={id}>
+      <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
+        {layoutComponent}
+      </SlideAspectRatioContainer>
+    </div>
   );
 
   switch (slideLayout.type) {

@@ -16,6 +16,13 @@ interface Option {
 }
 
 interface MultipleChoiceBlockProps {
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
   id: string
   title: string
   description?: string
@@ -44,6 +51,7 @@ interface MultipleChoiceBlockProps {
 }
 
 export function MultipleChoiceBlock({
+  analytics,
   id,
   title,
   description,
@@ -60,9 +68,19 @@ export function MultipleChoiceBlock({
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
   
-  const handleValueChange = (value: string) => {
-    if (onChange) {
-      onChange(value)
+  const handleSelect = (option: string) => {
+    // Only handle selection in viewer mode
+    if (mode !== 'builder' && onChange) {
+      onChange(option);
+      
+      // Track selection for analytics
+      if (analytics?.trackChange) {
+        analytics.trackChange({
+          input_type: 'multiple_choice',
+          selected_option: option,
+          options_count: (settings?.options || []).length
+        });
+      }
     }
   }
 
@@ -71,7 +89,7 @@ export function MultipleChoiceBlock({
     <RadioGroup 
       disabled={isBuilder}
       value={value || ""} 
-      onValueChange={handleValueChange}
+      onValueChange={handleSelect}
       className="space-y-3 mt-1"
     >
       {(settings?.options || []).map((option) => (
