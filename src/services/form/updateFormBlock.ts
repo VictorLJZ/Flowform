@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { DynamicBlockConfig } from '@/types/supabase-types';
 import { FormBlockUpdateInput, FormBlockCreationResult } from '@/types/form-service-types';
+import { BlockType, FormBlock } from '@/types/block-types';
 import { invalidateFormCache } from './invalidateCache';
+import { checkFormResponses } from './checkFormResponses';
+import { createFormVersion } from './createFormVersion';
 
 // Define this one here as it was not included in our centralized types
 type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,
@@ -37,8 +40,48 @@ export async function updateFormBlock(
     console.error('Error fetching form block:', fetchError);
     throw fetchError;
   }
+  
+  const formId = existingBlock.form_id;
+  
+  // Check if the form has responses - if so, we need to create a version before updating
+  const hasResponses = await checkFormResponses(formId);
+  
+  if (hasResponses) {
+    // Get all blocks for this form to create a complete version
+    const { data: allFormBlocks, error: blocksError } = await supabase
+      .from('form_blocks')
+      .select('*')
+      .eq('form_id', formId);
+      
+    if (blocksError) {
+      console.error('Error fetching all form blocks:', blocksError);
+      throw blocksError;
+    }
+    
+    // Map database blocks to frontend format for versioning
+    const frontendBlocks = allFormBlocks.map(block => ({
+      id: block.id,
+      blockTypeId: `${block.type}_${block.subtype}`,
+      type: block.type === 'dynamic' ? 'dynamic' as BlockType : 'static' as BlockType,
+      title: block.title,
+      description: block.description,
+      required: block.required,
+      order: block.order_index,
+      settings: block.settings
+    })) as FormBlock[];
+    
+    // Get user ID for versioning
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+    
+    if (userId) {
+      // Create a version before making changes
+      const version = await createFormVersion(formId, userId, frontendBlocks);
+      console.log(`Created form version ${version?.version_number} before updating block`);
+    }
+  }
 
-  // Update the form block
+  // Now update the form block
   const { data: updatedBlock, error: updateError } = await supabase
     .from('form_blocks')
     .update({

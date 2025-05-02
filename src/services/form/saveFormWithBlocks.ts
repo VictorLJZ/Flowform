@@ -9,7 +9,6 @@ import { Form } from '@/types/supabase-types';
  * Save a complete form with all its blocks
  * Handles creating a new form or updating an existing one
  * Synchronizes blocks by adding new ones, updating changed ones, and removing deleted ones
- * Uses a database transaction via RPC for data consistency
  * 
  * @param formData Form data to save
  * @param blocks Form blocks to save
@@ -30,105 +29,140 @@ export async function saveFormWithBlocks(
       workspace_id,
       created_by,
       status = 'draft',
-      theme = { name: 'default', primaryColor: '#0284c7', fontFamily: 'inter' },
-      settings = { showProgressBar: true, requireSignIn: false }
+      settings,
+      theme
     } = formData;
     
-    if (!workspace_id) {
-      throw new Error('workspace_id is required for saving forms');
-    }
+    // Create or update form based on whether form_id exists
+    const isNewForm = !form_id;
+    let formId: string | undefined = form_id;
     
-    // Prepare the form data object
-    // Make sure to include an 'id' field that matches 'form_id' since the PostgreSQL function
-    // looks for 'id' but our frontend uses 'form_id'
-    const formDataObj = {
-      id: form_id, // Add 'id' matching the form_id to fix the database function compatibility
-      form_id,
-      title,
-      description,
-      workspace_id,
-      created_by,
-      status,
-      theme,
-      settings
-    };
-    
-    console.log('===== DEBUG: saveFormWithBlocks =====');
-    console.log('Input formData:', JSON.stringify(formDataObj, null, 2));
-    console.log('Input blocks count:', blocks.length);
-    if (blocks.length > 0) {
-      console.log('Sample block input:', JSON.stringify(blocks[0], null, 2));
-    }
-    
-    // Map blocks to database format with proper UUID handling
-    const blocksData = blocks.map((frontendBlock, index) => {
-      // Check for any unexpected structure in block settings
-      const blockSettings = frontendBlock.settings || {};
-      console.log(`Block ${index} settings keys:`, Object.keys(blockSettings));
-      
-      // Look for potential presentation settings that might cause problems
-      if (blockSettings.presentation) {
-        console.log(`Block ${index} has presentation settings:`, blockSettings.presentation);
+    // Step 1: Create or update the form
+    if (isNewForm) {
+      // Create a new form
+      const newFormId = uuidv4();
+      const { error } = await supabase
+        .from('forms')
+        .insert({
+          form_id: newFormId,
+          title,
+          description,
+          workspace_id,
+          created_by,
+          status,
+          settings,
+          theme
+        })
+        .select('*')
+        .single();
+        
+      if (error) {
+        console.error('Error creating form:', error);
+        throw new Error(error.message);
       }
       
-      const { type, subtype } = mapToDbBlockType(frontendBlock.blockTypeId);
-      
-      // Generate a proper UUID if the ID isn't already a UUID format
-      const blockId = frontendBlock.id.includes('-') && 
-                     frontendBlock.id.length === 36 ? 
-                     frontendBlock.id : uuidv4();
-      
-      // Create the DB-ready block object
-      const dbBlock = {
-        id: blockId,
-        type,
-        subtype,
-        title: frontendBlock.title || '',
-        description: frontendBlock.description || null,
-        required: !!frontendBlock.required,
-        order_index: frontendBlock.order || 0,
-        settings: blockSettings
-      };
-      
-      console.log(`Block ${index} transformed for DB:`, JSON.stringify(dbBlock, null, 2));
-      return dbBlock;
-    });
-    
-    // Log the exact payload being sent to the database function
-    console.log('Payload being sent to database function:');
-    console.log('p_form_data:', JSON.stringify(formDataObj, null, 2));
-    console.log('p_blocks_data:', JSON.stringify(blocksData, null, 2));
-
-    // Call the PostgreSQL function that handles empty arrays and UUID conversion
-    console.log('Calling database function save_form_with_blocks_empty_safe...');
-    const { data, error } = await supabase.rpc('save_form_with_blocks_empty_safe', {
-      p_form_data: formDataObj,
-      p_blocks_data: blocksData
-    });
-    
-    // Handle errors if any
-    if (error) {
-      console.error('Error saving form with blocks:', error);
-      throw error;
+      // Set the form_id for block creation
+      formId = newFormId;
+    } else {
+      // Update existing form
+      const { error } = await supabase
+        .from('forms')
+        .update({
+          title,
+          description,
+          workspace_id,
+          status,
+          settings,
+          theme,
+          updated_at: new Date().toISOString()
+        })
+        .eq('form_id', formId);
+        
+      if (error) {
+        console.error('Error updating form:', error);
+        throw new Error(error.message);
+      }
     }
     
-    // Log the response from database function
-    console.log('Response from database function:', JSON.stringify(data, null, 2));
+    // Step 2: Handle form blocks
+    // Get existing blocks from the database
+    const { data: existingBlocks, error: getBlocksError } = await supabase
+      .from('form_blocks')
+      .select('id')
+      .eq('form_id', formId);
+      
+    if (getBlocksError) {
+      console.error('Error fetching existing blocks:', getBlocksError);
+      throw new Error(getBlocksError.message);
+    }
     
-    // Ensure data exists before accessing properties
-    if (!data || !data.form) {
-      console.error('Invalid data structure received:', JSON.stringify(data, null, 2));
-      throw new Error('Invalid response format from database function');
+    const existingBlockIds = existingBlocks
+      ? existingBlocks.map(block => block.id)
+      : [];
+      
+    // Determine blocks to keep, blocks to delete, and blocks to create
+    const clientBlockIds = blocks.map(block => block.id);
+    const blocksToDelete = existingBlockIds.filter(id => !clientBlockIds.includes(id));
+    
+    // Delete blocks that don't exist in the client anymore
+    if (blocksToDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('form_blocks')
+        .delete()
+        .in('id', blocksToDelete);
+        
+      if (deleteError) {
+        console.error('Error deleting blocks:', deleteError);
+        throw new Error(deleteError.message);
+      }
+    }
+    
+    // Upsert blocks 
+    const blocksToUpsert = blocks.map((block, index) => {
+      const { type, subtype } = mapToDbBlockType(block.blockTypeId);
+      return {
+        id: block.id, // Now properly UUID format from the frontend
+        form_id: formId,
+        type,
+        subtype,
+        title: block.title || '',
+        description: block.description || null,
+        required: !!block.required,
+        order_index: index,
+        settings: block.settings || {}
+      };
+    });
+    
+    // Save all blocks at once with upsert
+    const { data: savedBlocks, error: upsertError } = await supabase
+      .from('form_blocks')
+      .upsert(blocksToUpsert)
+      .select('*');
+      
+    if (upsertError) {
+      console.error('Error upserting blocks:', upsertError);
+      throw new Error(upsertError.message);
+    }
+    
+    // Get the updated form data
+    const { data: updatedForm, error: getFormError } = await supabase
+      .from('forms')
+      .select('*')
+      .eq('form_id', formId)
+      .single();
+      
+    if (getFormError) {
+      console.error('Error fetching updated form:', getFormError);
+      throw new Error(getFormError.message);
     }
     
     return {
-      form: data.form as Form,
-      blocks: Array.isArray(data.blocks) ? data.blocks : [],
-      success: true
+      success: true,
+      form: updatedForm as Form,
+      blocks: savedBlocks || []
     };
   } catch (error) {
-    // Final error handling
-    console.error('Failed to save form with blocks:', error);
+    console.error('Error in saveFormWithBlocks:', error);
     throw error;
   }
 }

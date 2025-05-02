@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { useForm } from "@/hooks/useForm"
+import { useVersionedForm } from "@/hooks/useVersionedForm"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { v4 as uuidv4 } from 'uuid'
+import { BlockType } from "@/types/block-types"
 import type { FormBuilderState } from "@/types/store-types"
 import type { QAPair } from "@/types/supabase-types"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
@@ -24,7 +26,7 @@ export default function FormViewerPage() {
   const params = useParams()
   const formId = params.formId as string
 
-  const { form, isLoading, error } = useForm(formId)
+  const { form, isLoading, error } = useVersionedForm(formId)
   const [responseId, setResponseId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [completed, setCompleted] = useState<boolean>(false)
@@ -64,34 +66,63 @@ export default function FormViewerPage() {
     setMode("viewer")
     
     if (form) {
-      const mapped = form.blocks.map(b => {
-        // Log raw block data from the database
-        console.log(`[Block Debug] Raw block data:`, {
-          id: b.id,
-          type: b.type,
-          subtype: b.subtype,
-          dynamic_config: b.dynamic_config
-        });
-        
-        // Properly map dynamic blocks to ai_conversation blockTypeId
-        // Use type assertion to handle the mapping between database and frontend types
-        // Database uses 'dynamic' as the type, but our frontend uses 'ai_conversation' as the blockTypeId
-        const blockTypeId = b.type === 'dynamic' ? 'ai_conversation' as string : b.subtype
-        
-        // Log the result of mapping
-        console.log(`[Block Debug] Mapped blockTypeId for ${b.id}:`, blockTypeId);
-        
-        return {
-          id: b.id,
-          blockTypeId,
-          type: b.type,
-          title: b.title,
-          description: b.description ?? undefined,
-          required: b.required,
-          order: b.order_index,
-          settings: (b.settings || {}) as Record<string, unknown>
-        }
-      })
+      console.log('[FormViewer] Loading form version:', form.version_id || 'original version');
+      
+      // Safely map blocks with thorough error handling
+      const mapped = form.blocks
+        .filter(b => b !== null && b !== undefined) // Filter out any null blocks
+        .map(b => {
+          try {
+            // Log raw block data from the database
+            console.log(`[Block Debug] Processing block:`, {
+              id: b.id,
+              type: b.type,
+              subtype: b.subtype
+            });
+            
+            // Default blockTypeId to a safe value if type/subtype are missing
+            let blockTypeId = 'text_input'; // Default fallback
+            
+            if (b.type === 'dynamic') {
+              blockTypeId = 'ai_conversation';
+            } else if (b.subtype) {
+              blockTypeId = b.subtype;
+            }
+            
+            // Log the result of mapping
+            console.log(`[Block Debug] Mapped blockTypeId for ${b.id}:`, blockTypeId);
+            
+            // Ensure type is a valid BlockType
+            let blockType: BlockType = 'static';
+            if (b.type === 'dynamic' || b.type === 'integration' || b.type === 'layout') {
+              blockType = b.type;
+            }
+            
+            return {
+              id: b.id,
+              blockTypeId,
+              type: blockType,
+              title: b.title || '',
+              description: b.description ?? undefined,
+              required: !!b.required, // Ensure boolean
+              order: b.order_index || 0, // Ensure numeric
+              settings: (b.settings || {}) as Record<string, unknown>
+            };
+          } catch (err) {
+            console.error(`[Block Error] Failed to process block:`, err, b);
+            // Return a safe fallback block rather than failing
+            return {
+              id: b.id || uuidv4(),
+              blockTypeId: 'text_input',
+              type: 'static' as BlockType, // Explicitly type as BlockType
+              title: 'Placeholder Question',
+              description: 'There was an error loading this question',
+              required: false,
+              order: 999,
+              settings: {}
+            };
+          }
+        })
       
       setBlocks(mapped)
       console.log('[FormViewer] Loaded blocks (detailed):', 

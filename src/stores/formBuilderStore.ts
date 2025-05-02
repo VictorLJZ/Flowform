@@ -3,9 +3,10 @@
 // zustand imports
 import { create, StateCreator } from 'zustand'
 import { getBlockDefinition } from '@/registry/blockRegistry'
+import { v4 as uuidv4 } from 'uuid'
 
 // service imports
-import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
+import { saveFormWithVersioning } from '@/services/form/saveFormWithVersioning'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 
@@ -59,7 +60,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   addBlock: (blockTypeId: string) => {
     const { blocks } = get()
-    const newBlockId = `block-${Date.now()}` // Generate string ID
+    const newBlockId = uuidv4() // Generate proper UUID for block ID
     const newOrder = blocks.length // Order is still based on length
     const blockDef = getBlockDefinition(blockTypeId)
  
@@ -263,7 +264,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         }
       })
       
-      const result = await saveFormWithBlocks({
+      const result = await saveFormWithVersioning({
         form_id: formData.form_id,
         title: formData.title,
         description: formData.description || '',
@@ -279,7 +280,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         console.log('Form saved successfully')
         
         // Create a mapping of original block IDs to database IDs
-        const blockIdMap = new Map();
+        const blockIdMap = new Map<string, string>();
         
         // If we received blocks from the database response, update our local block IDs
         if (result.blocks && Array.isArray(result.blocks)) {
@@ -287,7 +288,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           const updatedBlocks = [...blocks];
           
           // For each block in the response, map the original ID to the database ID
-          result.blocks.forEach((dbBlock, index) => {
+          result.blocks.forEach((dbBlock: { id: string }, index: number) => {
             if (index < blocks.length) {
               const originalBlock = blocks[index];
               // Store the mapping from frontend ID to database ID
@@ -301,6 +302,11 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
               };
             }
           });
+          
+          // If a new form version was created, log it
+          if (result.version) {
+            console.log(`Created new form version: ${result.version.version_number}`);
+          }
           
           // Update the blocks in the store with the new IDs
           set({ blocks: updatedBlocks });

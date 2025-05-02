@@ -72,7 +72,8 @@ export function AIConversationBlock({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conversation, setConversation] = useState<QAPair[]>(value)
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
+  // Initialize activeQuestionIndex based on conversation history
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(value.length > 0 ? value.length - 1 : -1)
   const [isTyping, setIsTyping] = useState(false)
   const [displayedText, setDisplayedText] = useState<string>("")
   
@@ -210,8 +211,9 @@ export function AIConversationBlock({
           onChange(newConversation)
         }
         
-        // Move to the new question
-        setActiveQuestionIndex(newConversation.length - 1)
+        // Move to the new question (the last one in the conversation)
+        const newIndex = newConversation.length - 1;
+        setActiveQuestionIndex(newIndex)
       }
       
       setUserInput("")
@@ -316,11 +318,11 @@ export function AIConversationBlock({
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
     >
       <div className="space-y-4">
-        {/* Subtle navigation controls, only visible if we have multiple questions */}
-        {conversation.length > 1 && (
+        {/* Subtle navigation controls, only visible if we have more than one question */}
+        {!isFirstQuestion && conversation.length > 0 && (
           <div className="flex items-center justify-end gap-2 text-gray-500 text-sm">
             <span>
-              {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, conversation.length)}
+              {currentQuestionIndex >= 0 ? `${activeQuestionIndex + 1} of ${conversation.length}` : ""}
             </span>
             <div className="flex items-center gap-1">
               <Button

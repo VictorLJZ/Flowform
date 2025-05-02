@@ -1,1 +1,1 @@
-export { ResponsesTable } from './responses-table';
+export { VersionedResponsesTable } from './versioned-responses-table';

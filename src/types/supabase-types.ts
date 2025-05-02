@@ -212,6 +212,8 @@ export interface CompleteForm extends Form {
     dynamic_config?: DynamicBlockConfig;
     options?: BlockOption[];
   })[];
+  // For versioned forms, the ID of the form version
+  version_id?: string;
 }
 
 // Type for joining tables and getting complete response data

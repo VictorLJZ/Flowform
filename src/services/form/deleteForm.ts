@@ -71,7 +71,11 @@ export async function deleteForm(formId: string): Promise<{ success: boolean }> 
     console.error('Error deleting form responses:', responsesError);
     throw responsesError;
   }
-
+    
+  // NOTE: We no longer need to manually delete form_versions or form_block_versions
+  // because we've added ON DELETE CASCADE to the foreign key constraints.
+  // When we delete a form, all its versions and block versions will be automatically deleted.
+  
   // Finally delete the form itself
   const { error: deleteError } = await supabase
     .from('forms')

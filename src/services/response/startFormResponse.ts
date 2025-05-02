@@ -19,13 +19,29 @@ export async function startFormResponse(
   // for returning users to continue their response
   const respondentId = uuidv4();
   
-  // Create a new form response
+  // Get the latest form version if it exists
+  const { data: latestVersion, error: versionError } = await supabase
+    .from('form_versions')
+    .select('id')
+    .eq('form_id', formId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+    
+  // If there's an error fetching versions, log it but continue (non-critical)
+  if (versionError) {
+    console.warn('Error checking for form versions:', versionError);
+  }
+  
+  // Create a new form response with the version ID if available
   const { data: response, error: responseError } = await supabase
     .from('form_responses')
     .insert({
       form_id: formId,
       respondent_id: respondentId,
       status: 'in_progress',
+      // Include the form version ID if we found one
+      form_version_id: latestVersion?.id || null,
       metadata: {
         ...metadata,
         user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : null,

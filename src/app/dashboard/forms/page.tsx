@@ -13,7 +13,10 @@ import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
 import { useAuthSession } from "@/hooks/useAuthSession"
-import { updateForm } from "@/services/form/updateForm"
+import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
+import { getFormWithBlocksClient } from "@/services/form/getFormWithBlocksClient"
+import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
+import type { FormBlock, BlockType } from "@/types/block-types"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   DropdownMenu,
@@ -57,12 +60,47 @@ export default function FormsPage() {
   const handlePublishForm = async (formId: string) => {
     setPublishingFormId(formId)
     try {
-      // publish via service
-      await updateForm(formId, { status: 'published', published_at: new Date().toISOString() })
+      // First, make sure any pending form data is saved to the database
+      // by waiting a moment for any autosave to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // First, get the form with its blocks (using client-side function)
+      const form = await getFormWithBlocksClient(formId);
+      if (!form || !form.blocks) {
+        throw new Error('Failed to retrieve form data');
+      }
+      
+      // Convert database blocks to the format expected by our publishing function
+      // Using type assertion to handle the complex mapping between DB and form blocks
+      const convertedBlocks: FormBlock[] = form.blocks.map((dbBlock) => {
+        const blockTypeId = mapFromDbBlockType(dbBlock.type || 'static', dbBlock.subtype || 'short_text');
+        // Determine block type based on db type
+        const blockType: BlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
+                                     dbBlock.type === 'integration' ? 'integration' : 
+                                     dbBlock.type === 'layout' ? 'layout' : 'static';
+        
+        return {
+          id: dbBlock.id,
+          blockTypeId: blockTypeId,
+          type: blockType,
+          title: dbBlock.title || '',
+          description: dbBlock.description || '',
+          required: !!dbBlock.required,
+          order: dbBlock.order_index || 0,
+          settings: dbBlock.settings || {}
+        };
+      });
+      
+      // Publish via our improved versioning service that properly updates versions
+      const { version } = await publishFormWithFormBuilderStore(formId, convertedBlocks)
       // refresh list
       await mutate()
+      
+      // Show version information in the success toast
+      const versionInfo = version ? ` (Version ${version.version_number})` : '';
+      
       toast({
-        title: "Form published",
+        title: `Form published${versionInfo}`,
         description: "Your form is now publicly accessible via the share link.",
         action: (
           <Button variant="outline" size="sm" onClick={() => {

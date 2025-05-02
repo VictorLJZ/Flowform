@@ -14,7 +14,49 @@ import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useForm } from "@/hooks/useForm"
 
-import { ResponsesTable } from "@/components/analytics/responses-table"
+import { VersionedResponsesTable } from "@/components/analytics/versioned-responses-table"
+import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
+
+// Component to display responses with versioning support
+function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
+  const {
+    responses,
+    versions,
+    loading,
+    error
+  } = useVersionedFormResponses(formId);
+
+  // Check if the form has multiple versions
+  const hasMultipleVersions = versions.length > 1;
+
+  return (
+    <div className="space-y-4">
+      {hasMultipleVersions && (
+        <div className="bg-muted/50 rounded-md p-4 mb-4">
+          <div className="flex items-center">
+            <div className="mr-2">
+              <span className="text-sm font-medium">Form Versions:</span>
+              <span className="ml-2 text-sm text-muted-foreground">
+                This form has {versions.length} versions. Responses are shown with their corresponding form version.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error ? (
+        <div className="p-8 text-center text-destructive">
+          Error loading responses: {error.message}
+        </div>
+      ) : (
+        <VersionedResponsesTable
+          responses={responses}
+          loading={loading}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function FormAnalyticsPage() {
   const params = useParams()
@@ -85,7 +127,7 @@ export default function FormAnalyticsPage() {
               </TabsList>
               
               <TabsContent value="responses" className="mt-0">
-                <ResponsesTable formId={formId} />
+                <ResponsesWithVersioningSupport formId={formId} />
               </TabsContent>
               
               <TabsContent value="summary">
