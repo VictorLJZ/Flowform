@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { createPublicClient } from '@/lib/supabase/publicClient'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -7,6 +8,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const responseId = url.searchParams.get('responseId')
     const blockId = url.searchParams.get('blockId')
+    const mode = url.searchParams.get('mode') || 'viewer'
     
     if (!blockId) {
       return NextResponse.json(
@@ -15,8 +17,8 @@ export async function GET(request: Request) {
       )
     }
     
-    // Initialize Supabase client
-    const supabase = createClient()
+    // Initialize Supabase client - use public client for viewer mode
+    const supabase = mode === 'viewer' ? createPublicClient() : createClient()
     
     // Fetch the conversation
     const { data, error } = await supabase

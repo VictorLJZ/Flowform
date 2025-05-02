@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/publicClient';
 import { QAPair } from '@/types/supabase-types';
 import { SaveDynamicResponseInput, SaveDynamicResponseResult, DynamicResponseData } from '@/types/form-service-types';
 import { processConversation } from '@/services/ai/processConversation';
@@ -11,7 +12,9 @@ import { getFormContextClient } from './getFormContextClient';
  * @returns Success status with conversation data and next question (if available)
  */
 export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput): Promise<SaveDynamicResponseResult> {
-  const supabase = createClient();
+  // Allow public access for viewer mode
+  const mode = input.mode || 'viewer';
+  const supabase = mode === 'viewer' ? createPublicClient() : createClient();
   
   try {
     // Check if a response already exists for this block

@@ -64,34 +64,35 @@ export const fetchers = {
   }
 }
 
-
-
 /**
- * Custom hook for AI conversation management
- * Uses SWR to handle data fetching, caching, and revalidation
+ * Safe AI Conversation Hook
+ * 
+ * This wrapper hook prevents API calls in builder mode by providing a null key to SWR
+ * Only performs real API calls in viewer mode
  */
-export function useAIConversation(
-  responseId: string, 
-  blockId: string, 
-  formId: string, 
-) {
-  const { mutate } = useSWRConfig()
-  const conversationKey = `${CONVERSATION_KEY_PREFIX}:${responseId}:${blockId}`
+export function useSafeAIConversation(responseId: string, blockId: string, formId: string, isBuilder: boolean) {
+  const { mutate } = useSWRConfig();
+  const conversationKey = isBuilder ? null : `${CONVERSATION_KEY_PREFIX}:${responseId}:${blockId}`;
   
-  // Fetch the conversation data
+  // Fetch conversation data (only in viewer mode)
   const { data, error, isLoading, isValidating } = useSWR(
     conversationKey,
-    () => fetchers.getConversation(responseId, blockId),
+    responseId && blockId && !isBuilder ? () => fetchers.getConversation(responseId, blockId) : null,
     {
       revalidateOnFocus: false,
       revalidateIfStale: false,
       dedupingInterval: 5000,
       errorRetryCount: 2
     }
-  )
+  );
   
-  // Submit an answer and update the conversation
+  // Safe submit function that works in both modes
   const submitAnswer = async (question: string, answer: string, isStarterQuestion = false) => {
+    if (isBuilder) {
+      console.log('Builder mode submit:', { question, answer, isStarterQuestion });
+      return Promise.resolve(undefined);
+    }
+    
     try {
       // Create the input data for the answer submission
       const input: ExtendedSaveDynamicResponseInput = {
@@ -101,9 +102,8 @@ export function useAIConversation(
         question, 
         answer,
         isStarterQuestion,
-        // Pass current completion status if available
         isComplete: data?.isComplete
-      }
+      };
       
       // Call the API and update the SWR cache with result
       const result = await mutate(
@@ -121,23 +121,23 @@ export function useAIConversation(
           populateCache: true,
           revalidate: false
         }
-      )
+      );
       
-      return result
+      return result;
     } catch (error) {
-      console.error('Error in submitAnswer:', error)
-      throw error
+      console.error('Error in submitAnswer:', error);
+      throw error;
     }
-  }
+  };
   
   return {
     conversation: data?.conversation || [],
-    nextQuestion: data?.nextQuestion,
+    nextQuestion: data?.nextQuestion || '',
     isComplete: data?.isComplete || false,
     maxQuestions: data?.maxQuestions || 5,
-    isLoading,
-    isSubmitting: isValidating,
-    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    isLoading: isBuilder ? false : isLoading,
+    isSubmitting: isBuilder ? false : isValidating,
+    error: isBuilder ? null : (error ? (error instanceof Error ? error.message : String(error)) : null),
     submitAnswer
-  }
+  };
 }

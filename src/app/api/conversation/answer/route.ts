@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   try {
     const input: ExtendedInputType = await request.json()
     
+    // Get mode from header or default to viewer mode
+    const mode = request.headers.get('x-flowform-mode') || 'viewer'
+    
     // Validate required fields
     if (!input.blockId || !input.formId) {
       return NextResponse.json(
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
       )
     }
     
-    // For regular mode, process through the service
+    // Process through the service with mode parameter
     const result = await saveDynamicBlockResponse({
       responseId: input.responseId,
       blockId: input.blockId,
@@ -27,7 +30,8 @@ export async function POST(request: Request) {
       question: input.question,
       answer: input.answer,
       isStarterQuestion: input.isStarterQuestion,
-      isComplete: input.isComplete // Pass the isComplete flag from frontend
+      isComplete: input.isComplete, // Pass the isComplete flag from frontend
+      mode: mode as 'builder' | 'viewer' // Pass mode from header
     })
     
     if (!result.success) {
