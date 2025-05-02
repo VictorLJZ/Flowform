@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
 import { SlideLayout } from "@/types/layout-types"
-import { useAIConversation, fetchers } from "@/hooks/useAIConversation"
+import { fetchers } from "@/hooks/useAIConversation"
 import { QAPair } from "@/types/supabase-types"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import useSWR, { useSWRConfig } from 'swr'
@@ -168,7 +168,6 @@ export function AIConversationBlock({
     conversation, 
     nextQuestion, 
     maxQuestions, 
-    isLoading, 
     isSubmitting, 
     error, 
     submitAnswer

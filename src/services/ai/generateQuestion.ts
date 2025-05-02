@@ -1,6 +1,30 @@
 import OpenAI from "openai";
 import { GenerateQuestionResponse, OpenAIMessage } from '@/types/ai-types';
 
+// Define interfaces for the new OpenAI Responses API (March 11th, 2025)
+// These follow the format specified in the project requirements
+interface ResponsesAPIInput {
+  role: string;
+  content: string;
+}
+
+interface ResponsesAPIOptions {
+  model: string;
+  input: ResponsesAPIInput[];
+  temperature?: number;
+  store?: boolean;
+  previous_response_id?: string;
+}
+
+// Define interface for the OpenAI Responses API response format (March 11th, 2025)
+// This matches the structure defined in Rule 6 from the project requirements
+interface ResponsesAPIResponse {
+  id: string;
+  output_text: string;
+  // Add other properties as needed
+  [key: string]: unknown;
+}
+
 // Initialize OpenAI client with API key
 // Using singleton pattern to ensure consistent configuration across imports
 let openaiClient: OpenAI | null = null;
@@ -55,9 +79,12 @@ export async function generateQuestion(
     }));
     
     // Rule 7: Enable State Management if needed
-    const requestOptions: Record<string, unknown> = {
+    const requestOptions: ResponsesAPIOptions = {
       model: "gpt-4o-mini", // Using GPT-4o-mini as specified in project requirements
-      input: apiInput,
+      input: apiInput.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
       temperature,
       store: true // Enable state management as per Rule 7
     };
@@ -78,21 +105,27 @@ export async function generateQuestion(
     try {
       // Using the OpenAI Responses API (released March 11th 2025)
       // Rule 6: Accessing Text Output - use response.output_text
-      const response = await openai.responses.create(requestOptions as any);
+      // Use type assertion with unknown as intermediate step to satisfy TypeScript
+      // This is safer than using 'any' directly while still allowing us to work with the new API format
+      type ResponseCreateParamsType = Parameters<typeof openai.responses.create>[0];
+      const rawResponse = await openai.responses.create(requestOptions as unknown as ResponseCreateParamsType);
+      
+      // Cast the response to our custom type for the new Responses API format
+      const response = rawResponse as unknown as ResponsesAPIResponse;
       
       // Log successful response structure
       console.log('OpenAI response received:', {
         hasResponse: !!response,
-        hasOutputText: !!response?.output_text,
-        responseId: response?.id,
-        outputText: response?.output_text
+        hasOutputText: !!response.output_text,
+        responseId: response.id,
+        outputText: response.output_text
       });
       
       // Rule 6: Accessing Text Output - use output_text helper property
       return { 
         success: true, 
-        data: response?.output_text || '',
-        responseId: response?.id
+        data: response.output_text || '',
+        responseId: response.id
       };
     } catch (error) {
       // Detailed logging for OpenAI specific errors

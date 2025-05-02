@@ -22,6 +22,25 @@ export type OpenAIMessage = {
 };
 
 /**
+ * OpenAI Responses API request options
+ * Based on March 11th 2025 Responses API specification
+ */
+export interface OpenAIResponsesOptions {
+  model: string;
+  input: OpenAIMessage[];
+  temperature?: number;
+  store?: boolean;
+  previous_response_id?: string;
+  tools?: Array<{
+    type: 'function';
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+    strict?: boolean;
+  }>;
+}
+
+/**
  * Parameters for conversation processing
  */
 export type ProcessConversationParams = {
