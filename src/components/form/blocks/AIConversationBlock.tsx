@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
 import { SlideLayout } from "@/types/layout-types"
-import { useAIConversation } from "@/hooks/useAIConversation"
+import { useAIConversation, fetchers } from "@/hooks/useAIConversation"
 import { QAPair } from "@/types/supabase-types"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import useSWR, { useSWRConfig } from 'swr'
 
 export interface AIConversationBlockProps {
   id: string
@@ -84,27 +85,97 @@ export function AIConversationBlock({
 
 
 
-  // Initialize variables with default values for builder mode
-  let conversation = value || [];
-  let nextQuestion = "";
-  let maxQuestions = settings.maxQuestions || 5;
-  let isSubmitting = false;
-  let error: string | null = null;
-  let submitAnswer: (question: string, answer: string, isStarterQuestion?: boolean) => Promise<any> = 
-    (question, answer, isStarterQuestion = false) => {
-      console.log('Builder mode submit:', { question, answer, isStarterQuestion });
-      return Promise.resolve(undefined);
+  /**
+   * Safe AI Conversation Hook
+   * 
+   * This wrapper hook prevents API calls in builder mode by providing a null key to SWR
+   * Only performs real API calls in viewer mode
+   */
+  function useSafeAIConversation(responseId: string, blockId: string, formId: string, isBuilder: boolean) {
+    const { mutate } = useSWRConfig();
+    const conversationKey = isBuilder ? null : `conversation:${responseId}:${blockId}`;
+    
+    // Fetch conversation data (only in viewer mode)
+    const { data, error, isLoading, isValidating } = useSWR(
+      conversationKey,
+      responseId && blockId && !isBuilder ? () => fetchers.getConversation(responseId, blockId) : null,
+      {
+        revalidateOnFocus: false,
+        revalidateIfStale: false,
+        dedupingInterval: 5000,
+        errorRetryCount: 2
+      }
+    );
+    
+    // Safe submit function that works in both modes
+    const submitAnswer = async (question: string, answer: string, isStarterQuestion = false) => {
+      if (isBuilder) {
+        console.log('Builder mode submit:', { question, answer, isStarterQuestion });
+        return Promise.resolve(undefined);
+      }
+      
+      try {
+        // Create the input data for the answer submission
+        const input = {
+          responseId,
+          blockId,
+          formId,
+          question, 
+          answer,
+          isStarterQuestion,
+          isComplete: data?.isComplete
+        };
+        
+        // Call the API and update the SWR cache with result
+        const result = await mutate(
+          conversationKey,
+          fetchers.saveAnswer(input),
+          {
+            optimisticData: data ? {
+              ...data,
+              conversation: [
+                ...data.conversation,
+                { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+              ]
+            } : undefined,
+            rollbackOnError: true,
+            populateCache: true,
+            revalidate: false
+          }
+        );
+        
+        return result;
+      } catch (error) {
+        console.error('Error in submitAnswer:', error);
+        throw error;
+      }
     };
-  
-  const hookResult = useAIConversation(responseId, id, formId);
-  if (!isBuilder) {
-    conversation = hookResult.conversation;
-    nextQuestion = hookResult.nextQuestion || '';
-    maxQuestions = hookResult.maxQuestions;
-    isSubmitting = hookResult.isSubmitting;
-    error = hookResult.error;
-    submitAnswer = hookResult.submitAnswer;
+    
+    return {
+      conversation: data?.conversation || [],
+      nextQuestion: data?.nextQuestion || '',
+      isComplete: data?.isComplete || false,
+      maxQuestions: data?.maxQuestions || (settings?.maxQuestions || 5),
+      isLoading: isBuilder ? false : isLoading,
+      isSubmitting: isBuilder ? false : isValidating,
+      error: isBuilder ? null : (error ? (error instanceof Error ? error.message : String(error)) : null),
+      submitAnswer
+    };
   }
+  
+  // Use our safe hook that handles both modes properly
+  const {
+    conversation, 
+    nextQuestion, 
+    maxQuestions, 
+    isLoading, 
+    isSubmitting, 
+    error, 
+    submitAnswer
+  } = useSafeAIConversation(responseId, id, formId, isBuilder);
+  
+  // Default to value prop in builder mode
+  const effectiveConversation = isBuilder ? (value || []) : conversation;
 
 
 
@@ -122,8 +193,8 @@ export function AIConversationBlock({
   let activeQuestion = "";
   if (isFirstQuestion) {
     activeQuestion = starterPrompt;
-  } else if (conversation[activeQuestionIndex] !== undefined) {
-    activeQuestion = conversation[activeQuestionIndex].question;
+  } else if (effectiveConversation[activeQuestionIndex] !== undefined) {
+    activeQuestion = effectiveConversation[activeQuestionIndex].question;
   } else {
     activeQuestion = nextQuestion;
   }
@@ -132,7 +203,7 @@ export function AIConversationBlock({
   const displayTitle = activeQuestion;
 
   // Determine if we should show input field
-  const isActiveQuestionAnswered = activeQuestionIndex < conversation.length && !!conversation[activeQuestionIndex]?.answer;
+  const isActiveQuestionAnswered = activeQuestionIndex < effectiveConversation.length && !!effectiveConversation[activeQuestionIndex]?.answer;
     
   // Only show input if we're on the latest question and it needs an answer
   const showInput = true;
@@ -162,10 +233,10 @@ export function AIConversationBlock({
 
   // Update onChange when conversation changes
   useEffect(() => {
-    if (onChange && conversation.length > 0) {
-      onChange(conversation)
+    if (onChange && effectiveConversation.length > 0) {
+      onChange(effectiveConversation)
     }
-  }, [conversation, onChange])
+  }, [effectiveConversation, onChange])
 
 
 
@@ -176,7 +247,7 @@ export function AIConversationBlock({
 
   // Compute navigation status
   const canGoPrevious = activeQuestionIndex > 0
-  const canGoNext = activeQuestionIndex < conversation.length - 1
+  const canGoNext = activeQuestionIndex < effectiveConversation.length - 1
 
   // Navigation between questions
   const handlePrevious = () => {
@@ -187,7 +258,7 @@ export function AIConversationBlock({
 
   const handleNext = () => {
     // If we're not on the last question, go to next question
-    if (activeQuestionIndex < conversation.length - 1) {
+    if (activeQuestionIndex < effectiveConversation.length - 1) {
       setActiveQuestionIndex(activeQuestionIndex + 1)
     }
   }
@@ -251,10 +322,10 @@ export function AIConversationBlock({
     >
       <div className="space-y-4">
         {/* Subtle navigation controls, only visible if we have more than one question */}
-        {!isFirstQuestion && conversation.length > 0 && (
+        {!isFirstQuestion && effectiveConversation.length > 0 && (
           <div className="flex items-center justify-end gap-2 text-gray-500 text-sm">
             <span>
-              {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, conversation.length)}
+              {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, effectiveConversation.length)}
             </span>
             <div className="flex items-center gap-1">
               <Button
@@ -283,7 +354,7 @@ export function AIConversationBlock({
         {isActiveQuestionAnswered && (
           <div className="bg-primary/10 p-4 rounded-lg mb-4">
             <p className="text-sm text-gray-500 mb-1">Your answer:</p>
-            <p className="text-gray-800">{conversation[activeQuestionIndex].answer}</p>
+            <p className="text-gray-800">{effectiveConversation[activeQuestionIndex].answer}</p>
           </div>
         )}
         
@@ -318,7 +389,7 @@ export function AIConversationBlock({
         )}
         
         {/* Completed message when reached max questions */}
-        {hasReachedMaxQuestions && activeQuestionIndex === conversation.length + 1 && (
+        {hasReachedMaxQuestions && activeQuestionIndex === effectiveConversation.length + 1 && (
           <Card className="border-green-200 bg-green-50 mt-4">
             <CardContent className="p-4">
               <p className="text-green-700 text-center">

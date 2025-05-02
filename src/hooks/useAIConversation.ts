@@ -13,7 +13,7 @@ interface ExtendedDynamicResponseData extends DynamicResponseData {
 }
 
 // SWR fetcher functions
-const fetchers = {
+export const fetchers = {
   // Fetch conversation for a response/block
   getConversation: async (
     responseId: string, 
@@ -66,6 +66,10 @@ const fetchers = {
 
 
 
+/**
+ * Custom hook for AI conversation management
+ * Uses SWR to handle data fetching, caching, and revalidation
+ */
 export function useAIConversation(
   responseId: string, 
   blockId: string, 
