@@ -15,7 +15,7 @@ We are using Motion (fka Framer Motion) for animation
 We are using Bun as the Javascript runtime
 We are using SWR for data fetching
 
-# Director Structure
+# Directory Structure
 We are centralizing all state management in the stores, and inside the stores folder. New stores that need to be created should be added there.
 We are centralizing all of our types files inside the types folder. New types that need to be created should be added there.
 We are centralizing all services in the services folder. New services that need to be created should be added there.

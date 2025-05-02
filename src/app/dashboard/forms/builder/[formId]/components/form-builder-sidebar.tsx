@@ -87,8 +87,8 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
       {...listeners}
     >
       <div className={cn(
-        "flex items-center gap-2 p-2",
-        !sidebarOpen && "justify-center p-1"
+        "flex items-center gap-2",
+        sidebarOpen ? "p-2" : "justify-center p-0"
       )}>
 
         {/* Combined block number and icon in a pill */}
@@ -114,7 +114,7 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
         
         {/* Block content (only when sidebar is open) */}
         {sidebarOpen && (
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="flex-1 min-w-0 w-[150px] flex flex-col justify-center">
             <div className="text-sm font-medium truncate">
               {block.title || blockDef?.defaultTitle || 'Untitled Block'}
             </div>
@@ -236,13 +236,18 @@ export default function FormBuilderSidebar() {
       sidebarOpen ? "w-72" : "w-[56px]"
     )}>
       {/* Sidebar header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b">
+      <div className={cn(
+        "flex items-center border-b",
+        sidebarOpen 
+          ? "justify-between pl-4 pr-2.5 py-2.5" 
+          : "justify-center py-2.5"
+      )}>
         {sidebarOpen && <span className="font-medium">Form Blocks</span>}
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => setSidebarOpen(!sidebarOpen)} 
-          className={sidebarOpen ? "ml-auto" : "mx-auto"}
+          className={sidebarOpen ? "ml-auto" : ""}
         >
           {sidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
         </Button>
