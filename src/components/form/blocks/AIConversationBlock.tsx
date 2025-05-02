@@ -71,6 +71,8 @@ export function AIConversationBlock({
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
   // Store inputs for each question to preserve them when navigating
   const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({})
+  // Add a local loading state to prevent UI changes during submission
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false)
 
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
@@ -187,7 +189,8 @@ export function AIConversationBlock({
 
   // Computed values
   const isFirstQuestion = activeQuestionIndex === 0;
-  const hasReachedMaxQuestions = maxQuestions > 0 && activeQuestionIndex >= maxQuestions - 1;
+  // Fix the off-by-one error in max questions check
+  const hasReachedMaxQuestions = maxQuestions > 0 && activeQuestionIndex >= maxQuestions;
   const starterPrompt = title || '';
 
   // Get the current question to display
@@ -206,8 +209,12 @@ export function AIConversationBlock({
   // Determine if current question is answered
   const isActiveQuestionAnswered = activeQuestionIndex < effectiveConversation.length && !!effectiveConversation[activeQuestionIndex]?.answer;
     
-  // Show input as long as we haven't reached max questions
-  const showInput = !hasReachedMaxQuestions || !isActiveQuestionAnswered;
+  // Always show input if we're in the process of submitting to prevent UI flicker
+  // Otherwise, show input when we're within max questions and the current question needs an answer
+  const showInput = isLocalSubmitting || (
+    activeQuestionIndex < maxQuestions && 
+    (!isActiveQuestionAnswered || effectiveConversation.length <= activeQuestionIndex)
+  );
   
 
 
@@ -299,6 +306,9 @@ export function AIConversationBlock({
     if (!userInput.trim() || isSubmitting) return
     
     try {
+      // Set local submitting state to prevent UI changes
+      setIsLocalSubmitting(true)
+      
       // If this is the first question, use the starter prompt
       const questionToAnswer = isFirstQuestion ? starterPrompt : activeQuestion
       
@@ -308,13 +318,35 @@ export function AIConversationBlock({
         [activeQuestionIndex]: userInput
       }))
       
-      await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
+      // Check if we've reached max questions and should move to next block
+      const isLastQuestion = activeQuestionIndex >= maxQuestions - 1;
+      const result = await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
       
-      // Clear input and move to next question
+      // If this is the last question and we have onNext, use it to move to next block
+      if (isLastQuestion && onNext) {
+        // Update the conversation first to ensure the answer is saved
+        if (onChange) {
+          onChange([...effectiveConversation, { 
+            question: questionToAnswer, 
+            answer: userInput,
+            timestamp: new Date().toISOString(),
+            is_starter: isFirstQuestion
+          }])
+        }
+        setUserInput("")
+        // Use the onNext prop to go to the next block/question
+        onNext()
+        setIsLocalSubmitting(false)
+        return
+      }
+      
+      // For normal flow, just clear input and move to next question in this conversation
       setUserInput("")
       setActiveQuestionIndex(activeQuestionIndex + 1)
+      setIsLocalSubmitting(false)
     } catch (err) {
       console.error("Error submitting answer:", err)
+      setIsLocalSubmitting(false)
     }
   }
 
@@ -383,8 +415,8 @@ export function AIConversationBlock({
         
         {/* We no longer display the previously answered question box in any mode */}
         
-        {/* Input area - only show if waiting for an answer and not reached max questions */}
-        {showInput && !hasReachedMaxQuestions && (
+        {/* Input area - always visible, disabled during submission */}
+        {showInput && (
           <div className="relative">
             <Textarea
               ref={textareaRef}
@@ -398,10 +430,10 @@ export function AIConversationBlock({
             <Button
               size="icon"
               onClick={handleSubmit}
-              disabled={!userInput.trim() || isSubmitting}
+              disabled={isSubmitting}
               className={cn(
                 "absolute bottom-2 right-2 h-8 w-8",
-                isSubmitting ? "bg-primary-foreground text-primary" : "",
+                isSubmitting ? "bg-green-100 text-green-600" : "",
                 !userInput.trim() && "opacity-50 cursor-not-allowed"
               )}
             >

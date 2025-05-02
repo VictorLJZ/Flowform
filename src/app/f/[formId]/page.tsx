@@ -34,7 +34,9 @@ export default function FormViewerPage() {
   const [completed, setCompleted] = useState<boolean>(false)
   const [submitting, setSubmitting] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | QAPair[]>("")
+  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | QAPair[]>("")  
+  // Add a loading state to prevent displaying errors while data initializes
+  const [answersInitialized, setAnswersInitialized] = useState<boolean>(false)
   const [direction, setDirection] = useState<number>(1)
 
   const setBlocks = useFormBuilderStore((s: FormBuilderState) => s.setBlocks)
@@ -188,8 +190,14 @@ export default function FormViewerPage() {
     if (!responseId || blocks.length === 0) return
     fetch(`/api/forms/${formId}/sessions/${responseId}`)
       .then(res => res.json())
-      .then(data => setSavedAnswers(data.answers || {}))
-      .catch(console.error)
+      .then(data => {
+        setSavedAnswers(data.answers || {})
+        setAnswersInitialized(true)
+      })
+      .catch(error => {
+        console.error('Error fetching saved answers:', error)
+        setAnswersInitialized(true) // Mark as initialized even on error to prevent loading state
+      })
   }, [responseId, blocks, formId])
 
   const handlePrevious = () => {
@@ -312,7 +320,7 @@ export default function FormViewerPage() {
   }
 
   // guard loading and errors before rendering viewer
-  if (isLoading || error || !form || blocks.length === 0) {
+  if (isLoading || error || !form || blocks.length === 0 || !answersInitialized) {
     return (
       <div className="h-screen flex items-center justify-center">
         <Loader2 size={48} className="animate-spin text-primary" />
@@ -571,13 +579,13 @@ export default function FormViewerPage() {
         Powered by <span className="font-semibold ml-1">FlowForm</span>
       </div>
       
-      {submitError && (
+      {submitError && answersInitialized && (
         <div className="fixed top-4 right-4 left-4 bg-red-50 border border-red-200 rounded-md p-3 shadow-md">
           <p className="text-red-600 text-sm">{submitError}</p>
         </div>
       )}
       
-      {!hasValidAnswer && block.required && (
+      {!hasValidAnswer && block.required && answersInitialized && (
         <div className="absolute bottom-20 left-0 right-0 text-center">
           <p className="text-red-500 font-medium">This field is required</p>
         </div>
