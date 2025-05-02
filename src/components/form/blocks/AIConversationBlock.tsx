@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Send, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
@@ -179,13 +179,6 @@ export function AIConversationBlock({
   
   // Default to value prop in builder mode, but don't use it for UI display in builder
   const effectiveConversation = isBuilder ? (value || []) : conversation;
-
-
-
-
-
-
-
 
   // Computed values
   const isFirstQuestion = activeQuestionIndex === 0;
