@@ -173,7 +173,7 @@ export function AIConversationBlock({
     submitAnswer
   } = useSafeAIConversation(responseId, id, formId, isBuilder);
   
-  // Default to value prop in builder mode
+  // Default to value prop in builder mode, but don't use it for UI display in builder
   const effectiveConversation = isBuilder ? (value || []) : conversation;
 
 
@@ -309,7 +309,7 @@ export function AIConversationBlock({
       title={displayTitle}
       description={description}
       required={required}
-      index={index}
+      index={isBuilder && index ? index - 1 : index}
       totalBlocks={totalBlocks}
       settings={{
         presentation: settings.presentation,
@@ -349,8 +349,8 @@ export function AIConversationBlock({
           </div>
         )}
         
-        {/* Previously answered question */}
-        {isActiveQuestionAnswered && (
+        {/* Previously answered question - don't show in builder mode */}
+        {isActiveQuestionAnswered && !isBuilder && (
           <div className="bg-primary/10 p-4 rounded-lg mb-4">
             <p className="text-sm text-gray-500 mb-1">Your answer:</p>
             <p className="text-gray-800">{effectiveConversation[activeQuestionIndex].answer}</p>
