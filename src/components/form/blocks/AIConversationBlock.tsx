@@ -209,12 +209,13 @@ export function AIConversationBlock({
   // Determine if current question is answered
   const isActiveQuestionAnswered = activeQuestionIndex < effectiveConversation.length && !!effectiveConversation[activeQuestionIndex]?.answer;
     
-  // Always show input if we're in the process of submitting to prevent UI flicker
-  // Otherwise, show input when we're within max questions and the current question needs an answer
-  const showInput = isLocalSubmitting || (
-    activeQuestionIndex < maxQuestions && 
-    (!isActiveQuestionAnswered || effectiveConversation.length <= activeQuestionIndex)
-  );
+  // Show input in the following cases:
+  // 1. When submitting to prevent UI flicker
+  // 2. When viewing a previous question to allow editing
+  // 3. When we're within max questions and the current question needs an answer
+  const showInput = isLocalSubmitting || 
+    // Always show input when navigating back to previous questions
+    activeQuestionIndex < maxQuestions;
   
 
 
@@ -433,12 +434,17 @@ export function AIConversationBlock({
               disabled={isSubmitting || isLocalSubmitting}
               className={cn(
                 "absolute bottom-2 right-2 h-8 w-8",
-                (isSubmitting || isLocalSubmitting) ? "bg-green-100 text-green-600" : "",
+                (isSubmitting || isLocalSubmitting) ? "bg-gray-100" : "",
                 !userInput.trim() && "opacity-50 cursor-not-allowed"
               )}
             >
               {(isSubmitting || isLocalSubmitting) ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="flex items-center justify-center h-full w-full">
+                  <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
               ) : (
                 <Send className="h-4 w-4" />
               )}
