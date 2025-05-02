@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -99,7 +99,10 @@ export function AIConversationBlock({
   } = useSafeAIConversation(responseId, id, formId, isBuilder);
   
   // Default to value prop in builder mode, but don't use it for UI display in builder
-  const effectiveConversation = isBuilder ? (value || []) : conversation;
+  // Using useMemo to prevent creating a new array reference on every render
+  const effectiveConversation = useMemo(() => {
+    return isBuilder ? (value || []) : conversation;
+  }, [isBuilder, value, conversation]);
 
   // Computed values
   const isFirstQuestion = activeQuestionIndex === 0;
@@ -235,7 +238,7 @@ export function AIConversationBlock({
       
       // Check if we've reached max questions and should move to next block
       const isLastQuestion = activeQuestionIndex >= maxQuestions - 1;
-      const result = await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
+      await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
       
       // If this is the last question and we have onNext, use it to move to next block
       if (isLastQuestion && onNext) {
