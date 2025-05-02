@@ -69,6 +69,8 @@ export function AIConversationBlock({
   // Local component state
   const [userInput, setUserInput] = useState("")
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
+  // Store inputs for each question to preserve them when navigating
+  const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({})
 
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
@@ -201,11 +203,11 @@ export function AIConversationBlock({
   // Calculate display title
   const displayTitle = activeQuestion;
 
-  // Determine if we should show input field
+  // Determine if current question is answered
   const isActiveQuestionAnswered = activeQuestionIndex < effectiveConversation.length && !!effectiveConversation[activeQuestionIndex]?.answer;
     
-  // Only show input if we're on the latest question and it needs an answer
-  const showInput = true;
+  // Show input as long as we haven't reached max questions
+  const showInput = !hasReachedMaxQuestions || !isActiveQuestionAnswered;
   
 
 
@@ -246,19 +248,43 @@ export function AIConversationBlock({
 
   // Compute navigation status
   const canGoPrevious = activeQuestionIndex > 0
-  const canGoNext = activeQuestionIndex < effectiveConversation.length - 1
+  // Allow forward navigation as long as the question has been answered and we're not at max questions
+  const canGoNext = activeQuestionIndex < effectiveConversation.length - 1 || 
+    (activeQuestionIndex < settings.maxQuestions - 1 && isActiveQuestionAnswered)
 
   // Navigation between questions
   const handlePrevious = () => {
     if (activeQuestionIndex > 0) {
-      setActiveQuestionIndex(activeQuestionIndex - 1)
+      // Save current input before navigating
+      setQuestionInputs(prev => ({
+        ...prev,
+        [activeQuestionIndex]: userInput
+      }))
+      
+      // Navigate to previous question
+      const prevIndex = activeQuestionIndex - 1
+      setActiveQuestionIndex(prevIndex)
+      
+      // Restore previous input if it exists
+      setUserInput(questionInputs[prevIndex] || "")
     }
   }
 
   const handleNext = () => {
-    // If we're not on the last question, go to next question
-    if (activeQuestionIndex < effectiveConversation.length - 1) {
-      setActiveQuestionIndex(activeQuestionIndex + 1)
+    // Go to next question if we can
+    if (canGoNext) {
+      // Save current input before navigating
+      setQuestionInputs(prev => ({
+        ...prev,
+        [activeQuestionIndex]: userInput
+      }))
+      
+      // Navigate to next question
+      const nextIndex = activeQuestionIndex + 1
+      setActiveQuestionIndex(nextIndex)
+      
+      // Restore next input if it exists
+      setUserInput(questionInputs[nextIndex] || "")
     }
   }
 
@@ -276,9 +302,15 @@ export function AIConversationBlock({
       // If this is the first question, use the starter prompt
       const questionToAnswer = isFirstQuestion ? starterPrompt : activeQuestion
       
+      // Save the current input in our record before submitting
+      setQuestionInputs(prev => ({
+        ...prev,
+        [activeQuestionIndex]: userInput
+      }))
+      
       await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
       
-      // Clear input and update state
+      // Clear input and move to next question
       setUserInput("")
       setActiveQuestionIndex(activeQuestionIndex + 1)
     } catch (err) {
@@ -320,11 +352,11 @@ export function AIConversationBlock({
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
     >
       <div className="space-y-4">
-        {/* Subtle navigation controls, only visible if we have more than one question */}
-        {!isFirstQuestion && effectiveConversation.length > 0 && (
+        {/* Subtle navigation controls - show when we're past first question or have answers */}
+        {(activeQuestionIndex > 0 || effectiveConversation.length > 1) && (
           <div className="flex items-center justify-end gap-2 text-gray-500 text-sm">
             <span>
-              {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, effectiveConversation.length)}
+              {activeQuestionIndex + 1} of {settings.maxQuestions}
             </span>
             <div className="flex items-center gap-1">
               <Button
@@ -349,13 +381,7 @@ export function AIConversationBlock({
           </div>
         )}
         
-        {/* Previously answered question - don't show in builder mode */}
-        {isActiveQuestionAnswered && !isBuilder && (
-          <div className="bg-primary/10 p-4 rounded-lg mb-4">
-            <p className="text-sm text-gray-500 mb-1">Your answer:</p>
-            <p className="text-gray-800">{effectiveConversation[activeQuestionIndex].answer}</p>
-          </div>
-        )}
+        {/* We no longer display the previously answered question box in any mode */}
         
         {/* Input area - only show if waiting for an answer and not reached max questions */}
         {showInput && !hasReachedMaxQuestions && (
@@ -371,12 +397,13 @@ export function AIConversationBlock({
             />
             <Button
               size="icon"
-              className={cn(
-                "absolute bottom-2 right-2 h-8 w-8",
-                !userInput.trim() && "opacity-50 cursor-not-allowed"
-              )}
               onClick={handleSubmit}
               disabled={!userInput.trim() || isSubmitting}
+              className={cn(
+                "absolute bottom-2 right-2 h-8 w-8",
+                isSubmitting ? "bg-primary-foreground text-primary" : "",
+                !userInput.trim() && "opacity-50 cursor-not-allowed"
+              )}
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
