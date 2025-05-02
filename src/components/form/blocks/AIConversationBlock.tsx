@@ -6,17 +6,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Send, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useCallback } from "react"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
 import { BlockPresentation } from "@/types/theme-types"
 import { SlideLayout } from "@/types/layout-types"
-
-interface QAPair {
-  question: string
-  answer: string
-  timestamp: string
-  is_starter: boolean
-}
+import { useAIConversation } from "@/hooks/useAIConversation"
+import { QAPair } from "@/types/supabase-types"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
 
 export interface AIConversationBlockProps {
   id: string
@@ -50,6 +45,9 @@ export interface AIConversationBlockProps {
   // Navigation props
   onNext?: () => void
   isNextDisabled?: boolean
+  // Response tracking props
+  responseId?: string | null
+  formId?: string | null
 }
 
 export function AIConversationBlock({
@@ -64,240 +62,185 @@ export function AIConversationBlock({
   onChange,
   onUpdate,
   onNext,
-  isNextDisabled
+  isNextDisabled,
+  responseId,
+  formId
 }: AIConversationBlockProps) {
 
-  // states
+  // Local component state
   const [userInput, setUserInput] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [conversation, setConversation] = useState<QAPair[]>(value)
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
   const [isTyping, setIsTyping] = useState(false)
   const [displayedText, setDisplayedText] = useState<string>("")
-  
-  // refs
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const formId = window.location.pathname.split('/').pop() || ""
 
-  // computed
-  const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1
-  const isFirstQuestion = currentQuestionIndex === -1
-  const hasReachedMaxQuestions = settings.maxQuestions > 0 && currentQuestionIndex >= settings.maxQuestions - 1
-  // Use the block title as the starter prompt instead of a separate setting
-  const starterPrompt = title
+  // Determine if we're in builder or viewer mode
+  const { mode } = useFormBuilderStore()
+  const isBuilder = mode === 'builder'
   
+  // Refs
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Initialize variables with default values for builder mode
+  let conversation = value || [];
+  let nextQuestion = "";
+  let isComplete = false;
+  let maxQuestions = settings.maxQuestions || 5;
+  let isLoading = false;
+  let isSubmitting = false;
+  let error: string | null = null;
+  let submitAnswer: (question: string, answer: string, isStarterQuestion?: boolean) => Promise<any> = 
+    (question, answer, isStarterQuestion = false) => {
+      console.log('Builder mode submit:', { question, answer, isStarterQuestion });
+      return Promise.resolve(undefined);
+    };
+  
+  // Only use the hook in viewer mode and when required props are available
+  if (!isBuilder && responseId && formId) {
+    // Use the AIConversation hook in viewer mode
+    const hookResult = useAIConversation(responseId, id, formId);
+    conversation = hookResult.conversation;
+    nextQuestion = hookResult.nextQuestion || '';
+    isComplete = hookResult.isComplete;
+    maxQuestions = hookResult.maxQuestions;
+    isLoading = hookResult.isLoading;
+    isSubmitting = hookResult.isSubmitting;
+    error = hookResult.error;
+    submitAnswer = hookResult.submitAnswer;
+  }
+
+  // Computed values
+  const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1;
+  const isFirstQuestion = currentQuestionIndex === -1;
+  const effectiveMaxQuestions = maxQuestions || settings.maxQuestions || 5;
+  const hasReachedMaxQuestions = effectiveMaxQuestions > 0 && currentQuestionIndex >= effectiveMaxQuestions - 1;
+  const starterPrompt = title || '';
+  
+  // Navigation capabilities will be defined in handlePrevious/handleNext section
+
   // Get the current question to display
   const activeQuestion = isFirstQuestion 
     ? starterPrompt 
-    : (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : "")
+    : (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : "");
 
-  // Focus textarea when component mounts
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus()
-    }
-  }, [])
-
-  // Navigation between questions
-  const handlePrevious = useCallback(() => {
-    if (activeQuestionIndex > 0) {
-      setActiveQuestionIndex(activeQuestionIndex - 1)
-    }
-  }, [activeQuestionIndex])
-  
-  const handleNext = useCallback(() => {
-    // If we're not on the last question, go to next question
-    if (activeQuestionIndex < currentQuestionIndex) {
-      setActiveQuestionIndex(activeQuestionIndex + 1)
-    }
-  }, [activeQuestionIndex, currentQuestionIndex])
-  
-  // Handle form submission
-  const handleSubmit = useCallback(async () => {
-    if (!userInput.trim() || isSubmitting) return
-    
-    setIsSubmitting(true)
-    setError(null)
-    
-    try {
-      // Create timestamp in ISO format
-      const timestamp = new Date().toISOString()
-      
-      // Add user's answer to conversation
-      let updatedConversation = [...conversation]
-      
-      // If this is the first question, add the starter prompt
-      if (isFirstQuestion) {
-        updatedConversation.push({
-          question: starterPrompt,
-          answer: userInput,
-          timestamp,
-          is_starter: true
-        })
-      } else {
-        // Check if we're editing a previous answer
-        if (activeQuestionIndex < currentQuestionIndex) {
-          // Update the answer for the active question
-          updatedConversation[activeQuestionIndex] = {
-            ...updatedConversation[activeQuestionIndex],
-            answer: userInput,
-            timestamp
-          }
-          
-          // Remove all subsequent questions as they need to be regenerated
-          updatedConversation = updatedConversation.slice(0, activeQuestionIndex + 1)
-        } else {
-          // Update the answer for the current question
-          updatedConversation[currentQuestionIndex] = {
-            ...updatedConversation[currentQuestionIndex],
-            answer: userInput,
-            timestamp
-          }
-        }
-      }
-      
-      setConversation(updatedConversation)
-      
-      // Call onChange callback with updated conversation
-      if (onChange) {
-        onChange(updatedConversation)
-      }
-      
-      // If we've reached max questions, don't fetch next question
-      if (hasReachedMaxQuestions) {
-        setUserInput("")
-        setIsSubmitting(false)
-        return
-      }
-      
-      // Save the response and get the next question from the API
-      const response = await fetch(`/api/forms/${formId}/sessions`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responseId: id,
-          blockId: id,
-          blockType: "dynamic",
-          answer: userInput,
-          currentQuestion: activeQuestion,
-          isFirstQuestion
-        })
-      })
-      
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.nextQuestion) {
-        // Add the next AI question to the conversation
-        const newConversation = [
-          ...updatedConversation,
-          {
-            question: data.nextQuestion,
-            answer: "",
-            timestamp: new Date().toISOString(),
-            is_starter: false
-          }
-        ]
-        
-        setConversation(newConversation)
-        
-        // Call onChange callback with conversation including new question
-        if (onChange) {
-          onChange(newConversation)
-        }
-        
-        // Move to the new question
-        setActiveQuestionIndex(newConversation.length - 1)
-      }
-      
-      setUserInput("")
-    } catch (err) {
-      console.error("Error in AI conversation:", err)
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setIsSubmitting(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userInput, isSubmitting, isFirstQuestion, starterPrompt, currentQuestionIndex, conversation, hasReachedMaxQuestions, onChange, id, formId])
-  
-  // Handle Enter key to submit
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }
-  
-  // Check if the active question has been answered
-  const isActiveQuestionAnswered = !isFirstQuestion && 
-    activeQuestionIndex < conversation.length && 
-    !!conversation[activeQuestionIndex]?.answer
-  
-  // Check if we should show the input field (only if we haven't answered the active question yet)
-  const showInput = isFirstQuestion || (activeQuestionIndex <= currentQuestionIndex && !isActiveQuestionAnswered)
-  
-  // Check if we can navigate to next/previous questions
-  const canGoNext = activeQuestionIndex < currentQuestionIndex
-  const canGoPrevious = activeQuestionIndex > 0
-  
-  // Focus textarea when new question is rendered or active question changes
-  useEffect(() => {
-    if (showInput && textareaRef.current && !isTyping) {
-      textareaRef.current.focus()
-    }
-  }, [activeQuestionIndex, showInput, isTyping])
-
-
-  // Use typing animation for title when showing new questions
-  useEffect(() => {
-    // Don't animate for the first question (starter prompt)
-    if (isFirstQuestion) {
-      setDisplayedText(starterPrompt)
-      return
-    }
-    
-    // If we have a valid question to show
-    if (activeQuestionIndex < conversation.length && conversation[activeQuestionIndex]?.question) {
-      const questionText = conversation[activeQuestionIndex].question
-      
-      // If this is a newly added question (last in the conversation) and it's not answered yet
-      if (activeQuestionIndex === currentQuestionIndex && !conversation[activeQuestionIndex].answer) {
-        // Start typing animation
-        setIsTyping(true)
-        setDisplayedText("")
-        
-        let i = 0
-        const typingSpeed = 30 // ms per character
-        
-        const typingInterval = setInterval(() => {
-          if (i < questionText.length) {
-            setDisplayedText(prev => prev + questionText.charAt(i))
-            i++
-          } else {
-            clearInterval(typingInterval)
-            setIsTyping(false)
-          }
-        }, typingSpeed)
-        
-        return () => clearInterval(typingInterval)
-      } else {
-        // For existing questions, show them immediately
-        setDisplayedText(questionText)
-      }
-    }
-  }, [activeQuestionIndex, conversation, isFirstQuestion, starterPrompt, currentQuestionIndex])
-  
-  // Determine the current title to display based on the active question
+  // Calculate display title
   const displayTitle = isTyping ? 
     `${displayedText}${isTyping ? '|' : ''}` : 
     (isFirstQuestion ? 
       starterPrompt : 
-      (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : title))
+    (activeQuestionIndex < conversation.length ? conversation[activeQuestionIndex].question : title));
+
+  // Determine if we should show input field
+  const isActiveQuestionAnswered = activeQuestionIndex < conversation.length && !!conversation[activeQuestionIndex]?.answer;
+    
+  // Only show input if we're on the latest question and it needs an answer
+  const showInput = !isActiveQuestionAnswered && (activeQuestionIndex === currentQuestionIndex || isFirstQuestion);
   
+  useEffect(() => {
+    if (showInput && textareaRef.current && !isTyping) {
+      textareaRef.current.focus();
+    }
+  }, [showInput, isTyping]);
+
+  // Focus textarea when component mounts
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [])
+
+  // Update onChange when conversation changes
+  useEffect(() => {
+    if (onChange && conversation.length > 0) {
+      onChange(conversation)
+    }
+  }, [conversation, onChange])
+
+  // Handle typing animation effect for new questions
+  useEffect(() => {
+    if (nextQuestion && !isTyping && activeQuestionIndex === currentQuestionIndex) {
+      setIsTyping(true)
+      setDisplayedText("")
+      
+      let index = 0
+      const intervalId = setInterval(() => {
+        if (index < nextQuestion.length) {
+          setDisplayedText(prev => prev + nextQuestion.charAt(index))
+          index++
+        } else {
+          clearInterval(intervalId)
+          setIsTyping(false)
+        }
+      }, 30)
+      
+      return () => clearInterval(intervalId)
+    }
+  }, [nextQuestion, isTyping, activeQuestionIndex, currentQuestionIndex])
+  
+
+
+
+
+
+
+
+  // Compute navigation status
+  const canGoPrevious = activeQuestionIndex > 0
+  const canGoNext = activeQuestionIndex < currentQuestionIndex
+
+  // Navigation between questions
+  const handlePrevious = () => {
+    if (activeQuestionIndex > 0) {
+      setActiveQuestionIndex(activeQuestionIndex - 1)
+    }
+  }
+
+  const handleNext = () => {
+    // If we're not on the last question, go to next question
+    if (activeQuestionIndex < currentQuestionIndex) {
+      setActiveQuestionIndex(activeQuestionIndex + 1)
+    }
+  }
+
+
+
+
+
+
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!userInput.trim() || isSubmitting) return
+    
+    try {
+      // If this is the first question, use the starter prompt
+      const questionToAnswer = isFirstQuestion ? starterPrompt : activeQuestion
+      
+      await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
+      
+      // Clear input and update state
+      setUserInput("")
+      setActiveQuestionIndex(currentQuestionIndex + 1)
+    } catch (err) {
+      console.error("Error submitting answer:", err)
+    }
+  }
+
+  // Handle Enter key to submit
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
+
+  
+  
+  
+
+
+
+
+
   // Wrap conversation in SlideWrapper for consistent styling and layout
   return (
     <SlideWrapper

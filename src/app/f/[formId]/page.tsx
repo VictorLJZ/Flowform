@@ -447,8 +447,10 @@ export default function FormViewerPage() {
           onChange={(v: QAPair[]) => setCurrentAnswer(v)}
           onUpdate={(updates) => {
             // In viewer mode we don't update block settings but we need this prop
-            console.log('Block update requested', updates);
+            console.log('Block update requested', updates)
           }}
+          responseId={responseId}
+          formId={formId}
         />
       default:
         return null
