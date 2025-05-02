@@ -430,14 +430,14 @@ export function AIConversationBlock({
             <Button
               size="icon"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocalSubmitting}
               className={cn(
                 "absolute bottom-2 right-2 h-8 w-8",
-                isSubmitting ? "bg-green-100 text-green-600" : "",
+                (isSubmitting || isLocalSubmitting) ? "bg-green-100 text-green-600" : "",
                 !userInput.trim() && "opacity-50 cursor-not-allowed"
               )}
             >
-              {isSubmitting ? (
+              {(isSubmitting || isLocalSubmitting) ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
