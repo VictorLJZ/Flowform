@@ -1,8 +1,12 @@
 import { FormContextData } from '@/types/form-service-types';
+import { getBaseUrl } from '@/lib/utils';
+
+// Helper to get form context without making an API call
+import { getFormContext } from './getFormContext';
 
 /**
- * Get the context of a form including all questions - Client-side implementation
- * Uses the API route to fetch form context data
+ * Get the context of a form including all questions
+ * Works in both client and server environments
  * 
  * @param formId - The ID of the form
  * @param currentBlockId - The ID of the current block (to exclude from context)
@@ -15,6 +19,28 @@ export async function getFormContextClient(
   forceRefresh = false
 ): Promise<FormContextData> {
   try {
+    // Check if we're running in a server environment (Node.js)
+    const isServer = typeof window === 'undefined';
+    
+    if (isServer) {
+      try {
+        // Direct database access on server
+        console.log('Getting form context directly from database (server-side)');
+        const contextData = await getFormContext(formId, currentBlockId);
+        return contextData;
+      } catch (dbError) {
+        console.error('Failed to get form context from database:', dbError);
+        // Return a minimal form context to avoid breaking the flow
+        return {
+          formId,
+          formTitle: 'Form',
+          staticQuestions: [],
+          dynamicBlocks: []
+        };
+      }
+    }
+    
+    // Client-side implementation (browser)
     // Construct the query parameters
     const params = new URLSearchParams({
       formId,
@@ -22,8 +48,11 @@ export async function getFormContextClient(
       forceRefresh: forceRefresh.toString()
     });
     
-    // Make the API request
-    const response = await fetch(`/api/forms/context?${params.toString()}`);
+    // Get base URL - empty for browser, absolute URL for server
+    const baseUrl = getBaseUrl();
+    
+    // Make the API request with proper URL construction
+    const response = await fetch(`${baseUrl}/api/forms/context?${params.toString()}`);
     
     // Check if the response was successful
     if (!response.ok) {
@@ -36,7 +65,13 @@ export async function getFormContextClient(
     return formContext;
   } catch (error) {
     console.error('Error getting form context:', error);
-    throw error;
+    // Return a minimal placeholder context to avoid breaking the conversation flow
+    return {
+      formId,
+      formTitle: 'Form',
+      staticQuestions: [],
+      dynamicBlocks: []
+    };
   }
 }
 
