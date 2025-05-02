@@ -18,7 +18,7 @@ import { getBlockDefinition } from "@/registry/blockRegistry"
 import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { updateForm } from "@/services/form/updateForm"
+import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
 import { useToast } from "@/components/ui/use-toast"
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
@@ -195,11 +195,20 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
               
               try {
                 setIsPublishing(true)
-                // Publish via status update
-                await updateForm(formData.form_id, { status: 'published' })
+                
+                // Get current blocks from the store
+                const blocks = useFormBuilderStore.getState().blocks;
+                
+                // Publish with versioning - this uses the current blocks in the UI
+                const { version } = await publishFormWithFormBuilderStore(formData.form_id, blocks);
+                
                 await mutate()
+                
+                // Add version info to the toast
+                const versionInfo = version ? ` (Version ${version.version_number})` : '';
+                
                 toast({
-                  title: "Form published",
+                  title: `Form published${versionInfo}`,
                   description: "Your form is now publicly accessible",
                   action: (
                     <Button variant="outline" size="sm" onClick={() => {

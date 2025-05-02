@@ -152,6 +152,7 @@ Stores form submissions.
 |---------------|-------------------------|-----------------------------------|
 | id            | UUID                    | Primary key                       |
 | form_id       | UUID                    | References forms.form_id          |
+| form_version_id | UUID                  | References form_versions.id (nullable) |
 | respondent_id | TEXT                    | Anonymous identifier for respondent |
 | status        | TEXT                    | Status (in_progress, completed, abandoned) |
 | started_at    | TIMESTAMP WITH TIME ZONE| When response was started         |
@@ -162,12 +163,58 @@ Stores form submissions.
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| Anyone can create responses to published forms | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published')` |
-| Respondents can update their own responses | UPDATE | `true` | null |
+| Allow public form submissions | INSERT | null | `true` |
+| Allow users to update their own responses | UPDATE | `true` | `true` |
 | Respondents can view their own responses | SELECT | `true` | null |
-| Form owners and workspace members can view responses | SELECT | `form_id IN (SELECT f.form_id FROM forms f WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
+| Allow form owners to view responses | SELECT | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
+| Allow form owners to delete responses | DELETE | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND role IN ('owner', 'admin')))` | null |
 
-### 10. static_block_answers
+### 10. form_versions
+
+Stores versioning information for forms to track changes over time.
+
+| Column        | Type                    | Description                       |
+|---------------|-------------------------|-----------------------------------|
+| id            | UUID                    | Primary key                       |
+| form_id       | UUID                    | References forms.form_id (ON DELETE CASCADE) |
+| version_number| INTEGER                 | Sequential version number         |
+| created_at    | TIMESTAMP WITH TIME ZONE| When version was created          |
+| created_by    | UUID                    | References auth.users.id          |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners can create versions | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.created_by = auth.uid())` |
+| Anyone with form access can view versions | SELECT | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published' OR forms.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm JOIN forms f ON f.workspace_id = wm.workspace_id WHERE f.form_id = form_id AND wm.user_id = auth.uid()))` | null |
+
+### 11. form_block_versions
+
+Stores the state of form blocks at specific versions, enabling historical view of forms.
+
+| Column        | Type                    | Description                       |
+|---------------|-------------------------|-----------------------------------|
+| id            | UUID                    | Primary key                       |
+| block_id      | UUID                    | References form_blocks.id (ON DELETE CASCADE) |
+| form_version_id| UUID                   | References form_versions.id (ON DELETE CASCADE) |
+| title         | TEXT                    | Block title at this version       |
+| description   | TEXT                    | Block description at this version |
+| type          | TEXT                    | Block type at this version        |
+| subtype       | TEXT                    | Block subtype at this version     |
+| required      | BOOLEAN                 | Whether block was required        |
+| order_index   | INTEGER                 | Block order in the form           |
+| settings      | JSONB                   | Block settings at this version    |
+| is_deleted    | BOOLEAN                 | Whether block was deleted         |
+| created_at    | TIMESTAMP WITH TIME ZONE| When block version was created    |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners can create block versions | INSERT | null | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.created_by = auth.uid())` |
+| Anyone with form access can view block versions | SELECT | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.status = 'published' OR f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
+
+### 12. static_block_answers
 +**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
 Stores answers to static blocks.

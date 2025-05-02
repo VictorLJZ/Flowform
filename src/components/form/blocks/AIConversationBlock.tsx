@@ -196,7 +196,7 @@ export function AIConversationBlock({
 
   const handleNext = () => {
     // If we're not on the last question, go to next question
-    if (activeQuestionIndex < currentQuestionIndex) {
+    if (activeQuestionIndex < conversation.length - 1) {
       setActiveQuestionIndex(activeQuestionIndex + 1)
     }
   }
@@ -259,8 +259,8 @@ export function AIConversationBlock({
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
     >
       <div className="space-y-4">
-        {/* Subtle navigation controls, only visible if we have multiple questions */}
-        {conversation.length > 1 && (
+        {/* Subtle navigation controls, only visible if we have more than one question */}
+        {!isFirstQuestion && conversation.length > 0 && (
           <div className="flex items-center justify-end gap-2 text-gray-500 text-sm">
             <span>
               {activeQuestionIndex + 1} of {Math.min(settings.maxQuestions, conversation.length)}
@@ -306,16 +306,16 @@ export function AIConversationBlock({
               onKeyDown={handleKeyDown}
               placeholder="Type your answer here..."
               className="min-h-[100px] pr-12 resize-none"
-              disabled={isSubmitting || isTyping}
+              disabled={isSubmitting}
             />
             <Button
               size="icon"
               className={cn(
                 "absolute bottom-2 right-2 h-8 w-8",
-                (!userInput.trim() || isTyping) && "opacity-50 cursor-not-allowed"
+                !userInput.trim() && "opacity-50 cursor-not-allowed"
               )}
               onClick={handleSubmit}
-              disabled={!userInput.trim() || isSubmitting || isTyping}
+              disabled={!userInput.trim() || isSubmitting}
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -327,7 +327,7 @@ export function AIConversationBlock({
         )}
         
         {/* Completed message when reached max questions */}
-        {hasReachedMaxQuestions && activeQuestionIndex === currentQuestionIndex && (
+        {hasReachedMaxQuestions && activeQuestionIndex === conversation.length + 1 && (
           <Card className="border-green-200 bg-green-50 mt-4">
             <CardContent className="p-4">
               <p className="text-green-700 text-center">
