@@ -28,14 +28,24 @@ export function MembersList({
   return (
     <div className="mt-4">
       {/* Column headers */}
-      <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-muted-foreground border-b">
-        <div className="flex-1">Name</div>
-        <div className="w-24 hidden md:flex items-center justify-center">Role</div>
-        <div className="w-32 hidden md:flex items-center justify-end">Joined</div>
-        <div className="w-10"></div> {/* Actions column spacer */}
+      <div className="grid grid-cols-[auto_1fr_120px_150px_auto] px-3 py-2 text-sm font-medium text-muted-foreground border-b gap-3">
+        {/* Avatar spacer */}
+        <div></div>
+        
+        {/* Name header */}
+        <div className="text-left -ml-3">Name</div>
+        
+        {/* Role header */}
+        <div className="hidden md:block">Role</div>
+        
+        {/* Joined header */}
+        <div className="hidden md:block">Joined</div>
+        
+        {/* Actions spacer */}
+        <div></div>
       </div>
       
-      <ScrollArea className="pr-4">
+      <ScrollArea className="">
         <div>
           {members.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

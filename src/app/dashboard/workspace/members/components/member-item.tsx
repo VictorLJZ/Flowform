@@ -133,37 +133,38 @@ export function MemberItem({
   }
   
   return (
-    <div className="flex items-center justify-between p-3 hover:bg-secondary/20 border-b">
-      {/* Member info */}
-      <div className="flex items-center gap-3 flex-1">
+    <div className="grid grid-cols-[auto_1fr_120px_150px_auto] items-center p-3 hover:bg-secondary/20 border-b gap-3">
+      {/* Avatar cell */}
+      <div>
         <Avatar className="h-8 w-8">
           <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name} />
           <AvatarFallback>{getInitials(member.profile.full_name)}</AvatarFallback>
         </Avatar>
-        
-        <div className="flex-1">
-          <div className="text-sm">
-            {member.profile.full_name}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {isCurrentUser ? 'your.email@example.com' : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
-          </div>
+      </div>
+      
+      {/* Name cell */}
+      <div>
+        <div className="text-sm">
+          {member.profile.full_name}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {isCurrentUser ? 'your.email@example.com' : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
         </div>
       </div>
 
-      {/* Role column */}
-      <div className="w-24 text-center hidden md:flex items-center justify-center text-sm">
+      {/* Role cell */}
+      <div className="hidden md:block text-sm">
         {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
       </div>
       
-      {/* Joined date column */}
-      <div className="w-32 text-right hidden md:flex items-center justify-end text-sm">
+      {/* Joined date cell */}
+      <div className="hidden md:block text-sm">
         {joinedDate}
       </div>
       
-      {/* Actions menu */}
-      {isAdmin && !isCurrentUser && (
-        <div className="ml-2">
+      {/* Actions cell */}
+      <div>
+        {isAdmin && !isCurrentUser && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" disabled={isLoading}>
@@ -208,8 +209,8 @@ export function MemberItem({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        )}
+      </div>
       
       <Dialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <DialogContent>
