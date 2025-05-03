@@ -19,5 +19,3 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }
   )
 );
-
-// Selector function moved to store-types.ts

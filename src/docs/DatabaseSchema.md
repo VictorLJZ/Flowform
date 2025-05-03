@@ -2,6 +2,17 @@
 
 This document outlines the database schema for the FlowForm-neo application in Supabase.
 
+## Foreign Key Cascade Behavior
+
+The following foreign key relationships are configured with ON DELETE CASCADE, meaning that when a referenced record is deleted, all related records are automatically deleted:
+
+- `profiles.id` → `auth.users.id`: When a user is deleted, their profile is automatically deleted
+- `workspace_members.user_id` → `auth.users.id`: When a user is deleted, their workspace memberships are automatically deleted
+- `workspaces.created_by` → `auth.users.id`: When a user is deleted, workspaces they created are automatically deleted
+- `workspace_invitations.invited_by` → `auth.users.id`: When a user is deleted, invitations they sent are automatically deleted
+- `forms.created_by` → `auth.users.id`: When a user is deleted, forms they created are automatically deleted
+- `subscriptions.user_id` → `auth.users.id`: When a user is deleted, their subscription records are automatically deleted
+
 ## Workspace Management Tables
 
 ### 1. profiles
@@ -10,7 +21,7 @@ Extends the built-in Supabase auth.users table with application-specific user da
 
 | Column     | Type                    | Description                        |
 |------------|-------------------------|------------------------------------|
-| id         | UUID                    | Primary key, references auth.users.id |
+| id         | UUID                    | Primary key, references auth.users.id (CASCADE) |
 | email      | TEXT                    | User's email address (unique)      |
 | full_name  | TEXT                    | User's full name                   |
 | avatar_url | TEXT                    | URL to user's profile image        |
@@ -52,7 +63,7 @@ Tracks pending invitations to workspaces.
 | email       | TEXT                    | Invited user's email              |
 | role        | TEXT                    | Invited role (owner, admin, editor, viewer) |
 | status      | TEXT                    | Status (pending, accepted, declined, expired) |
-| invited_by  | UUID                    | References auth.users.id          |
+| invited_by  | UUID                    | References auth.users.id (CASCADE) |
 | invited_at  | TIMESTAMP WITH TIME ZONE| When invitation was sent          |
 | expires_at  | TIMESTAMP WITH TIME ZONE| When invitation expires           |
 | token       | TEXT                    | Unique token for invitation link  |
@@ -73,7 +84,7 @@ Stores active workspace memberships.
 | Column       | Type                    | Description                      |
 |--------------|-------------------------|----------------------------------|
 | workspace_id | UUID                    | References workspaces.id         |
-| user_id      | UUID                    | References auth.users.id         |
+| user_id      | UUID                    | References auth.users.id (CASCADE) |
 | role         | TEXT                    | Role (owner, admin, editor, viewer) |
 | joined_at    | TIMESTAMP WITH TIME ZONE| When user joined the workspace   |
 
@@ -881,7 +892,7 @@ Stores user subscription information.
 | Column           | Type                    | Description                       |
 |------------------|-------------------------|-----------------------------------|
 | id               | UUID                    | Primary key                       |
-| user_id          | UUID                    | References auth.users.id          |
+| user_id          | UUID                    | References auth.users.id (CASCADE) |
 | workspace_id     | UUID                    | References workspaces.id          |
 | status           | TEXT                    | Status (active, canceled, past_due, trialing, incomplete, incomplete_expired) |
 | plan             | TEXT                    | Plan type (free, pro, business)   |
