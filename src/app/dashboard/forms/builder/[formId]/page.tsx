@@ -27,6 +27,7 @@ import FormBuilderSettings from "./components/form-builder-settings"
 import FormBuilderBlockSelector from "./components/form-builder-block-selector"
 import WorkflowContent from "./components/workflow-content"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import ConnectContent from "./components/connect-content"
 
 // Wrapper that provides an isolated store per formId
 export default function FormBuilderPage() {
@@ -49,8 +50,8 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   const { toast } = useToast()
   const [isPublishing, setIsPublishing] = useState(false)
   
-  // Add state for view mode
-  const [viewMode, setViewMode] = useState<"form" | "workflow">("form")
+  // Update viewMode state
+  const [viewMode, setViewMode] = useState<"form" | "workflow" | "connect">("form")
   
   // Map SWR data to builder store
   useEffect(() => {
@@ -167,10 +168,10 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         
         {/* Center section with toggle - will stay centered in content area */}
         <div className="flex justify-center items-center w-1/3">
-          <div className="flex h-9 items-center overflow-hidden rounded-full border bg-background p-1" style={{ width: "240px" }}>
+          <div className="flex h-9 items-center overflow-hidden rounded-full border bg-background p-1" style={{ width: "320px" }}>
             <button
               className={cn(
-                "flex h-7 items-center justify-center rounded-full px-6 text-sm font-medium transition-colors w-full",
+                "flex h-7 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors w-full",
                 viewMode === "form" 
                   ? "bg-primary text-primary-foreground" 
                   : "text-muted-foreground hover:text-foreground"
@@ -181,7 +182,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
             </button>
             <button
               className={cn(
-                "flex h-7 items-center justify-center rounded-full px-6 text-sm font-medium transition-colors w-full",
+                "flex h-7 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors w-full",
                 viewMode === "workflow" 
                   ? "bg-primary text-primary-foreground" 
                   : "text-muted-foreground hover:text-foreground"
@@ -189,6 +190,17 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
               onClick={() => setViewMode("workflow")}
             >
               Workflow
+            </button>
+            <button
+              className={cn(
+                "relative flex h-7 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors w-full",
+                viewMode === "connect" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setViewMode("connect")}
+            >
+              Connect
             </button>
           </div>
         </div>
@@ -296,9 +308,12 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
             <FormBuilderSettings />
             <FormBuilderBlockSelector />
           </>
-        ) : (
+        ) : viewMode === "workflow" ? (
           /* Workflow UI */
           <WorkflowContent />
+        ) : (
+          /* Connect UI - now imported from separate file */
+          <ConnectContent />
         )}
       </main>
     </div>
