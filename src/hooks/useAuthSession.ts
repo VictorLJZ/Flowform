@@ -93,13 +93,13 @@ export function useAuthSession() {
     {
       // Important: Keep session data across revalidations until new data arrives
       keepPreviousData: true,
-      // More conservative revalidation - rely on auth state change events
-      revalidateOnFocus: false,
+      // Balance between performance and reliability
+      revalidateOnFocus: true, // Re-enable focus revalidation for better session handling
       revalidateIfStale: true,
       revalidateOnMount: true,
-      revalidateOnReconnect: false,
-      dedupingInterval: 30000, // 30 seconds
-      errorRetryCount: 2,
+      revalidateOnReconnect: true, // Re-enable reconnect revalidation
+      dedupingInterval: 15000, // 15 seconds - more frequent but still reasonable
+      errorRetryCount: 3,
       // No automatic refresh interval needed as onAuthStateChange triggers manual mutate
     }
   );

@@ -29,21 +29,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Always debug in dev mode
   const isDev = process.env.NODE_ENV === 'development';
 
-  // Force workspace selection regardless of current state
+  // Only set initial workspace selection if none exists
   useEffect(() => {
     // This effect runs separately to focus only on workspace selection
-    if (workspaceData.workspaces && workspaceData.workspaces.length > 0) {
+    if (workspaceData.workspaces && workspaceData.workspaces.length > 0 && !currentWorkspaceId) {
       const firstWorkspace = workspaceData.workspaces[0];
       
       // Debug what's happening
-      isDev && console.log('[Workspace] Setting active workspace', { 
-        currentId: currentWorkspaceId || 'none',
+      isDev && console.log('[Workspace] Setting initial workspace', { 
+        currentId: 'none',
         firstWorkspaceId: firstWorkspace.id,
         workspaceCount: workspaceData.workspaces.length
       });
       
-      // Always set the first workspace - removing the condition to ensure it happens
+      // Only set if no workspace is currently selected
       setCurrentWorkspaceId(firstWorkspace.id);
+    } else if (currentWorkspaceId) {
+      isDev && console.log('[Workspace] Using existing workspace selection:', currentWorkspaceId);
     }
   }, [workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
   
