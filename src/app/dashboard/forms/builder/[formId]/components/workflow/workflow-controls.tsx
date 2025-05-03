@@ -5,13 +5,15 @@ import { Panel } from 'reactflow'
 import { LayoutGrid, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useFormBuilderStore } from '@/stores/formBuilderStore'
 
 // Add type definition
 interface WorkflowControlsProps {
   onAutoLayout: () => void;
+  onClearSelection?: () => void;
 }
 
-export default function WorkflowControls({ onAutoLayout }: WorkflowControlsProps) {
+export default function WorkflowControls({ onAutoLayout, onClearSelection }: WorkflowControlsProps) {
   return (
     <Panel position="top-right">
       <div className="bg-background shadow-md rounded-md p-2 flex gap-2">

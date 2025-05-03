@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from 'react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Edge } from 'reactflow'
@@ -15,11 +16,24 @@ interface WorkflowConnectionSidebarProps {
 export default function WorkflowConnectionSidebar({ element, onHasChanges }: WorkflowConnectionSidebarProps) {
   const blocks = useFormBuilderStore(state => state.blocks)
   const updateConnection = useFormBuilderStore(state => state.updateConnection)
+  const saveForm = useFormBuilderStore(state => state.saveForm)
   
   // Detect block types to show appropriate condition options
   const sourceBlock = blocks.find(b => b.id === element.source)
   const targetBlock = blocks.find(b => b.id === element.target)
   const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
+  
+  // Autosave after connection updates (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (element?.data?.connection?.condition) {
+        console.log("Auto-saving connection condition");
+        saveForm();
+      }
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, [element?.data?.connection?.condition, saveForm]);
   
   // Handle condition changes
   const handleConditionChange = (key: string, value: string | number | boolean) => {

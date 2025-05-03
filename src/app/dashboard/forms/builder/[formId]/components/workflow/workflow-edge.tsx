@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useCallback } from 'react'
+import { memo, useMemo, useCallback, useState } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, MarkerType, useReactFlow } from 'reactflow'
 import { WorkflowEdgeData } from '@/types/workflow-types'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
@@ -34,13 +34,34 @@ const WorkflowEdge = ({
     targetX,
     targetY,
     targetPosition,
+    curvature: 0.2 // Even lower curvature for almost straight lines
   })
 
   // Handle edge deletion
   const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Prevent triggering other click handlers
+    
     if (id) {
-      removeConnection(id);
+      console.log(`Deleting connection with id: ${id}`); // Add logging
+      
+      // Use setTimeout to ensure the event completes before we modify state
+      setTimeout(() => {
+        removeConnection(id);
+      }, 0);
+      
+      // Show feedback directly
+      const feedback = document.createElement('div');
+      feedback.textContent = 'Connection deleted';
+      feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
+      document.body.appendChild(feedback);
+      
+      // Remove feedback after delay
+      setTimeout(() => {
+        if (document.body.contains(feedback)) {
+          document.body.removeChild(feedback);
+        }
+      }, 2000);
     }
   }, [id, removeConnection]);
 
@@ -51,8 +72,9 @@ const WorkflowEdge = ({
     const conditionType = data?.connection?.condition?.field || ''
     const operatorType = data?.connection?.condition?.operator || ''
     
-    // Always use black color for edges
-    const baseColor = '#000000' // Pure black for all edges
+    // Edge colors
+    const baseColor = '#000000' // Pure black for normal edges
+    const selectedColor = '#f59e0b' // Amber-500 for selected edges
     
     // Style settings
     let dashArray = '0' // solid line by default
@@ -69,8 +91,8 @@ const WorkflowEdge = ({
       dashArray = '10,3' // dashed for comparison
     }
     
-    // Override with selection state
-    const edgeColor = selected ? '#f59e0b' : baseColor
+    // Use amber color when selected
+    const edgeColor = selected ? selectedColor : baseColor
 
     return {
       stroke: edgeColor,
@@ -81,7 +103,7 @@ const WorkflowEdge = ({
       hasCondition,
       conditionType,
       operatorType,
-      baseColor: '#000000' // Always black for text color consistency
+      baseColor: selected ? selectedColor : baseColor // Use amber when selected
     }
   }
   
@@ -161,9 +183,11 @@ const WorkflowEdge = ({
   const labelTextColor = selected ? 'text-amber-800' : `text-${edgeStyles.baseColor}`
 
   // Calculate position for the delete button
-  // If there's a label, position it near the label, otherwise near the middle of the edge
-  const deleteButtonX = condition ? labelX + 85 : (sourceX + targetX) / 2;
-  const deleteButtonY = condition ? labelY - 22 : (sourceY + targetY) / 2 - 18;
+  const deleteButtonX = (sourceX + targetX) / 2;
+  const deleteButtonY = (sourceY + targetY) / 2 - 30;
+
+  // Track whether the edge is hovered
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <>
@@ -193,6 +217,8 @@ const WorkflowEdge = ({
         }} 
         markerEnd={`url(#${id}-marker)`}
         data-edge-id={id}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
       <svg>
         <defs>
@@ -247,13 +273,13 @@ const WorkflowEdge = ({
           onClick={handleDelete}
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX + 110}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 30}px)`,
             pointerEvents: 'all',
             zIndex: 50,
             opacity: selected ? 1 : 0,
-            transition: 'opacity 0.2s, background-color 0.2s, transform 0.2s',
+            transition: 'opacity 0.2s, background-color 0.2s',
           }}
-          className="nodrag nopan w-7 h-7 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md border border-red-300 group edge-delete-button"
+          className="nodrag nopan w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md border border-red-300 group edge-delete-button"
           aria-label="Delete connection"
           title="Delete connection"
           data-edge-id={id}
@@ -266,7 +292,7 @@ const WorkflowEdge = ({
             }
           }}
         >
-          <Trash2 size={16} className="group-hover:text-red-700" />
+          <Trash2 size={12} className="group-hover:text-red-700" />
         </button>
       </EdgeLabelRenderer>
     </>
