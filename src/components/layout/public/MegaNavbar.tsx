@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronDown, ChevronRight, LogOut, LayoutDashboard } from 'lucide-react'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useRouter } from 'next/navigation'
@@ -487,10 +487,30 @@ export default function MegaNavbar() {
                         <div className="grid grid-cols-3 gap-5 w-full h-full">
                           {section.items.map((subitem) => (
                             <Link href={subitem.href} key={subitem.title} className="group h-full">
-                              <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors h-full flex flex-col">
-                                <div className="flex items-center mb-2">
-                                  <div className="mr-3 text-primary">
-                                    {subitem.icon ? (
+                              <div className={`relative bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors h-full flex flex-col ${subitem.title === "Dynamic questions" ? "glow-border-container" : ""}`}>
+                                {subitem.title === "Dynamic questions" && (
+                                  <>
+                                    <div className="absolute inset-0 rounded-lg glow-border-bg"></div>
+                                    <div className="absolute inset-0 rounded-lg glow-border"></div>
+                                  </>
+                                )}
+                                <div className={`flex items-center mb-2 ${subitem.title === "Dynamic questions" ? "relative z-10" : ""}`}>
+                                  <div className={`mr-3 ${subitem.title === "Dynamic questions" ? "rainbow-gradient-icon" : "text-primary"}`}>
+                                    {/* We don't need the SVG here anymore */}
+                                    {subitem.title === "Dynamic questions" ? (
+                                      <div className="relative w-[18px] h-[18px]">
+                                        <div className="rainbow-gradient-mask absolute inset-0" style={{
+                                          WebkitMaskImage: `url('/icons/${subitem.icon}.svg')`,
+                                          maskImage: `url('/icons/${subitem.icon}.svg')`,
+                                          WebkitMaskSize: 'contain',
+                                          maskSize: 'contain',
+                                          WebkitMaskRepeat: 'no-repeat',
+                                          maskRepeat: 'no-repeat',
+                                          WebkitMaskPosition: 'center',
+                                          maskPosition: 'center'
+                                        }} />
+                                      </div>
+                                    ) : subitem.icon ? (
                                       <Image 
                                         src={`/icons/${subitem.icon}.svg`} 
                                         alt={subitem.title} 
@@ -503,10 +523,10 @@ export default function MegaNavbar() {
                                       <span className="text-xs">•</span>
                                     )}
                                   </div>
-                                  <h4 className="text-sm font-medium">{subitem.title}</h4>
+                                  <h4 className={`text-sm font-medium ${subitem.title === "Dynamic questions" ? "rainbow-gradient-text" : ""}`}>{subitem.title}</h4>
                                 </div>
                                 {subitem.description && (
-                                  <p className="text-xs text-gray-500 mt-1">{subitem.description}</p>
+                                  <p className={`text-xs text-gray-500 mt-1 ${subitem.title === "Dynamic questions" ? "relative z-10" : ""}`}>{subitem.description}</p>
                                 )}
                               </div>
                             </Link>
@@ -592,6 +612,123 @@ export default function MegaNavbar() {
       
       {/* Space for fixed navbar */}
       <div className="h-16"></div>
+      
+      <style jsx global>{`
+        .glow-border-container {
+          position: relative;
+          overflow: hidden;
+          z-index: 1;
+        }
+        
+        .glow-border {
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .glow-border::before {
+          content: '';
+          position: absolute;
+          /* Adjust inset to match the border precisely with the container edge */
+          inset: 0.5px;
+          /* Tailwind rounded-lg = 0.5rem (8px) */
+          border-radius: calc(0.5rem + 1px);
+          padding: 2px;
+          background: linear-gradient(90deg, #3888fd, #11a59e, #8c4dc8, #3888fd);
+          background-size: 300% 100%;
+          animation: textGradientAnimation 4s linear infinite;
+          -webkit-mask: 
+              linear-gradient(#fff 0 0) content-box, 
+              linear-gradient(#fff 0 0);
+          mask: 
+              linear-gradient(#fff 0 0) content-box, 
+              linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+        }
+        
+        .glow-border-bg {
+          background-color: transparent;
+          z-index: 0;
+        }
+
+        .rainbow-gradient-text {
+          background: linear-gradient(90deg, #3888fd, #11a59e, #8c4dc8, #3888fd);
+          background-size: 300% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: textGradientAnimation 4s linear infinite;
+        }
+
+        .rainbow-gradient-icon {
+          position: relative;
+          display: flex;
+        }
+
+        .rainbow-icon-svg {
+          z-index: 20;
+        }
+        
+        .rainbow-icon-svg path {
+          fill: url(#rainbowGradient) !important;
+        }
+
+        @keyframes gradientMove {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(50%); }
+        }
+        
+        /* SVG needs a different kind of animation */
+        .rainbow-icon-svg {
+          z-index: 20;
+          position: relative;
+        }
+        
+        .rainbow-icon-svg linearGradient {
+          animation: none;
+        }
+        
+        .rainbow-gradient-mask {
+          background: linear-gradient(90deg, #3888fd, #11a59e, #8c4dc8, #3888fd);
+          background-size: 300% 100%;
+          animation: textGradientAnimation 4s linear infinite;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 1 !important;
+        }
+        
+        @keyframes borderRotate {
+          0%, 100% {
+            border-image: linear-gradient(90deg, rgba(56,139,253,0.8), rgba(17,94,89,0.8), rgba(111,66,193,0.8), rgba(56,139,253,0.8)) 1;
+          }
+          25% {
+            border-image: linear-gradient(180deg, rgba(56,139,253,0.8), rgba(17,94,89,0.8), rgba(111,66,193,0.8), rgba(56,139,253,0.8)) 1;
+          }
+          50% {
+            border-image: linear-gradient(270deg, rgba(56,139,253,0.8), rgba(17,94,89,0.8), rgba(111,66,193,0.8), rgba(56,139,253,0.8)) 1;
+          }
+          75% {
+            border-image: linear-gradient(360deg, rgba(56,139,253,0.8), rgba(17,94,89,0.8), rgba(111,66,193,0.8), rgba(56,139,253,0.8)) 1;
+          }
+        }
+
+        @keyframes textGradientAnimation {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        @keyframes iconColorRotation {
+          0% { filter: hue-rotate(0deg) saturate(2.5) brightness(1.2) drop-shadow(0px 0px 2px rgba(56, 139, 253, 0.5)); }
+          25% { filter: hue-rotate(90deg) saturate(2.7) brightness(1.25) drop-shadow(0px 0px 2px rgba(17, 165, 158, 0.5)); }
+          50% { filter: hue-rotate(180deg) saturate(2.8) brightness(1.3) drop-shadow(0px 0px 2px rgba(140, 77, 200, 0.5)); }
+          75% { filter: hue-rotate(270deg) saturate(2.7) brightness(1.25) drop-shadow(0px 0px 2px rgba(56, 139, 253, 0.5)); }
+          100% { filter: hue-rotate(360deg) saturate(2.5) brightness(1.2) drop-shadow(0px 0px 2px rgba(56, 139, 253, 0.5)); }
+        }
+      `}</style>
     </>
   );
 }
