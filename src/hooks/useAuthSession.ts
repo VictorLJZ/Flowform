@@ -18,35 +18,26 @@ type AuthSessionData = {
 export function useAuthSession() {
   const supabase = useSupabase(); // Get the current supabase client
 
-  // Get caller information for debug purposes
-  const callerInfo = new Error().stack?.split('\n').slice(2, 4).join('\n') || 'unknown';
-  console.log(`[AUTH DEBUG] useAuthSession called from:\n${callerInfo}`);
+  // Only log in development mode
+  const isDev = process.env.NODE_ENV === 'development';
+  // Get caller information for debug purposes - but only in dev and less verbose
+  const callerInfo = isDev ? new Error().stack?.split('\n')[2]?.trim() || 'unknown' : '';
 
   const fetcher = async (): Promise<AuthSessionData> => {
-    console.log(`[AUTH DEBUG] useAuthSession.fetcher executing for caller:\n${callerInfo}`);
+    isDev && console.log(`[AUTH] Fetching auth data for ${callerInfo}`);
     
     try {
-      // Get verified user data from the Supabase auth server
-      console.log('[AUTH DEBUG] Calling supabase.auth.getUser()');
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      // Get both user and session in parallel to speed things up
+      const [userResponse, sessionResponse] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.auth.getSession()
+      ]);
       
-      if (userError) {
-        console.error("[AUTH DEBUG] Error fetching verified user:", userError);
-        // Instead of throwing, return a structured error response
-        return { 
-          session: null, 
-          user: null, 
-          profile: null,
-          isLoggedOut: true 
-        };
-      }
-
-      // We still need the session for token access
-      console.log('[AUTH DEBUG] Calling supabase.auth.getSession()');
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: userData, error: userError } = userResponse;
+      const { data: sessionData, error: sessionError } = sessionResponse;
       
-      if (sessionError) {
-        console.error("[AUTH DEBUG] Error fetching session:", sessionError);
+      if (userError || sessionError) {
+        isDev && console.error("[AUTH] Error fetching auth data:", userError || sessionError);
         return { 
           session: null, 
           user: null, 
@@ -78,17 +69,15 @@ export function useAuthSession() {
 
       // Placeholder for profile fetching if needed later
       const profile = null;
-
-      console.log("[AUTH DEBUG] Fetched auth data:", { 
-        hasSession: !!session, 
-        hasUser: !!user,
-        email: user?.email || 'none',
-        caller: callerInfo.split('\n')[0].trim()
+      
+      isDev && console.log("[AUTH] Auth successful", { 
+        userId: user.id.substring(0, 8) + '...',
+        email: user.email.split('@')[0] + '@...' 
       });
 
       return { session, user, profile, isLoggedOut: false };
     } catch (error) {
-      console.error("[AUTH DEBUG] Unexpected error in useAuthSession:", error);
+      isDev && console.error("[AUTH] Unexpected error in useAuthSession:", error);
       return { 
         session: null, 
         user: null, 
@@ -104,11 +93,13 @@ export function useAuthSession() {
     {
       // Important: Keep session data across revalidations until new data arrives
       keepPreviousData: true,
-       // Revalidate on mount, focus, reconnect by default (good for auth)
-      revalidateOnFocus: true, // Ensure it revalidates on focus
+      // More conservative revalidation - rely on auth state change events
+      revalidateOnFocus: false,
       revalidateIfStale: true,
       revalidateOnMount: true,
-      revalidateOnReconnect: true,
+      revalidateOnReconnect: false,
+      dedupingInterval: 30000, // 30 seconds
+      errorRetryCount: 2,
       // No automatic refresh interval needed as onAuthStateChange triggers manual mutate
     }
   );
