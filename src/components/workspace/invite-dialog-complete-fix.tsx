@@ -162,29 +162,30 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
           )}
           
           <div className="mt-4">
-            {/* Outer container for both headers and form to ensure consistent padding */}
-            <div className="mb-2">
-              {/* Header row with exact same structure as form items */}
-              <div className="grid grid-cols-[minmax(0,1fr)_120px_40px] gap-3 w-full items-center pr-1 pb-2 pl-1">
+            <div className="flex justify-between items-center mb-2">
+              <div className="grid grid-cols-[1fr_120px] gap-4 w-full">
                 <p className="text-sm font-medium">Email</p>
                 <p className="text-sm font-medium">Role</p>
-                <div></div> {/* Empty space for delete button column */}
               </div>
+              <div className="w-9"></div> {/* Spacer for delete button */}
             </div>
             
             {/* Key fix: Use a wrapper with fixed width to prevent layout shift */}
             <div className="max-h-[240px] relative">
-              <div className="invite-scroll-area max-h-[240px] pr-0 pt-1 pb-1 overflow-visible">
-                <div className="space-y-3 overflow-visible">
+              <div className="invite-scroll-area max-h-[240px] pr-4 pl-1 pt-1 pb-1">
+                <div className="space-y-3">
                   {invites.map((invite, index) => (
-                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_120px_40px] gap-3 items-center">
+                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-3 items-center relative p-0.5">
                       <div className="min-w-0">
                         <Input
                           type="email"
                           value={invite.email}
                           onChange={(e) => handleInviteChange(index, 'email', e.target.value)}
                           placeholder="email@example.com"
-                          className={!emailRegex.test(invite.email) && invite.email ? "border-destructive" : ""}
+                          className={cn(
+                            "focus-visible:ring-offset-0 focus-visible:z-10",
+                            !emailRegex.test(invite.email) && invite.email ? "border-destructive" : ""
+                          )}
                         />
                       </div>
                       

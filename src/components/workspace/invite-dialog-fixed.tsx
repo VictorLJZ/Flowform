@@ -5,7 +5,6 @@ import { Plus, Trash2, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { Workspace } from "@/types/supabase-types"
-import { cn } from "@/lib/utils"
 
 import {
   Dialog,
@@ -127,23 +126,6 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
       onOpenChange(isOpen)
     }}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border bg-card shadow">
-        <style jsx global>{`
-          .invite-scroll-area {
-            scrollbar-gutter: stable both-edges;
-            overflow-y: auto;
-          }
-          .invite-scroll-area::-webkit-scrollbar {
-            width: 4px;
-            background: transparent;
-          }
-          .invite-scroll-area::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .invite-scroll-area::-webkit-scrollbar-thumb {
-            background-color: rgba(155, 155, 155, 0.5);
-            border-radius: 20px;
-          }
-        `}</style>
         <DialogHeader className="p-6 pb-2 bg-card">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Users className="h-5 w-5" />
@@ -162,61 +144,56 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
           )}
           
           <div className="mt-4">
-            {/* Outer container for both headers and form to ensure consistent padding */}
-            <div className="mb-2">
-              {/* Header row with exact same structure as form items */}
-              <div className="grid grid-cols-[minmax(0,1fr)_120px_40px] gap-3 w-full items-center pr-1 pb-2 pl-1">
+            <div className="flex justify-between items-center mb-2">
+              <div className="grid grid-cols-[1fr_120px] gap-4 w-full">
                 <p className="text-sm font-medium">Email</p>
                 <p className="text-sm font-medium">Role</p>
-                <div></div> {/* Empty space for delete button column */}
               </div>
+              <div className="w-9"></div> {/* Spacer for delete button */}
             </div>
             
-            {/* Key fix: Use a wrapper with fixed width to prevent layout shift */}
-            <div className="max-h-[240px] relative">
-              <div className="invite-scroll-area max-h-[240px] pr-0 pt-1 pb-1 overflow-visible">
-                <div className="space-y-3 overflow-visible">
-                  {invites.map((invite, index) => (
-                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_120px_40px] gap-3 items-center">
-                      <div className="min-w-0">
-                        <Input
-                          type="email"
-                          value={invite.email}
-                          onChange={(e) => handleInviteChange(index, 'email', e.target.value)}
-                          placeholder="email@example.com"
-                          className={!emailRegex.test(invite.email) && invite.email ? "border-destructive" : ""}
-                        />
-                      </div>
-                      
-                      <Select
-                        value={invite.role}
-                        onValueChange={(value) => handleInviteChange(index, 'role', value)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="owner">Owner</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="editor">Editor</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleRemoveInvite(index)}
-                        disabled={index === 0 || invites.length === 1}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            <ScrollArea className="max-h-[240px] overflow-y-auto">
+              <div className="space-y-3 pr-1"> 
+                {invites.map((invite, index) => (
+                  <div key={index} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-3 items-center">
+                    <div className="min-w-0">
+                      <Input
+                        type="email"
+                        value={invite.email}
+                        onChange={(e) => handleInviteChange(index, 'email', e.target.value)}
+                        placeholder="email@example.com"
+                        className={!emailRegex.test(invite.email) && invite.email ? "border-destructive" : ""}
+                      />
                     </div>
-                  ))}
-                </div>
+                    
+                    <Select
+                      value={invite.role}
+                      onValueChange={(value) => handleInviteChange(index, 'role', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">Owner</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleRemoveInvite(index)}
+                      disabled={index === 0 || invites.length === 1}
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            </div>
+            </ScrollArea>
             
             <div className="flex items-center justify-between mt-6 mb-2">
               <Button
