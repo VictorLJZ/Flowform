@@ -142,27 +142,22 @@ export function MemberItem({
         </Avatar>
         
         <div className="flex-1">
-          <div className="font-medium flex items-center gap-2">
+          <div className="text-sm">
             {member.profile.full_name}
-            {isCurrentUser && (
-              <Badge variant="outline" className="text-xs">You</Badge>
-            )}
           </div>
           <div className="text-xs text-muted-foreground">
-            {member.profile.title || 'Member'}
+            {isCurrentUser ? 'your.email@example.com' : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
           </div>
         </div>
       </div>
 
       {/* Role column */}
-      <div className="w-24 text-center hidden md:block">
-        <Badge variant={roleBadgeVariant(member.role)} className="text-xs">
-          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-        </Badge>
+      <div className="w-24 text-center hidden md:flex items-center justify-center text-sm">
+        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
       </div>
       
       {/* Joined date column */}
-      <div className="w-32 text-sm text-right hidden md:block">
+      <div className="w-32 text-right hidden md:flex items-center justify-end text-sm">
         {joinedDate}
       </div>
       
