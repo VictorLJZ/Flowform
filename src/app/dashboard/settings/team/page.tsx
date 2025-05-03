@@ -13,8 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 
 // Import the existing components to maintain functionality
-import { MembersHeader } from "@/app/dashboard/workspace/members/components/members-header"
-import { MembersList } from "@/app/dashboard/workspace/members/components/members-list"
+import { MembersHeader } from "@/components/workspace/members/members-header"
+import { MembersList } from "@/components/workspace/members/members-list"
 
 export default function TeamSettings() {
   const { currentWorkspaceId, workspaces } = useWorkspaceStore()
