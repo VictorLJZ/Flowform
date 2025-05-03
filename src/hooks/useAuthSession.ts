@@ -24,7 +24,9 @@ export function useAuthSession() {
   const callerInfo = isDev ? new Error().stack?.split('\n')[2]?.trim() || 'unknown' : '';
 
   const fetcher = async (): Promise<AuthSessionData> => {
-    isDev && console.log(`[AUTH] Fetching auth data for ${callerInfo}`);
+    if (isDev) {
+      console.log(`[AUTH] Fetching auth data for ${callerInfo}`);
+    }
     
     try {
       // Get both user and session in parallel to speed things up
@@ -37,7 +39,9 @@ export function useAuthSession() {
       const { data: sessionData, error: sessionError } = sessionResponse;
       
       if (userError || sessionError) {
-        isDev && console.error("[AUTH] Error fetching auth data:", userError || sessionError);
+        if (isDev) {
+          console.error("[AUTH] Error fetching auth data:", userError || sessionError);
+        }
         return { 
           session: null, 
           user: null, 
@@ -70,14 +74,18 @@ export function useAuthSession() {
       // Placeholder for profile fetching if needed later
       const profile = null;
       
-      isDev && console.log("[AUTH] Auth successful", { 
-        userId: user.id.substring(0, 8) + '...',
-        email: user.email.split('@')[0] + '@...' 
-      });
+      if (isDev) {
+        console.log("[AUTH] Auth successful", { 
+          userId: user.id.substring(0, 8) + '...',
+          email: user.email.split('@')[0] + '@...' 
+        });
+      }
 
       return { session, user, profile, isLoggedOut: false };
     } catch (error) {
-      isDev && console.error("[AUTH] Unexpected error in useAuthSession:", error);
+      if (isDev) {
+        console.error("[AUTH] Unexpected error in useAuthSession:", error);
+      }
       return { 
         session: null, 
         user: null, 

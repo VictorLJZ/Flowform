@@ -51,8 +51,9 @@ export function useFormViewTracking(
   }, [formId, source, disabled, metadata]);
   
   // Memoize the return object
-  const hasTrackedValue = hasTracked.current;
+  // We're directly using the ref value, so no dependencies needed for this memo
   return useMemo(() => ({
     hasTracked: hasTracked.current
-  }), [hasTrackedValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
 }

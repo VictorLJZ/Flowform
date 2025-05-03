@@ -119,24 +119,6 @@ export function useAnalytics(options: {
     blockView,
     blockInteraction,
     formCompletion
-  }), [
-    blockView.blockRef,
-    formView.hasTracked,
-    blockView.hasTracked,
-    formCompletion.hasTracked,
-    blockInteraction.handleFocus,
-    blockInteraction.handleBlur,
-    blockInteraction.handleChange,
-    blockInteraction.handleSubmit,
-    blockInteraction.handleError,
-    blockInteraction.trackInteraction,
-    formCompletion.trackCompletion,
-    trackFormSession,
-    trackAbandonment,
-    timing,
-    formView,
-    blockView,
-    blockInteraction,
-    formCompletion,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
 }
