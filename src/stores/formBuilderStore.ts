@@ -17,10 +17,41 @@ import { FormTheme, BlockPresentation, defaultFormTheme, defaultBlockPresentatio
 import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 import type { FormBlock, BlockType } from '@/types/block-types'
 import type { FormData } from '@/types/form-builder-types'
-import type { FormBuilderState } from '@/types/store-types'
 
+// Export the FormBuilderState type
+export interface FormBuilderState {
+  formData: FormData
+  blocks: FormBlock[]
+  currentBlockId: string | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  sidebarOpen: boolean;
+  blockSelectorOpen: boolean;
+  mode: 'builder' | 'viewer';
+  defaultBlockPresentation: BlockPresentation;
 
+  // Actions
+  setFormData: (data: Partial<FormData>) => void;
+  setBlocks: (blocks: FormBlock[]) => void;
+  addBlock: (blockTypeId: string) => void;
+  updateBlock: (blockId: string, updates: Partial<FormBlock>) => void;
+  updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => void;
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void;
+  removeBlock: (blockId: string) => void;
+  reorderBlocks: (startIndex: number, endIndex: number) => void;
+  setCurrentBlockId: (blockId: string | null) => void;
+  setSidebarOpen: (open: boolean) => void;
+  setBlockSelectorOpen: (open: boolean) => void;
+  getBlockPresentation: (blockId: string) => BlockPresentation | undefined;
+  setBlockPresentation: (blockId: string, presentation: Partial<BlockPresentation>) => void;
+  setFormTheme: (theme: Partial<FormTheme>) => void;
+  setMode: (mode: 'builder' | 'viewer') => void;
+  saveForm: () => Promise<void>;
+  loadForm: (formId: string) => Promise<void>;
 
+  // Getters
+  getCurrentBlock: () => FormBlock | null;
+}
 
 // Initial empty form data
 const defaultFormData: FormData = {
@@ -448,7 +479,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   },
   
   // Helper getters
-  getCurrentBlock: () => {
+  getCurrentBlock: (): FormBlock | null => {
     const { blocks, currentBlockId } = get()
     return blocks.find((block: FormBlock) => block.id === currentBlockId) || null
   }

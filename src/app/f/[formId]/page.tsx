@@ -1,608 +1,223 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useRef, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
-import { useVersionedForm } from "@/hooks/useVersionedForm"
-import { useFormBuilderStore } from "@/stores/formBuilderStore"
-import { useAnalytics } from "@/hooks/useAnalytics"
-import { v4 as uuidv4 } from 'uuid'
-import { BlockType } from "@/types/block-types"
-import type { FormBuilderState } from "@/types/store-types"
-import type { QAPair } from "@/types/supabase-types"
-import { BlockPresentation } from '@/types/theme-types'
-import { SlideLayout } from '@/types/layout-types'
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useFormNavigation } from '@/hooks/form/useFormNavigation';
+import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers'; 
+import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
+import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  TextInputBlock,
-  TextAreaBlock,
-  MultipleChoiceBlock,
-  CheckboxGroupBlock,
-  DropdownBlock,
-  EmailBlock,
-  NumberBlock,
-  DateBlock,
-  AIConversationBlock
-} from "@/components/form"
+import type { AIConversationHandle } from "@/components/form/blocks/AIConversationBlock"; 
+import type { QAPair } from '@/types/supabase-types'; 
+import { BlockRenderer } from "@/components/form/viewer/BlockRenderer";
+import { CompletionScreen } from "@/components/form/viewer/CompletionScreen";
+import { ErrorMessages } from "@/components/form/viewer/ErrorMessages";
+import { FormNavigationControls } from "@/components/form/viewer/FormNavigationControls";
+import { slideVariants, slideTransition } from '@/utils/animations/slideAnimations'; 
 
 export default function FormViewerPage() {
   const params = useParams()
   const formId = params.formId as string
   
-  // Initialize analytics hooks
-  const analytics = useAnalytics({
-    formId,
-    metadata: { source: 'public_form_view' }
-  })
-
-  const { form, isLoading, error } = useVersionedForm(formId)
-  const [responseId, setResponseId] = useState<string>("")
-  const [currentIndex, setCurrentIndex] = useState<number>(0)
-  const [completed, setCompleted] = useState<boolean>(false)
-  const [submitting, setSubmitting] = useState<boolean>(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | QAPair[]>("")  
-  // Add a loading state to prevent displaying errors while data initializes
-  const [answersInitialized, setAnswersInitialized] = useState<boolean>(false)
-  const [direction, setDirection] = useState<number>(1)
-
-  const setBlocks = useFormBuilderStore((s: FormBuilderState) => s.setBlocks)
-  const setMode = useFormBuilderStore((s: FormBuilderState) => s.setMode)
-  const blocks = useFormBuilderStore((s: FormBuilderState) => s.blocks)
+  // Ref for AI Conversation block
+  const aiConversationRef = useRef<AIConversationHandle>(null);
+  
+  // Refs for callbacks to pass to useFormSubmission
+  const onSubmitSuccessRef = useRef<AnalyticsSubmitHandler>(() => {});
+  const onSubmitErrorRef = useRef<AnalyticsErrorHandler>(() => {});
+  const onFormCompleteRef = useRef<AnalyticsCompletionHandler>(async () => {});
+  const saveCurrentAnswerRef = useRef<FormAnswersState['saveCurrentAnswer']>(() => {}); 
+ 
+  // Select state and actions from the form builder store
+  // Use individual selectors for better memoization and to avoid unnecessary re-renders
+  const blocks = useFormBuilderStore(state => state.blocks);
+  const isLoading = useFormBuilderStore(state => state.isLoading);
+  const loadForm = useFormBuilderStore(state => state.loadForm);
+  const setMode = useFormBuilderStore(state => state.setMode);
+  
+  const { 
+    currentIndex, 
+    direction, 
+    goToNext, 
+    goToPrevious
+  } = useFormNavigation(0, blocks.length);
+  // Safely access the current block with proper guards to prevent invalid access
+  const isLastQuestion = blocks.length > 0 && currentIndex === blocks.length - 1;
+  const block = useMemo(() => {
+    // Only access blocks if they exist and index is valid
+    if (blocks.length === 0 || currentIndex < 0 || currentIndex >= blocks.length) {
+      return null;
+    }
+    return blocks[currentIndex];
+  }, [blocks, currentIndex]);
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`
-  const [savedAnswers, setSavedAnswers] = useState<Record<string, string | number | string[] | QAPair[]>>({})
 
-  // derive current block and index (non-null assert)
-  const total = blocks.length
-  const block = blocks[currentIndex]!
-  const isLastQuestion = currentIndex === total - 1
+  // ---- HOOKS ----
+  // Order: Navigation -> Submission -> Answers -> Analytics
 
-  useEffect(() => {
-    const blk = blocks[currentIndex]
-    if (!blk) return
-    if (savedAnswers[blk.id] !== undefined) {
-      setCurrentAnswer(savedAnswers[blk.id] as string | number | string[])
-    } else {
-      switch (blk.blockTypeId) {
-        case "number": setCurrentAnswer(0); break
-        case "checkbox_group": setCurrentAnswer([]); break
-        default: setCurrentAnswer("")
-      }
-    }
-  }, [currentIndex, blocks, savedAnswers])
-
-  useEffect(() => {
-    setMode("viewer")
-    
-    if (form) {
-      // Form view is tracked automatically when the component mounts through the useAnalytics hook
-      // The hook already has the formId and source in its metadata
-      console.log('[FormViewer] Loading form version:', form.version_id || 'original version');
-      
-      // Safely map blocks with thorough error handling
-      const mapped = form.blocks
-        .filter(b => b !== null && b !== undefined) // Filter out any null blocks
-        .map(b => {
-          try {
-            // Log raw block data from the database
-            console.log(`[Block Debug] Processing block:`, {
-              id: b.id,
-              type: b.type,
-              subtype: b.subtype
-            });
-            
-            // Default blockTypeId to a safe value if type/subtype are missing
-            let blockTypeId = 'text_input'; // Default fallback
-            
-            if (b.type === 'dynamic') {
-              blockTypeId = 'ai_conversation';
-            } else if (b.subtype) {
-              blockTypeId = b.subtype;
-            }
-            
-            // Log the result of mapping
-            console.log(`[Block Debug] Mapped blockTypeId for ${b.id}:`, blockTypeId);
-            
-            // Ensure type is a valid BlockType
-            let blockType: BlockType = 'static';
-            if (b.type === 'dynamic' || b.type === 'integration' || b.type === 'layout') {
-              blockType = b.type;
-            }
-            
-            return {
-              id: b.id,
-              blockTypeId,
-              type: blockType,
-              title: b.title || '',
-              description: b.description ?? undefined,
-              required: !!b.required, // Ensure boolean
-              order: b.order_index || 0, // Ensure numeric
-              settings: (b.settings || {}) as Record<string, unknown>
-            };
-          } catch (err) {
-            console.error(`[Block Error] Failed to process block:`, err, b);
-            // Return a safe fallback block rather than failing
-            return {
-              id: b.id || uuidv4(),
-              blockTypeId: 'text_input',
-              type: 'static' as BlockType, // Explicitly type as BlockType
-              title: 'Placeholder Question',
-              description: 'There was an error loading this question',
-              required: false,
-              order: 999,
-              settings: {}
-            };
-          }
-        })
-      
-      setBlocks(mapped)
-      console.log('[FormViewer] Loaded blocks (detailed):', 
-        mapped.map(b => ({ id: b.id, type: b.type, blockTypeId: b.blockTypeId }))
-      )
-    }
-  }, [form, formId, storageKey, setBlocks, setMode])
-
-  useEffect(() => {
-    console.log('[Session Init] Starting session initialization, form loaded:', !!form);
-    if (!form) return
-    
-    console.log('[Session Init] Checking localStorage for existing session:', storageKey);
-    const saved = localStorage.getItem(storageKey)
-    
-    if (saved) {
-      console.log('[Session Init] Found existing session in localStorage:', saved);
-      try {
-        const { sessionId: sid, currentIndex: idx } = JSON.parse(saved)
-        console.log('[Session Init] Parsed session data:', { sessionId: sid, currentIndex: idx });
-        setResponseId(sid)
-        setCurrentIndex(idx)
-      } catch (error) {
-        console.error('[Session Init] Failed to parse session data:', error);
-        // Clear invalid session data
-        localStorage.removeItem(storageKey);
-        // Fallback to creating new session
-        createNewSession();
-      }
-    } else {
-      console.log('[Session Init] No existing session found, creating new session');
-      createNewSession();
-    }
-    
-    function createNewSession() {
-      console.log('[Session Init] Making API request to create session for form:', formId);
-      
-      // Start timing measurement for session creation
-      analytics.timing.startTimer();
-      
-      fetch(`/api/forms/${formId}/sessions`, { method: "POST" })
-        .then(res => {
-          console.log('[Session Init] Session API response status:', res.status);
-          if (!res.ok) {
-            throw new Error(`Failed to create session: ${res.status} ${res.statusText}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          console.log('[Session Init] Session created successfully:', data);
-          if (!data.sessionId) {
-            throw new Error('API returned success but no sessionId was provided');
-          }
-          setResponseId(data.sessionId)
-          localStorage.setItem(storageKey, JSON.stringify({ sessionId: data.sessionId, currentIndex: 0 }))
-          
-          // Track form start when session is created
-          analytics.blockInteraction.trackInteraction('submit', {
-            response_id: data.sessionId,
-            action: 'session_created',
-            event_type: 'form_start'
-          });
-        })
-        .catch(error => {
-          console.error('[Session Init] Failed to create session:', error);
-          setSubmitError('Failed to initialize form session. Please try refreshing the page.');
-          
-          // Track error for analytics
-          analytics.blockInteraction.handleError({
-            error_message: error.message,
-            error_type: 'session_creation_error'
-          });
-        })
-    }
-  }, [form, formId, storageKey])
-
-  useEffect(() => {
-    if (!responseId || blocks.length === 0) return
-    fetch(`/api/forms/${formId}/sessions/${responseId}`)
-      .then(res => res.json())
-      .then(data => {
-        setSavedAnswers(data.answers || {})
-        setAnswersInitialized(true)
-      })
-      .catch(error => {
-        console.error('Error fetching saved answers:', error)
-        setAnswersInitialized(true) // Mark as initialized even on error to prevent loading state
-      })
-  }, [responseId, blocks, formId])
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setSubmitError(null)
-      setDirection(-1)
-      setCurrentIndex(idx => {
-        const newIdx = idx - 1
-        localStorage.setItem(storageKey, JSON.stringify({ sessionId: responseId, currentIndex: newIdx }))
-        return newIdx
-      })
-    }
-  }
-  
-  const handleAnswer = async () => {
-    console.log('handleAnswer called', { 
-      responseId, 
-      blockId: block?.id, 
-      currentAnswer, 
-      isNextDisabled 
-    });
-    if (!responseId) {
-      console.error('No responseId available');
-      return;
-    }
-    setSubmitError(null)
-    setSubmitting(true)
-    
-    // Track block interaction when user answers
-    analytics.blockInteraction.trackInteraction('submit', {
-      block_id: block.id,
-      block_type: block.blockTypeId,
-      response_id: responseId,
-      has_value: currentAnswer !== undefined && currentAnswer !== '',
-      event_type: isLastQuestion ? 'form_submission' : 'block_submission'
-    })
-    try {
-      // Determine the current question for AI conversations
-      let additionalData = {}
-      
-      // For AI conversations, we need to include current question info
-      if (block.blockTypeId === 'ai_conversation') {
-        // Get the current conversation state
-        const conversation = currentAnswer as QAPair[] || []
-        const currentQuestionIndex = conversation.length > 0 ? conversation.length - 1 : -1
-        const isFirstQuestion = currentQuestionIndex === -1
-        const currentQuestion = isFirstQuestion
-          ? (block.settings?.startingPrompt as string || "How can I help you today?")
-          : conversation[currentQuestionIndex]?.question
-          
-        additionalData = {
-          currentQuestion,
-          isFirstQuestion
-        }
-      }
-      
-      const requestBody = { 
-        responseId, 
-        blockId: block.id, 
-        blockType: block.type, 
-        answer: currentAnswer,
-        ...additionalData
-      }
-      
-      console.log('Submitting form data:', requestBody)
-      
-      const res = await fetch(`/api/forms/${formId}/sessions`, { 
-        method: "PUT", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(requestBody) 
-      })
-      
-      const data = await res.json()
-      
-      // Special handling for AI conversations
-      if (block.blockTypeId === 'ai_conversation' && data.nextQuestion && !data.dynamicComplete) {
-        // Update the conversation with the next question
-        const conversation = currentAnswer as QAPair[] || []
-        const updatedConversation = [...conversation]
-        
-        // If this is a new conversation, add the first QA pair
-        if (conversation.length === 0) {
-          updatedConversation.push({
-            question: block.settings?.startingPrompt as string || "How can I help you today?",
-            answer: currentAnswer as string,
-            timestamp: new Date().toISOString(),
-            is_starter: true
-          })
-        }
-        
-        // Add the next AI question
-        updatedConversation.push({
-          question: data.nextQuestion,
-          answer: "",
-          timestamp: new Date().toISOString(),
-          is_starter: false
-        })
-        
-        // Update the current answer with the new conversation
-        setCurrentAnswer(updatedConversation)
-        setSavedAnswers((prev: Record<string, string | number | string[] | QAPair[]>) => ({ 
-          ...prev, 
-          [block.id]: updatedConversation 
-        }))
-      } 
-      else if (data.completed) {
-        // Track form completion
-        const elapsedTime = analytics.timing.stopTimer();
-        analytics.trackFormSession({
-          elapsed_time_ms: elapsedTime,
-          completion_type: 'full'
-        });
-        setCompleted(true)
-      } 
-      else {
-        // For regular blocks or when AI conversation is complete
-        setSavedAnswers((prev: Record<string, string | number | string[] | QAPair[]>) => ({ 
-          ...prev, 
-          [block.id]: currentAnswer 
-        }))
-        
-        setDirection(1)
-        setCurrentIndex(idx => {
-          const newIdx = idx + 1
-          localStorage.setItem(storageKey, JSON.stringify({ sessionId: responseId, currentIndex: newIdx }))
-          return newIdx
-        })
-      }
-    } catch (error) {
-      console.error(error)
-      setSubmitError("Failed to save answer. Please try again.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // guard loading and errors before rendering viewer
-  if (isLoading || error || !form || blocks.length === 0 || !answersInitialized) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 size={48} className="animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  const hasValidAnswer = (() => {
-    console.log('Checking if answer is valid:', { 
-      blockTypeId: block.blockTypeId, 
-      required: block.required, 
-      currentAnswer 
-    });
-    if (!block.required) return true;
-    const v = currentAnswer;
-    switch (block.blockTypeId) {
-      case "short_text":
-      case "long_text":
-      case "email":
-      case "dropdown":
-      case "date":
-        return typeof v === "string" && v.trim() !== "";
-      case "number":
-        return v !== "" && !isNaN(v as number);
-      case "multiple_choice":
-        return typeof v === "string" && v !== "";
-      case "checkbox_group":
-        return Array.isArray(v) && (v as string[]).length > 0;
-      case "ai_conversation":
-        // For AI conversation blocks, check if the most recent question has an answer
-        if (Array.isArray(v) && (v as QAPair[]).length > 0) {
-          const conversation = v as QAPair[];
-          const currentQuestion = conversation[conversation.length - 1];
-          
-          // If there's no current question yet, only need starter question to be answered
-          if (!currentQuestion) {
-            return conversation.some(qa => qa.is_starter && qa.answer && qa.answer.trim() !== "");
-          }
-          
-          // If a question exists without an answer, that means we're on that question
-          // and it needs to be answered
-          return currentQuestion.answer && currentQuestion.answer.trim() !== "";
-        }
-        return false;
-      default:
-        return true;
-    }
-  })();
-  
-  const isNextDisabled = block.required && !hasValidAnswer || submitting;
-  console.log('Next button state:', { 
-    isNextDisabled, 
-    required: block.required, 
-    hasValidAnswer, 
+  // 2. Submission Hook (Needs formId, storageKey, callbacks, navigation)
+  const { 
+    responseId, 
     submitting, 
-    isLastQuestion
+    submitError, 
+    completed, 
+    submitAnswer 
+  } = useFormSubmission({
+    formId,
+    storageKey,
+    onSubmitSuccessRef,
+    onSubmitErrorRef,
+    onFormCompleteRef,
+    saveCurrentAnswerRef,
+    goToNext: goToNext, 
+    isLastQuestion: isLastQuestion 
   });
 
-  const renderBlock = () => {
-    console.log(`[RenderBlock] Attempting to render block:`, {
-      index: currentIndex,
-      blockId: block?.id,
-      blockTypeId: block?.blockTypeId,
-      type: block?.type,
-      settings: block?.settings
-    });
-    
-    if (!block) return null
-    
-    // Configure block-specific analytics when a new block is rendered
-    const blockAnalytics = useAnalytics({
-      formId,
-      blockId: block.id,
-      responseId,
-      metadata: {
-        block_type: block.blockTypeId,
-        block_index: currentIndex,
-        is_required: block.required
-      }
-    })
+  // 3. Answers Hook (Needs storageKey, responseId from submission hook, index)
+  const { 
+    currentAnswer, 
+    setCurrentAnswer, 
+    initializeAnswers, 
+    answersInitialized,
+    saveCurrentAnswer,
+  } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
 
-    // Create common props for all block types
-    const commonProps = {
-      id: block.id,
-      title: block.title,
-      description: block.description,
-      required: block.required,
-      index: currentIndex,
-      totalBlocks: blocks.length,
-      settings: block.settings, // Use the actual settings from the database
-      onNext: handleAnswer,
-      isNextDisabled: isNextDisabled,
-      // Add analytics props to track interactions within block components
-      analytics: {
-        trackFocus: blockAnalytics.trackFocus,
-        trackBlur: blockAnalytics.trackBlur,
-        trackChange: blockAnalytics.trackChange,
-        blockRef: blockAnalytics.blockRef
-      }
-    }
-    
-    console.log(`[RenderBlock] Block ${block.id} commonProps:`, commonProps);
+  // 4. Analytics Hook (Needs formId, responseId after submission)
+  const analytics = useAnalytics({
+    formId: formId,
+    responseId: responseId || undefined, 
+    disabled: !responseId 
+  });
 
-    // Use commonProps for all block types to ensure consistent navigation
-    switch (block.blockTypeId) {
-      case "short_text":
-        return <TextInputBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "long_text":
-        return <TextAreaBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "multiple_choice":
-        return <MultipleChoiceBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "checkbox_group":
-        return <CheckboxGroupBlock 
-          {...commonProps} 
-          value={currentAnswer as string[]} 
-          onChange={(v: string[]) => setCurrentAnswer(v)} 
-        />
-      case "dropdown":
-        return <DropdownBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "email":
-        return <EmailBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "number":
-        return <NumberBlock 
-          {...commonProps} 
-          value={currentAnswer as number} 
-          onChange={(v: string | number) => setCurrentAnswer(typeof v === 'string' ? Number(v) : v)} 
-        />
-      case "date":
-        return <DateBlock 
-          {...commonProps} 
-          value={currentAnswer as string} 
-          onChange={(v: string) => setCurrentAnswer(v)} 
-        />
-      case "ai_conversation":
-        console.log(`[RenderBlock] Rendering AI Conversation block with settings:`, {
-          id: block.id,
-          blockTypeId: block.blockTypeId,
-          settings: block.settings,
-          currentAnswer: currentAnswer
-        });
-        return <AIConversationBlock 
-          {...commonProps} 
-          settings={{
-            startingPrompt: block.title as string,
-            maxQuestions: block.settings?.maxQuestions as number || 5,
-            temperature: block.settings?.temperature as number || 0.7,
-            contextInstructions: block.settings?.contextInstructions as string,
-            // Add default presentation and layout for SlideWrapper
-            presentation: {
-              layout: 'centered',
-              spacing: 'normal',
-              titleSize: 'large'
-            },
-            layout: { type: 'standard' }
-          }}
-          value={currentAnswer as QAPair[]} 
-          onChange={(v: QAPair[]) => setCurrentAnswer(v)}
-          onUpdate={(updates: Partial<{
-            title: string,
-            description: string,
-            settings: {
-              startingPrompt?: string,
-              maxQuestions?: number,
-              temperature?: number,
-              contextInstructions?: string,
-              presentation?: BlockPresentation,
-              layout?: SlideLayout
-            }
-          }>) => {
-            // In viewer mode we don't update block settings but we need this prop
-            console.log('Block update requested', updates)
-          }}
-          responseId={responseId}
-          formId={formId}
-        />
-      default:
-        return null
-    }
-  }
+  // Hook for tracking form abandonment
+  const currentBlockId = blocks[currentIndex]?.id || null;
+  useFormAbandonment({
+    responseId,
+    currentBlockId,
+    completed,
+    analytics, 
+  });
 
-  const variants = {
-    enter: (dir: number) => ({ y: dir > 0 ? '100%' : '-100%', opacity: 0 }),
-    center: { y: '0%', opacity: 1 },
-    exit: (dir: number) => ({ y: dir > 0 ? '-100%' : '100%', opacity: 0 }),
-  }
+  // Type aliases for analytics data shapes used in useEffect
+  type SubmitData = Parameters<AnalyticsSubmitHandler>[0];
+  type ErrorData = Parameters<AnalyticsErrorHandler>[1];
+  type CompletionData = Parameters<AnalyticsCompletionHandler>[0];
 
-  // Add event listener for beforeunload to track form abandonment
-  useEffect(() => {
-    if (!completed && responseId) {
-      const handleBeforeUnload = () => {
-        // Track form abandonment when page is closed/refreshed
-        if (!completed && currentIndex > 0) {
-          analytics.blockInteraction.trackInteraction('blur', {
-            response_id: responseId,
-            last_block_id: block?.id,
-            completion_percentage: Math.round((currentIndex / total) * 100),
-            event_type: 'form_abandonment'
-          });
-        }
-      };
-      
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }
-  }, [completed, responseId, currentIndex, total, block?.id]);
+  // Memoize ref update functions to prevent creating new function references on every render
+  // This helps break the update cycle by ensuring stable function references
+  const trackSubmitFn = useCallback((data: SubmitData) => analytics.trackSubmit(data), [analytics]);
+  const trackErrorFn = useCallback((error: unknown, data: ErrorData) => analytics.trackError({ ...data, error: String(error) }), [analytics]);
+  const trackCompletionFn = useCallback(async (data: CompletionData) => { await analytics.trackCompletion(data); }, [analytics]);
+  const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | QAPair[]) => saveCurrentAnswer(blockId, answer), [saveCurrentAnswer]);
   
-  if (completed) {
+  // Effect to update callback refs - only runs when the memoized functions change
+  useEffect(() => {
+    onSubmitSuccessRef.current = trackSubmitFn;
+    onSubmitErrorRef.current = trackErrorFn;
+    onFormCompleteRef.current = trackCompletionFn;
+    saveCurrentAnswerRef.current = saveAnswerFn;
+    // No need to depend on analytics or saveCurrentAnswer directly
+    // as we're depending on the stable memoized functions
+  }, [trackSubmitFn, trackErrorFn, trackCompletionFn, saveAnswerFn]);
+
+  // Load the form data and blocks when the component mounts or formId changes
+  useEffect(() => {
+    if (formId && typeof formId === 'string') {
+      console.log(`Attempting to load form with ID: ${formId}`);
+      // Explicitly set the mode to 'viewer' before loading the form
+      setMode('viewer');
+      console.log('Set formBuilderStore mode to viewer'); 
+      loadForm(formId); // Load form data and blocks associated with this formId
+    } else {
+      console.error("Form ID is missing or invalid in FormViewerPage");
+    }
+  }, [formId, loadForm, setMode]);
+
+  // Initialize answers effect
+  useEffect(() => {
+    // Initialize answers once responseId is available and not already initialized
+    if (responseId && !answersInitialized) { 
+      initializeAnswers();
+    }
+  }, [responseId, initializeAnswers, answersInitialized]); 
+
+  // Memoized calculation for disabling next button
+  const isNextDisabled = useMemo(() => {
+    if (!block) return true; 
+
+    // AI conversation has its own internal submit/next logic
+    if (block.blockTypeId === 'ai_conversation') {
+      return true; 
+    }
+
+    // Disable if submitting
+    if (submitting) return true;
+
+    // Disable if required but no answer
+    if (block.required) {
+      if (Array.isArray(currentAnswer) && currentAnswer.length === 0) {
+        return true;
+      } else if (typeof currentAnswer === 'string' && currentAnswer.trim() === '') {
+        return true;
+      } else if (currentAnswer === null || currentAnswer === undefined) {
+        return true;
+      }
+    }
+
+    return false; 
+  }, [block, currentAnswer, submitting]);
+
+  // Callback to handle submitting an answer
+  const handleAnswer = useCallback(async () => {
+    console.log('[handleAnswer] Triggered for block:', block?.id);
+    if (!block) {
+      console.error('Block is not defined, cannot submit.');
+      return;
+    } 
+    if (isNextDisabled) {
+      console.log('Next button disabled, submission prevented.');
+      return;
+    }
+    let answerToSubmit = currentAnswer;
+    if (block.blockTypeId === 'ai_conversation') { 
+      if (aiConversationRef.current && typeof aiConversationRef.current.getMessages === 'function') {
+        answerToSubmit = aiConversationRef.current.getMessages();
+        console.log('[handleAnswer] Submitting AI conversation:', answerToSubmit);
+      } else {
+        console.error('AIConversation ref or getMessages not available');
+        // Error handled within submitAnswer hook
+        return;
+      }
+    }
+
+    // Call the submission hook's function directly.
+    // Use the callbacks provided by the analytics and navigation hooks.
+    await submitAnswer(block, answerToSubmit);
+  }, [block, currentAnswer, submitAnswer, isNextDisabled, aiConversationRef]);
+
+  // Callback to handle going to the previous block
+  const handlePrevious = useCallback(() => { 
+      goToPrevious(); 
+  }, [goToPrevious]); 
+
+  // Initial load check - show loader if form data is not yet loaded
+  if (isLoading || blocks.length === 0) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
-        <div className="max-w-lg">
-          <h1 className="text-3xl font-bold mb-4">Thank you!</h1>
-          <p className="text-lg text-gray-600 mb-8">Your form has been submitted successfully.</p>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-          >
-            Return Home
-          </button>
-        </div>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
-    )
+    );
+  }
+
+  // ---- MAIN RETURN ----
+
+  if (completed && answersInitialized) { 
+    return <CompletionScreen onReturnHome={() => window.location.href = '/'} />;
   }
   
   return (
@@ -612,64 +227,45 @@ export default function FormViewerPage() {
           <motion.div
             key={currentIndex}
             custom={direction}
-            variants={variants}
+            variants={slideVariants} 
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0"
+            transition={slideTransition} 
+            className="absolute inset-0 flex items-center justify-center p-4" 
           >
-            {renderBlock()}
+            {block ? (
+              <BlockRenderer 
+                block={block}
+                currentAnswer={currentAnswer}
+                setCurrentAnswer={setCurrentAnswer}
+                submitAnswer={submitAnswer}
+                submitting={submitting}
+                responseId={responseId}
+                formId={formId}
+                analytics={analytics}
+                aiConversationRef={aiConversationRef}
+              />
+            ) : (
+              <div>No block to display</div> 
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
       
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-10">
-        <button 
-          onClick={handlePrevious}
-          disabled={currentIndex === 0 || submitting}
-          className="w-10 h-10 rounded-full bg-white/80 shadow-md flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Previous question"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        
-        <button 
-          onClick={() => {
-            console.log('Next button clicked', {
-              disabled: isNextDisabled || isLastQuestion,
-              isNextDisabled,
-              isLastQuestion
-            });
-            handleAnswer();
-          }}
-          disabled={isNextDisabled || isLastQuestion}
-          className="w-10 h-10 rounded-full bg-white/80 shadow-md flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Next question"
-        >
-          {submitting ? (
-            <div className="h-5 w-5 border-2 border-t-transparent border-primary rounded-full animate-spin" />
-          ) : (
-            <ChevronRight className="w-5 h-5" />
-          )}
-        </button>
-      </div>
-      
+      <FormNavigationControls 
+        onPrevious={handlePrevious}
+        onNext={handleAnswer} 
+        isPreviousDisabled={currentIndex === 0 || submitting}
+        isNextDisabled={isNextDisabled || isLastQuestion} 
+        isSubmitting={submitting}
+      />
+       
       <div className="fixed bottom-4 left-4 text-xs text-gray-500 flex items-center">
         Powered by <span className="font-semibold ml-1">FlowForm</span>
       </div>
-      
-      {submitError && answersInitialized && (
-        <div className="fixed top-4 right-4 left-4 bg-red-50 border border-red-200 rounded-md p-3 shadow-md">
-          <p className="text-red-600 text-sm">{submitError}</p>
-        </div>
-      )}
-      
-      {!hasValidAnswer && block.required && answersInitialized && (
-        <div className="absolute bottom-20 left-0 right-0 text-center">
-          <p className="text-red-500 font-medium">This field is required</p>
-        </div>
-      )}
+       
+      <ErrorMessages submitError={submitError} />
     </div>
   )
 }

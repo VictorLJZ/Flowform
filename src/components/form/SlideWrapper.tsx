@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useEffect, ReactNode } from "react"
+import React, { useRef, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
@@ -22,6 +22,7 @@ import { MediaRightLayout } from "./slide-layouts/MediaRightLayout"
 import { MediaBackgroundLayout } from "./slide-layouts/MediaBackgroundLayout"
 import { MediaLeftSplitLayout } from "./slide-layouts/MediaLeftSplitLayout"
 import { MediaRightSplitLayout } from "./slide-layouts/MediaRightSplitLayout"
+import type { FormBlock } from "@/types/supabase-types"; // Import FormBlock type
 
 interface SlideWrapperProps {
   id: string
@@ -35,7 +36,7 @@ interface SlideWrapperProps {
     layout: SlideLayout
   }
   children: React.ReactNode
-  onUpdate?: (updates: Partial<any>) => void
+  onUpdate?: (updates: Partial<FormBlock>) => void
   onNext?: () => void
   isNextDisabled?: boolean
   blockRef?: React.RefObject<HTMLDivElement>
@@ -58,6 +59,7 @@ export function SlideWrapper({
   className
 }: SlideWrapperProps) {
   const titleRef = useRef<HTMLDivElement>(null)
+  const internalRef = useRef<HTMLDivElement>(null); // Call useRef unconditionally
   const { mode } = useFormBuilderStore()
   const autosave = useAutosave()
   
@@ -104,8 +106,8 @@ export function SlideWrapper({
     }
   }
   
-  // Create a container div that will be tracked by analytics
-  const containerRef = blockRef || useRef<HTMLDivElement>(null);
+  // Use the passed blockRef if available, otherwise use the internal ref
+  const containerRef = blockRef || internalRef;
   
   // Prepare the content of the slide
   const slideContent = (

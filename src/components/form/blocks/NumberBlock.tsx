@@ -28,8 +28,8 @@ interface NumberBlockProps {
   value?: number | string
   onChange?: (value: number | string) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
+    title: string;
+    description: string | null;
     settings: {
       placeholder?: string,
       min?: number,
@@ -37,7 +37,7 @@ interface NumberBlockProps {
       step?: number,
       presentation?: BlockPresentation,
       layout?: SlideLayout
-    }
+    } | null;
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean

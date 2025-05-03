@@ -30,14 +30,14 @@ interface DropdownBlockProps {
   value?: string
   onChange?: (value: string) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
+    title: string;
+    description: string | null;
     settings: {
-      options?: Option[],
-      layout?: SlideLayout,
-      presentation?: BlockPresentation,
+      options?: Option[];
+      layout?: SlideLayout;
+      presentation?: BlockPresentation;
       placeholder?: string
-    }
+    } | null;
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean

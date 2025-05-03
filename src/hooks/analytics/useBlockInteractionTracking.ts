@@ -1,5 +1,5 @@
-import { useRef, useCallback } from 'react';
-import { trackBlockInteraction } from '@/services/analytics';
+import { useRef, useCallback, useMemo } from 'react';
+import { trackBlockInteractionClient } from '@/services/analytics/client';
 import { getVisitorId } from '@/lib/analytics/visitorId';
 
 // Interaction types supported by the block interaction tracking
@@ -52,14 +52,14 @@ export function useBlockInteractionTracking(
     const visitorId = getVisitorId();
     
     try {
-      await trackBlockInteraction(
+      await trackBlockInteractionClient(
         blockId, 
         formId,
         interactionType,
-        responseId,
-        durationMs,
         {
           visitor_id: visitorId,
+          response_id: responseId,
+          duration_ms: durationMs,
           ...metadata,
           ...additionalMetadata
         }
@@ -129,12 +129,20 @@ export function useBlockInteractionTracking(
     trackInteraction('error', errorInfo);
   }, [trackInteraction]);
   
-  return {
+  // Memoize the returned object to ensure stable reference
+  return useMemo(() => ({
     handleFocus,
     handleBlur,
     handleChange,
     handleSubmit,
     handleError,
     trackInteraction // Expose the base function for custom tracking needs
-  };
+  }), [
+    handleFocus,
+    handleBlur,
+    handleChange,
+    handleSubmit,
+    handleError,
+    trackInteraction
+  ]);
 }

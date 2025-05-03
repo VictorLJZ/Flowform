@@ -321,7 +321,7 @@ export default function MegaNavbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [menuTimeoutId, setMenuTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
-  const { session, error, isLoggedOut } = useAuthSession();
+  const { session, isLoggedOut } = useAuthSession();
   const { signOut } = useAuth();
   
   // Only set user data if we have a valid session and not logged out

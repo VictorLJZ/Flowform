@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Define validation schema for individual events
 const analyticsEventSchema = z.object({
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
 /**
  * Process a form view event
  */
-async function processFormView(supabase: any, properties: Record<string, unknown>) {
+async function processFormView(supabase: SupabaseClient, properties: Record<string, unknown>) {
   const { form_id, visitor_id } = properties;
   
   if (!form_id || !visitor_id) {
@@ -145,7 +146,7 @@ async function processFormView(supabase: any, properties: Record<string, unknown
  * Process a block interaction event
  */
 async function processBlockInteraction(
-  supabase: any, 
+  supabase: SupabaseClient, 
   properties: Record<string, unknown>,
   interactionType: 'view' | 'focus' | 'blur' | 'change' | 'submit' | 'error'
 ) {
@@ -170,7 +171,7 @@ async function processBlockInteraction(
 /**
  * Process a form completion event
  */
-async function processFormCompletion(supabase: any, properties: Record<string, unknown>) {
+async function processFormCompletion(supabase: SupabaseClient, properties: Record<string, unknown>) {
   const { form_id, response_id, visitor_id } = properties;
   
   if (!form_id || !response_id || !visitor_id) {
@@ -196,7 +197,7 @@ async function processFormCompletion(supabase: any, properties: Record<string, u
 /**
  * Process dynamic block analytics event
  */
-async function processDynamicBlockAnalytics(supabase: any, properties: Record<string, unknown>) {
+async function processDynamicBlockAnalytics(supabase: SupabaseClient, properties: Record<string, unknown>) {
   const { dynamic_response_id, block_id, question_index, question_text } = properties;
   
   if (!dynamic_response_id || !block_id || typeof question_index !== 'number' || !question_text) {

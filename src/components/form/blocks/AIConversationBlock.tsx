@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo } from "react"
+import React, { useState, useEffect, useRef, useMemo, useImperativeHandle, forwardRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -38,16 +38,16 @@ export interface AIConversationBlockProps {
   value?: QAPair[]
   onChange?: (value: QAPair[]) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
-    settings: {
-      startingPrompt?: string,
-      maxQuestions?: number,
-      temperature?: number,
-      contextInstructions?: string,
-      presentation?: BlockPresentation,
-      layout?: SlideLayout
-    }
+    title: string;
+    description: string | null;
+    settings: { 
+      startingPrompt?: string;
+      maxQuestions?: number;
+      temperature?: number;
+      contextInstructions?: string;
+      presentation?: BlockPresentation;
+      layout?: SlideLayout;
+    } | null;
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean
@@ -55,7 +55,11 @@ export interface AIConversationBlockProps {
   formId: string
 }
 
-export function AIConversationBlock({
+export interface AIConversationHandle {
+  getMessages: () => QAPair[];
+}
+
+const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversationBlockProps>(({ 
   analytics,
   id,
   title,
@@ -71,7 +75,7 @@ export function AIConversationBlock({
   isNextDisabled,
   responseId,
   formId
-}: AIConversationBlockProps) {
+}, ref) => {
 
   // Local component state
   const [userInput, setUserInput] = useState("")
@@ -87,14 +91,6 @@ export function AIConversationBlock({
   
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  
-
-
-
-
-
-
-
 
   // Use our safe hook that handles both modes properly
   const {
@@ -143,15 +139,6 @@ export function AIConversationBlock({
     activeQuestionIndex < maxQuestions;
   
 
-
-
-
-
-
-
-
-
-
   useEffect(() => {
     if (showInput && textareaRef.current) {
       textareaRef.current.focus();
@@ -171,13 +158,6 @@ export function AIConversationBlock({
       onChange(effectiveConversation)
     }
   }, [effectiveConversation, onChange])
-
-
-
-
-
-
-
 
   // Compute navigation status
   const canGoPrevious = activeQuestionIndex > 0
@@ -220,12 +200,6 @@ export function AIConversationBlock({
       setUserInput(questionInputs[nextIndex] || "")
     }
   }
-
-
-
-
-
-
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -307,13 +281,9 @@ export function AIConversationBlock({
     }
   }
 
-  
-  
-  
-
-
-
-
+  useImperativeHandle(ref, () => ({
+    getMessages: () => effectiveConversation
+  }));
 
   // Wrap conversation in SlideWrapper for consistent styling and layout
   return (
@@ -438,4 +408,8 @@ export function AIConversationBlock({
       </div>
     </SlideWrapper>
   )
-}
+});
+
+AIConversationBlockInternal.displayName = 'AIConversationBlock';
+
+export const AIConversationBlock = AIConversationBlockInternal;

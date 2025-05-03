@@ -3,7 +3,7 @@
  * Used primarily for auth state changes that need to be reflected across components
  */
 
-type EventCallback = (payload?: any) => void;
+type EventCallback = (payload?: unknown) => void;
 
 class EventBus {
   private events: Record<string, EventCallback[]> = {};
@@ -22,7 +22,7 @@ class EventBus {
     }
   }
 
-  emit(event: string, payload?: any): void {
+  emit(event: string, payload?: unknown): void {
     if (this.events[event]) {
       this.events[event].forEach(callback => callback(payload));
     }

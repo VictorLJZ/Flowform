@@ -16,7 +16,7 @@ export function ProtectedRoute({
   children: React.ReactNode;
   redirectTo?: string;
 }) {
-  const { session, isLoading, isLoggedOut } = useAuthSession();
+  const { isLoading, isLoggedOut } = useAuthSession();
   const router = useRouter();
 
   useEffect(() => {
