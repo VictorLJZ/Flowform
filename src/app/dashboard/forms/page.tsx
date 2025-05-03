@@ -224,7 +224,20 @@ export default function FormsPage() {
             : "flex flex-col space-y-2 h-full"
           }>
             {forms.map((form, index) => (
-              <Card key={form.form_id || `form-${index}`} className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} h-full ${viewMode === 'list' ? 'p-3' : '!pt-0'}`}>
+              <Card 
+                key={form.form_id || `form-${index}`} 
+                className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} h-full ${viewMode === 'list' ? 'p-3' : '!pt-0'} cursor-pointer hover:shadow-md transition-shadow`}
+                onClick={(e) => {
+                  // Prevent navigation if clicking on dropdown or buttons
+                  if (e.target instanceof Element) {
+                    // Check if click is on or within dropdown menu or buttons
+                    const isOnDropdown = e.target.closest('[data-dropdown-trigger], [data-dropdown-content], button');
+                    if (!isOnDropdown) {
+                      router.push(`/dashboard/forms/builder/${form.form_id}`);
+                    }
+                  }
+                }}
+              >
                 {viewMode !== 'list' && (
                   /* Thumbnail preview - only in grid view */
                   <div className="h-32 w-full bg-muted flex items-center justify-center border-b">
@@ -245,11 +258,11 @@ export default function FormsPage() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" data-dropdown-trigger>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" data-dropdown-content>
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem key="edit" onClick={() => router.push(`/dashboard/forms/builder/${form.form_id}`)}>
                           <Edit className="mr-2 h-4 w-4" /> Edit

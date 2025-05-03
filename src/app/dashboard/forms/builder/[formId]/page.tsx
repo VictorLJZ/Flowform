@@ -20,10 +20,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
 import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
 import FormBuilderBlockSelector from "./components/form-builder-block-selector"
+import WorkflowContent from "./components/workflow-content"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 // Wrapper that provides an isolated store per formId
 export default function FormBuilderPage() {
@@ -45,6 +48,9 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
   const [isPublishing, setIsPublishing] = useState(false)
+  
+  // Add state for view mode
+  const [viewMode, setViewMode] = useState<"form" | "workflow">("form")
   
   // Map SWR data to builder store
   useEffect(() => {
@@ -137,9 +143,12 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <header className="bg-background border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center">
-          <Breadcrumb className="mr-6">
+      <header className="bg-background border-b px-4 py-3 flex items-center">
+        {/* Left side with sidebar toggle and breadcrumbs */}
+        <div className="flex items-center w-1/3">
+          <SidebarTrigger className="mr-3" />
+          
+          <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
@@ -156,7 +165,36 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
           </Breadcrumb>
         </div>
         
-        <div className="flex items-center gap-3">
+        {/* Center section with toggle - will stay centered in content area */}
+        <div className="flex justify-center items-center w-1/3">
+          <div className="flex h-9 items-center overflow-hidden rounded-full border bg-background p-1" style={{ width: "240px" }}>
+            <button
+              className={cn(
+                "flex h-7 items-center justify-center rounded-full px-6 text-sm font-medium transition-colors w-full",
+                viewMode === "form" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setViewMode("form")}
+            >
+              Form
+            </button>
+            <button
+              className={cn(
+                "flex h-7 items-center justify-center rounded-full px-6 text-sm font-medium transition-colors w-full",
+                viewMode === "workflow" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setViewMode("workflow")}
+            >
+              Workflow
+            </button>
+          </div>
+        </div>
+        
+        {/* Right side with action buttons */}
+        <div className="flex items-center justify-end gap-3 w-1/3">
           <Button 
             variant="outline" 
             size="sm" 
@@ -250,17 +288,18 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       
       {/* Main content area */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left sidebar - list of blocks */}
-        <FormBuilderSidebar />
-        
-        {/* Main content - single block slide */}
-        <FormBuilderContent />
-        
-        {/* Right settings panel - block settings */}
-        <FormBuilderSettings />
-        
-        {/* Block selector dialog */}
-        <FormBuilderBlockSelector />
+        {viewMode === "form" ? (
+          <>
+            {/* Form builder UI */}
+            <FormBuilderSidebar />
+            <FormBuilderContent />
+            <FormBuilderSettings />
+            <FormBuilderBlockSelector />
+          </>
+        ) : (
+          /* Workflow UI */
+          <WorkflowContent />
+        )}
       </main>
     </div>
   )
