@@ -36,7 +36,10 @@ export default function FormBuilderPage() {
   return <FormBuilderPageContent formId={formId} />
 }
 
-interface FormBuilderPageContentProps { formId: string }
+interface FormBuilderPageContentProps {
+  formId: string;
+}
+
 function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Select state slices individually to prevent infinite loops
   const isSaving = useFormBuilderStore(state => state.isSaving);
@@ -45,6 +48,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   const setFormData = useFormBuilderStore(state => state.setFormData);
   const setBlocks = useFormBuilderStore(state => state.setBlocks);
   const setCurrentBlockId = useFormBuilderStore(state => state.setCurrentBlockId);
+  const connections = useFormBuilderStore(state => state.connections);
   
   const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
@@ -53,120 +57,155 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Update viewMode state
   const [viewMode, setViewMode] = useState<"form" | "workflow" | "connect">("form")
   
-  // Map SWR data to builder store
+  // Save whenever connections change (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (connections && connections.length > 0) {
+        console.log("Auto-saving workflow connections");
+        saveForm();
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [connections, saveForm]);
+  
+  // Load form data from API
   useEffect(() => {
     if (form) {
-      // Map settings safely
-      const settingsObj = (form.settings ?? {}) as Record<string, unknown>
+      // Set form data
       setFormData({
         form_id: form.form_id,
-        title: form.title,
-        description: form.description ?? '',
+        title: form.title || 'Untitled Form',
+        description: form.description || '',
         workspace_id: form.workspace_id,
         created_by: form.created_by,
-        status: form.status,
-        settings: {
-          showProgressBar: Boolean(settingsObj.showProgressBar),
-          requireSignIn: Boolean(settingsObj.requireSignIn),
-          theme: String(settingsObj.theme),
-          primaryColor: String(settingsObj.primaryColor),
-          fontFamily: String(settingsObj.fontFamily),
-          estimatedTime: typeof settingsObj.estimatedTime === 'number' ? settingsObj.estimatedTime : undefined,
-          estimatedTimeUnit: (settingsObj.estimatedTimeUnit as 'minutes' | 'hours') ?? undefined,
-          redirectUrl: settingsObj.redirectUrl as string | undefined,
-          customCss: settingsObj.customCss as string | undefined
-        }
+        status: form.status || 'draft',
+        settings: form.settings as Record<string, unknown>,
+        theme: form.theme as Record<string, unknown>,
       })
-      // Map blocks
-      const mappedBlocks = form.blocks.map(block => {
-        // Use mapFromDbBlockType to get the correct blockTypeId for all block types
-        // This properly handles mapping dynamic blocks to 'ai_conversation'
-        const blockTypeId = mapFromDbBlockType(block.type || 'static', block.subtype || 'short_text');
-        console.log('Block mapping in useEffect:', { 
-          id: block.id,
-          dbType: block.type, 
-          dbSubtype: block.subtype,
-          mappedBlockTypeId: blockTypeId 
-        });
-        
-        // Get block definition using the mapped blockTypeId
-        const def = getBlockDefinition(blockTypeId)
-        
-        // Prepare base settings from the block
-        let settings = block.settings as Record<string, unknown> || {};
-        
-        // Special handling for dynamic blocks to merge dynamic_config
-        if (block.type === 'dynamic' && block.dynamic_config) {
-          console.log('Dynamic block config found in useEffect:', block.dynamic_config);
-          const dynamicSettings = {
-            startingPrompt: block.dynamic_config.starter_question || 'How can I help you today?',
-            temperature: block.dynamic_config.temperature || 0.7,
-            maxQuestions: block.dynamic_config.max_questions || 5,
-            contextInstructions: block.dynamic_config.ai_instructions || ''
-          };
+      
+      // Transform blocks from API to our internal format
+      if (form.blocks && Array.isArray(form.blocks)) {
+        // Transform blocks from API format to our internal format
+        const transformedBlocks = form.blocks.map((block, index) => {
+          // Map database types to our frontend types
+          const blockTypeId = mapFromDbBlockType(block.type || 'static', block.subtype || 'short_text');
+          const blockDef = getBlockDefinition(blockTypeId);
           
-          // Merge dynamic settings with any existing settings
-          settings = {
-            ...settings,
-            ...dynamicSettings
-          };
-          console.log('Merged dynamic settings:', settings);
-        }
+          return {
+            id: block.id,
+            blockTypeId,
+            type: block.type as any,
+            title: block.title || blockDef?.defaultTitle || '',
+            description: block.description || '',
+            required: !!block.required,
+            order: block.order_index || index,
+            settings: block.settings || {}
+          }
+        })
         
-        return {
-          id: block.id,
-          blockTypeId,
-          type: def?.type || block.type || 'static', // Use the correct type
-          title: block.title || def?.defaultTitle || '', // Ensure title is always string
-          description: block.description || def?.defaultDescription || '',
-          required: block.required,
-          order: block.order_index,
-          settings
+        setBlocks(transformedBlocks)
+        
+        // Set the first block as current
+        if (transformedBlocks.length > 0) {
+          setCurrentBlockId(transformedBlocks[0].id)
         }
-      })
-      setBlocks(mappedBlocks)
-      setCurrentBlockId(mappedBlocks[0]?.id ?? null)
+      }
     }
   }, [form, setFormData, setBlocks, setCurrentBlockId])
   
-  if (isLoading) {
-    return <div className="flex-1 flex items-center justify-center"><Skeleton className="h-48 w-full" /></div>
+  const handlePublish = async () => {
+    if (isPublishing) return
+    
+    setIsPublishing(true)
+    
+    try {
+      // First save the form to ensure all changes are persisted
+      await saveForm()
+      
+      // Then publish
+      const result = await publishFormWithFormBuilderStore(formId, [])
+      
+      // Update the form data in state to reflect published status
+      if (result.form) {
+        setFormData({
+          status: 'published',
+          published_at: result.form.published_at
+        })
+      }
+      
+      // Refresh form data
+      mutate()
+      
+      toast({
+        title: "Form published!",
+        description: result.version 
+          ? `Version ${result.version.version_number} created.` 
+          : "Your form is now live.",
+      })
+    } catch (error) {
+      console.error('Error publishing form:', error)
+      toast({
+        variant: "destructive",
+        title: "Publish failed",
+        description: "There was an error publishing your form. Please try again.",
+      })
+    } finally {
+      setIsPublishing(false)
+    }
   }
-  if (error) {
+  
+  // Display error state
+  if (error && !isLoading) {
     return (
-      <Alert variant="destructive" className="m-4">
-        <AlertTitle>Error loading form</AlertTitle>
-        <AlertDescription>{error.message || String(error)}</AlertDescription>
-      </Alert>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Error loading form</AlertTitle>
+          <AlertDescription>
+            There was an error loading the form. Please try again or contact support.
+          </AlertDescription>
+        </Alert>
+      </div>
     )
   }
-
+  
+  // Display loading state
+  if (isLoading && !formData.form_id) {
+    return (
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-6 w-1/4" />
+        <div className="grid grid-cols-3 gap-4 mt-8">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+      </div>
+    )
+  }
+  
+  // Render form editor
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Header */}
-      <header className="bg-background border-b px-4 py-3 flex items-center">
-        {/* Left side with sidebar toggle and breadcrumbs */}
-        <div className="flex items-center w-1/3">
-          <SidebarTrigger className="mr-3" />
-          
+    <div className="flex flex-col h-full">
+      <header className="flex items-center justify-between border-b p-4">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="mr-2" />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink href="/dashboard/forms">Forms</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{formData.title || "Untitled Form"}</BreadcrumbPage>
+                <BreadcrumbPage>
+                  {formData.title || 'Untitled Form'}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
         
-        {/* Center section with toggle - will stay centered in content area */}
+        {/* Center with view mode switch */}
         <div className="flex justify-center items-center w-1/3">
           <div className="flex h-9 items-center overflow-hidden rounded-full border bg-background p-1" style={{ width: "320px" }}>
             <button
@@ -206,82 +245,30 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         </div>
         
         {/* Right side with action buttons */}
-        <div className="flex items-center justify-end gap-3 w-1/3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-1" 
-            onClick={() => window.open(`/preview/${formId}`, '_blank')}
-          >
-            Preview
-          </Button>
-          
-          <Button 
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={saveForm}
             disabled={isSaving}
-            size="sm"
-            className="gap-1"
           >
             {isSaving ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={16} className="mr-1 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <Save size={16} />
+                <Save size={16} className="mr-1" />
                 Save
               </>
             )}
           </Button>
           
-          <Button 
-            variant="outline"
+          <Button
             size="sm"
-            className="gap-1"
-            disabled={isPublishing || !formData.form_id}
-            onClick={async () => {
-              if (!formData.form_id) return;
-              
-              try {
-                setIsPublishing(true)
-                
-                // Get current blocks from the store
-                const blocks = useFormBuilderStore.getState().blocks;
-                
-                // Publish with versioning - this uses the current blocks in the UI
-                const { version } = await publishFormWithFormBuilderStore(formData.form_id, blocks);
-                
-                await mutate()
-                
-                // Add version info to the toast
-                const versionInfo = version ? ` (Version ${version.version_number})` : '';
-                
-                toast({
-                  title: `Form published${versionInfo}`,
-                  description: "Your form is now publicly accessible",
-                  action: (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/f/${formData.form_id}`);
-                      toast({
-                        description: "Share link copied to clipboard",
-                      });
-                    }}>
-                      Copy Link
-                    </Button>
-                  ),
-                });
-              } catch (error) {
-                console.error("Error publishing form:", error);
-                toast({
-                  variant: "destructive",
-                  title: "Publishing failed",
-                  description: "There was an error publishing your form.",
-                });
-              } finally {
-                setIsPublishing(false);
-              }
-            }}
+            onClick={handlePublish}
+            disabled={isPublishing || isSaving}
           >
             {isPublishing ? (
               <>

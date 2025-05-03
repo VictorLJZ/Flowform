@@ -60,7 +60,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   setBlocks: (blocks: FormBlock[]) => set({ blocks }),
   
   addBlock: (blockTypeId: string) => {
-    const { blocks } = get()
+    const { blocks, connections } = get()
     const newBlockId = uuidv4()
     const newOrder = blocks.length
     const blockDef = getBlockDefinition(blockTypeId)
@@ -82,8 +82,32 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     }
  
     const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order - b.order)
+    
+    // Create a new connection from the last block to this new block
+    let updatedConnections = [...connections]
+    
+    // Only add linear connection if blocks exist
+    if (blocks.length > 0) {
+      // Find the block with the highest order (the current last block)
+      const lastBlock = blocks.reduce((prev, current) => 
+        prev.order > current.order ? prev : current
+      );
+      
+      // Create a new connection from the last block to the new block
+      const newConnection: Connection = {
+        id: uuidv4(),
+        sourceId: lastBlock.id,
+        targetId: newBlockId,
+        order: connections.length
+      };
+      
+      updatedConnections = [...connections, newConnection];
+      console.log(`Created new linear connection from block ${lastBlock.id} to ${newBlockId}`);
+    }
+    
     set(() => ({
       blocks: updatedBlocks,
+      connections: updatedConnections,
       currentBlockId: newBlockId
     }))
   },
@@ -162,9 +186,47 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       newCurrentBlockId = previousBlock?.id || nextBlock?.id || null
     }
     
+    // Update connections when removing a block
+    const removedBlockConnections = state.connections.filter(
+      conn => conn.sourceId === blockId || conn.targetId === blockId
+    )
+    
+    // Find incoming and outgoing connections of the removed block
+    const incomingConnections = removedBlockConnections.filter(conn => conn.targetId === blockId)
+    const outgoingConnections = removedBlockConnections.filter(conn => conn.sourceId === blockId)
+    
+    // Create new connections to maintain linear flow
+    const newConnections: Connection[] = []
+    
+    // For each source that was connected to the removed block,
+    // connect it to each target that the removed block was connected to
+    incomingConnections.forEach(incoming => {
+      outgoingConnections.forEach(outgoing => {
+        newConnections.push({
+          id: uuidv4(),
+          sourceId: incoming.sourceId,
+          targetId: outgoing.targetId,
+          order: state.connections.length,
+          // Preserve condition from the incoming connection if it exists
+          ...(incoming.condition ? { condition: incoming.condition } : {})
+        })
+      })
+    })
+    
+    // Get all connections that don't involve the removed block
+    const remainingConnections = state.connections.filter(
+      conn => conn.sourceId !== blockId && conn.targetId !== blockId
+    )
+    
+    // Combine remaining connections with the new bypass connections
+    const updatedConnections = [...remainingConnections, ...newConnections]
+    
+    console.log(`Removed block ${blockId} and created ${newConnections.length} new connections to maintain flow`)
+    
     return {
       blocks: updatedBlocks,
-      currentBlockId: newCurrentBlockId
+      currentBlockId: newCurrentBlockId,
+      connections: updatedConnections
     }
   }),
   
@@ -178,7 +240,39 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       order: index
     }))
     
-    return { blocks: updatedBlocks }
+    // After reordering, recreate linear connections if enabled
+    let updatedConnections = [...state.connections]
+    
+    // Only update connections if the order has significantly changed
+    if (Math.abs(endIndex - startIndex) > 1) {
+      // We consider this a major reordering, so we'll rebuild the linear connections
+      console.log('Major block reordering detected, rebuilding linear connections')
+      
+      // Remove any existing linear connections (those without conditions)
+      // Keep any conditional connections intact
+      const conditionalConnections = updatedConnections.filter(conn => conn.condition)
+      
+      // Create fresh linear connections between adjacent blocks
+      const linearConnections = updatedBlocks.slice(0, -1).map((block, index) => {
+        const nextBlock = updatedBlocks[index + 1]
+        return {
+          id: uuidv4(),
+          sourceId: block.id,
+          targetId: nextBlock.id,
+          order: index,
+          // No condition means this is an "always" connection
+        }
+      })
+      
+      // Combine conditional connections with new linear ones
+      updatedConnections = [...conditionalConnections, ...linearConnections]
+      console.log(`Rebuilt ${linearConnections.length} linear connections after reordering`)
+    }
+    
+    return { 
+      blocks: updatedBlocks,
+      connections: updatedConnections
+    }
   }),
   
   setCurrentBlockId: (blockId: string | null) => set({ currentBlockId: blockId }),
@@ -420,6 +514,28 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       } catch (error) {
         console.error('Error extracting workflow connections:', error);
         workflowConnections = [];
+      }
+      
+      // Create default linear connections if no connections exist
+      if (workflowConnections.length === 0 && frontendBlocks.length > 1) {
+        console.log('No existing connections found, creating default linear workflow');
+        
+        // Sort blocks by order to ensure proper sequence
+        const sortedBlocks = [...frontendBlocks].sort((a, b) => a.order - b.order);
+        
+        // Create connections from each block to the next one
+        workflowConnections = sortedBlocks.slice(0, -1).map((block, index) => {
+          const nextBlock = sortedBlocks[index + 1];
+          return {
+            id: uuidv4(),
+            sourceId: block.id,
+            targetId: nextBlock.id,
+            order: index,
+            // No condition means this is an "always" connection
+          };
+        });
+        
+        console.log(`Created ${workflowConnections.length} default linear connections`);
       }
       
       // Update the store with form and blocks
