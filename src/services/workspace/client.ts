@@ -5,6 +5,8 @@
 export * from './getUserWorkspacesClient';
 export * from './getWorkspaceMembersClient';
 export * from './getWorkspaceClient';
+export * from './changeUserRoleClient';
+export * from './removeWorkspaceMemberClient';
 
 // Direct services that don't use server-side imports
 export * from './createWorkspace';
