@@ -12,44 +12,90 @@ type AuthSessionData = {
   user: UserType | null; // Use our defined UserType
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Profile structure TBD
   profile: any | null; // Keep profile for potential future use
+  isLoggedOut?: boolean; // Flag to indicate logged out state
 };
 
 export function useAuthSession() {
   const supabase = useSupabase(); // Get the current supabase client
 
+  // Get caller information for debug purposes
+  const callerInfo = new Error().stack?.split('\n').slice(2, 4).join('\n') || 'unknown';
+  console.log(`[AUTH DEBUG] useAuthSession called from:\n${callerInfo}`);
+
   const fetcher = async (): Promise<AuthSessionData> => {
-    // Get verified user data from the Supabase auth server
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    console.log(`[AUTH DEBUG] useAuthSession.fetcher executing for caller:\n${callerInfo}`);
     
-    if (userError) {
-      console.error("[useAuthSession] Error fetching verified user:", userError);
-      throw userError; // Throw error for SWR to catch
+    try {
+      // Get verified user data from the Supabase auth server
+      console.log('[AUTH DEBUG] Calling supabase.auth.getUser()');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error("[AUTH DEBUG] Error fetching verified user:", userError);
+        // Instead of throwing, return a structured error response
+        return { 
+          session: null, 
+          user: null, 
+          profile: null,
+          isLoggedOut: true 
+        };
+      }
+
+      // We still need the session for token access
+      console.log('[AUTH DEBUG] Calling supabase.auth.getSession()');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("[AUTH DEBUG] Error fetching session:", sessionError);
+        return { 
+          session: null, 
+          user: null, 
+          profile: null,
+          isLoggedOut: true 
+        };
+      }
+      
+      const session = sessionData.session;
+      const supabaseUser = userData.user; // Using verified user data
+
+      // Check if we have proper auth data
+      if (!session || !supabaseUser) {
+        return { 
+          session: null, 
+          user: null, 
+          profile: null,
+          isLoggedOut: true 
+        };
+      }
+
+      // Transform verified Supabase user to our UserType
+      const user = {
+        id: supabaseUser.id,
+        email: supabaseUser.email ?? '',
+        user_metadata: supabaseUser.user_metadata || {},
+        app_metadata: supabaseUser.app_metadata || {}
+      };
+
+      // Placeholder for profile fetching if needed later
+      const profile = null;
+
+      console.log("[AUTH DEBUG] Fetched auth data:", { 
+        hasSession: !!session, 
+        hasUser: !!user,
+        email: user?.email || 'none',
+        caller: callerInfo.split('\n')[0].trim()
+      });
+
+      return { session, user, profile, isLoggedOut: false };
+    } catch (error) {
+      console.error("[AUTH DEBUG] Unexpected error in useAuthSession:", error);
+      return { 
+        session: null, 
+        user: null, 
+        profile: null,
+        isLoggedOut: true 
+      };
     }
-
-    // We still need the session for token access
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error("[useAuthSession] Error fetching session:", sessionError);
-      throw sessionError;
-    }
-    
-    const session = sessionData.session;
-    const supabaseUser = userData.user; // Using verified user data
-
-    // Transform verified Supabase user to our UserType
-    const user = supabaseUser ? {
-      id: supabaseUser.id,
-      email: supabaseUser.email ?? '',
-      user_metadata: supabaseUser.user_metadata || {},
-      app_metadata: supabaseUser.app_metadata || {}
-    } : null;
-
-    // Placeholder for profile fetching if needed later
-    const profile = null;
-
-    console.log("[useAuthSession] Fetched verified user:", user?.email, "Session active:", !!session);
-
-    return { session, user, profile };
   };
 
   const { data, error, isLoading, mutate } = useSWR<AuthSessionData>(
@@ -67,12 +113,18 @@ export function useAuthSession() {
     }
   );
 
+  // Determine logged out state from data or error
+  const isLoggedOut = data?.isLoggedOut || 
+                     error?.message?.includes('Auth session missing') || 
+                     (!data?.session && !isLoading);
+  
   return {
     session: data?.session ?? null,
     user: data?.user ?? null,
     profile: data?.profile ?? null,
     error,
     isLoading,
+    isLoggedOut,
     mutate, // Expose mutate for manual triggers if needed elsewhere
   };
 }
