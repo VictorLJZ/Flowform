@@ -80,43 +80,43 @@ export const navItems: NavItem[] = [
     sections: [
       {
         title: "SOLUTIONS THAT HELP YOU ", // The ending will be animated
-        animatedEndings: ["SUCCEED", "INNOVATE", "TRANSFORM"],
+        animatedEndings: ["MARKET", "LEARN", "DESIGN", "RESEARCH"],
         items: [
           {
-            title: "Enterprise solutions",
+            title: "Marketing Teams",
+            description: "Powerful forms and survey tools for capturing leads and customer insights.",
+            href: "/solutions/marketing-teams",
+            icon: "megaphone"
+          },
+          {
+            title: "Research Teams",
+            description: "Advanced data collection tools for academic and market research.",
+            href: "/solutions/research-teams",
+            icon: "microscope"
+          },
+          {
+            title: "Design Teams",
+            description: "Intuitive user testing and feedback collection for design iteration.",
+            href: "/solutions/design-teams",
+            icon: "palette"
+          },
+          {
+            title: "Engineering Teams",
+            description: "Feature prioritization and technical feedback collection tools.",
+            href: "/solutions/engineering-teams",
+            icon: "code"
+          },
+          {
+            title: "Startups",
+            description: "Cost-effective solutions for early-stage companies validating ideas.",
+            href: "/solutions/startups",
+            icon: "rocket"
+          },
+          {
+            title: "Enterprise",
             description: "Secure, scalable solutions for organizations with complex needs.",
             href: "/solutions/enterprise",
-            icon: "overview"
-          },
-          {
-            title: "Collaboration features",
-            description: "Work together with your team to build the perfect form experience.",
-            href: "/solutions/collaboration",
-            icon: "ai"
-          },
-          {
-            title: "Advanced security",
-            description: "Enterprise-grade security features to protect your data and users.",
-            href: "/solutions/security",
-            icon: "form"
-          },
-          {
-            title: "API access",
-            description: "Build custom integrations and workflows with our powerful API.",
-            href: "/solutions/api",
-            icon: "survey"
-          },
-          {
-            title: "Scalable infrastructure",
-            description: "Our platform grows with your needs, from startups to enterprise.",
-            href: "/solutions/infrastructure",
-            icon: "quiz"
-          },
-          {
-            title: "Compliance & privacy",
-            description: "GDPR, HIPAA, and SOC2 compliant solutions for regulated industries.",
-            href: "/solutions/compliance",
-            icon: "test"
+            icon: "building"
           },
         ],
       },

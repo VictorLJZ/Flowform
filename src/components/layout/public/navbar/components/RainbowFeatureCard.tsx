@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { Megaphone, Microscope, Palette, Code, Rocket, Building, LayoutGrid } from 'lucide-react'
+import { cn } from "@/lib/utils"
 
 interface RainbowFeatureCardProps {
   title: string;
@@ -10,8 +12,21 @@ interface RainbowFeatureCardProps {
   icon?: string;
 }
 
+// Map of icon names to Lucide components
+const iconMap: Record<string, any> = {
+  megaphone: Megaphone,
+  microscope: Microscope,
+  palette: Palette,
+  code: Code,
+  rocket: Rocket,
+  building: Building,
+  overview: LayoutGrid,
+  // Add additional mappings for other icons as needed
+}
+
 export function RainbowFeatureCard({ title, description, href, icon }: RainbowFeatureCardProps) {
   const isRainbowCard = title === "Dynamic questions";
+  const LucideIcon = icon && iconMap[icon] ? iconMap[icon] : null;
   
   return (
     <Link href={href} className="group h-full">
@@ -23,7 +38,7 @@ export function RainbowFeatureCard({ title, description, href, icon }: RainbowFe
           </>
         )}
         <div className={`flex items-center mb-2 ${isRainbowCard ? "relative z-10" : ""}`}>
-          <div className={`mr-3 ${isRainbowCard ? "rainbow-gradient-icon" : "text-primary"}`}>
+          <div className={cn("mr-3", isRainbowCard ? "rainbow-gradient-icon" : "text-primary")}>
             {isRainbowCard ? (
               <div className="relative w-[18px] h-[18px]">
                 <div className="rainbow-gradient-mask absolute inset-0" style={{
@@ -37,6 +52,8 @@ export function RainbowFeatureCard({ title, description, href, icon }: RainbowFe
                   maskPosition: 'center'
                 }} />
               </div>
+            ) : LucideIcon ? (
+              <LucideIcon className="w-[18px] h-[18px] text-primary" />
             ) : icon ? (
               <Image 
                 src={`/icons/${icon}.svg`} 
