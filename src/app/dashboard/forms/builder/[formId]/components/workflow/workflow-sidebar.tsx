@@ -2,32 +2,111 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { X, Save } from 'lucide-react'
+import { X, Save, Info, Settings, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Node, Edge } from 'reactflow'
 import { WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types'
 import WorkflowConnectionSidebar from './workflow-connection-sidebar'
 import WorkflowBlockSidebar from './workflow-block-sidebar'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useFormBuilderStore } from '@/stores/formBuilderStore'
 
 interface WorkflowSidebarProps {
-  element: Node<WorkflowNodeData> | Edge<WorkflowEdgeData>;
+  element: Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null;
   onClose: () => void;
 }
 
 export default function WorkflowSidebar({ element, onClose }: WorkflowSidebarProps) {
   const [hasChanges, setHasChanges] = useState(false)
-  const isEdge = 'source' in element && 'target' in element
+  const blocks = useFormBuilderStore(state => state.blocks)
+  const connections = useFormBuilderStore(state => state.connections)
+  
+  // Determine if the element is an edge and verify it still exists in connections
+  const isEdge = element && 'source' in element && 'target' in element
+  const isNode = element && !isEdge
+  
+  // Check if the selected edge still exists in the connections store
+  const edgeExists = isEdge && connections.some(conn => conn.id === element.id)
+  
+  // Check if the selected block still exists in the blocks store
+  const nodeExists = isNode && blocks.some(block => block.id === element.id)
+  
+  // If element doesn't exist anymore, we should show the default view
+  const effectiveElement = isEdge 
+    ? (edgeExists ? element : null) 
+    : (nodeExists ? element : null)
   
   // Reset when the element changes
   useEffect(() => {
     setHasChanges(false)
-  }, [element.id])
+  }, [element?.id])
+  
+  // Watch for changes in connections and blocks
+  // This ensures we show the default view if the selected element is deleted
+  useEffect(() => {
+    if (isEdge && !edgeExists) {
+      console.log('Selected edge no longer exists in connections, showing default view');
+      onClose(); // Clear selected element since it no longer exists
+    }
+    
+    if (isNode && !nodeExists) {
+      console.log('Selected block no longer exists in blocks, showing default view');
+      onClose(); // Clear selected element since it no longer exists
+    }
+  }, [connections, blocks, isEdge, edgeExists, isNode, nodeExists, onClose]);
+  
+  // Render the default overview when no element is selected
+  const renderDefaultOverview = () => {
+    return (
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-5">
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm">Workflow Overview</CardTitle>
+              <CardDescription className="text-xs">
+                Select a block or connection to view and edit its properties
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 py-3 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-blue-700">Elements</span>
+                <div className="flex gap-2">
+                  <span className="text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+                    {blocks.length} Blocks
+                  </span>
+                  <span className="text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+                    {connections.length} Connections
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  <Info size={14} className="inline-block mr-1" />
+                  Click on any block or connection to edit its properties.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <Settings size={14} className="inline-block mr-1" />
+                  Customize the workflow by adding connections between blocks.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <ArrowRight size={14} className="inline-block mr-1" />
+                  Drag between the handles to create new connections.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </ScrollArea>
+    )
+  }
   
   return (
     <div className="w-[320px] border-l bg-background flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="font-medium">
-          {isEdge ? 'Connection Settings' : 'Block Settings'}
+          {!effectiveElement ? 'Workflow' : (isEdge && edgeExists ? 'Connection Settings' : 'Block Settings')}
         </h2>
         <div className="flex items-center gap-2">
           {hasChanges && (
@@ -35,20 +114,25 @@ export default function WorkflowSidebar({ element, onClose }: WorkflowSidebarPro
               <Save size={14} className="mr-1" /> Applied
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X size={18} />
-          </Button>
+          {effectiveElement && (
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X size={18} />
+            </Button>
+          )}
         </div>
       </div>
       
-      {isEdge ? (
+      {!effectiveElement ? (
+        renderDefaultOverview()
+      ) : isEdge && edgeExists ? (
         <WorkflowConnectionSidebar 
           element={element as Edge<WorkflowEdgeData>} 
           onHasChanges={setHasChanges} 
         />
       ) : (
         <WorkflowBlockSidebar 
-          element={element as Node<WorkflowNodeData>} 
+          element={element as Node<WorkflowNodeData>}
+          onHasChanges={setHasChanges}
         />
       )}
     </div>

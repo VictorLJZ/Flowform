@@ -14,7 +14,8 @@ import {
   User,
   ArrowUpRight,
   Bookmark,
-  Sparkles
+  Sparkles,
+  ArrowRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkflowNodeData } from '@/types/workflow-types'
@@ -89,6 +90,8 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
   const { block, isConnectionTarget } = data
   const Icon = iconMap[block.blockTypeId as keyof typeof iconMap] || FileText
   const [isHovered, setIsHovered] = useState(false)
+  const [isOutputHandleHovered, setIsOutputHandleHovered] = useState(false)
+  const [isInputHandleHovered, setIsInputHandleHovered] = useState(false)
   
   // Get colors based on block type
   const blockColors = getBlockTypeColors(block.blockTypeId);
@@ -97,50 +100,97 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
     <div 
       className={cn(
         "p-4 rounded-md border shadow-sm bg-white",
-        "min-w-[220px]",
+        "min-w-[220px] h-[72px]", // Fixed height of 72px for consistency
         "relative",
         "transition-all duration-200",
+        "flex items-center", // Center content vertically
         isConnectionTarget && "ring-2 ring-black ring-opacity-70 shadow-md",
         selected && "ring-2 ring-amber-400 ring-opacity-80 shadow-lg shadow-amber-100"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Source handle (output) - right side - Larger fixed size */}
-      <div className="absolute right-[-8px] top-1/2 transform -translate-y-1/2 z-10">
-        {/* Semi-transparent background circle for better visibility */}
-        <div className="absolute rounded-full bg-black/10 w-6 h-6 -right-1 -top-3"></div>
-        <Handle 
-          type="source" 
-          position={Position.Right} 
+      {/* Source handle (output) - right side - Arrow pointing right */}
+      <div 
+        className={cn(
+          "absolute right-[-18px] top-1/2 transform -translate-y-1/2 z-10",
+          "transition-opacity duration-200",
+          isHovered || isOutputHandleHovered ? "opacity-100" : "opacity-60"
+        )}
+        onMouseEnter={() => setIsOutputHandleHovered(true)}
+        onMouseLeave={() => setIsOutputHandleHovered(false)}
+      >
+        {/* Handle container with arrow icon */}
+        <div 
           className={cn(
-            "!w-4 !h-4 !min-w-[16px] !min-h-[16px] bg-black border-[1.5px] border-white",
-            selected && "bg-amber-500"
+            "relative flex items-center justify-center",
+            "w-7 h-7 rounded-full",
+            isOutputHandleHovered ? "bg-black/20" : "bg-transparent",
+            "transition-all duration-200"
           )}
-          style={{ zIndex: 20, right: -4 }}
-        />
+        >
+          <ArrowRight 
+            size={15} 
+            className={cn(
+              "text-black",
+              selected && "text-amber-500",
+              "transition-transform duration-200",
+              isOutputHandleHovered && "translate-x-0.5"
+            )} 
+          />
+          {/* Actual ReactFlow handle (hidden but functional) */}
+          <Handle 
+            type="source" 
+            position={Position.Right} 
+            className="!opacity-0 !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
+            style={{ right: 0, zIndex: 20 }}
+          />
+        </div>
       </div>
       
-      {/* Target handle (input) - left side - Larger fixed size */}
-      <div className="absolute left-[-8px] top-1/2 transform -translate-y-1/2 z-10">
-        {/* Semi-transparent background circle for better visibility */}
-        <div className="absolute rounded-full bg-black/10 w-6 h-6 -left-1 -top-3"></div>
-        <Handle 
-          type="target" 
-          position={Position.Left} 
+      {/* Target handle (input) - left side - Arrow pointing right (for consistency) */}
+      <div 
+        className={cn(
+          "absolute left-[-18px] top-1/2 transform -translate-y-1/2 z-10",
+          "transition-opacity duration-200",
+          isHovered || isInputHandleHovered ? "opacity-100" : "opacity-60"
+        )}
+        onMouseEnter={() => setIsInputHandleHovered(true)}
+        onMouseLeave={() => setIsInputHandleHovered(false)}
+      >
+        {/* Handle container with arrow icon */}
+        <div 
           className={cn(
-            "!w-4 !h-4 !min-w-[16px] !min-h-[16px] bg-black border-[1.5px] border-white",
-            selected && "bg-amber-500"
+            "relative flex items-center justify-center",
+            "w-7 h-7 rounded-full",
+            isInputHandleHovered ? "bg-black/20" : "bg-transparent",
+            "transition-all duration-200"
           )}
-          style={{ zIndex: 20, left: -4 }}
-        />
+        >
+          <ArrowRight 
+            size={15} 
+            className={cn(
+              "text-black",
+              selected && "text-amber-500",
+              "transition-transform duration-200",
+              isInputHandleHovered && "translate-x-0.5"
+            )} 
+          />
+          {/* Actual ReactFlow handle (hidden but functional) */}
+          <Handle 
+            type="target" 
+            position={Position.Left} 
+            className="!opacity-0 !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
+            style={{ left: 0, zIndex: 20 }}
+          />
+        </div>
       </div>
       
       {/* Block content */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center w-full">
         <div 
           className={cn(
-            "h-8 w-8 rounded-md flex items-center justify-center",
+            "h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0",
             selected && "bg-amber-100 text-amber-700"
           )}
           style={selected ? {} : { backgroundColor: blockColors.bg, color: blockColors.text }}
@@ -157,6 +207,12 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
           {block.description && (
             <p className="text-xs text-muted-foreground truncate">
               {block.description}
+            </p>
+          )}
+          {/* If no description, add an empty element with same height to maintain consistency */}
+          {!block.description && (
+            <p className="text-xs text-muted-foreground truncate h-[16px]">
+              &nbsp;
             </p>
           )}
         </div>

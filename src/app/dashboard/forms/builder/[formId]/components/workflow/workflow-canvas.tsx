@@ -36,9 +36,13 @@ import { ArrowUpRight } from 'lucide-react'
 // Custom connection line component to have a pulsing dotted line with arrowhead
 const CustomConnectionLine = ({ fromX, fromY, toX, toY }: { fromX: number, fromY: number, toX: number, toY: number }) => {
   // Calculate the control points for a bezier curve
-  const controlPointX1 = fromX + 100;
+  // Use much closer control points for nearly straight lines
+  const distance = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+  const controlDistance = Math.min(60, distance * 0.2); // Even lower control distance for nearly straight lines
+  
+  const controlPointX1 = fromX + controlDistance;
   const controlPointY1 = fromY;
-  const controlPointX2 = toX - 100;
+  const controlPointX2 = toX - controlDistance;
   const controlPointY2 = toY;
   
   // Calculate the direction for the arrowhead
@@ -99,27 +103,53 @@ const flowAnimationStyles = `
     stroke-width: 2;
   }
 
-  /* Improved handle styles - smaller but more interactive */
+  /* Improved handle styles - larger click area with hidden background */
   .react-flow__handle {
-    opacity: 1;
+    opacity: 0; /* Make the actual handle transparent */
     cursor: pointer;
     transition: all 0.2s;
-    width: 10px !important;
-    height: 10px !important;
-    border-width: 2px !important;
-    border-color: white !important;
-    background-color: black !important;
+    width: 28px !important;
+    height: 28px !important;
+    border: none !important;
+    background: transparent !important;
     position: absolute;
   }
   
-  /* Handle hover state - grow slightly for better "stickiness" */
+  /* Remove hover rules since we're handling that in the component */
   .react-flow__handle:hover {
-    width: 14px !important;
-    height: 14px !important;
-    box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
+    width: 28px !important;
+    height: 28px !important;
+    background: transparent !important;
+  }
+  
+  /* Custom handle hit area */
+  .handle-hit-area {
+    width: 24px;
+    height: 24px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 10;
   }
   
+  .handle-hit-area-left {
+    left: -12px;
+  }
+  
+  .handle-hit-area-right {
+    right: -12px;
+  }
+  
+  /* When connecting, improve visibility */
+  .react-flow__handle.connecting {
+    opacity: 1 !important;
+  }
+  
+  /* When handle is valid, improve visibility */
+  .react-flow__handle.valid {
+    opacity: 1 !important;
+  }
+
   /* For selection state */
   .react-flow__node.selected .react-flow__handle {
     background-color: #f59e0b !important; /* Amber color for selected state */
@@ -150,33 +180,16 @@ const flowAnimationStyles = `
     transform: translate(0, -50%);
   }
 
-  /* Connection interaction improvements */
-  .react-flow__handle.connecting {
-    background-color: #f59e0b !important;
-  }
-  
-  .react-flow__handle.valid {
-    background-color: #10b981 !important;
-  }
-  
-  /* When connecting, highlight valid connection targets */
-  .react-flow__node[data-connecting="true"] .react-flow__handle {
-    opacity: 1;
-    transform: scale(1.2);
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3); }
-    70% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-  }
-
   /* Edge delete animations */
   @keyframes deleteButtonPulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    50% { transform: scale(1.03); }
     100% { transform: scale(1); }
+  }
+
+  /* Apply animation to delete button on hover - but keep it subtle */
+  .edge-delete-button:hover {
+    animation: none; /* Remove the animation that's causing problems */
   }
 
   /* Feedback toast animation */
@@ -191,11 +204,6 @@ const flowAnimationStyles = `
     to { opacity: 0; }
   }
 
-  /* Apply animation to delete button on hover */
-  .edge-delete-button:hover {
-    animation: deleteButtonPulse 0.5s ease-in-out infinite;
-  }
-
   /* Toast notification styles */
   .delete-toast {
     animation: slideInRight 0.3s ease-out forwards;
@@ -207,6 +215,47 @@ const flowAnimationStyles = `
   }
   .react-flow__edge.deleting {
     opacity: 0;
+  }
+
+  /* When connecting, highlight valid connection targets */
+  .react-flow__node[data-connecting="true"] {
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
+  }
+
+  /* Highlight nodes on connection drag approach */
+  .connection-target {
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6)) !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.6);
+    transition: all 0.3s ease-in-out;
+  }
+
+  /* Improved connection line */
+  .animated-connection-path {
+    animation: flowDash 1s linear infinite !important;
+    stroke-width: 2.5px !important;
+    stroke-opacity: 0.8;
+  }
+
+  /* Improved connection paths */
+  .react-flow__edge-path {
+    stroke-width: 2px !important; 
+  }
+  
+  /* Selected edges should be amber/gold */
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke: #f59e0b !important; /* amber-500 */
+    stroke-width: 3px !important;
+  }
+  
+  /* Make edge paths shorter to connect closer to nodes */
+  .react-flow__edge {
+    --edge-stroke-width: 2px;
+    --edge-path-stroke: #000000;
+  }
+  
+  /* Reduce the bezier curve strength */
+  .react-flow__edge-bezier {
+    --edge-curvature: 0.2;
   }
 `;
 
@@ -236,165 +285,10 @@ export default function WorkflowCanvas() {
   const reactFlowInstance = useReactFlow()
   const store = useStoreApi()
   const flowWrapperRef = useRef<HTMLDivElement>(null);
+  const hasAppliedInitialLayout = useRef(false);
+  const autoLayoutRef = useRef<() => void>(() => {});
 
-  // Effect to add global click handler for delete buttons
-  useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      
-      // Handle clicks on delete buttons
-      if (target.closest('.edge-delete-button')) {
-        const deleteButton = target.closest('.edge-delete-button') as HTMLElement;
-        const edgeId = deleteButton.getAttribute('data-edge-id');
-        
-        if (edgeId) {
-          // Find the edge
-          const edge = edges.find(e => e.id === edgeId);
-          if (edge) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Apply deletion effect
-            const edgeElement = document.querySelector(`.react-flow__edge[data-edge-id="${edgeId}"]`);
-            if (edgeElement) {
-              edgeElement.classList.add('deleting');
-            }
-            
-            // Short delay for animation
-            setTimeout(() => {
-              removeConnection(edgeId);
-              
-              // Clear selection if this was the selected edge
-              if (selectedElement?.id === edgeId) {
-                setSelectedElement(null);
-              }
-              
-              // Show feedback
-              const feedback = document.createElement('div');
-              feedback.textContent = 'Connection deleted';
-              feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
-              document.body.appendChild(feedback);
-              
-              // Remove feedback after delay
-              setTimeout(() => {
-                feedback.style.opacity = '0';
-                feedback.style.transition = 'opacity 0.5s ease-out';
-                setTimeout(() => {
-                  if (document.body.contains(feedback)) {
-                    document.body.removeChild(feedback);
-                  }
-                }, 500);
-              }, 1500);
-            }, 100);
-          }
-        }
-      }
-    };
-    
-    // Add event listener
-    document.addEventListener('click', handleGlobalClick);
-    
-    // Cleanup
-    return () => {
-      document.removeEventListener('click', handleGlobalClick);
-    };
-  }, [edges, removeConnection, selectedElement]);
-
-  // Handle node state changes with highlighting for connection targets
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    // Apply the native onNodesChange
-    onNodesChange(changes);
-    
-    // If we're connecting, check for nodes under the mouse and highlight them
-    if (isConnecting) {
-      const state = store.getState();
-      
-      // Get mouse position from store - note: the type is not correctly defined in ReactFlow
-      const mousePosition = (state as any).mousePos as [number, number];
-      
-      if (!mousePosition) return;
-      
-      // Find node under mouse if we're connecting
-      const nodeInternals = state.nodeInternals as Map<string, NodeWithPosition>;
-      
-      if (nodeInternals && nodeInternals.size > 0) {
-        // Find node under cursor
-        const nodeUnderMouse = [...nodeInternals.values()].find(n => {
-          if (!n.positionAbsolute) return false;
-          if (n.id === sourceNodeId) return false; // Skip source node
-          
-          const { x, y } = n.positionAbsolute;
-          // Use estimated size if not available
-          const width = n.positionAbsolute.width || 220;
-          const height = n.positionAbsolute.height || 80;
-          
-          return (
-            mousePosition[0] >= x &&
-            mousePosition[0] <= x + width &&
-            mousePosition[1] >= y &&
-            mousePosition[1] <= y + height
-          );
-        });
-        
-        // Only highlight target nodes, not the source node
-        const newTargetNodeId = nodeUnderMouse?.id || null;
-        
-        // Only update if the target node has changed to minimize re-renders
-        if (newTargetNodeId !== targetNode) {
-          setTargetNode(newTargetNodeId);
-          
-          // If there was a previous target node, update nodes to refresh its appearance
-          if (targetNode || newTargetNodeId) {
-            // This will trigger a re-render with the updated styling
-            setNodes(nodes => 
-              nodes.map(node => ({
-                ...node,
-                data: {
-                  ...node.data,
-                  isConnectionTarget: node.id === newTargetNodeId
-                }
-              }))
-            );
-          }
-        }
-      }
-    }
-  }, [onNodesChange, isConnecting, store, sourceNodeId, targetNode, setNodes]);
-  
-  // Convert blocks to nodes
-  useEffect(() => {
-    if (blocks.length > 0) {
-      const newNodes = blocks.map((block, index) => ({
-        id: block.id,
-        type: 'formBlock',
-        position: { x: index * 300, y: 100 }, // Horizontal layout (left to right)
-        selected: selectedElement?.id === block.id,
-        data: { 
-          block, 
-          label: block.title || 'Untitled Block',
-          isConnectionTarget: targetNode === block.id
-        }
-      }))
-      setNodes(newNodes)
-    }
-  }, [blocks, setNodes, targetNode, selectedElement?.id])
-  
-  // Convert connections to edges
-  useEffect(() => {
-    if (connections.length > 0) {
-      const newEdges = connections.map(connection => ({
-        id: connection.id,
-        source: connection.sourceId,
-        target: connection.targetId,
-        type: 'workflow',
-        selected: selectedElement?.id === connection.id,
-        data: { connection }
-      }))
-      setEdges(newEdges)
-    }
-  }, [connections, setEdges, selectedElement?.id])
-  
-  // Apply improved auto-layout with more horizontal positioning
+  // Define applyAutoLayout function 
   const applyAutoLayout = useCallback(() => {
     if (nodes.length === 0) return;
     
@@ -447,9 +341,10 @@ export default function WorkflowCanvas() {
       }
     });
     
-    // Step 3: Calculate positions with horizontal priority
-    const horizontalGap = 320; // Wider gap to accommodate edge labels
-    const verticalGap = 200;   // Taller to give more space for edge labels
+    // Step 3: Calculate positions with optimized horizontal priority
+    // REDUCED gaps to make nodes closer together
+    const horizontalGap = 270; // Reduced from 340 for closer node placement
+    const verticalGap = 150;   // Reduced from 200 for closer vertical spacing
     
     // Track processed nodes
     const processed = new Set<string>();
@@ -457,67 +352,157 @@ export default function WorkflowCanvas() {
     // Position map
     const positions = new Map<string, { x: number, y: number }>();
     
-    // Calculate maximal branch width
-    const getBranchWidth = (nodeId: string, visited = new Set<string>()): number => {
+    // Collision detection - check if a position is already occupied
+    const nodeWidth = 220; // Slightly reduced node width estimate
+    const nodeHeight = 72; // Adjusted to match fixed node height
+    
+    // Check if a position would overlap with existing nodes
+    const wouldOverlap = (x: number, y: number): boolean => {
+      for (const [nodeId, pos] of positions.entries()) {
+        // Check if rectangles overlap
+        if (
+          x < pos.x + nodeWidth &&
+          x + nodeWidth > pos.x &&
+          y < pos.y + nodeHeight &&
+          y + nodeHeight > pos.y
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+    
+    // Find a non-overlapping position near the target position
+    const findNonOverlappingPosition = (targetX: number, targetY: number): { x: number, y: number } => {
+      if (!wouldOverlap(targetX, targetY)) return { x: targetX, y: targetY };
+      
+      // Try positions in expanding rings around the target
+      const spiralOffsets = [
+        { dx: horizontalGap, dy: 0 },           // right
+        { dx: 0, dy: verticalGap },             // down
+        { dx: -horizontalGap, dy: 0 },          // left
+        { dx: 0, dy: -verticalGap },            // up
+        { dx: horizontalGap, dy: verticalGap }, // right-down diagonal
+        { dx: -horizontalGap, dy: verticalGap },// left-down diagonal
+        { dx: horizontalGap, dy: -verticalGap },// right-up diagonal
+        { dx: -horizontalGap, dy: -verticalGap }// left-up diagonal
+      ];
+      
+      for (let radius = 1; radius <= 3; radius++) {
+        for (const offset of spiralOffsets) {
+          const newX = targetX + offset.dx * radius;
+          const newY = targetY + offset.dy * radius;
+          if (!wouldOverlap(newX, newY)) {
+            return { x: newX, y: newY };
+          }
+        }
+      }
+      
+      // If all else fails, find a position below all existing nodes
+      const maxY = Math.max(...Array.from(positions.values()).map(pos => pos.y), 0);
+      return { x: targetX, y: maxY + verticalGap * 2 };
+    };
+    
+    // Calculate layout row by row to minimize overlap
+    // Track row assignments to keep related nodes in the same row when possible
+    const nodeRows = new Map<string, number>();
+    const rowPositions = new Map<number, number[]>(); // row -> x positions used
+    
+    // Get the widest path from node to its deepest leaf
+    const getPathWidth = (nodeId: string, visited = new Set<string>()): number => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
       
       const children = childrenMap.get(nodeId) || [];
       if (children.length === 0) return 1;
       
-      return Math.max(1, children.reduce((sum, childId) => 
-        sum + getBranchWidth(childId, new Set(visited)), 0));
+      return Math.max(...children.map(childId => getPathWidth(childId, new Set(visited))));
     };
     
-    // Process a branch (recursive)
-    const processNode = (nodeId: string, x: number, y: number, visited = new Set<string>()) => {
+    // Process branch by assigning row and column positions
+    const processNode = (nodeId: string, preferredX: number, preferredRow: number, visited = new Set<string>()) => {
       if (processed.has(nodeId) || visited.has(nodeId)) return;
       
       // Add to visited for this traversal (to prevent cycles)
       visited.add(nodeId);
       
-      // Only process once
       if (!processed.has(nodeId)) {
-        positions.set(nodeId, { x, y });
+        // Assign node to preferred row if possible
+        let row = preferredRow;
+        
+        // Find the best X position in this row that doesn't overlap
+        let bestX = preferredX;
+        
+        // Get existing positions in this row
+        const rowXPositions = rowPositions.get(row) || [];
+        
+        // Try to find a position that doesn't conflict with existing nodes
+        const possiblePosition = findNonOverlappingPosition(bestX, row * verticalGap);
+        
+        // Update row if needed
+        if (possiblePosition.y !== row * verticalGap) {
+          row = Math.round(possiblePosition.y / verticalGap);
+        }
+        
+        // Update actual position
+        const finalX = possiblePosition.x;
+        const finalY = row * verticalGap;
+        
+        // Store the position
+        positions.set(nodeId, { x: finalX, y: finalY });
         processed.add(nodeId);
         
+        // Record row assignment and position
+        nodeRows.set(nodeId, row);
+        
+        // Update row positions
+        if (!rowPositions.has(row)) {
+          rowPositions.set(row, []);
+        }
+        rowPositions.get(row)?.push(finalX);
+        
+        // Process children
         const children = childrenMap.get(nodeId) || [];
         
         if (children.length > 0) {
-          // Special case: if one child, keep it in the same horizontal line if possible
-          if (children.length === 1 && !parentMap.get(children[0])?.some(p => p !== nodeId && !processed.has(p))) {
-            processNode(children[0], x + horizontalGap, y, new Set(visited));
+          // Sort children by number of their own children (ascending)
+          // This places simpler branches first
+          children.sort((a, b) => {
+            const aChildren = childrenMap.get(a)?.length || 0;
+            const bChildren = childrenMap.get(b)?.length || 0;
+            return aChildren - bChildren;
+          });
+          
+          // Determine if all children should be in the same row
+          const allChildrenLinear = children.length <= 3 && 
+                                   children.every(child => 
+                                     (childrenMap.get(child)?.length || 0) <= 1 && 
+                                     (parentMap.get(child)?.length || 0) <= 1);
+          
+          if (allChildrenLinear) {
+            // Place all children in the same row, to the right
+            let childX = finalX + horizontalGap;
+            
+            children.forEach(childId => {
+              processNode(childId, childX, row, new Set(visited));
+              childX += horizontalGap;
+            });
           } else {
-            // Position children horizontally when possible
-            let canArrangeHorizontally = true;
-            
-            // Check if any child has multiple parents or if any child's parent is not processed
-            for (const childId of children) {
-              const childParents = parentMap.get(childId) || [];
-              if (childParents.length > 1 || childParents.some(p => p !== nodeId && !processed.has(p))) {
-                canArrangeHorizontally = false;
-                break;
-              }
-            }
-            
-            if (canArrangeHorizontally) {
-              // Arrange children horizontally next to each other
-              let offsetX = x + horizontalGap;
-              for (const childId of children) {
-                processNode(childId, offsetX, y, new Set(visited));
-                offsetX += horizontalGap;
-              }
-            } else {
-              // Arrange in a more traditional tree structure with vertical offsets
-              const totalWidth = Math.max(1, getBranchWidth(nodeId, new Set<string>()));
-              const startX = x - (totalWidth - 1) * horizontalGap / 2;
+            // Distribute children across rows if needed
+            children.forEach((childId, index) => {
+              // Try to keep in same row if simple case, otherwise create branching rows
+              const hasMultipleParents = (parentMap.get(childId)?.length || 0) > 1;
+              const hasMultipleChildren = (childrenMap.get(childId)?.length || 0) > 1;
               
-              children.forEach((childId, index) => {
-                const childWidth = getBranchWidth(childId, new Set<string>());
-                const childStartX = startX + index * horizontalGap;
-                processNode(childId, childStartX, y + verticalGap, new Set(visited));
-              });
-            }
+              if (!hasMultipleParents && !hasMultipleChildren && index === 0) {
+                // First simple child - same row
+                processNode(childId, finalX + horizontalGap, row, new Set(visited));
+              } else {
+                // Others go in rows below
+                const childRow = row + 1 + index % 2; // Alternate between two rows below
+                processNode(childId, finalX + horizontalGap/2 + index * horizontalGap/2, childRow, new Set(visited));
+              }
+            });
           }
         }
       }
@@ -525,20 +510,28 @@ export default function WorkflowCanvas() {
     
     // Start layout from root nodes
     let rootX = 100;
-    rootNodes.forEach(rootNode => {
-      processNode(rootNode.id, rootX, 100, new Set<string>());
+    rootNodes.forEach((rootNode, index) => {
+      // Start each root branch with enough horizontal space
+      const row = index % 3; // Distribute roots in up to 3 rows
+      processNode(rootNode.id, rootX, row, new Set<string>());
       
-      // Get width of this branch to space out the next root
-      const branchWidth = getBranchWidth(rootNode.id, new Set<string>());
-      rootX += horizontalGap * (branchWidth + 1);
+      // Add spacing for next root node
+      rootX += horizontalGap * 1.5;
     });
     
     // For any remaining unprocessed nodes (disconnected), arrange them in a row
-    let disconnectedX = rootX;
+    let disconnectedX = rootX + horizontalGap;
+    let disconnectedRow = 0;
+    
     nodes.forEach(node => {
       if (!processed.has(node.id)) {
-        positions.set(node.id, { x: disconnectedX, y: 100 });
-        disconnectedX += horizontalGap;
+        // Find a non-overlapping position for this node
+        const pos = findNonOverlappingPosition(disconnectedX, disconnectedRow * verticalGap);
+        positions.set(node.id, pos);
+        
+        // Update disconnected position for next node
+        disconnectedX = pos.x + horizontalGap;
+        disconnectedRow = Math.round(pos.y / verticalGap);
       }
     });
     
@@ -553,11 +546,234 @@ export default function WorkflowCanvas() {
     
     setNodes(newNodes);
     
-    // Center view on the nodes
+    // When auto-layout is explicitly requested, fit the view to show all nodes
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }, 50);
+      reactFlowInstance.fitView({ padding: 0.2, includeHiddenNodes: true });
+    }, 100);
   }, [nodes, edges, setNodes, reactFlowInstance]);
+
+  // Store the current autoLayout function in a ref to avoid dependency cycles
+  useEffect(() => {
+    autoLayoutRef.current = applyAutoLayout;
+  }, [applyAutoLayout]);
+
+  // Handle global click handler for edge delete buttons
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Handle clicks on delete buttons
+      if (target.closest('.edge-delete-button')) {
+        const deleteButton = target.closest('.edge-delete-button') as HTMLElement;
+        const edgeId = deleteButton.getAttribute('data-edge-id');
+        
+        if (edgeId) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Log the action for debugging
+          console.log(`Global handler deleting connection with id: ${edgeId}`);
+          
+          // Use setTimeout to ensure the event completes before we modify state
+          setTimeout(() => {
+            // Clear selection first if this was the selected edge
+            if (selectedElement?.id === edgeId) {
+              setSelectedElement(null);
+            }
+            
+            // Directly remove connection without animations
+            removeConnection(edgeId);
+          }, 0);
+          
+          // Show simple feedback toast
+          const feedback = document.createElement('div');
+          feedback.textContent = 'Connection deleted';
+          feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
+          document.body.appendChild(feedback);
+          
+          // Remove feedback after delay
+          setTimeout(() => {
+            if (document.body.contains(feedback)) {
+              document.body.removeChild(feedback);
+            }
+          }, 2000);
+        }
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('click', handleGlobalClick);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [removeConnection, selectedElement]);
+
+  // Handle node state changes with highlighting for connection targets
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    // Apply the native onNodesChange
+    onNodesChange(changes);
+    
+    // If we're connecting, check for nodes under the mouse and highlight them
+    if (isConnecting) {
+      const state = store.getState();
+      
+      // Get mouse position from store - note: the type is not correctly defined in ReactFlow
+      const mousePosition = (state as any).mousePos as [number, number];
+      
+      if (!mousePosition) return;
+      
+      // Find node under mouse if we're connecting
+      const nodeInternals = state.nodeInternals as Map<string, NodeWithPosition>;
+      
+      if (nodeInternals && nodeInternals.size > 0) {
+        // Find node under cursor
+        const nodeUnderMouse = [...nodeInternals.values()].find(n => {
+          if (!n.positionAbsolute) return false;
+          if (n.id === sourceNodeId) return false; // Skip source node
+          
+          const { x, y } = n.positionAbsolute;
+          // Use estimated size if not available
+          const width = n.positionAbsolute.width || 220;
+          const height = n.positionAbsolute.height || 80;
+          
+          return (
+            mousePosition[0] >= x &&
+            mousePosition[0] <= x + width &&
+            mousePosition[1] >= y &&
+            mousePosition[1] <= y + height
+          );
+        });
+        
+        // Only highlight target nodes, not the source node
+        const newTargetNodeId = nodeUnderMouse?.id || null;
+        
+        // Only update if the target node has changed to minimize re-renders
+        if (newTargetNodeId !== targetNode) {
+          setTargetNode(newTargetNodeId);
+          
+          // If there was a previous target node, update nodes to refresh its appearance
+          if (targetNode || newTargetNodeId) {
+            // This will trigger a re-render with the updated styling
+            setNodes(nodes => 
+              nodes.map(node => {
+                // Apply or remove the connection-target class
+                if (node.id === newTargetNodeId) {
+                  // Add the connection target class to the node DOM element
+                  setTimeout(() => {
+                    const nodeElement = document.querySelector(`.react-flow__node[data-id="${node.id}"]`);
+                    if (nodeElement) {
+                      nodeElement.classList.add('connection-target');
+                    }
+                  }, 0);
+                } else if (node.id === targetNode) {
+                  // Remove the connection target class
+                  setTimeout(() => {
+                    const nodeElement = document.querySelector(`.react-flow__node[data-id="${node.id}"]`);
+                    if (nodeElement) {
+                      nodeElement.classList.remove('connection-target');
+                    }
+                  }, 0);
+                }
+                
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    isConnectionTarget: node.id === newTargetNodeId
+                  }
+                };
+              })
+            );
+          }
+        }
+      }
+    } else if (targetNode) {
+      // If we're not connecting anymore but there's still a target node, clear it
+      setTargetNode(null);
+      
+      // Remove the connection-target class from all nodes
+      setTimeout(() => {
+        document.querySelectorAll('.connection-target').forEach(el => {
+          el.classList.remove('connection-target');
+        });
+      }, 0);
+    }
+  }, [onNodesChange, isConnecting, store, sourceNodeId, targetNode, setNodes]);
+  
+  // Convert blocks to nodes
+  useEffect(() => {
+    if (blocks.length > 0) {
+      // Sort blocks by order to ensure proper sequence
+      const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
+      
+      // Create a grid layout with a reasonable number of columns
+      const gridColumns = Math.min(4, Math.ceil(Math.sqrt(sortedBlocks.length)));
+      const horizontalGap = 300; // Consistent with auto-layout
+      const verticalGap = 180;   // Consistent with auto-layout
+      
+      const newNodes = sortedBlocks.map((block, index) => {
+        // Calculate grid position (left-to-right, then top-to-bottom)
+        const column = index % gridColumns;
+        const row = Math.floor(index / gridColumns);
+        
+        // If we have connections, try to optimize for linear flow
+        const hasLinearConnections = connections.some(conn => 
+          conn.sourceId === block.id || conn.targetId === block.id
+        );
+        
+        // For blocks with connections, prefer a simple left-to-right layout
+        // For blocks without connections, use the grid layout
+        const position = hasLinearConnections 
+          ? { x: index * horizontalGap, y: 100 }  // Linear horizontal layout
+          : { x: column * horizontalGap, y: row * verticalGap + 100 }; // Grid layout
+        
+        return {
+          id: block.id,
+          type: 'formBlock',
+          position,
+          selected: selectedElement?.id === block.id,
+          data: { 
+            block, 
+            label: block.title || 'Untitled Block',
+            isConnectionTarget: targetNode === block.id
+          }
+        };
+      });
+      
+      setNodes(newNodes);
+      
+      // Apply auto-layout on initial load if we have multiple nodes and connections
+      if (newNodes.length > 1 && connections.length > 0) {
+        // We use a ref to ensure this only happens once
+        const shouldAutoLayout = !hasAppliedInitialLayout.current;
+        if (shouldAutoLayout) {
+          hasAppliedInitialLayout.current = true;
+          // Delay auto-layout to ensure all nodes are properly rendered
+          setTimeout(() => autoLayoutRef.current(), 500);
+        }
+      }
+    }
+  }, [blocks, setNodes, targetNode, selectedElement?.id, connections])
+  
+  // Convert connections to edges
+  useEffect(() => {
+    if (connections.length > 0) {
+      const newEdges = connections.map(connection => ({
+        id: connection.id,
+        source: connection.sourceId,
+        target: connection.targetId,
+        type: 'workflow',
+        selected: selectedElement?.id === connection.id,
+        data: { connection }
+      }))
+      setEdges(newEdges)
+    } else {
+      // If no connections, clear the edges
+      setEdges([])
+    }
+  }, [connections, setEdges, selectedElement?.id])
   
   // Handle new connections
   const onConnect = useCallback(
@@ -604,15 +820,41 @@ export default function WorkflowCanvas() {
     // Remember source node ID but don't highlight it
     if (params.nodeId) {
       setSourceNodeId(params.nodeId);
+      
+      // Add a connecting attribute to the source node for CSS targeting
+      setTimeout(() => {
+        const sourceElement = document.querySelector(`.react-flow__node[data-id="${params.nodeId}"]`);
+        if (sourceElement) {
+          sourceElement.setAttribute('data-connecting', 'true');
+        }
+      }, 0);
     }
   }, []);
   
   const onConnectEnd = useCallback(() => {
+    // Remove connecting state
     setIsConnecting(false);
-    // Remove any highlighting
+    
+    // Clean up connection visual states
+    if (sourceNodeId) {
+      // Remove connecting attribute from source node
+      setTimeout(() => {
+        const sourceElement = document.querySelector(`.react-flow__node[data-id="${sourceNodeId}"]`);
+        if (sourceElement) {
+          sourceElement.removeAttribute('data-connecting');
+        }
+        
+        // Remove connection-target class from all nodes
+        document.querySelectorAll('.connection-target').forEach(el => {
+          el.classList.remove('connection-target');
+        });
+      }, 0);
+    }
+    
+    // Reset state
     setTargetNode(null);
     setSourceNodeId(null);
-  }, []);
+  }, [sourceNodeId]);
   
   // Handle node selection
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
@@ -627,11 +869,33 @@ export default function WorkflowCanvas() {
   // Handle edge deletion
   const onEdgeDelete = useCallback(
     (edge: Edge<WorkflowEdgeData>) => {
-      removeConnection(edge.id)
-      
-      // If this edge was selected, clear the selection to close any sidebar
-      if (selectedElement?.id === edge.id) {
-        setSelectedElement(null)
+      // Simply call the store function directly without any animations
+      if (edge.id) {
+        console.log(`Edge delete handler for id: ${edge.id}`);
+        
+        // Use setTimeout to ensure proper handling
+        setTimeout(() => {
+          // If this edge was selected, clear the selection to close any sidebar
+          if (selectedElement?.id === edge.id) {
+            setSelectedElement(null);
+          }
+          
+          // Then remove the connection
+          removeConnection(edge.id);
+        }, 0);
+        
+        // Show simple feedback toast
+        const feedback = document.createElement('div');
+        feedback.textContent = 'Connection deleted';
+        feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
+        document.body.appendChild(feedback);
+        
+        // Remove feedback after delay
+        setTimeout(() => {
+          if (document.body.contains(feedback)) {
+            document.body.removeChild(feedback);
+          }
+        }, 2000);
       }
     },
     [removeConnection, selectedElement]
@@ -642,47 +906,51 @@ export default function WorkflowCanvas() {
     event.preventDefault();
     event.stopPropagation();
     
-    // Find the edge element directly using more reliable query
-    const edgeElement = document.querySelector(`.react-flow__edge[data-edge-id="${edge.id}"]`);
-    
-    if (edgeElement) {
-      // Apply fade-out animation
-      edgeElement.classList.add('deleting');
+    // Simply remove the connection directly
+    if (edge.id) {
+      console.log(`Double-click deleting connection with id: ${edge.id}`);
       
-      // Add a data attribute to indicate deletion in progress
-      edgeElement.setAttribute('data-deleting', 'true');
-      
-      // Short delay to allow animation to play before actual deletion
+      // Use setTimeout to ensure the event completes before we modify state
       setTimeout(() => {
-        // Only delete if the element is still marked for deletion
-        // (prevents issues when double-clicking too fast)
-        if (edgeElement.getAttribute('data-deleting') === 'true') {
-          // Perform edge deletion
-          onEdgeDelete(edge);
-          
-          // Provide visual feedback with animation
-          const feedback = document.createElement('div');
-          feedback.textContent = 'Connection deleted';
-          feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
-          document.body.appendChild(feedback);
-          
-          // Remove feedback after a delay
-          setTimeout(() => {
-            feedback.style.opacity = '0';
-            feedback.style.transition = 'opacity 0.5s ease-out';
-            setTimeout(() => {
-              if (document.body.contains(feedback)) {
-                document.body.removeChild(feedback);
-              }
-            }, 500);
-          }, 1500);
+        // If this edge was selected, clear the selection first
+        if (selectedElement?.id === edge.id) {
+          setSelectedElement(null);
         }
-      }, 100); // Reduced delay for faster response
-    } else {
-      // Fallback if element not found
-      onEdgeDelete(edge);
+        
+        // Then remove the connection
+        removeConnection(edge.id);
+      }, 0);
+      
+      // Show feedback toast immediately
+      const feedback = document.createElement('div');
+      feedback.textContent = 'Connection deleted';
+      feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
+      document.body.appendChild(feedback);
+      
+      // Remove feedback after delay
+      setTimeout(() => {
+        if (document.body.contains(feedback)) {
+          document.body.removeChild(feedback);
+        }
+      }, 2000);
     }
-  }, [onEdgeDelete]);
+  }, [removeConnection, selectedElement]);
+  
+  // Handle keyboard shortcuts - e.g., Escape to clear selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape key to clear selection
+      if (e.key === 'Escape' && selectedElement) {
+        setSelectedElement(null);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedElement]);
   
   return (
     <div className="flex-1 flex h-full">
@@ -699,10 +967,11 @@ export default function WorkflowCanvas() {
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onEdgeDoubleClick={handleEdgeDoubleClick}
+          onPaneClick={() => setSelectedElement(null)}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.3 }} // Default zoom out to 0.3
-          fitView
+          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }} // Default zoom slightly higher
+          fitViewOptions={{ padding: 0.2, includeHiddenNodes: true }}
           connectionLineType={ConnectionLineType.Bezier}
           connectionLineComponent={CustomConnectionLine}
           connectionMode={ConnectionMode.Loose} // Makes connection more forgiving
@@ -711,10 +980,32 @@ export default function WorkflowCanvas() {
           snapGrid={[15, 15]} // Snap to grid for more precise positioning
           deleteKeyCode={['Backspace', 'Delete']} // Allow deletion with keyboard
           className="workflow-canvas" // Add class for additional styling
+          proOptions={{ hideAttribution: true }} // Hide ReactFlow attribution
+          attributionPosition="bottom-right" // Position attribution in bottom-right
+          minZoom={0.1} // Allow zooming out more
+          maxZoom={2} // Limit zooming in
+          edgesUpdatable={true} // Allow edge updates
+          edgesFocusable={true} // Make edges focusable 
+          elevateEdgesOnSelect={true} // Make selected edges appear above others
+          selectNodesOnDrag={false} // Don't select nodes when dragging canvas
+          panOnScroll={false} // Disable panning with scroll wheel
+          zoomOnScroll={true} // Enable zooming with scroll wheel (default behavior)
+          panOnScrollMode="default" // Use default pan mode
+          nodesDraggable={true} // Allow nodes to be dragged
+          nodesConnectable={true} // Allow nodes to be connected
+          multiSelectionKeyCode={['Control', 'Meta']} // Multiple selection with Ctrl/Cmd
+          autoPanOnNodeDrag={false} // Prevent auto-panning when dragging nodes to edges
+          fitViewOnInit={false} // Disable automatic fitting of view on initialization
+          onSelectionChange={() => {}} // Empty handler to prevent default behaviors
+          preventScrolling={true} // Prevent scrolling of the page
+          disableKeyboardA11y={true} // Disable keyboard accessibility features that might change view
         >
           <Background />
           <Controls />
-          <WorkflowControls onAutoLayout={applyAutoLayout} />
+          <WorkflowControls 
+            onAutoLayout={applyAutoLayout} 
+            onClearSelection={() => setSelectedElement(null)}
+          />
           
           {/* Connection guidance tooltip */}
           {isConnecting && (
@@ -730,12 +1021,11 @@ export default function WorkflowCanvas() {
         </ReactFlow>
       </div>
       
-      {selectedElement && (
-        <WorkflowSidebar 
-          element={selectedElement} 
-          onClose={() => setSelectedElement(null)} 
-        />
-      )}
+      {/* Always render the sidebar, passing selectedElement which may be null */}
+      <WorkflowSidebar 
+        element={selectedElement} 
+        onClose={() => setSelectedElement(null)} 
+      />
     </div>
   )
 }
