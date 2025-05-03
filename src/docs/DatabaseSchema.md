@@ -57,6 +57,15 @@ Tracks pending invitations to workspaces.
 | expires_at  | TIMESTAMP WITH TIME ZONE| When invitation expires           |
 | token       | TEXT                    | Unique token for invitation link  |
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Users can update their own invitations | UPDATE | `email = get_auth_email() AND status = 'pending'` | `email = get_auth_email() AND status IN ('accepted', 'declined')` |
+| Users can view invitations sent to them | SELECT | `email = get_auth_email() OR is_workspace_admin(workspace_id)` | null |
+| Workspace owners and admins can create invitations | INSERT | null | `is_workspace_admin(workspace_id)` |
+| Workspace owners and admins can manage invitations | ALL | `is_workspace_admin(workspace_id)` | null |
+
 ### 4. workspace_members
 
 Stores active workspace memberships.
@@ -89,15 +98,24 @@ Stores form information.
 | form_id     | UUID                    | Primary key                       |
 | workspace_id| UUID                    | References workspaces.id          |
 | title       | TEXT                    | Form title                        |
-| description | TEXT                    | Form description                  |
-| slug        | TEXT                    | Unique slug for public URL        |
-| status      | TEXT                    | Status (draft, published, archived) |
-| theme       | JSONB                   | Form theme settings (colors, fonts) |
-| settings    | JSONB                   | Form behavior settings            |
+| description | TEXT                    | Form description (optional)       |
+| slug        | TEXT                    | URL-friendly identifier (optional)|
+| status      | TEXT                    | Status (draft, published, archived)|
+| theme       | JSONB                   | Theme configuration (optional)    |
+| settings    | JSONB                   | Form settings (optional)          |
 | created_at  | TIMESTAMP WITH TIME ZONE| When form was created             |
 | created_by  | UUID                    | References auth.users.id          |
 | updated_at  | TIMESTAMP WITH TIME ZONE| When form was last updated        |
 | published_at| TIMESTAMP WITH TIME ZONE| When form was published (nullable)|
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Public can view published forms | SELECT | `status = 'published'` | null |
+| Users can update forms in their workspaces | UPDATE | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
+| Users can create forms in their workspaces | INSERT | null | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` |
+| Users can view forms in their workspaces | SELECT | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
 
 ### 6. form_blocks
 
@@ -107,22 +125,30 @@ Stores question blocks within forms.
 |-------------|-------------------------|-----------------------------------|
 | id          | UUID                    | Primary key                       |
 | form_id     | UUID                    | References forms.form_id          |
-| type        | TEXT                    | Block type (static, dynamic)      |
-| subtype     | TEXT                    | Block subtype (short_text, long_text, etc.) |
+| type        | TEXT                    | Block type (static, dynamic, etc.)|
+| subtype     | TEXT                    | Specific block type               |
 | title       | TEXT                    | Question title/text               |
-| description | TEXT                    | Help text/description             |
-| required    | BOOLEAN                 | Whether answer is required        |
+| description | TEXT                    | Additional instructions           |
+| required    | BOOLEAN                 | Whether question is required      |
 | order_index | INTEGER                 | Position in form                  |
 | settings    | JSONB                   | Block-specific settings           |
 | created_at  | TIMESTAMP WITH TIME ZONE| When block was created            |
 | updated_at  | TIMESTAMP WITH TIME ZONE| When block was last updated       |
 
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Public can view blocks in published forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` | null |
+| Users can manage blocks in their forms | ALL | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
+| Users can view blocks in their forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
+
 ### 7. dynamic_block_configs
 
 Stores AI configuration for dynamic blocks.
 
-| Column           | Type                    | Description                       |
-|------------------|-------------------------|-----------------------------------|
+| Column         | Type                    | Description                       |
+|----------------|-------------------------|-----------------------------------|
 | block_id         | UUID                    | References form_blocks.id (primary key) |
 | starter_question | TEXT                    | Initial question to ask           |
 | temperature      | FLOAT                   | AI temperature setting (0.0-1.0)  |
@@ -130,6 +156,14 @@ Stores AI configuration for dynamic blocks.
 | ai_instructions  | TEXT                    | Guidelines for the AI             |
 | created_at       | TIMESTAMP WITH TIME ZONE| When config was created           |
 | updated_at       | TIMESTAMP WITH TIME ZONE| When config was last updated      |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Users can manage dynamic block configs in their forms | ALL | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())))` | null |
+| Users can view dynamic block configs in their forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())))` | null |
+| Anyone can read dynamic block configs | SELECT | `true` | null |
 
 ### 8. block_options
 
@@ -139,10 +173,16 @@ Stores options for multiple choice and similar blocks.
 |-------------|-------------------------|-----------------------------------|
 | id          | UUID                    | Primary key                       |
 | block_id    | UUID                    | References form_blocks.id         |
-| value       | TEXT                    | Option value (stored in database) |
-| label       | TEXT                    | Option label (displayed to user)  |
+| value       | TEXT                    | Option value (for data)           |
+| label       | TEXT                    | Option label (for display)        |
 | order_index | INTEGER                 | Position in options list          |
 | created_at  | TIMESTAMP WITH TIME ZONE| When option was created           |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Public can view options in published forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` | null |
 
 ### 9. form_responses
 
@@ -156,13 +196,15 @@ Stores form submissions.
 | respondent_id | TEXT                    | Anonymous identifier for respondent |
 | status        | TEXT                    | Status (in_progress, completed, abandoned) |
 | started_at    | TIMESTAMP WITH TIME ZONE| When response was started         |
-| completed_at  | TIMESTAMP WITH TIME ZONE| When response was completed (nullable) |
-| metadata      | JSONB                   | Browser, device, source info      |
+| completed_at  | TIMESTAMP WITH TIME ZONE| When response was completed       |
+| metadata      | JSONB                   | Additional metadata               |
 
 #### Row Level Security Policies
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
+| Anyone can create responses to published forms | INSERT | null | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` |
+| Respondents can update their own responses | UPDATE | `true` | null |
 | Allow public form submissions | INSERT | null | `true` |
 | Allow users to update their own responses | UPDATE | `true` | `true` |
 | Respondents can view their own responses | SELECT | `true` | null |
@@ -251,23 +293,29 @@ Stores AI-driven conversations.
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
 | Form owners and workspace members can view dynamic responses | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
-
 ## Analytics Tables
 
 ### 12. form_views
 
-Tracks each time a form is viewed.
+Tracks visitors viewing forms.
 
 | Column      | Type                    | Description                       |
 |-------------|-------------------------|-----------------------------------|
 | id          | UUID                    | Primary key                       |
 | form_id     | UUID                    | References forms.form_id          |
-| visitor_id  | TEXT                    | Anonymous identifier for visitor  |
-| source      | TEXT                    | Referrer or traffic source        |
-| device_type | TEXT                    | mobile, tablet, desktop           |
-| browser     | TEXT                    | Browser information               |
-| timestamp   | TIMESTAMP WITH TIME ZONE| When the view occurred            |
-| is_unique   | BOOLEAN                 | Whether this is first view by visitor |
+| visitor_id  | TEXT                    | Unique visitor identifier         |
+| source      | TEXT                    | Traffic source (nullable)         |
+| device_type | TEXT                    | Device category (nullable)        |
+| browser     | TEXT                    | Browser information (nullable)    |
+| timestamp   | TIMESTAMP WITH TIME ZONE| When view occurred                |
+| is_unique   | BOOLEAN                 | Whether this is a unique visitor  |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Anonymous users can create form views | INSERT | null | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` |
+| Workspace members can view form views | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
 ### 13. form_metrics
 
@@ -277,13 +325,19 @@ Aggregated metrics for form performance.
 |-------------------------------|-------------------------|-----------------------------------|
 | form_id                       | UUID                    | References forms.form_id (primary key) |
 | total_views                   | INTEGER                 | Total number of form views        |
-| unique_views                  | INTEGER                 | Number of unique visitors         |
-| total_starts                  | INTEGER                 | Number of response starts         |
-| total_completions             | INTEGER                 | Number of completed submissions   |
-| completion_rate               | FLOAT                   | Percentage of starts that complete |
+| unique_views                  | INTEGER                 | Unique visitors count             |
+| total_starts                  | INTEGER                 | Number of form starts             |
+| total_completions             | INTEGER                 | Number of form completions        |
+| completion_rate               | FLOAT                   | Percentage of completions vs starts |
 | average_completion_time_seconds | INTEGER               | Average time to complete form     |
-| bounce_rate                   | FLOAT                   | Percentage who view but don't start |
+| bounce_rate                   | FLOAT                   | Percentage of visitors who left without interacting |
 | last_updated                  | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Workspace members can view form analytics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
 ### 14. block_metrics
 
@@ -296,10 +350,16 @@ Performance metrics for individual question blocks.
 | form_id               | UUID                    | References forms.form_id          |
 | views                 | INTEGER                 | How many times block was viewed   |
 | skips                 | INTEGER                 | Times optional questions skipped  |
-| average_time_seconds  | INTEGER                 | Average time spent on block       |
-| drop_off_count        | INTEGER                 | Number who abandoned at this block |
-| drop_off_rate         | FLOAT                   | Percentage who abandoned at block |
+| average_time_seconds  | FLOAT                   | Average time spent on block       |
+| drop_off_count        | INTEGER                 | Number of users who dropped off   |
+| drop_off_rate         | FLOAT                   | Percentage of users who dropped off |
 | last_updated          | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Workspace members can view block metrics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
 ### 15. form_interactions
 
@@ -314,6 +374,13 @@ Granular tracking of user interactions with form elements.
 | timestamp        | TIMESTAMP WITH TIME ZONE| When interaction occurred         |
 | duration_ms      | INTEGER                 | Duration of interaction (if applicable) |
 | metadata         | JSONB                   | Additional context data           |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners and workspace members can view interactions | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
+| Anonymous users can create interactions | INSERT | null | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` |
 
 ### 16. dynamic_block_analytics
 
@@ -834,7 +901,8 @@ Stores user subscription information.
 |-------------|---------|--------------|------------|
 | Users can view their own subscriptions | SELECT | `user_id = auth.uid()` | null |
 | Users can view subscriptions for their workspaces | SELECT | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
-| Only service role can insert/update subscriptions | INSERT, UPDATE | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` |
+| Only service role can insert/update subscriptions | INSERT | null | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` |
+| Only service role can update subscriptions | UPDATE | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` | null |
 
 ### 17. payment_events
 
@@ -854,4 +922,4 @@ Tracks Stripe webhook events.
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| Only service role can access payment events | ALL | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` |
+| Only service role can access payment events | ALL | `auth.uid() = '00000000-0000-0000-0000-000000000000'::uuid` | null |
