@@ -133,74 +133,87 @@ export function MemberItem({
   }
   
   return (
-    <div className="flex items-center justify-between p-3 rounded-md border bg-card">
-      <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10">
+    <div className="flex items-center justify-between p-3 hover:bg-secondary/20 border-b">
+      {/* Member info */}
+      <div className="flex items-center gap-3 flex-1">
+        <Avatar className="h-8 w-8">
           <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name} />
           <AvatarFallback>{getInitials(member.profile.full_name)}</AvatarFallback>
         </Avatar>
         
-        <div>
+        <div className="flex-1">
           <div className="font-medium flex items-center gap-2">
             {member.profile.full_name}
             {isCurrentUser && (
               <Badge variant="outline" className="text-xs">You</Badge>
             )}
           </div>
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <Badge variant={roleBadgeVariant(member.role)} className="text-xs">
-              {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-            </Badge>
-            <span>Joined {joinedDate}</span>
+          <div className="text-xs text-muted-foreground">
+            {member.profile.title || 'Member'}
           </div>
         </div>
       </div>
+
+      {/* Role column */}
+      <div className="w-24 text-center hidden md:block">
+        <Badge variant={roleBadgeVariant(member.role)} className="text-xs">
+          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+        </Badge>
+      </div>
       
+      {/* Joined date column */}
+      <div className="w-32 text-sm text-right hidden md:block">
+        {joinedDate}
+      </div>
+      
+      {/* Actions menu */}
       {isAdmin && !isCurrentUser && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" disabled={isLoading}>
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Member Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="flex items-center gap-2 text-xs">
-                <Shield className="h-3.5 w-3.5" />
-                Change Role
-              </DropdownMenuLabel>
+        <div className="ml-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={isLoading}>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Member Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               
-              <DropdownMenuRadioGroup value={member.role} onValueChange={handleRoleChange}>
-                <DropdownMenuRadioItem value={"owner" as WorkspaceRole}>
-                  Owner
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={"admin" as WorkspaceRole}>
-                  Admin
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={"editor" as WorkspaceRole}>
-                  Editor
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={"viewer" as WorkspaceRole}>
-                  Viewer
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuGroup>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem 
-              onClick={() => setShowRemoveDialog(true)}
-              disabled={isLastOwner && member.role === ('owner' as WorkspaceRole)}
-              className="text-destructive"
-            >
-              <UserMinus className="h-4 w-4 mr-2" />
-              Remove from Workspace
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                  <Shield className="h-3.5 w-3.5" />
+                  Change Role
+                </DropdownMenuLabel>
+                
+                <DropdownMenuRadioGroup value={member.role} onValueChange={handleRoleChange}>
+                  <DropdownMenuRadioItem value={"owner" as WorkspaceRole}>
+                    Owner
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={"admin" as WorkspaceRole}>
+                    Admin
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={"editor" as WorkspaceRole}>
+                    Editor
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={"viewer" as WorkspaceRole}>
+                    Viewer
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem 
+                onClick={() => setShowRemoveDialog(true)}
+                disabled={isLastOwner && member.role === ('owner' as WorkspaceRole)}
+                className="text-destructive"
+              >
+                <UserMinus className="h-4 w-4 mr-2" />
+                Remove from Workspace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
       
       <Dialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>

@@ -26,28 +26,38 @@ export function MembersList({
   }
   
   return (
-    <ScrollArea className="pr-4">
-      <div className="space-y-3 mt-4">
-        {members.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No members found matching your criteria.</p>
-          </div>
-        ) : (
-          members.map((member) => (
-            <MemberItem
-              key={member.user_id}
-              member={member}
-              joinedDate={formatJoinDate(member.joined_at)}
-              isAdmin={isCurrentUserAdmin}
-              isCurrentUser={member.user_id === currentUserId}
-              isLastOwner={
-                member.role === 'owner' && 
-                members.filter(m => m.role === ('owner' as WorkspaceRole)).length === 1
-              }
-            />
-          ))
-        )}
+    <div className="mt-4">
+      {/* Column headers */}
+      <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-muted-foreground border-b">
+        <div className="flex-1">Name</div>
+        <div className="w-24 text-center hidden md:block">Role</div>
+        <div className="w-32 text-right hidden md:block">Joined</div>
+        <div className="w-10"></div> {/* Actions column spacer */}
       </div>
-    </ScrollArea>
+      
+      <ScrollArea className="pr-4">
+        <div>
+          {members.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No members found matching your criteria.</p>
+            </div>
+          ) : (
+            members.map((member) => (
+              <MemberItem
+                key={member.user_id}
+                member={member}
+                joinedDate={formatJoinDate(member.joined_at)}
+                isAdmin={isCurrentUserAdmin}
+                isCurrentUser={member.user_id === currentUserId}
+                isLastOwner={
+                  member.role === 'owner' && 
+                  members.filter(m => m.role === ('owner' as WorkspaceRole)).length === 1
+                }
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   )
 }

@@ -121,13 +121,6 @@ export default function WorkspaceMembersPage() {
         </header>
         
         <div className="flex-1 p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5" />
-            <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "Workspace"} Members</h1>
-          </div>
-
-          <p className="text-muted-foreground mb-6">Manage workspace members and their permissions</p>
-          
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
