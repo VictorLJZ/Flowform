@@ -76,24 +76,7 @@ const data = {
       title: "Settings",
       url: "/dashboard/settings",
       icon: Settings,
-      items: [
-        {
-          title: "Account",
-          url: "/dashboard/settings/account",
-        },
-        {
-          title: "Appearance",
-          url: "/dashboard/settings/appearance",
-        },
-        {
-          title: "Notifications",
-          url: "/dashboard/settings/notifications",
-        },
-        {
-          title: "Integrations",
-          url: "/dashboard/settings/integrations",
-        },
-      ],
+      items: [], // No dropdown, direct link to settings page
     },
   ],
   projects: [
