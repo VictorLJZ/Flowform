@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { initializeDefaultWorkspace } from '@/services/workspace/initializeDefaultWorkspace'
 
 // Helper function to get the Stripe checkout URL for a plan
 function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
@@ -50,6 +51,73 @@ export async function GET(request: Request) {
       return NextResponse.redirect(
         new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url)
       )
+    }
+    
+    // Get the user ID to initialize workspace
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (user) {
+      try {
+        console.log('[Auth Callback] Initializing default workspace for user:', user.id)
+        
+        // Check if user already has workspaces (to avoid duplicate initialization)
+        const { data: existingWorkspaces } = await supabase
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+        
+        if (existingWorkspaces && existingWorkspaces.length > 0) {
+          console.log('[Auth Callback] User already has workspaces, skipping initialization')
+        } else {
+          // Create workspace directly instead of using the initializeDefaultWorkspace function
+          // to avoid client-side Supabase issues
+          
+          // Get user display name for workspace name
+          const userDisplayName = 
+            user.user_metadata?.name || 
+            user.user_metadata?.full_name || 
+            user.email?.split('@')[0] || 
+            'User';
+          
+          const defaultWorkspaceName = `${userDisplayName}'s Workspace`;
+          
+          // First create the workspace record
+          const { data: workspace, error: workspaceError } = await supabase
+            .from('workspaces')
+            .insert({
+              name: defaultWorkspaceName,
+              description: 'My default workspace',
+              created_by: user.id,
+              logo_url: null,
+              settings: null
+            })
+            .select('*')
+          
+          if (workspaceError) {
+            console.error('[Auth Callback] Error creating workspace:', workspaceError)
+          } else if (workspace && workspace.length > 0) {
+            console.log('[Auth Callback] Successfully created workspace:', workspace[0].id)
+            
+            // Add user as workspace owner
+            const { error: memberError } = await supabase
+              .from('workspace_members')
+              .insert({
+                workspace_id: workspace[0].id,
+                user_id: user.id,
+                role: 'owner'
+              })
+            
+            if (memberError) {
+              console.error('[Auth Callback] Error adding workspace member:', memberError)
+            } else {
+              console.log('[Auth Callback] Successfully added user as workspace owner')
+            }
+          }
+        }
+      } catch (err) {
+        // Log error but don't block the authentication flow
+        console.error('[Auth Callback] Failed to initialize workspace:', err)
+      }
     }
     
     // Determine where to redirect after successful login

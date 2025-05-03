@@ -35,13 +35,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { useAuthSession } from "@/hooks/useAuthSession"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useWorkspaceSwitcher } from "@/hooks/useWorkspaceSwitcher"
 import { createWorkspace } from "@/services/workspace/client"
 
 export function WorkspaceSwitcher() {
   const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
-  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
-  const setCurrentWorkspaceId = useWorkspaceStore((state) => state.setCurrentWorkspaceId)
+  const { currentWorkspaceId, switchToWorkspace } = useWorkspaceSwitcher()
 
   const { user, isLoading: isLoadingAuth } = useAuthSession()
   const userId = user?.id
@@ -49,9 +48,9 @@ export function WorkspaceSwitcher() {
   useEffect(() => {
     if (currentWorkspaceId === null && workspaces.length > 0 && !isLoadingWorkspaces) {
       console.log("[WorkspaceSwitcher] No workspace selected in store, setting initial:", workspaces[0].id);
-      setCurrentWorkspaceId(workspaces[0].id)
+      switchToWorkspace(workspaces[0].id);
     }
-  }, [workspaces, currentWorkspaceId, isLoadingWorkspaces, setCurrentWorkspaceId])
+  }, [workspaces, currentWorkspaceId, isLoadingWorkspaces, switchToWorkspace])
 
   const { workspace: currentWorkspace, isLoading: isLoadingCurrentWorkspace } = useCurrentWorkspace(currentWorkspaceId)
 
@@ -78,7 +77,7 @@ export function WorkspaceSwitcher() {
       await mutateWorkspaces()
       if (created && 'id' in created && created.id) {
          console.log("[WorkspaceSwitcher] Setting newly created workspace as current:", created.id);
-         setCurrentWorkspaceId(created.id);
+         switchToWorkspace(created.id);
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create workspace" })
@@ -138,12 +137,15 @@ export function WorkspaceSwitcher() {
                   <DropdownMenuItem
                     key={workspace.id}
                     onClick={() => {
-                      if (workspace.id === currentWorkspaceId) {
-                        console.log(`[WorkspaceSwitcher] Already on workspace: ${workspace.id}`);
-                        return; // Don't switch if already on this workspace
-                      }
-                      console.log(`[WorkspaceSwitcher] Switching to workspace: ${workspace.id}`);
-                      setCurrentWorkspaceId(workspace.id);
+                      // Debug info
+                      console.log(`[WorkspaceSwitcher] Workspace selected:`, { 
+                        selected: workspace.id, 
+                        current: currentWorkspaceId,
+                        isSame: workspace.id === currentWorkspaceId
+                      });
+                      
+                      // Use the dedicated hook for workspace switching
+                      switchToWorkspace(workspace.id);
                       
                       // Close the dropdown menu after selection
                       const closeEvent = new MouseEvent('click', {

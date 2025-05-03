@@ -97,6 +97,9 @@ export async function middleware(request: NextRequest) {
     const isPublicApiEndpoint = request.nextUrl.pathname.startsWith('/api/public/');
     const isFEndpoint = request.nextUrl.pathname.startsWith('/api/f/');
     const isConversationEndpoint = request.nextUrl.pathname.startsWith('/api/conversation');
+    const isPublicAnalyticsEndpoint = 
+      request.nextUrl.pathname.startsWith('/api/analytics/track/form-view') ||
+      request.nextUrl.pathname.startsWith('/api/analytics/batch'); // Batch endpoint for queued events
     
     console.log('AUTH CHECK for API route:', {
       path: request.nextUrl.pathname,
@@ -106,7 +109,8 @@ export async function middleware(request: NextRequest) {
       isPublicApiEndpoint,
       isFEndpoint,
       isConversationEndpoint,
-      shouldAllow: !!user || isPublicApiEndpoint || isFormApiEndpoint || isFEndpoint || isConversationEndpoint
+      isPublicAnalyticsEndpoint,
+      shouldAllow: !!user || isPublicApiEndpoint || isFormApiEndpoint || isFEndpoint || isConversationEndpoint || isPublicAnalyticsEndpoint
     });
     
     // For API routes, if no token is found and route requires authentication,
@@ -116,7 +120,8 @@ export async function middleware(request: NextRequest) {
       !isPublicApiEndpoint &&
       !isFormApiEndpoint && // Allow all form API endpoints for public access
       !isFEndpoint &&
-      !isConversationEndpoint // Allow conversation endpoints for AI interactions
+      !isConversationEndpoint && // Allow conversation endpoints for AI interactions
+      !isPublicAnalyticsEndpoint // <-- Allow public analytics endpoints
     ) {
       return NextResponse.json(
         { error: 'Authentication required' },

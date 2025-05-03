@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 
 /**
  * Hook for measuring time intervals such as time spent on a block
@@ -112,14 +112,25 @@ export function useTimingMeasurement() {
     }
   }, []);
   
-  return {
+  // Memoize the return object
+  const formattedTimeValue = formatTime(elapsedTime);
+  return useMemo(() => ({
     elapsedTime,
-    formattedTime: formatTime(elapsedTime),
+    formattedTime: formattedTimeValue,
     startTimer,
     pauseTimer,
     stopTimer,
     getElapsedTime,
     formatTime,
     cleanup
-  };
+  }), [
+    elapsedTime,
+    formattedTimeValue,
+    startTimer,
+    pauseTimer,
+    stopTimer,
+    getElapsedTime,
+    formatTime,
+    cleanup
+  ]);
 }

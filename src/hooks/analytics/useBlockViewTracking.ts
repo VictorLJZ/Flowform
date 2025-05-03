@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { trackBlockView } from '@/services/analytics';
+import { useEffect, useRef, useMemo } from 'react';
+import { trackBlockViewClient } from '@/services/analytics/client';
 import { getVisitorId } from '@/lib/analytics/visitorId';
 
 /**
@@ -59,11 +59,11 @@ export function useBlockViewTracking(
           const visitorId = getVisitorId();
           
           // Track the block view
-          trackBlockView(blockId, formId, responseId, {
+          trackBlockViewClient(blockId, formId, responseId, {
             visitor_id: visitorId,
             visibility_percentage: Math.round(entry.intersectionRatio * 100),
             ...metadata
-          }).catch(error => {
+          }).catch((error: unknown) => {
             console.error('Error tracking block view:', error);
           });
           
@@ -92,8 +92,10 @@ export function useBlockViewTracking(
     };
   }, [blockId, formId, responseId, threshold, disabled, metadata]);
   
-  return {
+  // Memoize the return object
+  const hasTrackedValue = hasTracked.current;
+  return useMemo(() => ({
     blockRef,
-    hasTracked: hasTracked.current
-  };
+    hasTracked: hasTrackedValue
+  }), [blockRef, hasTrackedValue]); // Include blockRef for completeness, though it's stable
 }

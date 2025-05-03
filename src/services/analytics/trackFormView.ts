@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
-import { FormView } from '@/types/supabase-types';
 import { getVisitorId, isUniqueFormVisit } from '@/lib/analytics/visitorId';
 import { queueEvent } from '@/lib/analytics/eventQueue';
 
@@ -13,8 +11,7 @@ import { queueEvent } from '@/lib/analytics/eventQueue';
 export async function trackFormView(
   formId: string,
   metadata: Record<string, unknown> = {}
-): Promise<FormView> {
-  const supabase = createClient();
+): Promise<void> {
   const visitorId = getVisitorId();
   const isUnique = isUniqueFormVisit(formId);
   const timestamp = new Date().toISOString();
@@ -50,28 +47,32 @@ export async function trackFormView(
     }
   });
 
-  // Create a new form view record directly
-  const { data, error } = await supabase
-    .from('form_views')
-    .insert({
-      form_id: formId,
-      visitor_id: visitorId,
-      device_type: deviceType,
-      browser,
-      source: metadata.source as string || null,
-      timestamp,
-      is_unique: isUnique,
-      metadata: enrichedMetadata
-    })
-    .select()
-    .single();
+  // Use the API route to track the form view instead of direct Supabase access
+  try {
+    const response = await fetch('/api/analytics/track/view', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        formId,
+        visitorId,
+        deviceType,
+        browser,
+        source: metadata.source as string || null,
+        timestamp,
+        isUnique,
+        metadata: enrichedMetadata
+      }),
+    });
 
-  if (error) {
-    console.error('Error tracking form view:', error);
-    throw error;
+    if (!response.ok) {
+      console.error('Error tracking form view:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Failed to track form view:', error);
+    // Fail silently in production to not disrupt user experience
   }
-
-  return data;
 }
 
 /**
@@ -80,7 +81,7 @@ export async function trackFormView(
  * @returns The detected device type (mobile, tablet, desktop)
  */
 function detectDeviceType(): string {
-  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+  const userAgent = navigator.userAgent || navigator.vendor || ''; // Use empty string as fallback
   
   // Check for mobile or tablet devices
   if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(userAgent) 

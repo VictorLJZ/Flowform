@@ -458,7 +458,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   },
   
   // Helper getters
-  getCurrentBlock: () => {
+  getCurrentBlock: (): FormBlock | null => {
     const { blocks, currentBlockId } = get()
     return blocks.find((block: FormBlock) => block.id === currentBlockId) || null
   },

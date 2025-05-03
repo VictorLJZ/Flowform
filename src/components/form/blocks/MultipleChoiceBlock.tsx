@@ -38,13 +38,13 @@ interface MultipleChoiceBlockProps {
   value?: string
   onChange?: (value: string) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
+    title: string;
+    description: string | null;
     settings: {
-      options?: Option[],
-      presentation?: BlockPresentation,
-      layout?: SlideLayout
-    }
+      options?: Option[];
+      presentation?: BlockPresentation;
+      layout?: SlideLayout;
+    } | null;
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean

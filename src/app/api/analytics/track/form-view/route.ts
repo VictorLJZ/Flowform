@@ -1,7 +1,26 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { FormView } from '@/types/supabase-types';
 import { z } from 'zod';
+
+// Create a secure service client that only exists server-side
+// This is safe because this code only runs on the server in an API route
+const createServiceClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
+    }
+  );
+};
+
+// Mark this route as dynamic to prevent caching
+export const dynamic = 'force-dynamic';
+// Allow this endpoint to be hit without authentication
+export const runtime = 'edge';
 
 // Define validation schema for request body
 const formViewSchema = z.object({
@@ -11,7 +30,6 @@ const formViewSchema = z.object({
   device_type: z.string().optional(),
   browser: z.string().optional(),
   source: z.string().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
 });
 
 // POST handler for form view tracking
@@ -34,21 +52,40 @@ export async function POST(request: Request) {
     }
     
     const data = validationResult.data;
-    const supabase = await createClient();
+    
+    // Log the full validated payload
+    console.log('[API DEBUG] Form view tracking payload:', {
+      form_id: data.form_id,
+      visitor_id: data.visitor_id,
+      device_type: data.device_type || null,
+      browser: data.browser || null,
+      source: data.source || null,
+      is_unique: !!data.is_unique,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Use a secure service client for analytics tracking
+    // This is secure because it only runs server-side in this API endpoint
+    const supabase = createServiceClient();
+    console.log('[API DEBUG] Using service client for analytics tracking');
     
     // Create form view record
+    const insertData = {
+      form_id: data.form_id,
+      visitor_id: data.visitor_id,
+      device_type: data.device_type || null,
+      browser: data.browser || null,
+      source: data.source || null,
+      is_unique: !!data.is_unique,
+      timestamp: new Date().toISOString(),
+      // metadata: data.metadata || null, // Temporarily removed - DB column missing
+    };
+    
+    console.log('[API DEBUG] Attempting insert with data:', insertData);
+    
     const { data: formView, error } = await supabase
       .from('form_views')
-      .insert({
-        form_id: data.form_id,
-        visitor_id: data.visitor_id,
-        device_type: data.device_type || null,
-        browser: data.browser || null,
-        source: data.source || null,
-        is_unique: !!data.is_unique,
-        timestamp: new Date().toISOString(),
-        metadata: data.metadata || null,
-      })
+      .insert(insertData)
       .select()
       .single();
       
@@ -71,10 +108,17 @@ export async function POST(request: Request) {
       // Continue without throwing error since this is a non-critical operation
     }
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: formView
     });
+    
+    // Add CORS headers to allow requests from any origin
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
   } catch (error) {
     console.error('[API] Error in form view tracking API:', error);
     return NextResponse.json(

@@ -27,15 +27,15 @@ interface DateBlockProps {
   value?: string
   onChange?: (value: string) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
+    title: string;
+    description: string | null;
     settings: {
       layout?: SlideLayout,
       presentation?: BlockPresentation,
       placeholder?: string,
       min?: string,
       max?: string
-    }
+    } | null;
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean

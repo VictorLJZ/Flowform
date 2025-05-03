@@ -12,44 +12,87 @@ type AuthSessionData = {
   user: UserType | null; // Use our defined UserType
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Profile structure TBD
   profile: any | null; // Keep profile for potential future use
+  isLoggedOut?: boolean; // Flag to indicate logged out state
 };
 
 export function useAuthSession() {
   const supabase = useSupabase(); // Get the current supabase client
 
+  // Only log in development mode
+  const isDev = process.env.NODE_ENV === 'development';
+  // Get caller information for debug purposes - but only in dev and less verbose
+  const callerInfo = isDev ? new Error().stack?.split('\n')[2]?.trim() || 'unknown' : '';
+
   const fetcher = async (): Promise<AuthSessionData> => {
-    // Get verified user data from the Supabase auth server
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    
-    if (userError) {
-      console.error("[useAuthSession] Error fetching verified user:", userError);
-      throw userError; // Throw error for SWR to catch
-    }
-
-    // We still need the session for token access
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error("[useAuthSession] Error fetching session:", sessionError);
-      throw sessionError;
+    if (isDev) {
+      console.log(`[AUTH] Fetching auth data for ${callerInfo}`);
     }
     
-    const session = sessionData.session;
-    const supabaseUser = userData.user; // Using verified user data
+    try {
+      // Get both user and session in parallel to speed things up
+      const [userResponse, sessionResponse] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.auth.getSession()
+      ]);
+      
+      const { data: userData, error: userError } = userResponse;
+      const { data: sessionData, error: sessionError } = sessionResponse;
+      
+      if (userError || sessionError) {
+        if (isDev) {
+          console.error("[AUTH] Error fetching auth data:", userError || sessionError);
+        }
+        return { 
+          session: null, 
+          user: null, 
+          profile: null,
+          isLoggedOut: true 
+        };
+      }
+      
+      const session = sessionData.session;
+      const supabaseUser = userData.user; // Using verified user data
 
-    // Transform verified Supabase user to our UserType
-    const user = supabaseUser ? {
-      id: supabaseUser.id,
-      email: supabaseUser.email ?? '',
-      user_metadata: supabaseUser.user_metadata || {},
-      app_metadata: supabaseUser.app_metadata || {}
-    } : null;
+      // Check if we have proper auth data
+      if (!session || !supabaseUser) {
+        return { 
+          session: null, 
+          user: null, 
+          profile: null,
+          isLoggedOut: true 
+        };
+      }
 
-    // Placeholder for profile fetching if needed later
-    const profile = null;
+      // Transform verified Supabase user to our UserType
+      const user = {
+        id: supabaseUser.id,
+        email: supabaseUser.email ?? '',
+        user_metadata: supabaseUser.user_metadata || {},
+        app_metadata: supabaseUser.app_metadata || {}
+      };
 
-    console.log("[useAuthSession] Fetched verified user:", user?.email, "Session active:", !!session);
+      // Placeholder for profile fetching if needed later
+      const profile = null;
+      
+      if (isDev) {
+        console.log("[AUTH] Auth successful", { 
+          userId: user.id.substring(0, 8) + '...',
+          email: user.email.split('@')[0] + '@...' 
+        });
+      }
 
-    return { session, user, profile };
+      return { session, user, profile, isLoggedOut: false };
+    } catch (error) {
+      if (isDev) {
+        console.error("[AUTH] Unexpected error in useAuthSession:", error);
+      }
+      return { 
+        session: null, 
+        user: null, 
+        profile: null,
+        isLoggedOut: true 
+      };
+    }
   };
 
   const { data, error, isLoading, mutate } = useSWR<AuthSessionData>(
@@ -58,21 +101,29 @@ export function useAuthSession() {
     {
       // Important: Keep session data across revalidations until new data arrives
       keepPreviousData: true,
-       // Revalidate on mount, focus, reconnect by default (good for auth)
-      revalidateOnFocus: true, // Ensure it revalidates on focus
+      // Balance between performance and reliability
+      revalidateOnFocus: true, // Re-enable focus revalidation for better session handling
       revalidateIfStale: true,
       revalidateOnMount: true,
-      revalidateOnReconnect: true,
+      revalidateOnReconnect: true, // Re-enable reconnect revalidation
+      dedupingInterval: 15000, // 15 seconds - more frequent but still reasonable
+      errorRetryCount: 3,
       // No automatic refresh interval needed as onAuthStateChange triggers manual mutate
     }
   );
 
+  // Determine logged out state from data or error
+  const isLoggedOut = data?.isLoggedOut || 
+                     error?.message?.includes('Auth session missing') || 
+                     (!data?.session && !isLoading);
+  
   return {
     session: data?.session ?? null,
     user: data?.user ?? null,
     profile: data?.profile ?? null,
     error,
     isLoading,
+    isLoggedOut,
     mutate, // Expose mutate for manual triggers if needed elsewhere
   };
 }

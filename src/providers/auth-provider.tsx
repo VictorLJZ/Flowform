@@ -73,18 +73,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Securely sign out the user and clear authentication state
    */
   const signOut = useCallback(async () => {
-    console.log("[AuthProvider] Signing out user");
+    // Track calling component/location
+    console.log("[AUTH DEBUG] AuthProvider.signOut called from:", 
+      new Error().stack?.split('\n').slice(2, 4).join('\n'));
+    
     // Verify user is authenticated before attempting sign out
+    console.log("[AUTH DEBUG] Verifying user before signOut");
     const user = await getVerifiedUser();
     
     if (user) {
+      console.log("[AUTH DEBUG] User verified, proceeding with signOut. User:", user.email);
+      console.log("[AUTH DEBUG] Calling supabase.auth.signOut()");
+      
       await supabase.auth.signOut();
-      console.log("[AuthProvider] User signed out successfully");
-      // Force revalidation of auth state
-      mutate(AUTH_SWR_KEY);
+      
+      console.log("[AUTH DEBUG] supabase.auth.signOut() completed");
+      console.log("[AUTH DEBUG] Triggering SWR cache clearing for auth");
+      
+      // More aggressive cache invalidation strategy: 
+      // 1. Pass null as data to clear the cache immediately
+      // 2. Set revalidate to false to prevent immediate revalidation
+      // 3. This ensures we don't immediately try to fetch auth data again
+      mutate(AUTH_SWR_KEY, null, { revalidate: false });
+      
+      // Store logout timestamp in localStorage for components to detect auth change
+      localStorage.setItem('auth_logout_timestamp', Date.now().toString());
+      
+      console.log("[AUTH DEBUG] SWR cache cleared and logout timestamp set");
     } else {
-      console.log("[AuthProvider] Sign out called but no verified user found");
+      console.log("[AUTH DEBUG] Sign out called but no verified user found");
+      // Still clear cache even if no verified user found
+      mutate(AUTH_SWR_KEY, null, { revalidate: false });
     }
+    console.log("[AUTH DEBUG] signOut function completed - router navigation should happen via onAuthStateChange");
     // Router navigation happens via the onAuthStateChange listener
   }, [supabase]);
 

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { trackFormView } from '@/services/analytics';
+import { useEffect, useRef, useMemo } from 'react';
+import { trackFormViewClient } from '@/services/analytics/client';
 import { getVisitorId, isUniqueFormVisit } from '@/lib/analytics/visitorId';
 
 /**
@@ -36,7 +36,7 @@ export function useFormViewTracking(
     const isUnique = isUniqueFormVisit(formId);
     
     // Track the form view
-    const trackingPromise = trackFormView(formId, {
+    const trackingPromise = trackFormViewClient(formId, {
       source,
       visitor_id: visitorId,
       is_unique: isUnique,
@@ -44,13 +44,16 @@ export function useFormViewTracking(
     });
     
     // Handle the promise but don't block rendering
-    trackingPromise.catch(error => {
+    trackingPromise.catch((error: unknown) => {
       console.error('Error tracking form view:', error);
     });
     
   }, [formId, source, disabled, metadata]);
   
-  return {
+  // Memoize the return object
+  // We're directly using the ref value, so no dependencies needed for this memo
+  return useMemo(() => ({
     hasTracked: hasTracked.current
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
 }

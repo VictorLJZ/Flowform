@@ -24,14 +24,14 @@ interface TextInputBlockProps {
   value?: string
   onChange?: (value: string) => void
   onUpdate?: (updates: Partial<{
-    title: string,
-    description: string,
+    title: string;
+    description: string | null;
     settings: {
       placeholder?: string,
       maxLength?: number,
       presentation?: BlockPresentation,
       layout?: SlideLayout
-    }
+    } | null;
   }>) => void
   // Navigation props
   onNext?: () => void

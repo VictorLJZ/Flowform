@@ -2,7 +2,7 @@
  * Main analytics hook that integrates all tracking capabilities
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   useFormViewTracking,
   useBlockViewTracking,
@@ -26,13 +26,15 @@ export function useAnalytics(options: {
   responseId?: string;
   disabled?: boolean;
   metadata?: Record<string, unknown>;
+  abandonmentReason?: string; // Optional reason for abandonment
 } = {}) {
   const {
     formId,
     blockId,
     responseId,
     disabled = false,
-    metadata = {}
+    metadata = {},
+    abandonmentReason
   } = options;
 
   // Initialize individual tracking hooks
@@ -77,7 +79,15 @@ export function useAnalytics(options: {
     });
   }, [formId, responseId, disabled, timing, formCompletion]);
 
-  return {
+  // Track form abandonment
+  const trackAbandonment = useCallback((data: Record<string, unknown> = {}) => {
+    if (!formId || disabled) return;
+    const eventData = { ...data, event_type: 'form_abandonment', abandonment_reason: abandonmentReason };
+    console.log('[Analytics] trackAbandonment:', eventData);
+    // TODO: Send data to analytics backend
+  }, [formId, disabled, abandonmentReason]);
+
+  return useMemo(() => ({
     // Combined refs
     blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
     
@@ -99,6 +109,7 @@ export function useAnalytics(options: {
     
     // Combined tracking
     trackFormSession,
+    trackAbandonment,
     
     // Timing utilities
     timing,
@@ -108,5 +119,6 @@ export function useAnalytics(options: {
     blockView,
     blockInteraction,
     formCompletion
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
 }

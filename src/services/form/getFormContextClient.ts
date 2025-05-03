@@ -1,12 +1,9 @@
 import { FormContextData } from '@/types/form-service-types';
 import { getBaseUrl } from '@/lib/utils';
 
-// Helper to get form context without making an API call
-import { getFormContext } from './getFormContext';
-
 /**
- * Get the context of a form including all questions
- * Works in both client and server environments
+ * Get the context of a form including all questions - CLIENT VERSION
+ * Makes an API call to retrieve form context safely from the client side
  * 
  * @param formId - The ID of the form
  * @param currentBlockId - The ID of the current block (to exclude from context)
@@ -19,26 +16,6 @@ export async function getFormContextClient(
   forceRefresh = false
 ): Promise<FormContextData> {
   try {
-    // Check if we're running in a server environment (Node.js)
-    const isServer = typeof window === 'undefined';
-    
-    if (isServer) {
-      try {
-        // Direct database access on server
-        console.log('Getting form context directly from database (server-side)');
-        const contextData = await getFormContext(formId, currentBlockId);
-        return contextData;
-      } catch (dbError) {
-        console.error('Failed to get form context from database:', dbError);
-        // Return a minimal form context to avoid breaking the flow
-        return {
-          formId,
-          formTitle: 'Form',
-          staticQuestions: [],
-          dynamicBlocks: []
-        };
-      }
-    }
     
     // Client-side implementation (browser)
     // Construct the query parameters

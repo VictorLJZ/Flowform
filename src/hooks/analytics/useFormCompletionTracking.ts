@@ -1,5 +1,5 @@
-import { useRef, useCallback } from 'react';
-import { trackFormCompletion } from '@/services/analytics';
+import { useRef, useCallback, useMemo } from 'react';
+import { trackFormCompletionClient } from '@/services/analytics/client';
 import { getVisitorId } from '@/lib/analytics/visitorId';
 
 /**
@@ -54,26 +54,29 @@ export function useFormCompletionTracking(
     );
     
     try {
-      const result = await trackFormCompletion(
+      await trackFormCompletionClient(
         formId, 
         responseId,
-        totalTimeSeconds,
         {
           visitor_id: visitorId,
+          total_time_seconds: totalTimeSeconds,
           ...metadata,
           ...additionalMetadata
         }
       );
       
-      return result;
+      // No return value from client implementation
+      return true;
     } catch (error) {
       console.error('Error tracking form completion:', error);
       throw error;
     }
   }, [formId, responseId, disabled, metadata]);
   
-  return {
+  // Memoize the return object
+  const hasTrackedValue = hasTracked.current;
+  return useMemo(() => ({
     trackCompletion,
-    hasTracked: hasTracked.current
-  };
+    hasTracked: hasTrackedValue
+  }), [trackCompletion, hasTrackedValue]);
 }

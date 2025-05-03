@@ -123,7 +123,7 @@ Stores form information.
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| Public can view published forms | SELECT | `status = 'published'` | null |
+| Public can view any form (for FK checks etc) | SELECT | `anon` | `true` |
 | Users can update forms in their workspaces | UPDATE | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
 | Users can create forms in their workspaces | INSERT | null | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` |
 | Users can view forms in their workspaces | SELECT | `workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())` | null |
@@ -325,7 +325,7 @@ Tracks visitors viewing forms.
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| Anonymous users can create form views | INSERT | null | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` |
+| Anonymous users can create form views | INSERT | `authenticated, anon` | `true` |
 | Workspace members can view form views | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
 ### 13. form_metrics

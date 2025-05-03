@@ -126,7 +126,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -147,7 +147,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -168,7 +168,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -189,7 +189,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -210,7 +210,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -231,7 +231,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -251,7 +251,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -271,7 +271,7 @@ export default function FormBuilderContent() {
                   settings={currentBlock.settings}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -333,7 +333,7 @@ export default function FormBuilderContent() {
                   onUpdate={(updates) => {
                     console.log('AIConversationBlock onUpdate called with:', updates);
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates);
+                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
