@@ -4,24 +4,19 @@ import { useState } from "react"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { WorkspaceRole } from "@/types/workspace-types"
-import { MembersHeader } from "@/app/dashboard/workspace/members/components/members-header"
-import { MembersList } from "@/app/dashboard/workspace/members/components/members-list"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Users, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, Users } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 
-export default function WorkspaceMembersPage() {
+// Import the existing components to maintain functionality
+import { MembersHeader } from "@/components/workspace/members/members-header"
+import { MembersList } from "@/components/workspace/members/members-list"
+
+export default function TeamSettings() {
   const { currentWorkspaceId, workspaces } = useWorkspaceStore()
   const currentWorkspace = workspaces.find(w => w.id === currentWorkspaceId)
   
@@ -30,6 +25,7 @@ export default function WorkspaceMembersPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState("members")
   
   const {
     members,
@@ -49,7 +45,6 @@ export default function WorkspaceMembersPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       const name = member.profile?.full_name?.toLowerCase() || ""
-      // We don't have direct access to email, but could add if needed
       return name.includes(query)
     }
     
@@ -87,42 +82,30 @@ export default function WorkspaceMembersPage() {
   })
   
   return (
-    <>
-      <div className="flex flex-1 flex-col">
-        <header className="relative flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">
-                    Dashboard
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard/workspace">
-                    Workspace
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="truncate font-medium">
-                    Members
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
+    <div className="max-w-5xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Team Management</h1>
+        {isCurrentUserAdmin() && (
+          <Button onClick={() => setShowInviteDialog(true)}>
+            Invite Team Member
+          </Button>
+        )}
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-2 w-[400px] mb-6">
+          <TabsTrigger value="members">
+            <Users className="mr-2 h-4 w-4" />
+            Members
+          </TabsTrigger>
+          <TabsTrigger value="workspace">
+            Workspace Settings
+          </TabsTrigger>
+        </TabsList>
         
-        <div className="flex-1 p-6 space-y-6">
+        <TabsContent value="members" className="space-y-6">
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 {error instanceof Error ? error.message : "An error occurred"}
@@ -145,7 +128,7 @@ export default function WorkspaceMembersPage() {
           />
           
           {isLoading ? (
-            <div className="space-y-4 mt-6">
+            <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex items-center space-x-4 p-3">
                   <Skeleton className="h-12 w-12 rounded-full" />
@@ -164,14 +147,59 @@ export default function WorkspaceMembersPage() {
               currentUserId={null} // Will be filled in component
             />
           )}
-        </div>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="workspace" className="space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-lg font-medium">Workspace Settings</h2>
+            <Separator />
+            
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <h3 className="font-medium">Workspace Name</h3>
+                <p className="text-sm text-muted-foreground">
+                  {currentWorkspace?.name || "Loading..."}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-medium">Workspace Description</h3>
+                <p className="text-sm text-muted-foreground">
+                  {currentWorkspace?.description || "No description provided"}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-medium">Workspace ID</h3>
+                <p className="text-sm text-muted-foreground">
+                  {currentWorkspace?.id || "Loading..."}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-medium">Created On</h3>
+                <p className="text-sm text-muted-foreground">
+                  {currentWorkspace?.created_at 
+                    ? new Date(currentWorkspace.created_at).toLocaleDateString() 
+                    : "Loading..."}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {isCurrentUserAdmin() && (
+            <div className="pt-4">
+              <Button variant="outline">Edit Workspace Settings</Button>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       
       <InviteDialog
         open={showInviteDialog}
         onOpenChange={setShowInviteDialog}
         currentWorkspace={currentWorkspace}
       />
-    </>
+    </div>
   )
 }

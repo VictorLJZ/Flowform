@@ -2,7 +2,7 @@
 
 import { useAuthSession } from "@/hooks/useAuthSession"
 import { WorkspaceMemberWithProfile, WorkspaceRole } from "@/types/workspace-types"
-import { MemberItem } from "@/app/dashboard/workspace/members/components/member-item"
+import { MemberItem } from "@/components/workspace/members/member-item"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface MembersListProps {
