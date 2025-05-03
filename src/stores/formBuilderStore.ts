@@ -18,9 +18,7 @@ import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 import type { FormBlock, BlockType } from '@/types/block-types'
 import type { FormData } from '@/types/form-builder-types'
 import type { FormBuilderState } from '@/types/store-types'
-
-
-
+import { Connection, ConditionRule } from '@/types/workflow-types'
 
 // Initial empty form data
 const defaultFormData: FormData = {
@@ -51,6 +49,9 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   mode: 'builder',
   defaultBlockPresentation: defaultBlockPresentation,
   
+  // Connections
+  connections: [],
+  
   // Actions
   setFormData: (data: Partial<FormData>) => set((state: FormBuilderState) => ({
     formData: { ...state.formData, ...data }
@@ -60,24 +61,24 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   addBlock: (blockTypeId: string) => {
     const { blocks } = get()
-    const newBlockId = uuidv4() // Generate proper UUID for block ID
-    const newOrder = blocks.length // Order is still based on length
+    const newBlockId = uuidv4()
+    const newOrder = blocks.length
     const blockDef = getBlockDefinition(blockTypeId)
  
     if (!blockDef) {
-      console.error(`Block definition not found for type: ${blockTypeId}`);
-      return // Don't add block if definition is missing
+      console.error(`Block definition not found for type: ${blockTypeId}`)
+      return
     }
  
     const newBlock: FormBlock = { 
       id: newBlockId,
       blockTypeId: blockTypeId,
-      type: blockDef.type || 'static', // Ensure type is valid
-      title: blockDef.defaultTitle || '', // Ensure title is string
+      type: blockDef.type || 'static',
+      title: blockDef.defaultTitle || '',
       description: blockDef.defaultDescription || '',
       required: false,
       order: newOrder,
-      settings: blockDef.getDefaultValues() || {}, // Ensure settings is object
+      settings: blockDef.getDefaultValues() || {}
     }
  
     const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order - b.order)
@@ -91,18 +92,18 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     const blockDef = getBlockDefinition(updates.blockTypeId || get().blocks.find((b: FormBlock) => b.id === blockId)?.blockTypeId || '')
     set((state: FormBuilderState) => ({
       blocks: state.blocks.map((block: FormBlock) => {
-        if ((block as FormBlock).id === blockId) {
+        if (block.id === blockId) {
           return {
             ...block,
             ...updates,
             ...(updates.blockTypeId && {
-              type: blockDef?.type || 'static', // Update type based on new def, provide default
-              settings: blockDef?.getDefaultValues() || {}, // Reset settings based on new def, provide default
-            }),
+              type: blockDef?.type || 'static',
+              settings: blockDef?.getDefaultValues() || {}
+            })
           }
         }
         return block
-      }),
+      })
     }))
   },
   
@@ -124,18 +125,13 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     return {
       blocks: state.blocks.map((block: FormBlock) => {
         if (block.id === blockId) {
-          // If layout type is changing, get the default settings for the new layout type
-          let updatedLayout: SlideLayout;
+          let updatedLayout: SlideLayout
           
           if (layoutConfig.type && layoutConfig.type !== (block.settings?.layout as SlideLayout | undefined)?.type) {
-            // Start with defaults for the new layout type
-            updatedLayout = getDefaultLayoutByType(layoutConfig.type);
-            // Then apply any specific overrides from layoutConfig
-            updatedLayout = { ...updatedLayout, ...layoutConfig } as SlideLayout;
+            updatedLayout = { ...getDefaultLayoutByType(layoutConfig.type), ...layoutConfig } as SlideLayout
           } else {
-            // If we already have a layout or are just updating properties
-            const currentLayout = block.settings?.layout || { type: 'standard' };
-            updatedLayout = { ...currentLayout, ...layoutConfig } as SlideLayout;
+            const currentLayout = block.settings?.layout || { type: 'standard' }
+            updatedLayout = { ...currentLayout, ...layoutConfig } as SlideLayout
           }
           
           return { 
@@ -144,29 +140,25 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
               ...block.settings, 
               layout: updatedLayout 
             } 
-          };
+          }
         }
-        return block;
+        return block
       })
-    };
+    }
   }),
   
   removeBlock: (blockId: string) => set((state: FormBuilderState) => {
     const newBlocks = state.blocks.filter((block: FormBlock) => block.id !== blockId)
-    
-    // Recalculate order for all blocks
     const updatedBlocks = newBlocks.map((block, index) => ({
       ...block,
       order: index
     }))
     
-    // If we're removing the current block, select the previous one or the next one
     let newCurrentBlockId = state.currentBlockId
     if (state.currentBlockId === blockId) {
       const currentIndex = state.blocks.findIndex(b => b.id === blockId)
       const previousBlock = updatedBlocks[currentIndex - 1]
       const nextBlock = updatedBlocks[currentIndex]
-      
       newCurrentBlockId = previousBlock?.id || nextBlock?.id || null
     }
     
@@ -181,7 +173,6 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     const [removed] = result.splice(startIndex, 1)
     result.splice(endIndex, 0, removed)
     
-    // Recalculate order for all blocks
     const updatedBlocks = result.map((block, index) => ({
       ...block,
       order: index
@@ -196,7 +187,6 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   setBlockSelectorOpen: (open: boolean) => set({ blockSelectorOpen: open }),
   
-  // WYSIWYG methods
   getBlockPresentation: (blockId: string) => {
     const block = get().blocks.find((b: FormBlock) => b.id === blockId)
     return (block?.settings?.presentation as BlockPresentation | undefined) || get().defaultBlockPresentation
@@ -231,22 +221,15 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   setMode: (mode: 'builder' | 'viewer') => set({ mode }),
   
-  // Form operations with actual Supabase API calls
   saveForm: async () => {
-    const { formData, blocks, isSaving } = get()
+    const { formData, blocks, connections, isSaving } = get()
     
-    // Prevent multiple save operations
-    if (isSaving) {
-      return
-    }
+    if (isSaving) return
     
     set({ isSaving: true })
     
     try {
-      // Make a copy of the blocks with only the essential properties
-      // and map frontend block types to database types
       const blocksToSave = blocks.map((block: FormBlock, index: number) => {
-        // Map the block type to database format
         const { type, subtype } = mapToDbBlockType(block.blockTypeId)
         
         return {
@@ -257,12 +240,21 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           title: block.title,
           description: block.description,
           required: block.required,
-          order_index: index, // Use index directly for order
+          order_index: index,
           settings: block.settings,
           blockTypeId: block.blockTypeId,
           order: index
         }
       })
+      
+      // Add workflow connections to the settings object in a type-safe way
+      const updatedSettings: Record<string, any> = {
+        ...(formData.settings || {}),
+        workflow: {
+          ...(formData.settings?.workflow as Record<string, any> || {}),
+          connections
+        }
+      };
       
       const result = await saveFormWithVersioning({
         form_id: formData.form_id,
@@ -272,10 +264,9 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         created_by: formData.created_by,
         status: formData.status || 'draft',
         theme: formData.theme as unknown as Record<string, unknown>,
-        settings: formData.settings
+        settings: updatedSettings
       }, blocksToSave)
       
-      // After saving the form, also save any dynamic block configurations separately
       if (result.success) {
         console.log('Form saved successfully')
         
@@ -414,6 +405,23 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           })
         : [] // Handle case where blocksData is null or empty
       
+      // Safely extract workflow connections if they exist
+      let workflowConnections: Connection[] = [];
+      try {
+        // Type assertion here to help TypeScript understand the shape
+        const workflowSettings = formData.settings as Record<string, any> | null;
+        workflowConnections = workflowSettings?.workflow?.connections || [];
+        if (Array.isArray(workflowConnections)) {
+          console.log(`Loaded ${workflowConnections.length} workflow connections`);
+        } else {
+          console.warn('Workflow connections not found or not an array, using empty array');
+          workflowConnections = [];
+        }
+      } catch (error) {
+        console.error('Error extracting workflow connections:', error);
+        workflowConnections = [];
+      }
+      
       // Update the store with form and blocks
       set({
         formData: {
@@ -425,20 +433,22 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           status: formData.status || 'draft',
           // Always use defaultFormTheme as the base and merge with any available theme properties
           theme: defaultFormTheme,
-          settings: formData.settings ? {
-            showProgressBar: typeof formData.settings.showProgressBar === 'boolean' ? formData.settings.showProgressBar : defaultFormData.settings.showProgressBar,
-            requireSignIn: typeof formData.settings.requireSignIn === 'boolean' ? formData.settings.requireSignIn : defaultFormData.settings.requireSignIn,
-            theme: typeof formData.settings.theme === 'string' ? formData.settings.theme : defaultFormData.settings.theme,
-            primaryColor: typeof formData.settings.primaryColor === 'string' ? formData.settings.primaryColor : defaultFormData.settings.primaryColor,
-            fontFamily: typeof formData.settings.fontFamily === 'string' ? formData.settings.fontFamily : defaultFormData.settings.fontFamily,
-            estimatedTime: typeof formData.settings.estimatedTime === 'number' ? formData.settings.estimatedTime : undefined,
-            estimatedTimeUnit: formData.settings.estimatedTimeUnit as 'minutes' | 'hours' | undefined,
-            redirectUrl: typeof formData.settings.redirectUrl === 'string' ? formData.settings.redirectUrl : undefined,
-            customCss: typeof formData.settings.customCss === 'string' ? formData.settings.customCss : undefined
-          } : defaultFormData.settings
+          settings: {
+            showProgressBar: typeof formData.settings?.showProgressBar === 'boolean' ? formData.settings.showProgressBar : defaultFormData.settings.showProgressBar,
+            requireSignIn: typeof formData.settings?.requireSignIn === 'boolean' ? formData.settings.requireSignIn : defaultFormData.settings.requireSignIn,
+            theme: typeof formData.settings?.theme === 'string' ? formData.settings.theme : defaultFormData.settings.theme,
+            primaryColor: typeof formData.settings?.primaryColor === 'string' ? formData.settings.primaryColor : defaultFormData.settings.primaryColor,
+            fontFamily: typeof formData.settings?.fontFamily === 'string' ? formData.settings.fontFamily : defaultFormData.settings.fontFamily,
+            estimatedTime: typeof formData.settings?.estimatedTime === 'number' ? formData.settings.estimatedTime : undefined,
+            estimatedTimeUnit: formData.settings?.estimatedTimeUnit as 'minutes' | 'hours' | undefined,
+            redirectUrl: typeof formData.settings?.redirectUrl === 'string' ? formData.settings.redirectUrl : undefined,
+            customCss: typeof formData.settings?.customCss === 'string' ? formData.settings.customCss : undefined,
+            workflow: { connections: workflowConnections }
+          }
         },
         blocks: frontendBlocks,
-        currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null
+        currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null,
+        connections: workflowConnections
       })
     } catch (error) {
       console.error('Error loading form:', error)
@@ -451,7 +461,24 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   getCurrentBlock: () => {
     const { blocks, currentBlockId } = get()
     return blocks.find((block: FormBlock) => block.id === currentBlockId) || null
-  }
+  },
+  
+  // Connections
+  setConnections: (connections: Connection[]) => set({ connections }),
+  
+  addConnection: (connection: Connection) => set((state) => ({
+    connections: [...state.connections, connection]
+  })),
+  
+  updateConnection: (connectionId: string, updates: Partial<Connection>) => set((state) => ({
+    connections: state.connections.map(conn => 
+      conn.id === connectionId ? { ...conn, ...updates } : conn
+    )
+  })),
+  
+  removeConnection: (connectionId: string) => set((state) => ({
+    connections: state.connections.filter(conn => conn.id !== connectionId)
+  })),
 })
 
 // Singleton store hook
