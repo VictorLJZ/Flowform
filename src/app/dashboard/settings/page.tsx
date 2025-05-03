@@ -7,19 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Copy, Check } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
-import { Switch } from "@/components/ui/switch"
 
 export default function GeneralSettings() {
   const { currentWorkspaceId } = useWorkspaceStore()
   const { workspace, isLoading, rename } = useCurrentWorkspace(currentWorkspaceId)
   const [name, setName] = useState<string>(workspace?.name || "")
   const [description, setDescription] = useState<string>(workspace?.description || "")
-  const [slug, setSlug] = useState<string>(workspace?.id || "") // Using ID instead of slug
-  const [copied, setCopied] = useState(false)
-  const [optInAnalytics, setOptInAnalytics] = useState(false)
   const { toast } = useToast()
 
   // Update form values when workspace loads
@@ -27,8 +21,6 @@ export default function GeneralSettings() {
     if (workspace) {
       setName(workspace.name || "")
       setDescription(workspace.description || "")
-      setSlug(workspace.id || "") // Using ID instead of slug
-      setOptInAnalytics(!!workspace.settings?.analytics_opt_in)
     }
   }, [workspace])
 
@@ -51,11 +43,7 @@ export default function GeneralSettings() {
     }
   }
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(slug)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  // Removed copyToClipboard function as slug section is no longer needed
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-full">Loading...</div>
@@ -82,40 +70,16 @@ export default function GeneralSettings() {
         </div>
         
         <div className="space-y-6">
-          <h2 className="text-lg font-medium">Organization slug</h2>
+          <h2 className="text-lg font-medium">Organization description</h2>
           <div className="space-y-2">
-            <Label htmlFor="org-slug">Slug</Label>
-            <div className="flex max-w-md">
-              <Input 
-                id="org-slug" 
-                value={slug}
-                readOnly
-                className="rounded-r-none"
-              />
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="rounded-l-none border-l-0"
-                onClick={copyToClipboard}
-              >
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              By opting into sending anonymous data, Supabase AI can improve the answers it shows you. This is an organization-wide setting.
-            </p>
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          <h2 className="text-lg font-medium">Data collection</h2>
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="analytics-opt-in" 
-              checked={optInAnalytics}
-              onCheckedChange={(checked) => setOptInAnalytics(checked)}
+            <Label htmlFor="org-description">Description</Label>
+            <Textarea
+              id="org-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your organization"
+              className="max-w-md"
             />
-            <Label htmlFor="analytics-opt-in">Opt-in to sending anonymous data to OpenAI</Label>
           </div>
         </div>
         
