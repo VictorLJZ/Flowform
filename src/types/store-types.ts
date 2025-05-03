@@ -1,6 +1,8 @@
 import type { FormBlock } from './block-types';
 import type { SlideLayout } from './layout-types';
 import type { FormData } from './form-builder-types';
+import type { Connection } from './workflow-types';
+
 /**
  * Analytics store state and actions
  */
@@ -36,6 +38,7 @@ export interface WorkspaceState {
 export interface FormBuilderState {
   formData: FormData;
   blocks: FormBlock[];
+  connections: Connection[];
   currentBlockId: string | null;
   isLoading: boolean;
   isSaving: boolean;
@@ -63,6 +66,10 @@ export interface FormBuilderState {
   saveForm: () => Promise<void>;
   loadForm: (formId: string) => Promise<void>;
   getCurrentBlock: () => FormBlock | null;
+  setConnections: (connections: Connection[]) => void;
+  addConnection: (connection: Connection) => void;
+  updateConnection: (connectionId: string, updates: Partial<Connection>) => void;
+  removeConnection: (connectionId: string) => void;
 }
 
 // Selector functions

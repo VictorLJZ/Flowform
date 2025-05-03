@@ -1,4 +1,5 @@
 import type { FormTheme } from './theme-types';
+import type { Connection } from './workflow-types';
 
 /**
  * Data representing the form metadata
@@ -20,6 +21,9 @@ export interface FormData {
     estimatedTimeUnit?: 'minutes' | 'hours';
     redirectUrl?: string;
     customCss?: string;
+    workflow?: {
+      connections: Connection[];
+    };
   };
   // WYSIWYG theme data
   theme?: FormTheme;
