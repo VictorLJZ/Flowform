@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { changeUserRole } from '@/services/workspace/changeUserRole';
 

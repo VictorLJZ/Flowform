@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
-import { startFormResponse } from "@/services/response/startFormResponse"
-import { saveStaticAnswer } from "@/services/response/saveStaticAnswer"
-import { saveDynamicResponse } from "@/services/response/saveDynamicResponse"
 import { completeResponse } from "@/services/response/completeResponse"
-import { createClient } from "@/lib/supabase/client"
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import { QAPair } from '@/types/supabase-types'
+
+// Use Node.js runtime instead of Edge
+export const runtime = 'nodejs';
+
+// Create a secure service client that only exists server-side
+// This is safe because this code only runs on the server in an API route
+const createServiceClient = () => {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
+    }
+  );
+};
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Extract formId from URL
@@ -27,8 +43,68 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       device: getDeviceType(userAgent)
     };
     
-    // Initialize a form response session
-    const { response, starterQuestion } = await startFormResponse(formId, metadata);
+    // Initialize a form response session using the service client directly
+    const serviceSupabase = createServiceClient();
+    
+    // Generate a unique respondent ID
+    const respondentId = uuidv4();
+    
+    // Create a new form response using the service client
+    const { data: responseData, error: responseError } = await serviceSupabase
+      .from('form_responses')
+      .insert({
+        form_id: formId,
+        respondent_id: respondentId,
+        status: 'in_progress',
+        metadata: {
+          ...metadata,
+          timestamp: new Date().toISOString(),
+        }
+      })
+      .select()
+      .single();
+
+    if (responseError) {
+      console.error('Error creating form response:', responseError);
+      throw responseError;
+    }
+    
+    // Get the first block to retrieve the starter question
+    const { data: blocks, error: blocksError } = await serviceSupabase
+      .from('form_blocks')
+      .select('*')
+      .eq('form_id', formId)
+      .order('order_index')
+      .limit(1);
+
+    if (blocksError || !blocks || blocks.length === 0) {
+      console.error('Error fetching form blocks:', blocksError);
+      throw blocksError || new Error('No blocks found for this form');
+    }
+
+    const firstBlock = blocks[0];
+    let starterQuestion = '';
+
+    if (firstBlock.type === 'dynamic') {
+      // Get the dynamic block config
+      const { data: config, error: configError } = await serviceSupabase
+        .from('dynamic_block_configs')
+        .select('*')
+        .eq('block_id', firstBlock.id)
+        .single();
+
+      if (configError) {
+        console.error('Error fetching dynamic block config:', configError);
+        throw configError;
+      }
+
+      starterQuestion = config.starter_question;
+    } else {
+      // For static blocks
+      starterQuestion = firstBlock.title;
+    }
+    
+    const response = responseData;
     
     return NextResponse.json({
       sessionId: response.id,
@@ -78,7 +154,8 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     // Process the answer based on block type
     if (blockType === 'static') {
       // For static blocks, optionally save the answer based on the 'required' flag
-      const supabase = createClient();
+      // Use the service client for public form submissions
+      const supabase = createServiceClient();
       const { data: currentBlock } = await supabase
         .from('form_blocks')
         .select('order_index, required')
@@ -99,7 +176,25 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       
       // Save non-empty answers
       if (answer) {
-        await saveStaticAnswer(responseId, blockId, answer as string);
+        // Use direct service client access instead of mode-based client selection
+        const serviceSupabase = createServiceClient();
+        
+        // Create the answer directly using the service client
+        const payload = {
+          response_id: responseId,
+          block_id: blockId,
+          answer: answer as string,
+          answered_at: new Date().toISOString()
+        };
+        
+        const { error } = await serviceSupabase
+          .from('static_block_answers')
+          .upsert(payload, { onConflict: 'response_id,block_id' });
+          
+        if (error) {
+          console.error('Error saving static answer:', error);
+          throw error;
+        }
       }
       
       // Get the next block in sequence
@@ -113,7 +208,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       
       if (!nextBlock || nextBlock.length === 0) {
         // No more blocks, complete the form
-        await completeResponse(responseId);
+        await completeResponse(responseId, 'viewer');
         
         return NextResponse.json({
           completed: true,
@@ -169,18 +264,102 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         )
       }
       
-      // Process the dynamic response with the extracted answer text
-      const result = await saveDynamicResponse(
-        responseId,
-        blockId,
-        currentQuestion,
-        answerText,
-        isFirstQuestion
-      );
+      // Process the dynamic response directly with the service client
+      const serviceSupabase = createServiceClient();
+      
+      // First, check for existing conversation
+      let existingConversation = null;
+      let currentConversation = [];
+      
+      if (!isFirstQuestion) {
+        // Try to fetch existing conversation
+        const { data: conversation, error: conversationError } = await serviceSupabase
+          .from('dynamic_block_responses')
+          .select('*')
+          .eq('response_id', responseId)
+          .eq('block_id', blockId)
+          .single();
+        
+        if (!conversationError) {
+          existingConversation = conversation;
+          currentConversation = conversation.conversation || [];
+        }
+      }
+      
+      // Get the dynamic block configuration
+      const { data: config, error: configError } = await serviceSupabase
+        .from('dynamic_block_configs')
+        .select('*')
+        .eq('block_id', blockId)
+        .single();
+      
+      if (configError) {
+        console.error('Error fetching dynamic block config:', configError);
+        throw configError;
+      }
+      
+      // Create the new Q&A pair
+      const newQAPair = {
+        question: currentQuestion,
+        answer: answerText,
+        timestamp: new Date().toISOString(),
+        is_starter: isFirstQuestion
+      };
+      
+      // Add to conversation
+      const conversation = [...currentConversation, newQAPair];
+      
+      // Check if we've reached the maximum number of questions
+      const isComplete = conversation.length >= (config?.max_questions || 5);
+      
+      // Generate the next question if not complete
+      let nextQuestion = null;
+      
+      if (!isComplete) {
+        // TODO: Generate next question with AI - for now return a placeholder
+        nextQuestion = "What else would you like to share?";
+      }
+      
+      // Save or update the conversation
+      if (existingConversation) {
+        const { error: updateError } = await serviceSupabase
+          .from('dynamic_block_responses')
+          .update({
+            conversation: conversation,
+            completed_at: isComplete ? new Date().toISOString() : null
+          })
+          .eq('id', existingConversation.id);
+        
+        if (updateError) {
+          console.error('Error updating dynamic response:', updateError);
+          throw updateError;
+        }
+      } else {
+        const { error: insertError } = await serviceSupabase
+          .from('dynamic_block_responses')
+          .insert({
+            response_id: responseId,
+            block_id: blockId,
+            conversation: conversation,
+            completed_at: isComplete ? new Date().toISOString() : null
+          });
+        
+        if (insertError) {
+          console.error('Error creating dynamic response:', insertError);
+          throw insertError;
+        }
+      }
+      
+      // Store result in the same format expected by the existing code
+      const result = {
+        conversation,
+        nextQuestion,
+        isComplete
+      };
       
       if (result.isComplete) {
-        // Get the next block in sequence
-        const supabase = createClient();
+        // Get the next block in sequence using the service client
+        const supabase = createServiceClient();
         const { data: currentBlock } = await supabase
           .from('form_blocks')
           .select('order_index')
@@ -201,8 +380,22 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           .limit(1);
         
         if (!nextBlock || nextBlock.length === 0) {
-          // No more blocks, complete the form
-          await completeResponse(responseId);
+          // No more blocks, complete the form using the service client
+          const serviceSupabase = createServiceClient();
+          
+          // Update the response status to completed
+          const { error } = await serviceSupabase
+            .from('form_responses')
+            .update({
+              status: 'completed',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', responseId);
+            
+          if (error) {
+            console.error('Error completing form response:', error);
+            throw error;
+          }
           
           return NextResponse.json({
             completed: true,

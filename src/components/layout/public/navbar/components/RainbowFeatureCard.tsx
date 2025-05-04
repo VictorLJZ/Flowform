@@ -13,7 +13,7 @@ interface RainbowFeatureCardProps {
 }
 
 // Map of icon names to Lucide components
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   megaphone: Megaphone,
   microscope: Microscope,
   palette: Palette,

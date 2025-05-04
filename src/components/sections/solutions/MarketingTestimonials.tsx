@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { motion } from "motion/react"
 import { Quote } from "lucide-react"
 
@@ -53,7 +52,7 @@ export default function MarketingTestimonials() {
             >
               <Quote className="absolute top-6 right-6 h-12 w-12 text-blue-200" />
               <div className="mb-6">
-                <p className="text-gray-600 relative z-10">"{testimonial.content}"</p>
+                <p className="text-gray-600 relative z-10">&quot;{testimonial.content}&quot;</p>
               </div>
               <div className="flex items-center">
                 <div className="mr-4 flex-shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-gray-100">

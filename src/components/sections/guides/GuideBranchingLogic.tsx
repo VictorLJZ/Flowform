@@ -23,13 +23,13 @@ export default function GuideBranchingLogic() {
           
           <div className="prose prose-lg max-w-none text-gray-600 mb-10">
             <p>
-              Branching logic allows you to create dynamic forms that adapt based on respondents' answers. This creates a more personalized experience and helps collect only relevant information.
+              Branching logic allows you to create dynamic forms that adapt based on respondents&apos; answers. This creates a more personalized experience and helps collect only relevant information.
             </p>
           </div>
 
           <Card className="p-6 border-primary/20 mb-8">
             <h3 className="text-xl font-semibold mb-4">How Branching Logic Works</h3>
-            <p className="mb-6 text-gray-600">Branching logic uses "if-then" conditions to determine which questions to show next:</p>
+            <p className="mb-6 text-gray-600">Branching logic uses &quot;if-then&quot; conditions to determine which questions to show next:</p>
             
             <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
               <div className="flex flex-col md:flex-row items-center justify-center">
@@ -71,7 +71,7 @@ export default function GuideBranchingLogic() {
               </div>
               
               <div className="text-center text-sm text-gray-500 mt-4">
-                This question only appears if the respondent answers "Yes" to the previous question.
+                This question only appears if the respondent answers &quot;Yes&quot; to the previous question.
               </div>
             </div>
             
@@ -119,7 +119,7 @@ export default function GuideBranchingLogic() {
                     <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-200">
                       <div className="text-sm mb-1">Condition</div>
                       <div className="flex items-center bg-white p-2 rounded border">
-                        <span className="text-xs">Answer equals "Yes"</span>
+                        <span className="text-xs">Answer equals &quot;Yes&quot;</span>
                       </div>
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export default function GuideBranchingLogic() {
                   <h4 className="font-medium mb-2">Multiple Conditions</h4>
                   <p className="text-sm">Combine multiple conditions using AND/OR logic for more complex branching scenarios.</p>
                   <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div className="text-xs">IF (Pet Type = "Dog" AND Pet Age &gt; 2) THEN show "Dog Training Questions"</div>
+                    <div className="text-xs">IF (Pet Type = &quot;Dog&quot; AND Pet Age &gt; 2) THEN show &quot;Dog Training Questions&quot;</div>
                   </div>
                 </div>
                 
@@ -154,7 +154,7 @@ export default function GuideBranchingLogic() {
                   <h4 className="font-medium mb-2">Skip Logic</h4>
                   <p className="text-sm">Skip entire sections based on previous answers to streamline the form experience.</p>
                   <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div className="text-xs">IF (Has Insurance = "No") THEN skip "Insurance Details Section"</div>
+                    <div className="text-xs">IF (Has Insurance = &quot;No&quot;) THEN skip &quot;Insurance Details Section&quot;</div>
                   </div>
                 </div>
                 
@@ -162,7 +162,7 @@ export default function GuideBranchingLogic() {
                   <h4 className="font-medium mb-2">Page Branching</h4>
                   <p className="text-sm">Direct respondents to different pages based on their responses.</p>
                   <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div className="text-xs">IF (Customer Type = "Business") THEN go to "Business Questions Page"</div>
+                    <div className="text-xs">IF (Customer Type = &quot;Business&quot;) THEN go to &quot;Business Questions Page&quot;</div>
                   </div>
                 </div>
               </div>

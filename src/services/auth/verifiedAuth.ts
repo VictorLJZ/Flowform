@@ -66,11 +66,11 @@ export async function getSessionWithVerifiedUser(): Promise<{
         session: sessionData.session,
         user: userData.user
       };
-    } catch (error) {
+    } catch {
       // Return user even if session retrieval fails
       return { session: null, user: userData.user };
     }
-  } catch (error) {
+  } catch {
     return { session: null, user: null };
   }
 }

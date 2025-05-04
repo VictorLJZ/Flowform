@@ -91,7 +91,7 @@ export default function ResearchHero() {
                         <div className="text-purple-600 text-xs">Advanced</div>
                       </div>
                       <div className="bg-gray-50 p-3 rounded-lg">
-                        <div className="text-xs mb-2">If respondent selects "Qualitative interviews", show:</div>
+                        <div className="text-xs mb-2">If respondent selects &quot;Qualitative interviews&quot;, show:</div>
                         <div className="flex items-center bg-white p-2 rounded border border-gray-200">
                           <div className="mr-3 bg-purple-100 text-purple-600 rounded-full w-5 h-5 flex items-center justify-center text-xs">Q</div>
                           <div className="text-xs">How many interviews do you typically conduct?</div>

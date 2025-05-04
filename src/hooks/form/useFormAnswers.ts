@@ -14,6 +14,7 @@ export interface FormAnswersState {
   setCurrentAnswer: React.Dispatch<React.SetStateAction<string | number | string[] | QAPair[]>>;
   saveCurrentAnswer: (blockId: string, answer: string | number | string[] | QAPair[]) => void;
   initializeAnswers: () => void;
+  loadAnswerForBlock: (blockId: string) => void;
 }
 
 export const useFormAnswers = ({ storageKey, sessionId, currentIndex }: UseFormAnswersProps): FormAnswersState => {
@@ -64,6 +65,21 @@ export const useFormAnswers = ({ storageKey, sessionId, currentIndex }: UseFormA
       initializeAnswers();
     }
   }, [sessionId, initializeAnswers]);
+  
+  // This function should be called when a new block is rendered
+  // It will reset or load the appropriate answer
+  const loadAnswerForBlock = useCallback((blockId: string) => {
+    // If there's a saved answer for this block, use it
+    if (savedAnswers[blockId]) {
+      setCurrentAnswer(savedAnswers[blockId]);
+    } else {
+      // Otherwise reset to empty string (or appropriate default based on block type)
+      setCurrentAnswer("");
+    }
+  }, [savedAnswers]);
+  
+  // Add this loadAnswerForBlock to the return value so it can be called
+  // when a new block is rendered
 
   // Memoize the return object
   return useMemo(() => ({
@@ -72,13 +88,15 @@ export const useFormAnswers = ({ storageKey, sessionId, currentIndex }: UseFormA
     answersInitialized,
     setCurrentAnswer,
     saveCurrentAnswer,
-    initializeAnswers // Expose if needed externally, though usually handled internally
+    initializeAnswers, // Expose if needed externally, though usually handled internally
+    loadAnswerForBlock, // Expose so it can be called when a block changes
   }), [
     savedAnswers,
     currentAnswer,
     answersInitialized,
     setCurrentAnswer, // This is stable from useState
     saveCurrentAnswer,
-    initializeAnswers
+    initializeAnswers,
+    loadAnswerForBlock
   ]);
 };

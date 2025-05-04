@@ -85,6 +85,7 @@ export default function FormViewerPage() {
     initializeAnswers, 
     answersInitialized,
     saveCurrentAnswer,
+    loadAnswerForBlock,
   } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
 
   // 4. Analytics Hook (Needs formId, responseId after submission)
@@ -93,6 +94,13 @@ export default function FormViewerPage() {
     responseId: responseId || undefined, 
     disabled: !responseId 
   });
+  
+  // Effect to load or reset answer when block changes
+  useEffect(() => {
+    if (block && answersInitialized) {
+      loadAnswerForBlock(block.id);
+    }
+  }, [block, answersInitialized, loadAnswerForBlock]);
 
   // Hook for tracking form abandonment
   const currentBlockId = blocks[currentIndex]?.id || null;
@@ -232,7 +240,8 @@ export default function FormViewerPage() {
             animate="center"
             exit="exit"
             transition={slideTransition} 
-            className="absolute inset-0 flex items-center justify-center p-4" 
+            className="absolute inset-0 flex items-center justify-center w-full" 
+            style={{ width: '100%', maxWidth: '100%' }}
           >
             {block ? (
               <BlockRenderer 

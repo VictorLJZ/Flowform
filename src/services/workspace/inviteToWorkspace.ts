@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation, Workspace } from '@/types/supabase-types';
+import { WorkspaceInvitation } from '@/types/supabase-types';
 import { WorkspaceRole } from '@/types/workspace-types';
 import { v4 as uuidv4 } from 'uuid';
 import { sendInvitationEmail } from '@/services/workspace/sendInvitationEmail';
@@ -122,7 +122,7 @@ export async function inviteToWorkspace(
       console.log('[inviteToWorkspace] Getting workspace and inviter details for email');
       
       // Fetch workspace details
-      const { data: workspace, error: workspaceError } = await supabase
+      const { error: workspaceError } = await supabase
         .from('workspaces')
         .select('name')
         .eq('id', workspaceId)
@@ -134,7 +134,7 @@ export async function inviteToWorkspace(
       }
       
       // Fetch inviter's profile
-      const { data: inviter, error: inviterError } = await supabase
+      const { error: inviterError } = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', invitedBy)

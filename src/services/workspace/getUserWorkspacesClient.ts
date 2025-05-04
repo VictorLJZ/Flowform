@@ -54,7 +54,7 @@ export async function getUserWorkspacesClient(userId: string): Promise<Workspace
         let errorData: ApiErrorResponse;
         try {
           errorData = await response.json() as ApiErrorResponse;
-        } catch (e) {
+        } catch {
           errorData = { error: `API returned status ${response.status}` };
         }
         throw new Error(errorData.error || errorData.message || `API returned status ${response.status}`);

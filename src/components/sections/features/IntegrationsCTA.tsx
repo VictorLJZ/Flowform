@@ -52,22 +52,22 @@ export default function IntegrationsCTA() {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <div className="text-blue-400">// Make an API request to create a form</div>
+                    <div className="text-blue-400">{/* Make an API request to create a form */}</div>
                     <div className="mt-2">
-                      <span className="text-purple-400">const</span> <span className="text-green-400">response</span> = <span className="text-purple-400">await</span> <span className="text-yellow-400">fetch</span>(<span className="text-green-400">'https://api.flowform.com/v1/forms'</span>, {"{"}
+                      <span className="text-purple-400">const</span> <span className="text-green-400">response</span> = <span className="text-purple-400">await</span> <span className="text-yellow-400">fetch</span>(<span className="text-green-400">&apos;https://api.flowform.com/v1/forms&apos;</span>, {"{"}
                     </div>
-                    <div className="ml-4"><span className="text-blue-400">method:</span> <span className="text-green-400">'POST'</span>,</div>
+                    <div className="ml-4"><span className="text-blue-400">method:</span> <span className="text-green-400">&apos;POST&apos;</span>,</div>
                     <div className="ml-4"><span className="text-blue-400">headers:</span> {"{"}</div>
-                    <div className="ml-8"><span className="text-blue-400">'Content-Type':</span> <span className="text-green-400">'application/json'</span>,</div>
-                    <div className="ml-8"><span className="text-blue-400">'Authorization':</span> <span className="text-green-400">'Bearer YOUR_API_KEY'</span></div>
+                    <div className="ml-8"><span className="text-blue-400">&apos;Content-Type&apos;:</span> <span className="text-green-400">&apos;application/json&apos;</span>,</div>
+                    <div className="ml-8"><span className="text-blue-400">&apos;Authorization&apos;:</span> <span className="text-green-400">&apos;Bearer YOUR_API_KEY&apos;</span></div>
                     <div className="ml-4">{"}"},</div>
                     <div className="ml-4"><span className="text-blue-400">body:</span> <span className="text-yellow-400">JSON.stringify</span>({"{"}</div>
-                    <div className="ml-8"><span className="text-blue-400">title:</span> <span className="text-green-400">'Customer Feedback Form'</span>,</div>
-                    <div className="ml-8"><span className="text-blue-400">description:</span> <span className="text-green-400">'Help us improve our services'</span>,</div>
+                    <div className="ml-8"><span className="text-blue-400">title:</span> <span className="text-green-400">&apos;Customer Feedback Form&apos;</span>,</div>
+                    <div className="ml-8"><span className="text-blue-400">description:</span> <span className="text-green-400">&apos;Help us improve our services&apos;</span>,</div>
                     <div className="ml-8"><span className="text-blue-400">questions:</span> [</div>
-                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">'text'</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">'Your Name'</span> {"}"},</div>
-                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">'email'</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">'Email Address'</span> {"}"},</div>
-                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">'rating'</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">'Rate our service'</span> {"}"}</div>
+                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">&apos;text&apos;</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">&apos;Your Name&apos;</span> {"}"},</div>
+                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">&apos;email&apos;</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">&apos;Email Address&apos;</span> {"}"},</div>
+                    <div className="ml-12">{"{"} <span className="text-blue-400">type:</span> <span className="text-green-400">&apos;rating&apos;</span>, <span className="text-blue-400">label:</span> <span className="text-green-400">&apos;Rate our service&apos;</span> {"}"}</div>
                     <div className="ml-8">]</div>
                     <div className="ml-4">{"}"})</div>
                     <div>{"}"});</div>

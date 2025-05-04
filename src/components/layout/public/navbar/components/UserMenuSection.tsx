@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useRouter } from 'next/navigation'
 import { LogOut, LayoutDashboard } from 'lucide-react'
+import { User } from "@/types/auth-types"
 import {
   Avatar,
   AvatarFallback,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface UserMenuSectionProps {
-  user: any | null;
+  user: User | null;
   signOut: () => void;
 }
 

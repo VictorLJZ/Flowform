@@ -32,7 +32,7 @@ export default function TemplatesCTA() {
                 Choose a template and get started in minutes
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                With FlowForm's templates, you can create professional forms and surveys without starting from scratch.
+                With FlowForm&apos;s templates, you can create professional forms and surveys without starting from scratch.
               </p>
               
               <div className="space-y-5 mb-10">

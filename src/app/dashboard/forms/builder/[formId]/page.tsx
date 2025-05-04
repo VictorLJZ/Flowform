@@ -15,7 +15,8 @@ import { Loader2, Save, Globe } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useForm } from "@/hooks/useForm"
 import { getBlockDefinition } from "@/registry/blockRegistry"
-import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
+import { mapFromDbBlockType } from '@/utils/blockTypeMapping'
+import { BlockType } from '@/types/block-types'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
@@ -114,7 +115,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
           return {
             id: block.id,
             blockTypeId,
-            type: block.type as any,
+            type: block.type as BlockType,
             title: block.title || blockDef?.defaultTitle || '',
             description: block.description || '',
             required: !!block.required,

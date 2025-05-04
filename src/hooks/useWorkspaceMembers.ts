@@ -1,7 +1,6 @@
 import useSWR from 'swr'
 import { getWorkspaceMembersClient } from '@/services/workspace/getWorkspaceMembersClient'
 import { useAuthSession } from '@/hooks/useAuthSession'
-import { WorkspaceMemberWithProfile } from '@/types/workspace-types'
 import { WorkspaceRole } from '@/types/workspace-types'
 import { changeUserRoleClient, removeWorkspaceMemberClient } from '@/services/workspace/client'
 

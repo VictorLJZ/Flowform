@@ -1,7 +1,6 @@
 "use client"
 
 import { motion } from "motion/react"
-import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 
 export default function GuideWelcome() {
@@ -26,10 +25,10 @@ export default function GuideWelcome() {
               FlowForm is the modern form and survey platform that empowers teams to collect data, engage users, and gain insights in a collaborative, productive, and organized way.
             </p>
             <p>
-              Whether you're starting a new data collection project or trying to improve your existing feedback processes, FlowForm adapts to any use case. It helps you simplify and standardize your form creation process in an intuitive way. But don't let its simplicity fool you! FlowForm is user-friendly, yet still able to handle your team's most robust data collection needs.
+              Whether you&apos;re starting a new data collection project or trying to improve your existing feedback processes, FlowForm adapts to any use case. It helps you simplify and standardize your form creation process in an intuitive way. But don&apos;t let its simplicity fool you! FlowForm is user-friendly, yet still able to handle your team&apos;s most robust data collection needs.
             </p>
             <p>
-              This is a quick overview of the things you need to know when you're just getting started with your first project on FlowForm.
+              This is a quick overview of the things you need to know when you&apos;re just getting started with your first project on FlowForm.
             </p>
           </div>
           
@@ -59,7 +58,7 @@ export default function GuideWelcome() {
           </Card>
 
           <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-            <h3 className="text-xl font-semibold mb-4">Let's go over the basics</h3>
+            <h3 className="text-xl font-semibold mb-4">Let&apos;s go over the basics</h3>
             <p className="text-gray-600 mb-6">
               A FlowForm project has four key components, but unlimited possibilities:
             </p>
@@ -143,7 +142,7 @@ export default function GuideWelcome() {
                 </div>
                 <h4 className="font-semibold mb-2">What are responses?</h4>
                 <p className="text-sm text-gray-600">
-                  Responses are the submissions you receive from your form. They're collected, organized, and can be analyzed within FlowForm's analytics dashboard.
+                  Responses are the submissions you receive from your form. They&apos;re collected, organized, and can be analyzed within FlowForm&apos;s analytics dashboard.
                 </p>
               </div>
             </div>

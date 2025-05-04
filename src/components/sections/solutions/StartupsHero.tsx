@@ -95,13 +95,13 @@ export default function StartupsHero() {
                       <div className="space-y-2">
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="text-xs text-gray-600">
-                            "This solves a huge pain point for me. I've been looking for something like this for months!"
+                            &quot;This solves a huge pain point for me. I&apos;ve been looking for something like this for months!&quot;
                           </div>
                           <div className="text-xs text-gray-500 mt-2">Sarah T. - Product Manager</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="text-xs text-gray-600">
-                            "I would definitely use this. The current solutions in the market are too expensive and complicated."
+                            &quot;I would definitely use this. The current solutions in the market are too expensive and complicated.&quot;
                           </div>
                           <div className="text-xs text-gray-500 mt-2">John M. - Startup Founder</div>
                         </div>

@@ -2,6 +2,7 @@
 
 // zustand imports
 import { create, StateCreator } from 'zustand'
+import { FormSettings, WorkflowSettings } from '@/types/form-service-types'
 import { getBlockDefinition } from '@/registry/blockRegistry'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -18,7 +19,7 @@ import { SlideLayout, getDefaultLayoutByType } from '@/types/layout-types'
 import type { FormBlock, BlockType } from '@/types/block-types'
 import type { FormData } from '@/types/form-builder-types'
 import type { FormBuilderState } from '@/types/store-types'
-import { Connection, ConditionRule } from '@/types/workflow-types'
+import { Connection } from '@/types/workflow-types'
 
 // Initial empty form data
 const defaultFormData: FormData = {
@@ -342,10 +343,10 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       })
       
       // Add workflow connections to the settings object in a type-safe way
-      const updatedSettings: Record<string, any> = {
+      const updatedSettings: FormSettings = {
         ...(formData.settings || {}),
         workflow: {
-          ...(formData.settings?.workflow as Record<string, any> || {}),
+          ...(formData.settings?.workflow as WorkflowSettings || {}),
           connections
         }
       };
@@ -502,8 +503,8 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       // Safely extract workflow connections if they exist
       let workflowConnections: Connection[] = [];
       try {
-        // Type assertion here to help TypeScript understand the shape
-        const workflowSettings = formData.settings as Record<string, any> | null;
+        // Use our FormSettings type instead of any
+        const workflowSettings = formData.settings as FormSettings | null;
         workflowConnections = workflowSettings?.workflow?.connections || [];
         if (Array.isArray(workflowConnections)) {
           console.log(`Loaded ${workflowConnections.length} workflow connections`);

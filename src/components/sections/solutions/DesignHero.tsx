@@ -103,7 +103,7 @@ export default function DesignHero() {
                         <div>
                           <div className="text-xs text-gray-700 mb-2">What aspects could be improved?</div>
                           <div className="p-2 bg-gray-50 rounded-lg text-xs text-gray-600 min-h-[40px]">
-                            I'd like to see better contrast between the menu items and background. Also, the checkout button should be more prominent...
+                            I&apos;d like to see better contrast between the menu items and background. Also, the checkout button should be more prominent...
                           </div>
                         </div>
                       </div>

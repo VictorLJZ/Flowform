@@ -75,7 +75,7 @@ export const getConditionSummary = (
   
   // For date field
   if (field === 'answer' && sourceBlockType === 'date') {
-    let dateText = value ? new Date(value.toString()).toLocaleDateString() : '(no date)';
+    const dateText = value ? new Date(value.toString()).toLocaleDateString() : '(no date)';
     
     switch(operator) {
       case 'equals': return `When date is on ${dateText}`;

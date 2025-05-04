@@ -1,7 +1,6 @@
 import React from 'react';
 
-// Import the SlideWrapper for proper rendering
-import { SlideWrapper } from '@/components/form/SlideWrapper';
+// Block components already include SlideWrapper internally
 // Import necessary types
 import { BlockPresentation } from '@/types/theme-types';
 import { SlideLayout, SlideLayoutType } from '@/types/layout-types';

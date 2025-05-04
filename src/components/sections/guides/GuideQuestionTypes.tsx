@@ -95,7 +95,7 @@ export default function GuideQuestionTypes() {
                   <h4 className="font-medium mb-2">Checkboxes</h4>
                   <p className="text-sm text-gray-600 mb-4">For selecting multiple options from a list of choices.</p>
                   <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="text-sm mb-2">Select all products you're interested in:</div>
+                    <div className="text-sm mb-2">Select all products you&apos;re interested in:</div>
                     <div className="space-y-2">
                       <div className="flex items-center">
                         <div className="h-4 w-4 rounded border border-gray-300 mr-2 flex items-center justify-center">

@@ -24,7 +24,7 @@ export default function GuideResponsesAnalytics() {
           
           <div className="prose prose-lg max-w-none text-gray-600 mb-10">
             <p>
-              Once your form is live and collecting responses, FlowForm provides powerful tools to view, analyze, and act on the data you've collected.
+              Once your form is live and collecting responses, FlowForm provides powerful tools to view, analyze, and act on the data you&apos;ve collected.
             </p>
           </div>
 
@@ -114,7 +114,7 @@ export default function GuideResponsesAnalytics() {
             
             <TabsContent value="analytics" className="border rounded-lg p-6">
               <h3 className="text-xl font-semibold mb-4">Analytics Dashboard</h3>
-              <p className="mb-6 text-gray-600">Gain valuable insights from your form data with FlowForm's interactive analytics dashboard.</p>
+              <p className="mb-6 text-gray-600">Gain valuable insights from your form data with FlowForm&apos;s interactive analytics dashboard.</p>
               
               <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -267,7 +267,7 @@ export default function GuideResponsesAnalytics() {
           
           <div className="bg-primary/5 border border-primary/10 rounded-lg p-6 mt-12">
             <h3 className="text-xl font-semibold mb-4">Next Steps</h3>
-            <p className="text-gray-600 mb-6">Now that you understand the basics of FlowForm, you're ready to create your first form!</p>
+            <p className="text-gray-600 mb-6">Now that you understand the basics of FlowForm, you&apos;re ready to create your first form!</p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white p-4 rounded-lg shadow-sm">

@@ -106,6 +106,7 @@ export function TextAreaBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      className="w-full"
     >
       {textareaField}
     </SlideWrapper>

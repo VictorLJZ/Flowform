@@ -56,7 +56,7 @@ export default function DynamicQuestionsHero() {
                   <div className="p-6">
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        How would you describe your team's workflow challenges?
+                        How would you describe your team&apos;s workflow challenges?
                       </label>
                       <div className="p-4 bg-gray-50 rounded-lg">
                         We struggle with organizing tasks across multiple teams and tracking progress.

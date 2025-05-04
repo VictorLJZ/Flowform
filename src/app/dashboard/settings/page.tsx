@@ -35,6 +35,7 @@ export default function GeneralSettings() {
         })
       }
     } catch (error) {
+      console.error('Error updating settings:', error);
       toast({
         title: "Failed to update settings",
         description: "There was an error updating your settings. Please try again.",

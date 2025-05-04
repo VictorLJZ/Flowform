@@ -36,16 +36,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const firstWorkspace = workspaceData.workspaces[0];
       
       // Debug what's happening
-      isDev && console.log('[Workspace] Setting initial workspace', { 
-        currentId: 'none',
-        firstWorkspaceId: firstWorkspace.id,
-        workspaceCount: workspaceData.workspaces.length
-      });
+      if (isDev) {
+        console.log('[Workspace] Setting initial workspace', { 
+          currentId: 'none',
+          firstWorkspaceId: firstWorkspace.id,
+          workspaceCount: workspaceData.workspaces.length
+        });
+      }
       
       // Only set if no workspace is currently selected
       setCurrentWorkspaceId(firstWorkspace.id);
     } else if (currentWorkspaceId) {
-      isDev && console.log('[Workspace] Using existing workspace selection:', currentWorkspaceId);
+      if (isDev) {
+        console.log('[Workspace] Using existing workspace selection:', currentWorkspaceId);
+      }
     }
   }, [workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
   

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/publicClient';
 import { FormResponse } from '@/types/supabase-types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,13 +8,16 @@ import { v4 as uuidv4 } from 'uuid';
  * 
  * @param formId - The ID of the form being responded to
  * @param metadata - Optional metadata about the respondent (device, browser, etc.)
+ * @param mode - Optional mode flag ('builder' or 'viewer') - uses public client when in viewer mode
  * @returns The created response record and starter question
  */
 export async function startFormResponse(
   formId: string,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  mode: 'builder' | 'viewer' = 'viewer' // Default to viewer mode for public access
 ): Promise<{ response: FormResponse; starterQuestion: string }> {
-  const supabase = createClient();
+  // Use public client for viewer mode, standard client for builder mode
+  const supabase = mode === 'viewer' ? createPublicClient() : createClient();
 
   // Generate a unique respondent ID - this should be stored in the browser
   // for returning users to continue their response

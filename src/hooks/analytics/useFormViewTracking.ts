@@ -54,6 +54,5 @@ export function useFormViewTracking(
   // We're directly using the ref value, so no dependencies needed for this memo
   return useMemo(() => ({
     hasTracked: hasTracked.current
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 }

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { initializeDefaultWorkspace } from '@/services/workspace/initializeDefaultWorkspace'
 
 // Helper function to get the Stripe checkout URL for a plan
 function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
@@ -179,7 +178,8 @@ export async function GET(request: Request) {
           }
         });
       } catch (error) {
-        // Fallback to direct redirect with cache prevention headers
+        // Log the error and fallback to direct redirect with cache prevention headers
+        console.error('[auth/callback] Error setting cookies:', error)
         return NextResponse.redirect(`${redirectUrl}?${authFlag}`, {
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

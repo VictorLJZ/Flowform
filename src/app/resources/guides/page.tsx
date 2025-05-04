@@ -150,7 +150,7 @@ export default function GuidesPage() {
             <div className="mt-16 bg-primary/5 rounded-xl p-8 border border-primary/10">
               <div className="flex flex-col md:flex-row items-center">
                 <div className="md:w-2/3">
-                  <h2 className="text-2xl font-bold mb-3">Can't find what you're looking for?</h2>
+                  <h2 className="text-2xl font-bold mb-3">Can&apos;t find what you&apos;re looking for?</h2>
                   <p className="text-gray-600 mb-6 md:mb-0">
                     Our support team is here to help. Check out the help center or contact us directly for personalized assistance.
                   </p>

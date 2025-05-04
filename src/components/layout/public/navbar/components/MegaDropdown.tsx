@@ -5,7 +5,7 @@ import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from "@/lib/utils"
-import { NavItem, NavSection } from '@/data/navigation'
+import { NavItem } from '@/data/navigation'
 import { TypedTitle } from './TypedTitle'
 import { RainbowFeatureCard } from './RainbowFeatureCard'
 

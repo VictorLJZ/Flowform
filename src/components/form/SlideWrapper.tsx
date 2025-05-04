@@ -63,8 +63,8 @@ export function SlideWrapper({
   const { mode } = useFormBuilderStore()
   const autosave = useAutosave()
   
-  // Get block presentation from settings
-  const presentation = settings?.presentation || { layout: 'left', spacing: 'normal', titleSize: 'medium' }
+  // Get block presentation from settings - using default if not provided
+  settings.presentation = settings?.presentation || { layout: 'left', spacing: 'normal', titleSize: 'medium' }
   
   // Get slide layout from settings or use standard layout as default
   const slideLayout = settings?.layout || { type: 'standard' }
@@ -109,9 +109,13 @@ export function SlideWrapper({
   // Use the passed blockRef if available, otherwise use the internal ref
   const containerRef = blockRef || internalRef;
   
+  // In viewer mode, we should ensure the wrapper takes full width
+  const isViewer = mode === 'viewer';
+  
   // Prepare the content of the slide
   const slideContent = (
-    <>
+    <div className={isViewer ? "w-full" : ""}>
+      
       {/* Slide counter with progress indicator */}
       {typeof index === 'number' && typeof totalBlocks === 'number' && (
         <div className="flex items-center mb-5">
@@ -119,48 +123,41 @@ export function SlideWrapper({
             <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-medium">
               {index + 1}
             </span>
-            <span className="text-muted-foreground">of {totalBlocks}</span>
+            <span>of {totalBlocks}</span>
           </div>
         </div>
       )}
       
-      {/* Title */}
-      <div className="mb-3">
-        <div className="flex items-baseline">
-          {isBuilder ? (
-            <div 
-              ref={titleRef}
-              contentEditable
-              suppressContentEditableWarning
-              className="font-semibold outline-none focus-visible:ring-0 focus-visible:ring-offset-0 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none"
-              style={{ fontSize: '1.75rem', lineHeight: '2.25rem', minWidth: '1rem' }}
-              data-placeholder="Question title"
-              onInput={handleTitleUpdate}
-              onBlur={handleBlur}
-            />
-          ) : (
-            <div className={cn(
-              "font-medium",
-              presentation.titleSize === 'small' && "text-base",
-              presentation.titleSize === 'medium' && "text-xl",
-              presentation.titleSize === 'large' && "text-2xl"
-            )}>
-              {title}
-            </div>
-          )}
-          
-          {required && (
-            <span className="text-primary font-medium ml-1" style={{ fontSize: isBuilder ? '1.5rem' : '1rem' }}>*</span>
-          )}
-        </div>
+      {/* Block title with editing capabilities in builder mode */}
+      <div className="block-title">
+        {isBuilder ? (
+          <div 
+            ref={titleRef}
+            contentEditable={isBuilder}
+            onInput={handleTitleUpdate}
+            onBlur={handleBlur}
+            className="text-2xl font-bold leading-tight outline-none focus:ring-1 focus:ring-primary/50 pb-1"
+          />
+        ) : (
+          <h2 className="text-2xl font-bold leading-tight">{title}</h2>
+        )}
         
-        {/* Description */}
+        {/* Required label - shown in builder mode or when required */}
+        {(isBuilder || required) && (
+          <span className="text-red-500 ml-1 text-sm">
+            {required ? "*" : ""}
+          </span>
+        )}
+      </div>
+      
+      {/* Block description with editing capabilities in builder mode */}
+      <div className="block-description">
         {isBuilder ? (
           <Textarea
             value={description || ''}
             onChange={handleDescriptionUpdate}
             onBlur={handleBlur}
-            className="border-none resize-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="resize-none text-gray-500 mt-1"
             placeholder="Add a description (optional)"
             rows={2}
           />
@@ -186,13 +183,18 @@ export function SlideWrapper({
           </button>
         </div>
       )}
-    </>
+    </div>
   )
   
   // Render the appropriate layout based on the slide layout type
   // Wrap all slide layouts in the aspect ratio container when in builder mode
+  // Use the existing isViewer variable
   const wrappedContent = (layoutComponent: React.ReactNode) => (
-    <div ref={containerRef} data-block-id={id}>
+    <div 
+      ref={containerRef} 
+      data-block-id={id} 
+      className={isViewer ? "w-full h-full flex-1" : ""}
+    >
       <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
         {layoutComponent}
       </SlideAspectRatioContainer>

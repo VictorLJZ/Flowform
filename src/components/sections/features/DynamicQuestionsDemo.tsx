@@ -1,7 +1,6 @@
 "use client"
 
 import { motion } from "motion/react"
-import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sparkles, Users, LineChart } from "lucide-react"
@@ -77,7 +76,7 @@ export default function DynamicQuestionsDemo() {
                             <Sparkles className="h-3 w-3 mr-1" />
                             AI Follow-up
                           </Badge>
-                          <p className="text-sm text-gray-500">Based on your "2" rating</p>
+                          <p className="text-sm text-gray-500">Based on your &quot;2&quot; rating</p>
                         </div>
                         <h3 className="text-base font-medium text-gray-900 mb-3">What aspects of the product disappointed you the most?</h3>
                         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -101,7 +100,7 @@ export default function DynamicQuestionsDemo() {
                             <Sparkles className="h-3 w-3 mr-1" />
                             AI Follow-up
                           </Badge>
-                          <p className="text-sm text-gray-500">Based on selecting "Features"</p>
+                          <p className="text-sm text-gray-500">Based on selecting &quot;Features&quot;</p>
                         </div>
                         <h3 className="text-base font-medium text-gray-900 mb-3">Which specific features were you expecting that were missing?</h3>
                         <div className="border border-gray-200 rounded-md">
@@ -133,7 +132,7 @@ export default function DynamicQuestionsDemo() {
                   </div>
                 </div>
                 <div className="p-6">
-                  <p className="text-center text-gray-500 my-12">Select the "Customer Feedback" tab to see the demo</p>
+                  <p className="text-center text-gray-500 my-12">Select the &quot;Customer Feedback&quot; tab to see the demo</p>
                 </div>
               </div>
             </div>
@@ -151,7 +150,7 @@ export default function DynamicQuestionsDemo() {
                   </div>
                 </div>
                 <div className="p-6">
-                  <p className="text-center text-gray-500 my-12">Select the "Customer Feedback" tab to see the demo</p>
+                  <p className="text-center text-gray-500 my-12">Select the &quot;Customer Feedback&quot; tab to see the demo</p>
                 </div>
               </div>
             </div>

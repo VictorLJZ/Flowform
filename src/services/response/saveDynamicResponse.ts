@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/publicClient';
 import { DynamicBlockResponse, DynamicBlockConfig, QAPair } from '@/types/supabase-types';
 import { generateQuestion } from '@/services/ai/generateQuestion';
 
@@ -10,6 +11,7 @@ import { generateQuestion } from '@/services/ai/generateQuestion';
  * @param currentQuestion - The current question that was answered
  * @param answer - The user's answer to the current question
  * @param isFirstQuestion - Whether this is the first question in the conversation
+ * @param mode - Optional mode flag ('builder' or 'viewer') - uses public client when in viewer mode
  * @returns The updated conversation and next question (if any)
  */
 export async function saveDynamicResponse(
@@ -17,13 +19,15 @@ export async function saveDynamicResponse(
   blockId: string,
   currentQuestion: string,
   answer: string,
-  isFirstQuestion = false
+  isFirstQuestion = false,
+  mode: 'builder' | 'viewer' = 'viewer' // Default to viewer mode for public access
 ): Promise<{ 
   conversation: QAPair[]; 
   nextQuestion: string | null;
   isComplete: boolean;
 }> {
-  const supabase = createClient();
+  // Use public client for viewer mode, standard client for builder mode
+  const supabase = mode === 'viewer' ? createPublicClient() : createClient();
   
   // First, get the existing conversation or create a new one
   let existingConversation: DynamicBlockResponse | null = null;

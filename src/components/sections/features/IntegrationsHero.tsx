@@ -3,7 +3,6 @@
 import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Link2 } from "lucide-react"
-import Image from "next/image"
 
 export default function IntegrationsHero() {
   return (

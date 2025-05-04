@@ -1,7 +1,5 @@
 "use client"
 
-import { CSSProperties } from 'react';
-
 // Shared styles for animations in the navbar
 export const NavbarStyles = () => (
   <style jsx global>{`

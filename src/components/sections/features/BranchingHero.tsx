@@ -73,21 +73,21 @@ export default function BranchingHero() {
                           <div className="relative">
                             <div className="h-16 border-l-2 border-b-2 border-gray-300 absolute -top-8 left-1/2 w-1/2 -ml-px rounded-bl-lg"></div>
                             <div className="bg-green-50 rounded-lg p-3 shadow-sm border border-green-200 text-sm">
-                              <div className="text-xs font-medium text-green-800 mb-2">If "Daily"</div>
+                              <div className="text-xs font-medium text-green-800 mb-2">If &quot;Daily&quot;</div>
                               <div className="text-xs text-gray-700">What type of exercises?</div>
                             </div>
                           </div>
                           <div className="relative">
                             <div className="h-8 border-t-2 border-gray-300 absolute -top-8 left-0 w-full"></div>
                             <div className="bg-blue-50 rounded-lg p-3 shadow-sm border border-blue-200 text-sm">
-                              <div className="text-xs font-medium text-blue-800 mb-2">If "Weekly"</div>
+                              <div className="text-xs font-medium text-blue-800 mb-2">If &quot;Weekly&quot;</div>
                               <div className="text-xs text-gray-700">How many days?</div>
                             </div>
                           </div>
                           <div className="relative">
                             <div className="h-16 border-r-2 border-b-2 border-gray-300 absolute -top-8 right-1/2 w-1/2 -mr-px rounded-br-lg"></div>
                             <div className="bg-amber-50 rounded-lg p-3 shadow-sm border border-amber-200 text-sm">
-                              <div className="text-xs font-medium text-amber-800 mb-2">If "Rarely"</div>
+                              <div className="text-xs font-medium text-amber-800 mb-2">If &quot;Rarely&quot;</div>
                               <div className="text-xs text-gray-700">Why not more often?</div>
                             </div>
                           </div>

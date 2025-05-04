@@ -1,4 +1,5 @@
 import { FormBlock, DynamicBlockConfig, QAPair, Form } from './supabase-types';
+import { Connection } from './workflow-types';
 
 /**
  * Form Service Types
@@ -117,6 +118,22 @@ export type SaveDynamicConfigResult = ServiceResponse<DynamicBlockConfig>;
 // -----------------------------------------------------
 // Form Types
 // -----------------------------------------------------
+
+/**
+ * Workflow settings structure for forms
+ */
+export interface WorkflowSettings {
+  connections: Connection[];
+  [key: string]: unknown;
+}
+
+/**
+ * Form settings structure
+ */
+export interface FormSettings {
+  workflow?: WorkflowSettings;
+  [key: string]: unknown;
+}
 
 /**
  * Input for creating a new form

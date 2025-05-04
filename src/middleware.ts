@@ -34,8 +34,8 @@ export async function middleware(request: NextRequest) {
   try {
     const { data } = await supabase.auth.getUser()
     user = data.user
-  } catch (error) {
-    // Ignore auth session errors
+  } catch {
+    // Ignore auth session errors - middleware should continue even if auth fails
   }
 
   // Path is the pathname of the URL

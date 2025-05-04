@@ -57,12 +57,12 @@ export default function EngineeringCTA() {
               >
                 <div className="text-xs font-medium text-gray-700 mb-2">API Integration</div>
                 <div className="bg-gray-900 rounded p-3 font-mono text-[10px] text-green-400">
-                  <div className="mb-1 text-gray-500">// Submit form data via API</div>
+                  <div className="mb-1 text-gray-500">{/* Submit form data via API */}</div>
                   <div>const response = await fetch(</div>
-                  <div className="ml-4">'/api/forms/submit',</div>
+                  <div className="ml-4">&apos;/api/forms/submit&apos;,</div>
                   <div className="ml-4">{'{'}</div>
-                  <div className="ml-8">method: 'POST',</div>
-                  <div className="ml-8">headers: {'{'} 'Content-Type': 'application/json' {'}'},</div>
+                  <div className="ml-8">method: &apos;POST&apos;,</div>
+                  <div className="ml-8">headers: {'{'} &apos;Content-Type&apos;: &apos;application/json&apos; {'}'},</div>
                   <div className="ml-8">body: JSON.stringify(formData)</div>
                   <div className="ml-4">{'}'}</div>
                   <div>);</div>

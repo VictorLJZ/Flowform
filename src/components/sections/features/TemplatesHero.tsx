@@ -3,7 +3,6 @@
 import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { LayoutTemplate } from "lucide-react"
-import Image from "next/image"
 
 export default function TemplatesHero() {
   return (

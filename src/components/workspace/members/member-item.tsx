@@ -7,7 +7,6 @@ import { useAuthSession } from "@/hooks/useAuthSession"
 import { changeUserRoleClient, removeWorkspaceMemberClient } from "@/services/workspace/client"
 import { WorkspaceMemberWithProfile } from "@/types/workspace-types"
 import { WorkspaceRole } from "@/types/workspace-types"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MoreVertical, UserMinus, Shield } from "lucide-react"
 import {
@@ -63,15 +62,7 @@ export function MemberItem({
       .substring(0, 2)
   }
   
-  // Role badge colors
-  const roleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'owner': return 'default'
-      case 'admin': return 'secondary'
-      case 'editor': return 'outline'
-      default: return 'outline'
-    }
-  }
+  // Role badge colors are handled directly in the component
   
   // Handle role change
   const handleRoleChange = async (newRole: string) => {

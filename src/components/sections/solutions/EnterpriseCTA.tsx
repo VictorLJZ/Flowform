@@ -25,7 +25,7 @@ export default function EnterpriseCTA() {
                   Ready for an enterprise-grade form solution?
                 </h2>
                 <p className="text-xl text-gray-600 mb-8">
-                  Contact our enterprise team to learn how FlowForm can be tailored to your organization's specific needs and security requirements.
+                  Contact our enterprise team to learn how FlowForm can be tailored to your organization&apos;s specific needs and security requirements.
                 </p>
                 <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                   <Button size="lg" className="bg-slate-800 hover:bg-slate-900 font-medium">

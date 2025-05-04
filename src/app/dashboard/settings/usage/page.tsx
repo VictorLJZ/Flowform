@@ -184,7 +184,7 @@ export default function UsageSettings() {
             <Card>
               <CardHeader>
                 <CardTitle>Form Limits</CardTitle>
-                <CardDescription>Your plan's form limits and usage</CardDescription>
+                <CardDescription>Your plan&apos;s form limits and usage</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -275,7 +275,7 @@ export default function UsageSettings() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Storage Used</span>
+                    <span className="text-sm font-medium">StYou&apos;ve used</span>
                     <span className="text-sm font-medium">{usageData.storage.used} / {usageData.storage.total}</span>
                   </div>
                   <Progress value={usageData.storage.percentage} className="h-2" />

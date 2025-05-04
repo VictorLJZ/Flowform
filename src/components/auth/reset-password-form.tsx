@@ -49,6 +49,7 @@ export function ResetPasswordForm({
         router.push('/login?message=Your password has been updated. Please login with your new password.')
       }
     } catch (error) {
+      console.error('Error resetting password:', error);
       toast({
         variant: "destructive",
         title: "Error",

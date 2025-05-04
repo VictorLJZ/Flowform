@@ -5,7 +5,6 @@ import { Plus, Trash2, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { Workspace } from "@/types/supabase-types"
-import { cn } from "@/lib/utils"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 import {
@@ -25,7 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type InviteDialogProps = {

@@ -24,7 +24,7 @@ export default function GuideFormBasics() {
           
           <div className="prose prose-lg max-w-none text-gray-600 mb-10">
             <p>
-              Creating a form in FlowForm is simple and intuitive. Let's walk through the basic steps to create your first form.
+              Creating a form in FlowForm is simple and intuitive. Let&apos;s walk through the basic steps to create your first form.
             </p>
           </div>
 
@@ -35,7 +35,7 @@ export default function GuideFormBasics() {
                 <div className="flex items-start">
                   <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium mr-3 mt-0.5 flex-shrink-0">1</div>
                   <div>
-                    <p>Navigate to your dashboard and click the "Create New Form" button.</p>
+                    <p>Navigate to your dashboard and click the &quot;Create New Form&quot; button.</p>
                     <div className="mt-3 flex">
                       <Button className="mr-2">
                         <Plus className="mr-2 h-4 w-4" />
@@ -68,7 +68,7 @@ export default function GuideFormBasics() {
                 <div className="flex items-start">
                   <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium mr-3 mt-0.5 flex-shrink-0">3</div>
                   <div>
-                    <p>Enter your form title and description. This helps respondents understand what information you're collecting and why.</p>
+                    <p>Enter your form title and description. This helps respondents understand what information you&apos;re collecting and why.</p>
                     <div className="mt-3 bg-white border border-gray-200 rounded-lg p-4">
                       <div className="mb-3">
                         <label className="block text-sm font-medium mb-1">Form Title</label>

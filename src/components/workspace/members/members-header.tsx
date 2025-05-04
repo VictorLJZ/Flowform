@@ -36,8 +36,6 @@ export function MembersHeader({
   onSortChange,
   onSortDirectionChange,
   onSearchChange,
-  onInviteClick,
-  isAdmin,
   currentFilter,
   currentSort,
   currentSortDirection,

@@ -16,12 +16,9 @@ import ReactFlow, {
   Panel,
   useReactFlow,
   ConnectionLineType,
-  PanelPosition,
   useStoreApi,
   NodeChange,
-  EdgeChange,
-  ConnectionMode,
-  XYPosition
+  ConnectionMode
 } from 'reactflow'
 import { v4 as uuidv4 } from 'uuid'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
@@ -358,7 +355,7 @@ export default function WorkflowCanvas() {
     
     // Check if a position would overlap with existing nodes
     const wouldOverlap = (x: number, y: number): boolean => {
-      for (const [nodeId, pos] of positions.entries()) {
+      for (const [, pos] of positions.entries()) {
         // Check if rectangles overlap
         if (
           x < pos.x + nodeWidth &&
@@ -408,17 +405,6 @@ export default function WorkflowCanvas() {
     const nodeRows = new Map<string, number>();
     const rowPositions = new Map<number, number[]>(); // row -> x positions used
     
-    // Get the widest path from node to its deepest leaf
-    const getPathWidth = (nodeId: string, visited = new Set<string>()): number => {
-      if (visited.has(nodeId)) return 0;
-      visited.add(nodeId);
-      
-      const children = childrenMap.get(nodeId) || [];
-      if (children.length === 0) return 1;
-      
-      return Math.max(...children.map(childId => getPathWidth(childId, new Set(visited))));
-    };
-    
     // Process branch by assigning row and column positions
     const processNode = (nodeId: string, preferredX: number, preferredRow: number, visited = new Set<string>()) => {
       if (processed.has(nodeId) || visited.has(nodeId)) return;
@@ -431,10 +417,7 @@ export default function WorkflowCanvas() {
         let row = preferredRow;
         
         // Find the best X position in this row that doesn't overlap
-        let bestX = preferredX;
-        
-        // Get existing positions in this row
-        const rowXPositions = rowPositions.get(row) || [];
+        const bestX = preferredX;
         
         // Try to find a position that doesn't conflict with existing nodes
         const possiblePosition = findNonOverlappingPosition(bestX, row * verticalGap);
@@ -620,7 +603,8 @@ export default function WorkflowCanvas() {
       const state = store.getState();
       
       // Get mouse position from store - note: the type is not correctly defined in ReactFlow
-      const mousePosition = (state as any).mousePos as [number, number];
+      // Using Record<string, unknown> as an intermediate type for better type safety
+      const mousePosition = (state as Record<string, unknown>).mousePos as [number, number];
       
       if (!mousePosition) return;
       
@@ -866,40 +850,6 @@ export default function WorkflowCanvas() {
     setSelectedElement(edge as Edge<WorkflowEdgeData>)
   }, [])
   
-  // Handle edge deletion
-  const onEdgeDelete = useCallback(
-    (edge: Edge<WorkflowEdgeData>) => {
-      // Simply call the store function directly without any animations
-      if (edge.id) {
-        console.log(`Edge delete handler for id: ${edge.id}`);
-        
-        // Use setTimeout to ensure proper handling
-        setTimeout(() => {
-          // If this edge was selected, clear the selection to close any sidebar
-          if (selectedElement?.id === edge.id) {
-            setSelectedElement(null);
-          }
-          
-          // Then remove the connection
-          removeConnection(edge.id);
-        }, 0);
-        
-        // Show simple feedback toast
-        const feedback = document.createElement('div');
-        feedback.textContent = 'Connection deleted';
-        feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
-        document.body.appendChild(feedback);
-        
-        // Remove feedback after delay
-        setTimeout(() => {
-          if (document.body.contains(feedback)) {
-            document.body.removeChild(feedback);
-          }
-        }, 2000);
-      }
-    },
-    [removeConnection, selectedElement]
-  )
   
   // Enhanced double-click handler for edges
   const handleEdgeDoubleClick: EdgeMouseHandler = useCallback((event, edge) => {
@@ -990,12 +940,12 @@ export default function WorkflowCanvas() {
           selectNodesOnDrag={false} // Don't select nodes when dragging canvas
           panOnScroll={false} // Disable panning with scroll wheel
           zoomOnScroll={true} // Enable zooming with scroll wheel (default behavior)
-          panOnScrollMode="default" // Use default pan mode
+          // panOnScrollMode removed due to type incompatibility
           nodesDraggable={true} // Allow nodes to be dragged
           nodesConnectable={true} // Allow nodes to be connected
           multiSelectionKeyCode={['Control', 'Meta']} // Multiple selection with Ctrl/Cmd
           autoPanOnNodeDrag={false} // Prevent auto-panning when dragging nodes to edges
-          fitViewOnInit={false} // Disable automatic fitting of view on initialization
+          // fitViewOnInit removed - not supported in this version of ReactFlow
           onSelectionChange={() => {}} // Empty handler to prevent default behaviors
           preventScrolling={true} // Prevent scrolling of the page
           disableKeyboardA11y={true} // Disable keyboard accessibility features that might change view

@@ -1,14 +1,17 @@
 import { createClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/publicClient';
 import { FormResponse } from '@/types/supabase-types';
 
 /**
  * Mark a form response as completed
  * 
  * @param responseId - The ID of the form response to complete
+ * @param mode - Optional mode flag ('builder' or 'viewer') - uses public client when in viewer mode
  * @returns The updated form response
  */
-export async function completeResponse(responseId: string): Promise<FormResponse> {
-  const supabase = createClient();
+export async function completeResponse(responseId: string, mode: 'builder' | 'viewer' = 'viewer'): Promise<FormResponse> {
+  // Use public client for viewer mode, standard client for builder mode
+  const supabase = mode === 'viewer' ? createPublicClient() : createClient();
 
   // Update the response status to completed
   const { data, error } = await supabase

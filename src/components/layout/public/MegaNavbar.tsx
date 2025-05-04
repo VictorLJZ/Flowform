@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { cn } from "@/lib/utils"
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { useAuth } from '@/providers/auth-provider'
+import { transformToUserType } from '@/services/auth/verifiedAuth'
 
 // Import our navigation data
 import { navItems } from '@/data/navigation'
@@ -46,7 +47,7 @@ export default function MegaNavbar() {
             />
 
             {/* Right - Auth buttons / User Menu */}
-            <UserMenuSection user={user} signOut={signOut} />
+            <UserMenuSection user={transformToUserType(user)} signOut={signOut} />
           </div>
         </div>
 

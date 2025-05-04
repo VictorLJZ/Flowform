@@ -1,10 +1,10 @@
 "use client"
 
 import { memo, useMemo, useCallback, useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, MarkerType, useReactFlow } from 'reactflow'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow'
 import { WorkflowEdgeData } from '@/types/workflow-types'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { Check, ArrowRight, Hash, AlertCircle, X, ChevronUp, ChevronDown, ListFilter, Trash2 } from 'lucide-react'
+import { Check, ArrowRight, X, ChevronUp, ChevronDown, ListFilter, Trash2 } from 'lucide-react'
 
 const WorkflowEdge = ({
   id,
@@ -78,7 +78,7 @@ const WorkflowEdge = ({
     
     // Style settings
     let dashArray = '0' // solid line by default
-    let edgeWidth = selected ? 3 : 2 // Increased width for better visibility
+    const edgeWidth = selected ? 3 : 2 // Increased width for better visibility
     
     // Style based on condition presence/type
     if (!hasCondition) {
@@ -180,14 +180,10 @@ const WorkflowEdge = ({
   const ConditionIcon = getConditionIcon()
   const condition = formatCondition()
   const labelBgColor = selected ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'
-  const labelTextColor = selected ? 'text-amber-800' : `text-${edgeStyles.baseColor}`
-
-  // Calculate position for the delete button
-  const deleteButtonX = (sourceX + targetX) / 2;
-  const deleteButtonY = (sourceY + targetY) / 2 - 30;
-
-  // Track whether the edge is hovered
-  const [isHovered, setIsHovered] = useState(false);
+  // Remove unused variables
+  
+  // Track hover state for the edge
+  const [, setIsHovered] = useState(false);
 
   return (
     <>
@@ -205,21 +201,25 @@ const WorkflowEdge = ({
         />
       )}
 
-      <BaseEdge 
-        path={edgePath} 
-        id={id} 
-        style={{
-          ...style,
-          strokeWidth: edgeStyles.strokeWidth,
-          stroke: edgeStyles.stroke,
-          strokeDasharray: edgeStyles.strokeDasharray,
-          transition: edgeStyles.transition,
-        }} 
-        markerEnd={`url(#${id}-marker)`}
-        data-edge-id={id}
+      <div 
+        className="edge-wrapper"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-      />
+      >
+        <BaseEdge 
+          path={edgePath} 
+          id={id} 
+          style={{
+            ...style,
+            strokeWidth: edgeStyles.strokeWidth,
+            stroke: edgeStyles.stroke,
+            strokeDasharray: edgeStyles.strokeDasharray,
+            transition: edgeStyles.transition,
+          }} 
+          markerEnd={`url(#${id}-marker)`}
+          data-edge-id={id}
+        />
+      </div>
       <svg>
         <defs>
           <marker

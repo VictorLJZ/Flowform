@@ -75,10 +75,10 @@ export default function DesignCTA() {
                 
                 <div className="space-y-2">
                   <div className="bg-gray-50 p-2 rounded text-[10px] text-gray-600">
-                    "I prefer Version A because the layout is more intuitive."
+                    &quot;I prefer Version A because the layout is more intuitive.&quot;
                   </div>
                   <div className="bg-gray-50 p-2 rounded text-[10px] text-gray-600">
-                    "Version A has better contrast and readability."
+                    &quot;Version A has better contrast and readability.&quot;
                   </div>
                   <div className="flex justify-end mt-1">
                     <div className="text-[10px] text-pink-600">View all 24 responses →</div>

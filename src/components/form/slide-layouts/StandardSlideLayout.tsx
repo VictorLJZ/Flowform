@@ -54,15 +54,16 @@ export function StandardSlideLayout({
     <div 
       className={cn(
         "w-full h-full flex flex-col justify-center items-center",
-        isViewer && "min-h-[calc(100vh-60px)]",  // Full height in viewer mode
+        isViewer && "min-h-[calc(100vh-60px)] w-full",  // Full height and width in viewer mode
         className
       )}
     >
       <div className={cn(
         "w-full max-w-2xl px-6 py-8",
-        isViewer && "flex-1 flex flex-col justify-center",
+        isViewer && "flex-1 flex flex-col justify-center w-full",
         alignmentClasses[effectiveAlignment],
         spacingClasses[effectiveSpacing],
+        "text-left space-y-4" // Ensure consistent spacing and alignment
       )}>
         {children}
       </div>

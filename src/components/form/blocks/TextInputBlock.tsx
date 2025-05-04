@@ -137,6 +137,7 @@ export function TextInputBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      className="w-full"
     >
       {inputField}
     </SlideWrapper>

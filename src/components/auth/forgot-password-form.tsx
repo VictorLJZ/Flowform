@@ -35,6 +35,7 @@ export function ForgotPasswordForm({
         })
       }
     } catch (error) {
+      console.error('Error sending password reset email:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -50,7 +51,7 @@ export function ForgotPasswordForm({
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Reset your password</h1>
         <p className="text-balance text-sm text-muted-foreground">
-          Enter your email below and we'll send you a link to reset your password
+          Enter your email below and we&apos;ll send you a link to reset your password
         </p>
       </div>
       
@@ -75,7 +76,7 @@ export function ForgotPasswordForm({
       ) : (
         <div className="grid gap-6">
           <div className="rounded-md bg-green-500/15 p-3 text-sm text-green-600">
-            Check your email for a link to reset your password. If it doesn't appear within a few minutes, check your spam folder.
+            Check your email for a link to reset your password. If it doesn&apos;t appear within a few minutes, check your spam folder.
           </div>
           
           <Button asChild className="w-full">
