@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/client';
 import { WorkspaceInvitation, Workspace } from '@/types/supabase-types';
 import { WorkspaceRole } from '@/types/workspace-types';
 import { v4 as uuidv4 } from 'uuid';
-import { sendInvitationEmail } from '@/services/email/sendInvitationEmail';
+import { sendInvitationEmail } from '@/services/workspace/sendInvitationEmail';
 
 /**
  * Send an invitation to join a workspace
@@ -127,11 +127,7 @@ export async function inviteToWorkspace(
       
       // Send invitation email
       console.log('[inviteToWorkspace] Sending invitation email');
-      const emailResult = await sendInvitationEmail(
-        data,
-        workspace?.name || 'Flowform Workspace',
-        inviter?.full_name || 'A Flowform user'
-      );
+      const emailResult = await sendInvitationEmail(data.id);
       
       console.log('[inviteToWorkspace] Email send result:', emailResult);
       

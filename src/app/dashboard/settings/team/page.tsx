@@ -18,6 +18,13 @@ export default function TeamSettings() {
   const { currentWorkspaceId, workspaces } = useWorkspaceStore()
   const currentWorkspace = workspaces.find(w => w.id === currentWorkspaceId)
   
+  // Debug logging to see what we're working with
+  console.log('[TeamSettings] Workspace context:', {
+    currentWorkspaceId: currentWorkspaceId || 'null',
+    workspacesCount: workspaces.length,
+    hasCurrentWorkspace: !!currentWorkspace,
+  })
+  
   const [filterRole, setFilterRole] = useState<WorkspaceRole | null>(null)
   const [sortBy, setSortBy] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")

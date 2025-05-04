@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { Workspace } from "@/types/supabase-types"
 import { cn } from "@/lib/utils"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 import {
   Dialog,
@@ -41,6 +42,29 @@ type InviteInput = {
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
   
+  // Get both the passed workspace and the store workspace
+  const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId)
+  const storeWorkspaces = useWorkspaceStore(state => state.workspaces)
+  
+  // CRITICAL: Define workspaceId directly (not through an object) to avoid null issues
+  // Priority: 1. currentWorkspace.id from props, 2. storeWorkspaceId
+  const workspaceId = currentWorkspace?.id || storeWorkspaceId || null
+  
+  // Get the full workspace object if needed for other purposes (but use workspaceId for the hook)
+  const effectiveWorkspace = currentWorkspace || 
+    (storeWorkspaceId ? storeWorkspaces.find(w => w.id === storeWorkspaceId) : null)
+  
+  // Add extra logging for debugging
+  console.log('[InviteDialog] Workspace details:', {
+    fromProps: currentWorkspace?.id || 'null',
+    fromStore: storeWorkspaceId || 'null',
+    finalWorkspaceId: workspaceId || 'null',
+    hasEffectiveWorkspace: !!effectiveWorkspace,
+    isOpen: open,
+    workspacesInStore: storeWorkspaces.length
+  })
+  
+  // Use the direct workspaceId for the hook instead of the object
   const {
     invitations: sentInvitations,
     send,
@@ -48,7 +72,7 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
     error: invitationError,
     clearError,
     invitationLimit,
-  } = useWorkspaceInvitations(currentWorkspace?.id)
+  } = useWorkspaceInvitations(workspaceId)
   
   // For storing the list of email/role pairs to invite
   const [invites, setInvites] = useState<InviteInput[]>([
@@ -90,6 +114,17 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
   }
   
   const handleSendInvitations = async () => {
+    // Double check we have a valid workspace ID before proceeding
+    if (!workspaceId) {
+      console.error('[InviteDialog] No workspace ID available when sending invitations')
+      toast({
+        title: "Missing workspace",
+        description: "Please select a workspace before inviting members.",
+        variant: "destructive"
+      })
+      return
+    }
+    
     // Filter out empty emails
     const validInvites = invites.filter(invite => invite.email.trim() !== "")
     
@@ -101,6 +136,13 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
       })
       return
     }
+    
+    // Log what we're about to send for debugging
+    console.log('[InviteDialog] Sending invitations:', {
+      workspaceId,
+      inviteCount: validInvites.length,
+      firstInvite: validInvites[0]?.email || 'none'
+    })
     
     try {
       await send(validInvites)
@@ -114,8 +156,13 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
       setInvites([{ email: "", role: "editor" }])
       onOpenChange(false)
     } catch (error) {
-      // The error will be handled by the store and displayed in the UI
-      console.error('Error sending invitations:', error)
+      // Show the error to the user
+      console.error('[InviteDialog] Error sending invitations:', error)
+      toast({
+        title: "Error sending invitations",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
     }
   }
   

@@ -37,10 +37,12 @@ import { toast } from "@/components/ui/use-toast"
 import { useAuthSession } from "@/hooks/useAuthSession"
 import { useWorkspaceSwitcher } from "@/hooks/useWorkspaceSwitcher"
 import { createWorkspace } from "@/services/workspace/client"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 export function WorkspaceSwitcher() {
   const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
   const { currentWorkspaceId, switchToWorkspace } = useWorkspaceSwitcher()
+  const addWorkspace = useWorkspaceStore(state => state.addWorkspace)
 
   const { user, isLoading: isLoadingAuth } = useAuthSession()
   const userId = user?.id
@@ -74,10 +76,18 @@ export function WorkspaceSwitcher() {
       setCreateDialogOpen(false)
       setNewWorkspace({ name: "", description: "" })
       toast({ title: "Success", description: "Workspace created successfully" })
-      await mutateWorkspaces()
+      
       if (created && 'id' in created && created.id) {
-         console.log("[WorkspaceSwitcher] Setting newly created workspace as current:", created.id);
-         switchToWorkspace(created.id);
+        console.log("[WorkspaceSwitcher] Adding new workspace to store:", created.id);
+        // Directly update the workspace store with the new workspace
+        addWorkspace(created);
+        
+        // Also refresh the SWR cache to keep it in sync
+        await mutateWorkspaces();
+        
+        // Switch to the newly created workspace
+        console.log("[WorkspaceSwitcher] Setting newly created workspace as current:", created.id);
+        switchToWorkspace(created.id);
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create workspace" })
