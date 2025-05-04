@@ -47,23 +47,60 @@ export default function Page() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
 
+  // First effect: Prevent reload loops and handle cleanup
   useEffect(() => {
-    const runAuthCheck = async () => {
-      console.log('[Dashboard] Running auth diagnostic check')
-      try {
-        const result = await checkAuthStatus()
-        console.log('[Dashboard] Auth check result:', result)
-        if (typeof window !== 'undefined') {
-          (window as Window & { checkAuth?: () => Promise<unknown> }).checkAuth = checkAuthStatus
-          console.log('[Dashboard] Auth checker available in console as "checkAuth()"')
-        }
-      } catch (error) {
-        console.error('[Dashboard] Auth check error:', error)
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) console.log('[Dashboard] Mounted');
+    
+    if (typeof window !== 'undefined') {
+      // Clear navigation flags once we've reached the dashboard
+      sessionStorage.removeItem('redirect_source');
+      sessionStorage.removeItem('redirect_in_progress');
+      
+      // Set dashboard flag with timestamp to track time spent on dashboard
+      const timestamp = Date.now().toString();
+      sessionStorage.setItem('dashboard_loaded', timestamp);
+      
+      // Increment mount count for debugging
+      if (isDev) {
+        const count = parseInt(sessionStorage.getItem('dashboard_mounts') || '0') + 1;
+        sessionStorage.setItem('dashboard_mounts', count.toString());
+        console.log(`[Dashboard] Mount count: ${count}`);
       }
     }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        // Only clear dashboard flag if we've been on the page long enough
+        // to prevent rapid mount/unmount cycles
+        const loadTime = parseInt(sessionStorage.getItem('dashboard_loaded') || '0');
+        if (Date.now() - loadTime > 1000) {
+          sessionStorage.removeItem('dashboard_loaded');
+        }
+      }
+    };
+  }, []);
 
-    runAuthCheck()
-  }, [])
+  // Second effect: Auth diagnostics (dev only)
+  useEffect(() => {
+    // Only run in development and only once per session
+    if (process.env.NODE_ENV !== 'development') return;
+    if (sessionStorage.getItem('auth_checked')) return;
+    
+    const runAuthCheck = async () => {
+      try {
+        const result = await checkAuthStatus();
+        console.log('[Dashboard] Auth check:', result);
+        sessionStorage.setItem('auth_checked', 'true');
+      } catch (error) {
+        console.error('[Dashboard] Auth check error:', error);
+      }
+    };
+    
+    // Run the check after a short delay to ensure page is stable
+    const timer = setTimeout(runAuthCheck, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCreateForm = () => { router.push('/dashboard/builder/new') }
   const handleViewResponses = (formId: string) => { router.push(`/dashboard/forms/${formId}/responses`) }

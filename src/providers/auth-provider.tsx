@@ -23,98 +23,90 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [supabase, setSupabase] = useState(() => {
-    console.log("[AuthProvider] Initializing state with new client.");
-    return createClient();
-  });
+  const [supabase, setSupabase] = useState(() => createClient());
   const router = useRouter();
+  const isDev = process.env.NODE_ENV === 'development';
 
+  // Handle auth state changes
   useEffect(() => {
-    console.log("[AuthProvider] Setting up auth state listener.");
+    // Clear any stale redirect flags on initialization
+    if (typeof window !== 'undefined') {
+      const now = Date.now();
+      const redirectTime = parseInt(sessionStorage.getItem('redirect_in_progress') || '0');
+      if (now - redirectTime > 5000) {
+        sessionStorage.removeItem('redirect_in_progress');
+      }
+    }
+    
+    // Setup auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[AuthProvider] Auth state changed:", event, session ? 'New session' : 'No session');
+      if (isDev) console.log("[Auth] State changed:", event);
+      
+      // Force data refresh to update auth state across the app
+      mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
 
-      console.log(`[AuthProvider] Triggering SWR mutate for key: ${AUTH_SWR_KEY}`);
-      mutate(AUTH_SWR_KEY);
-
+      // Handle sign out event
       if (event === 'SIGNED_OUT') {
+        // Check if we recently signed in to prevent redirect loops
+        if (!sessionStorage.getItem('just_signed_in')) {
+          // Check for too frequent redirects
+          const lastRedirect = parseInt(sessionStorage.getItem('last_redirect') || '0');
+          if (Date.now() - lastRedirect < 2000) {
+            if (isDev) console.log("[Auth] Skipping redirect - too recent");
+            return;
+          }
+          
+          // Record redirect and go to home page
+          sessionStorage.setItem('last_redirect', Date.now().toString());
+          sessionStorage.setItem('redirect_in_progress', Date.now().toString());
           router.push('/');
+        }
+      } 
+      // Handle sign in event
+      else if (event === 'SIGNED_IN') {
+        // Mark as just signed in to prevent redirect loops
+        sessionStorage.setItem('just_signed_in', Date.now().toString());
+        
+        // Clear this flag after a delay
+        setTimeout(() => {
+          sessionStorage.removeItem('just_signed_in');
+        }, 5000);
       }
     });
 
-    return () => {
-      console.log("[AuthProvider] Cleaning up auth listener.");
-      subscription?.unsubscribe();
-    };
-  }, [supabase, router]); 
+    return () => subscription?.unsubscribe();
+  }, [supabase, router, isDev]);
 
+  // Refresh auth state when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log("[AuthProvider] Tab focused, recreating Supabase client...");
-        setSupabase(createClient()); 
-      } else {
-         console.log("[AuthProvider] Tab unfocused.");
+        setSupabase(createClient());
+        mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    console.log("[AuthProvider] Visibility listener added.");
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      console.log("[AuthProvider] Visibility listener removed.");
-    };
-  }, []); 
-
-  /**
-   * Securely sign out the user and clear authentication state
-   */
+  // Sign out function
   const signOut = useCallback(async () => {
-    // Track calling component/location
-    console.log("[AUTH DEBUG] AuthProvider.signOut called from:", 
-      new Error().stack?.split('\n').slice(2, 4).join('\n'));
-    
-    // Verify user is authenticated before attempting sign out
-    console.log("[AUTH DEBUG] Verifying user before signOut");
-    const user = await getVerifiedUser();
-    
-    if (user) {
-      console.log("[AUTH DEBUG] User verified, proceeding with signOut. User:", user.email);
-      console.log("[AUTH DEBUG] Calling supabase.auth.signOut()");
-      
-      await supabase.auth.signOut();
-      
-      console.log("[AUTH DEBUG] supabase.auth.signOut() completed");
-      console.log("[AUTH DEBUG] Triggering SWR cache clearing for auth");
-      
-      // More aggressive cache invalidation strategy: 
-      // 1. Pass null as data to clear the cache immediately
-      // 2. Set revalidate to false to prevent immediate revalidation
-      // 3. This ensures we don't immediately try to fetch auth data again
-      mutate(AUTH_SWR_KEY, null, { revalidate: false });
-      
-      // Store logout timestamp in localStorage for components to detect auth change
-      localStorage.setItem('auth_logout_timestamp', Date.now().toString());
-      
-      console.log("[AUTH DEBUG] SWR cache cleared and logout timestamp set");
-    } else {
-      console.log("[AUTH DEBUG] Sign out called but no verified user found");
-      // Still clear cache even if no verified user found
+    try {
+      const user = await getVerifiedUser();
+      if (user) {
+        await supabase.auth.signOut();
+        mutate(AUTH_SWR_KEY, null, { revalidate: false });
+      }
+    } catch (error) {
+      if (isDev) console.error("[Auth] Sign out error:", error);
       mutate(AUTH_SWR_KEY, null, { revalidate: false });
     }
-    console.log("[AUTH DEBUG] signOut function completed - router navigation should happen via onAuthStateChange");
-    // Router navigation happens via the onAuthStateChange listener
-  }, [supabase]);
+  }, [supabase, isDev]);
 
-  const value = {
-    supabase,
-    signOut,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ supabase, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = (): AuthContextType => {

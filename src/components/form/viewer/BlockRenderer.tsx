@@ -42,6 +42,8 @@ interface BlockRendererProps {
   formId: string;
   analytics: ReturnType<typeof useAnalytics>; // Get the type from the hook
   aiConversationRef: React.RefObject<AIConversationHandle | null>; // Allow null
+  index?: number; // Current block index for numbering
+  totalBlocks?: number; // Total number of blocks for progress
 }
 
 export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
@@ -55,6 +57,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     formId,
     analytics,
     aiConversationRef,
+    index,
+    totalBlocks
   } = props;
 
   // Log the block being rendered for debugging
@@ -95,6 +99,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     };
     onNext?: () => void;
     isNextDisabled?: boolean;
+    index?: number;
+    totalBlocks?: number;
   } = {
     id: block.id,
     title: block.title,
@@ -110,18 +116,26 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     },
     onNext: submitAnswer ? () => submitAnswer(block, currentAnswer) : undefined,
     isNextDisabled: submitting, // Disable when submitting
+    index: index, // Add current block index for question numbering
+    totalBlocks: totalBlocks // Add total blocks for progress and Submit button text
   };
 
-  // Function to render a block with its proper wrapper
-  const renderWrappedBlock = <T extends object>(BlockComponent: React.ComponentType<T>, mapperFn: (props: BaseBlockMapperProps) => T) => {
+  // Function to render a block - now passing SlideWrapper props to block components directly
+  // This avoids double-wrapping with SlideWrapper since each block component already includes it
+  const renderBlock = <T extends object>(BlockComponent: React.ComponentType<T>, mapperFn: (props: BaseBlockMapperProps) => T) => {
     // Map the base props to component-specific props using the mapper function
     const componentProps = mapperFn(baseMapperProps);
     
-    // Return the block wrapped in a SlideWrapper
+    // Merge slideWrapperProps into componentProps for proper handling in the block component
+    // The block components already wrap themselves in SlideWrapper
     return (
-      <SlideWrapper {...slideWrapperProps}>
-        <BlockComponent {...componentProps} />
-      </SlideWrapper>
+      <BlockComponent 
+        {...componentProps} 
+        index={index}
+        totalBlocks={totalBlocks}
+        onNext={slideWrapperProps.onNext}
+        isNextDisabled={slideWrapperProps.isNextDisabled}
+      />
     );
   };
 
@@ -129,41 +143,39 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
   switch (block.blockTypeId) {
     case 'text_input':
     case 'short_text':
-      return renderWrappedBlock(TextInputBlock, mapToPropsText);
+      return renderBlock(TextInputBlock, mapToPropsText);
       
     case 'long_text': 
       // Long text specifically uses the TextAreaBlock component
-      return renderWrappedBlock(TextAreaBlock, mapToPropsText);
+      return renderBlock(TextAreaBlock, mapToPropsText);
 
     case 'email':
-      return renderWrappedBlock(EmailBlock, mapToPropsEmail);
+      return renderBlock(EmailBlock, mapToPropsEmail);
 
     case 'number':
-      return renderWrappedBlock(NumberBlock, mapToPropsNumber);
+      return renderBlock(NumberBlock, mapToPropsNumber);
 
     case 'date':
-      return renderWrappedBlock(DateBlock, mapToPropsDate);
+      return renderBlock(DateBlock, mapToPropsDate);
 
     case 'dropdown':
-      return renderWrappedBlock(DropdownBlock, mapToPropsDropdown);
+      return renderBlock(DropdownBlock, mapToPropsDropdown);
 
     case 'multiple_choice':
-      return renderWrappedBlock(MultipleChoiceBlock, mapToPropsMultipleChoice);
+      return renderBlock(MultipleChoiceBlock, mapToPropsMultipleChoice);
 
     case 'checkbox_group':
-      return renderWrappedBlock(CheckboxGroupBlock, mapToPropsCheckboxGroup);
+      return renderBlock(CheckboxGroupBlock, mapToPropsCheckboxGroup);
 
     case 'ai_conversation':
-      return renderWrappedBlock(AIConversationBlock, mapToPropsAIConversation);
+      return renderBlock(AIConversationBlock, mapToPropsAIConversation);
 
     default:
       console.warn(`Unsupported block type: ${block.blockTypeId}`);
       return (
-        <SlideWrapper {...slideWrapperProps}>
-          <div className="p-4 text-red-500 border border-red-300 rounded">
-            Unsupported block type: {block.blockTypeId}
-          </div>
-        </SlideWrapper>
+        <div className="p-4 text-red-500 border border-red-300 rounded w-full max-w-2xl mx-auto">
+          Unsupported block type: {block.blockTypeId}
+        </div>
       );
   }
 };

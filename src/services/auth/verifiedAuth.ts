@@ -17,15 +17,28 @@ import type { User as UserType } from '@/types/auth-types';
  * This ensures the user data is cryptographically verified
  */
 export async function getVerifiedUser(): Promise<User | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.getUser();
-  
-  if (error) {
-    console.error("[verifiedAuth] Error getting verified user:", error);
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      // Don't log expected auth session errors
+      if (!error.message.includes('session')) {
+        console.error("[Auth] Error getting user:", error);
+      }
+      return null;
+    }
+    
+    return data.user;
+  } catch (error) {
+    // Silently handle expected auth errors
+    if (error instanceof Error && 
+        !error.message.includes('session') &&
+        !error.message.includes('Auth session')) {
+      console.error("[Auth] Error:", error);
+    }
     return null;
   }
-  
-  return data.user;
 }
 
 /**
@@ -36,23 +49,30 @@ export async function getSessionWithVerifiedUser(): Promise<{
   session: Session | null;
   user: User | null;
 }> {
-  const supabase = createClient();
-  
-  // Get verified user first
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    console.error("[verifiedAuth] User verification failed:", userError);
+  try {
+    const supabase = createClient();
+    
+    // Get verified user first
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !userData.user) {
+      return { session: null, user: null };
+    }
+    
+    // Get session for token access
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      return {
+        session: sessionData.session,
+        user: userData.user
+      };
+    } catch (error) {
+      // Return user even if session retrieval fails
+      return { session: null, user: userData.user };
+    }
+  } catch (error) {
     return { session: null, user: null };
   }
-  
-  // Get session for token access
-  const { data: sessionData } = await supabase.auth.getSession();
-  
-  return {
-    session: sessionData.session,
-    user: userData.user
-  };
 }
 
 /**

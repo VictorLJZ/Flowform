@@ -21,6 +21,8 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
+import { FormData } from "@/types/form-builder-types"
+import { FormTheme, defaultFormTheme } from "@/types/theme-types"
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
@@ -72,6 +74,22 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Load form data from API
   useEffect(() => {
     if (form) {
+      // Helper function to ensure we have a valid FormTheme
+      const ensureValidTheme = (themeData: Record<string, unknown> | null): FormTheme => {
+        if (!themeData) return defaultFormTheme;
+        
+        // Check if theme has required properties
+        const hasRequiredProps = 
+          themeData.colors && 
+          themeData.typography && 
+          themeData.layout;
+          
+        if (!hasRequiredProps) return defaultFormTheme;
+        
+        // Return as FormTheme since it has required properties
+        return themeData as unknown as FormTheme;
+      };
+      
       // Set form data
       setFormData({
         form_id: form.form_id,
@@ -80,8 +98,9 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         workspace_id: form.workspace_id,
         created_by: form.created_by,
         status: form.status || 'draft',
-        settings: form.settings as Record<string, unknown>,
-        theme: form.theme as Record<string, unknown>,
+        published_at: form.published_at || undefined,
+        settings: form.settings as FormData['settings'],
+        theme: ensureValidTheme(form.theme),
       })
       
       // Transform blocks from API to our internal format
@@ -130,7 +149,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       if (result.form) {
         setFormData({
           status: 'published',
-          published_at: result.form.published_at
+          published_at: result.form.published_at || undefined
         })
       }
       
