@@ -302,16 +302,18 @@ export function MemberItem({
       </Dialog>
 
       <AlertDialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-card text-card-foreground border shadow-lg sm:rounded-lg p-6">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
               <AlertTriangle className="text-warning mr-2 h-5 w-5" /> 
               Confirm Ownership Transfer
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to make <strong>{member.profile.full_name}</strong> the new workspace owner?
-              You will be demoted to an <strong>Admin</strong> role and will lose owner privileges.
-              This action cannot be undone easily.
+            <AlertDialogDescription className="pt-2">
+              Are you sure you want to make{' '}
+              <strong className="font-semibold">{member.profile.full_name}</strong>{' '}
+              the new workspace owner? You will be demoted to an{' '}
+              <strong className="font-semibold">Admin</strong>{' '}
+              role and will lose owner privileges. This action cannot be undone easily.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
