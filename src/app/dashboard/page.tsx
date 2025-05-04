@@ -154,18 +154,16 @@ export default function Page() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {workspace ? (
+              {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
                 <>
                   <DropdownMenuItem onClick={handleRenameWorkspace}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
-                  {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
-                    <DropdownMenuItem onClick={handleInviteToWorkspace}><Users className="mr-2 h-4 w-4" /> Invite Members</DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLeaveWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><LogOut className="mr-2 h-4 w-4" /> Leave Workspace</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Workspace</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleInviteToWorkspace}><Users className="mr-2 h-4 w-4" /> Invite Members</DropdownMenuItem>
                 </>
-              ) : (
-                <DropdownMenuItem disabled>Loading settings...</DropdownMenuItem>
+              )}
+              {(currentUserRole === 'owner' || currentUserRole === 'admin') && <DropdownMenuSeparator />}
+              <DropdownMenuItem onClick={handleLeaveWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><LogOut className="mr-2 h-4 w-4" /> Leave Workspace</DropdownMenuItem>
+              {(currentUserRole === 'owner') && (
+                <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Workspace</DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -287,13 +285,52 @@ export default function Page() {
         </div>
       </div>
       
-      <RenameDialog
-        open={isRenameDialogOpen}
-        onOpenChange={setIsRenameDialogOpen}
-        workspace={workspace ?? null}
-        onRename={async (_id, newName) => { await rename(newName) }}
-      />
+      {/* Rename/Invite only for Owner/Admin */}
+      {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+        <>
+          <RenameDialog
+            open={isRenameDialogOpen}
+            onOpenChange={setIsRenameDialogOpen}
+            workspace={workspace ?? null}
+            onRename={async (_id, newName) => { await rename(newName) }}
+          />
+          <ConfirmDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            title="Delete Workspace"
+            description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
+            confirmLabel="Delete Workspace"
+            variant="destructive"
+            onConfirm={async () => { 
+              await remove(); 
+              // Optionally, clear SWR cache or navigate away if needed after deletion 
+            }}
+          />
+          <InviteDialog 
+            open={isInviteDialogOpen} 
+            onOpenChange={setIsInviteDialogOpen}
+            currentWorkspace={workspace} // Pass the workspace object
+          />
+        </>
+      )}
       
+      {/* Delete dialog only for Owner */}
+      {(currentUserRole === 'owner') && (
+        <ConfirmDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          title="Delete Workspace"
+          description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
+          confirmLabel="Delete Workspace"
+          variant="destructive"
+          onConfirm={async () => { 
+            await remove(); 
+            // Optionally, clear SWR cache or navigate away if needed after deletion 
+          }}
+        />
+      )}
+      
+      {/* Leave dialog - always available */}
       <ConfirmDialog
         open={isLeaveDialogOpen}
         onOpenChange={setIsLeaveDialogOpen}
@@ -302,27 +339,6 @@ export default function Page() {
         confirmLabel="Leave Workspace"
         onConfirm={async () => { await leave() }}
       />
-      
-      <ConfirmDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        title="Delete Workspace"
-        description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
-        confirmLabel="Delete Workspace"
-        variant="destructive"
-        onConfirm={async () => { 
-          await remove(); 
-          // Optionally, clear SWR cache or navigate away if needed after deletion 
-        }}
-      />
-      
-      {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
-        <InviteDialog 
-          open={isInviteDialogOpen} 
-          onOpenChange={setIsInviteDialogOpen}
-          currentWorkspace={workspace} // Pass the workspace object
-        />
-      )}
     </>
   )
 }
