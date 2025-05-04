@@ -12,6 +12,8 @@ import { CheckCircle, X, AlertCircle, Loader2 } from "lucide-react"
 import { useAuthSession } from "@/hooks/useAuthSession"
 import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
 import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
+import { getWorkspaceById } from "@/services/workspace/getWorkspaceById"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 interface InvitePageClientProps {
   token: string
@@ -22,6 +24,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
   const { toast } = useToast()
   const { user, isLoading: isAuthLoading } = useAuthSession()
   const userId = user?.id
+  const syncWorkspaceAfterInvitation = useWorkspaceStore(state => state.syncWorkspaceAfterInvitation)
   
   // Not using email state directly as it's handled by the invitation details
   // const [email, setEmail] = useState("")
@@ -103,15 +106,41 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
       return
     }
     try {
-      await acceptInvitationService(token, userId)
-      toast({
-        title: "Invitation accepted",
-        description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
-      })
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Accept the invitation through the service
+      const membership = await acceptInvitationService(token, userId)
+      
+      if (membership) {
+        toast({
+          title: "Invitation accepted",
+          description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
+        })
+        
+        // Important: Sync the workspace with our store to make it appear in the workspace switcher
+        await syncWorkspaceAfterInvitation(membership.workspace_id, getWorkspaceById)
+        
+        // Force refresh the SWR cache for workspaces
+        // This ensures all components using useWorkspaces() will get the updated data
+        try {
+          const workspacesKey = '/api/workspaces'
+          await fetch(`${workspacesKey}?userId=${userId}`, { 
+            method: 'GET',
+            headers: { 'Cache-Control': 'no-cache' } 
+          })
+        } catch (fetchError) {
+          console.error('Error refreshing workspaces cache:', fetchError)
+          // Non-blocking, still continue even if cache refresh fails
+        }
+        
+        // Redirect to dashboard
+        router.push('/dashboard')
+      }
     } catch (error) {
       console.error('Error accepting invitation:', error)
+      toast({
+        variant: "destructive",
+        title: "Error accepting invitation",
+        description: error instanceof Error ? error.message : "An unknown error occurred"
+      })
     }
   }
   

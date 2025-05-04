@@ -15,6 +15,8 @@ interface WorkspaceState {
   addWorkspace: (workspace: Workspace) => void;
   // Refresh workspaces from fetched data
   refreshWorkspaces: (fetchFn: () => Promise<Workspace[]>) => Promise<Workspace[]>;
+  // Sync a workspace when accepting an invitation
+  syncWorkspaceAfterInvitation: (workspaceId: string, fetchWorkspaceFn: (id: string) => Promise<Workspace | null>) => Promise<void>;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -23,6 +25,34 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     (set, get) => ({
       currentWorkspaceId: null,
       workspaces: [],
+      syncWorkspaceAfterInvitation: async (workspaceId, fetchWorkspaceFn) => {
+        console.log('[WorkspaceStore] Syncing workspace after invitation:', workspaceId);
+        try {
+          // Fetch the workspace details
+          const workspace = await fetchWorkspaceFn(workspaceId);
+          
+          if (workspace) {
+            // Check if we already have this workspace in the store
+            const existingWorkspaces = get().workspaces;
+            const alreadyExists = existingWorkspaces.some(w => w.id === workspaceId);
+            
+            if (!alreadyExists) {
+              // Add the workspace to the store
+              console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
+              const updatedWorkspaces = [...existingWorkspaces, workspace];
+              set({ workspaces: updatedWorkspaces });
+              
+              // Select this workspace if none is selected
+              if (!get().currentWorkspaceId) {
+                console.log('[WorkspaceStore] Setting current workspace after invitation:', workspaceId);
+                set({ currentWorkspaceId: workspaceId });
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[WorkspaceStore] Error syncing workspace after invitation:', error);
+        }
+      },
       setCurrentWorkspaceId: (workspaceId) => {
         console.log('[WorkspaceStore] Setting current workspace ID:', workspaceId);
         set({ currentWorkspaceId: workspaceId });

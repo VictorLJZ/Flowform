@@ -49,6 +49,7 @@ Stores workspace information.
 |-------------|---------|--------------|------------|
 | Users can create workspaces | INSERT | null | `created_by = auth.uid()` |
 | Users can view workspaces they created | SELECT | `created_by = auth.uid()` | null |
+| Users can view workspaces they are members of | SELECT | `EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = id AND user_id = auth.uid())` | null |
 | Workspace owners and admins can update workspace | UPDATE | `created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = id AND user_id = auth.uid() AND role IN ('owner', 'admin'))` | null |
 | Workspace owners and admins can delete workspace | DELETE | `created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = id AND user_id = auth.uid() AND role IN ('owner', 'admin'))` | null |
 
@@ -95,9 +96,9 @@ Primary key: (workspace_id, user_id)
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| Allow users to create their own membership | INSERT | null | `user_id = auth.uid()` |
-| Users can view their own memberships | SELECT | `user_id = auth.uid()` | null |
-| Owners can manage members | ALL | `EXISTS (SELECT 1 FROM workspaces WHERE id = workspace_id AND created_by = auth.uid())` | null |
+| insert_own_membership | INSERT | null | `user_id = auth.uid()` |
+| view_own_memberships | SELECT | `user_id = auth.uid()` | null |
+| admin_manage_members | ALL | `user_id = auth.uid() OR role IN ('owner', 'admin')` | null |
 
 ## Form Management Tables
 
