@@ -12,6 +12,9 @@ The following foreign key relationships are configured with ON DELETE CASCADE, m
 - `workspace_invitations.invited_by` → `auth.users.id`: When a user is deleted, invitations they sent are automatically deleted
 - `forms.created_by` → `auth.users.id`: When a user is deleted, forms they created are automatically deleted
 - `subscriptions.user_id` → `auth.users.id`: When a user is deleted, their subscription records are automatically deleted
+- `workflow_edges.form_id` → `forms.form_id`: When a form is deleted, all related workflow edges are automatically deleted
+- `workflow_edges.source_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges originating from it are automatically deleted
+- `workflow_edges.target_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges pointing to it are automatically deleted
 
 ## Workspace Management Tables
 
@@ -199,7 +202,31 @@ Stores options for multiple choice and similar blocks.
 |-------------|---------|--------------|------------|
 | Public can view options in published forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` | null |
 
-### 9. form_responses
+### 9. workflow_edges
+
+Stores the connections between form blocks in the workflow, including any conditional logic for form navigation.
+
+| Column            | Type                    | Description                       |
+|-------------------|-------------------------|-----------------------------------|
+| id                | UUID                    | Primary key                       |
+| form_id           | UUID                    | References forms.form_id (CASCADE) |
+| source_block_id   | UUID                    | References form_blocks.id (CASCADE) |
+| target_block_id   | UUID                    | References form_blocks.id (CASCADE) |
+| condition_field   | TEXT                    | Field name for the condition (nullable) |
+| condition_operator| TEXT                    | Operator (equals, not_equals, etc.) |
+| condition_value   | JSONB                   | Value for the condition comparison |
+| order_index       | INTEGER                 | Order of the edge in the workflow |
+| created_at        | TIMESTAMP WITH TIME ZONE| When edge was created             |
+| updated_at        | TIMESTAMP WITH TIME ZONE| When edge was last updated        |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners and workspace members can manage edges | ALL | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
+| Public can view edges in published forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` | null |
+
+### 10. form_responses
 
 Stores form submissions.
 
@@ -226,7 +253,7 @@ Stores form submissions.
 | Allow form owners to view responses | SELECT | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 | Allow form owners to delete responses | DELETE | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND role IN ('owner', 'admin')))` | null |
 
-### 10. form_versions
+### 11. form_versions
 
 Stores versioning information for forms to track changes over time.
 
@@ -245,7 +272,7 @@ Stores versioning information for forms to track changes over time.
 | Form owners can create versions | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.created_by = auth.uid())` |
 | Anyone with form access can view versions | SELECT | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published' OR forms.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm JOIN forms f ON f.workspace_id = wm.workspace_id WHERE f.form_id = form_id AND wm.user_id = auth.uid()))` | null |
 
-### 11. form_block_versions
+### 12. form_block_versions
 
 Stores the state of form blocks at specific versions, enabling historical view of forms.
 
@@ -271,7 +298,7 @@ Stores the state of form blocks at specific versions, enabling historical view o
 | Form owners can create block versions | INSERT | null | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.created_by = auth.uid())` |
 | Anyone with form access can view block versions | SELECT | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.status = 'published' OR f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 12. static_block_answers
+### 13. static_block_answers
 +**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
 Stores answers to static blocks.
@@ -290,7 +317,7 @@ Stores answers to static blocks.
 |-------------|---------|--------------|------------|
 | Form owners and workspace members can view static answers | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 11. dynamic_block_responses
+### 14. dynamic_block_responses
 
 Stores AI-driven conversations.
 
@@ -310,7 +337,7 @@ Stores AI-driven conversations.
 | Form owners and workspace members can view dynamic responses | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 ## Analytics Tables
 
-### 12. form_views
+### 15. form_views
 
 Tracks visitors viewing forms.
 
@@ -332,7 +359,7 @@ Tracks visitors viewing forms.
 | Anonymous users can create form views | INSERT | `authenticated, anon` | `true` |
 | Workspace members can view form views | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 13. form_metrics
+### 16. form_metrics
 
 Aggregated metrics for form performance.
 
@@ -354,7 +381,7 @@ Aggregated metrics for form performance.
 |-------------|---------|--------------|------------|
 | Workspace members can view form analytics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 14. block_metrics
+### 17. block_metrics
 
 Performance metrics for individual question blocks.
 
@@ -376,7 +403,7 @@ Performance metrics for individual question blocks.
 |-------------|---------|--------------|------------|
 | Workspace members can view block metrics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 15. form_interactions
+### 18. form_interactions
 
 Granular tracking of user interactions with form elements.
 
@@ -397,7 +424,7 @@ Granular tracking of user interactions with form elements.
 | Form owners and workspace members can view interactions | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 | Anonymous users can create interactions | INSERT | null | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` |
 
-### 16. dynamic_block_analytics
+### 19. dynamic_block_analytics
 
 Analytics specific to AI-driven conversation blocks.
 
