@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { getPosts, getPostBySlug, getPostsByTag, getTags, type GhostPost } from '@/services/ghostService';
+import { getPosts, getPostBySlug, getPostsByTag, getTags } from '@/services/ghostService';
+import type { GhostPost, GhostTag } from '@/types';
 
 interface BlogState {
   posts: GhostPost[];
   currentPost: GhostPost | null;
-  tags: any[];
+  tags: GhostTag[];
   isLoading: boolean;
   error: string | null;
   
@@ -16,7 +17,7 @@ interface BlogState {
   reset: () => void;
 }
 
-export const useBlogStore = create<BlogState>((set, get) => ({
+export const useBlogStore = create<BlogState>((set) => ({
   posts: [],
   currentPost: null,
   tags: [],

@@ -1,4 +1,4 @@
-import { type GhostPost } from "@/services/ghostService"
+import type { GhostPost } from "@/types"
 import Image from "next/image"
 import Link from "next/link"
 
