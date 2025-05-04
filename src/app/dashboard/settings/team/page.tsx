@@ -103,7 +103,7 @@ export default function TeamSettings() {
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Team Management</h1>
-        {members?.some(m => m.user_id === currentUserId && m.role === 'admin') && (
+        {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
           <Button onClick={() => setShowInviteDialog(true)}>
             Invite Team Member
           </Button>
@@ -127,7 +127,7 @@ export default function TeamSettings() {
             onSortDirectionChange={setSortDirection}
             onSearchChange={setSearchQuery}
             onInviteClick={() => setShowInviteDialog(true)}
-            isAdmin={members?.some(m => m.user_id === currentUserId && m.role === 'admin')}
+            isAdmin={currentUserRole === 'admin'}
             currentFilter={filterRole}
             currentSort={sortBy}
             currentSortDirection={sortDirection}
