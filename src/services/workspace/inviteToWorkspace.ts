@@ -3,6 +3,7 @@ import { WorkspaceInvitation, Workspace } from '@/types/supabase-types';
 import { WorkspaceRole } from '@/types/workspace-types';
 import { v4 as uuidv4 } from 'uuid';
 import { sendInvitationEmail } from '@/services/workspace/sendInvitationEmail';
+import { resendInvitation } from '@/services/workspace/resendInvitation';
 
 /**
  * Send an invitation to join a workspace
@@ -55,8 +56,27 @@ export async function inviteToWorkspace(
     }
     
     if (existingInvitation) {
-      console.log('[inviteToWorkspace] Found existing invitation, returning it');
-      return existingInvitation;
+      console.log('[inviteToWorkspace] Found existing invitation, automatically resending it');
+      
+      try {
+        // Resend the invitation to refresh token and expiration date
+        const updatedInvitation = await resendInvitation(existingInvitation.id);
+        
+        if (!updatedInvitation) {
+          console.error('[inviteToWorkspace] Failed to resend invitation');
+          return existingInvitation; // Fall back to existing invitation if resend fails
+        }
+        
+        // Send a new email notification
+        console.log('[inviteToWorkspace] Sending new email for resent invitation');
+        const emailResult = await sendInvitationEmail(updatedInvitation.id);
+        console.log('[inviteToWorkspace] Resend email result:', emailResult);
+        
+        return updatedInvitation;
+      } catch (resendError) {
+        console.error('[inviteToWorkspace] Error resending invitation:', resendError);
+        return existingInvitation; // Fall back to existing invitation if process fails
+      }
     }
     
     console.log('[inviteToWorkspace] No existing invitation found, creating new one');
