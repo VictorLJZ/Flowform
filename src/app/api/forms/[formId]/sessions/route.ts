@@ -49,13 +49,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Generate a unique respondent ID
     const respondentId = uuidv4();
     
-    // Create a new form response using the service client
+    // Get the latest form version if it exists
+    const { data: latestVersion, error: versionError } = await serviceSupabase
+      .from('form_versions')
+      .select('id')
+      .eq('form_id', formId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    // If there's an error fetching versions, log it but continue (non-critical)
+    if (versionError) {
+      console.warn('Error checking for form versions:', versionError);
+    }
+    
+    // Create a new form response using the service client with the version ID
     const { data: responseData, error: responseError } = await serviceSupabase
       .from('form_responses')
       .insert({
         form_id: formId,
         respondent_id: respondentId,
         status: 'in_progress',
+        // Include the form version ID if we found one
+        form_version_id: latestVersion?.id || null, 
         metadata: {
           ...metadata,
           timestamp: new Date().toISOString(),

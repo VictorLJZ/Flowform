@@ -5,6 +5,12 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    domains: [
+      'static.ghost.org',
+      'blog.useflowform.com',
+      'images.unsplash.com',
+      'images.pexels.com'
+    ],
   },
 }
 
