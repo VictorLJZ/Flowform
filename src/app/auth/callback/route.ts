@@ -20,6 +20,8 @@ function getStripeCheckoutUrl(plan: string, isAnnual: boolean = false): string {
 }
 
 export async function GET(request: Request) {
+  const isDev = process.env.NODE_ENV === 'development';
+  
   try {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
@@ -28,15 +30,14 @@ export async function GET(request: Request) {
     const annual = requestUrl.searchParams.get('annual')
     const isAnnual = annual === 'true'
     
-    // Debug logging
-    console.log('Auth callback parameters:', {
-      returnTo,
-      plan,
-      annual,
-      isAnnual,
-      fullUrl: request.url,
-      searchParams: Object.fromEntries(requestUrl.searchParams.entries())
-    })
+    // Only log in development
+    if (isDev) {
+      console.log('Auth callback:', { 
+        returnTo, 
+        plan,
+        hasCode: !!code
+      })
+    }
     
     if (!code) {
       return NextResponse.redirect(new URL('/login?error=Missing+authorization+code', request.url))
@@ -53,12 +54,19 @@ export async function GET(request: Request) {
       )
     }
     
-    // Get the user ID to initialize workspace
+    // Verify the session was created properly by getting the user
     const { data: { user } } = await supabase.auth.getUser()
     
+    if (!user) {
+      return NextResponse.redirect(
+        new URL('/login?error=Failed+to+verify+user+after+authentication', request.url)
+      )
+    }
+    
+    // Get the user ID to initialize workspace
     if (user) {
       try {
-        console.log('[Auth Callback] Initializing default workspace for user:', user.id)
+        if (isDev) console.log('Initializing workspace for user')
         
         // Check if user already has workspaces (to avoid duplicate initialization)
         const { data: existingWorkspaces } = await supabase
@@ -67,7 +75,7 @@ export async function GET(request: Request) {
           .eq('user_id', user.id)
         
         if (existingWorkspaces && existingWorkspaces.length > 0) {
-          console.log('[Auth Callback] User already has workspaces, skipping initialization')
+          if (isDev) console.log('User already has workspaces, skipping')
         } else {
           // Create workspace directly instead of using the initializeDefaultWorkspace function
           // to avoid client-side Supabase issues
@@ -94,9 +102,9 @@ export async function GET(request: Request) {
             .select('*')
           
           if (workspaceError) {
-            console.error('[Auth Callback] Error creating workspace:', workspaceError)
+            console.error('Error creating workspace:', workspaceError)
           } else if (workspace && workspace.length > 0) {
-            console.log('[Auth Callback] Successfully created workspace:', workspace[0].id)
+            if (isDev) console.log('Created workspace successfully')
             
             // Add user as workspace owner
             const { error: memberError } = await supabase
@@ -108,15 +116,13 @@ export async function GET(request: Request) {
               })
             
             if (memberError) {
-              console.error('[Auth Callback] Error adding workspace member:', memberError)
-            } else {
-              console.log('[Auth Callback] Successfully added user as workspace owner')
+              console.error('Error adding workspace member:', memberError)
             }
           }
         }
       } catch (err) {
         // Log error but don't block the authentication flow
-        console.error('[Auth Callback] Failed to initialize workspace:', err)
+        console.error('Failed to initialize workspace:', err)
       }
     }
     
@@ -133,7 +139,57 @@ export async function GET(request: Request) {
       redirectUrl = returnTo
     }
     
-    return NextResponse.redirect(new URL(redirectUrl, request.url))
+    if (isDev) console.log('Redirecting to:', redirectUrl)
+    
+    // Create a session cookie to ensure auth state persists
+    // This makes the auth state more stable and prevents flickering
+    const session = await supabase.auth.getSession();
+    if (session.data.session) {
+      // Set an auth state flag to help identify authenticated requests
+      const authFlag = `_auth=${Date.now()}`;
+      
+      // Check if it's already an absolute URL
+      if (redirectUrl.startsWith('http')) {
+        const url = new URL(redirectUrl);
+        url.searchParams.append('_auth', Date.now().toString());
+        
+        return NextResponse.redirect(url, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+      }
+      
+      // For relative URLs, construct proper URL with auth flag
+      try {
+        const requestOrigin = new URL(request.url).origin;
+        const redirectUri = new URL(redirectUrl, requestOrigin);
+        
+        // Add the auth flag
+        redirectUri.searchParams.append('_auth', Date.now().toString());
+        
+        return NextResponse.redirect(redirectUri, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure`
+          }
+        });
+      } catch (error) {
+        // Fallback to direct redirect with cache prevention headers
+        return NextResponse.redirect(`${redirectUrl}?${authFlag}`, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure`
+          }
+        });
+      }
+    }
   } catch {
     // No error variable needed - just redirecting to login page with generic error
     return NextResponse.redirect(

@@ -2,9 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Log the request path for debugging
-  console.log("Middleware processing:", request.nextUrl.pathname, 
-              "Search:", request.nextUrl.search || "none")
+  // Log only in development
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    console.log("Middleware:", request.nextUrl.pathname);
+  }
 
   const supabaseResponse = NextResponse.next({
     request,
@@ -27,146 +29,100 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
-
-  const {
-    data: { user },
-    error: authError
-  } = await supabase.auth.getUser()
-
-  // Log auth results for debugging
-  console.log("Auth check result:", user ? "Authenticated" : "Not authenticated", 
-              authError ? `Error: ${authError.message}` : "")
-
-  // Path is the pathname of the URL (e.g. /dashboard)
-  const path = request.nextUrl.pathname
-  
-  // Check if this is an OAuth callback with a code but not in the callback URL
-  if (path === '/' && request.nextUrl.searchParams.get('code')) {
-    console.log("Detected code parameter on homepage, redirecting to auth callback")
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/callback'
-    // Keep the original query parameters
-    return NextResponse.redirect(url)
+  // Get the user with error handling
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    // Ignore auth session errors
   }
 
-  // If this is an API route, add the auth token to the request headers
-  // This ensures our API routes have access to the user's authentication token
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    // We already have the verified user from above, now get the token
-    // Note: We still need getSession for the token, but we've verified the user with getUser() above
-    const { data: { session }} = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
+  // Path is the pathname of the URL
+  const path = request.nextUrl.pathname
+  
+  // Handle OAuth callback redirects
+  if (path === '/' && request.nextUrl.searchParams.get('code')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/callback'
     
-    if (accessToken) {
-      // Clone the request and add the Authorization header
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+    return NextResponse.redirect(url, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache'
+      }
+    })
+  }
+
+  // Handle API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Add auth token to API requests if available
+    if (user) {
+      const { data: { session }} = await supabase.auth.getSession()
+      const accessToken = session?.access_token
       
-      // Create a new request with the updated headers
-      const newRequest = new Request(
-        request.url,
-        {
-          headers: requestHeaders,
-          method: request.method,
-          body: request.body,
-          redirect: request.redirect,
-          cache: request.cache,
-          credentials: request.credentials,
-          integrity: request.integrity,
-          keepalive: request.keepalive,
-          mode: request.mode,
-          signal: request.signal,
-        }
-      );
-      
-      // Return the response with the new request
-      return NextResponse.next({
-        request: newRequest,
-      });
+      if (accessToken) {
+        const requestHeaders = new Headers(request.headers)
+        requestHeaders.set('Authorization', `Bearer ${accessToken}`)
+        
+        return NextResponse.next({
+          request: new Request(request.url, {
+            headers: requestHeaders,
+            method: request.method,
+            body: request.body,
+            redirect: request.redirect,
+            signal: request.signal
+          })
+        })
+      }
     }
     
-    // For debugging: Log the path and conditions to trace the issue
-    // Allow both form API and sessions API
-    const isFormApiEndpoint = request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+/) !== null;
-    const isFormSessionsEndpoint = request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+\/sessions/) !== null;
-    const isPublicApiEndpoint = request.nextUrl.pathname.startsWith('/api/public/');
-    const isFEndpoint = request.nextUrl.pathname.startsWith('/api/f/');
-    const isConversationEndpoint = request.nextUrl.pathname.startsWith('/api/conversation');
-    const isPublicAnalyticsEndpoint = 
+    // Determine if route should be public or protected
+    const isPublicRoute = 
+      request.nextUrl.pathname.startsWith('/api/public/') ||
+      request.nextUrl.pathname.startsWith('/api/f/') ||
+      request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+/) !== null ||
+      request.nextUrl.pathname.startsWith('/api/conversation') ||
       request.nextUrl.pathname.startsWith('/api/analytics/track/form-view') ||
-      request.nextUrl.pathname.startsWith('/api/analytics/batch'); // Batch endpoint for queued events
+      request.nextUrl.pathname.startsWith('/api/analytics/batch')
     
-    console.log('AUTH CHECK for API route:', {
-      path: request.nextUrl.pathname,
-      isAuthenticated: !!user,
-      isFormApiEndpoint,
-      isFormSessionsEndpoint,
-      isPublicApiEndpoint,
-      isFEndpoint,
-      isConversationEndpoint,
-      isPublicAnalyticsEndpoint,
-      shouldAllow: !!user || isPublicApiEndpoint || isFormApiEndpoint || isFEndpoint || isConversationEndpoint || isPublicAnalyticsEndpoint
-    });
-    
-    // For API routes, if no token is found and route requires authentication,
-    // return a 401 Unauthorized response UNLESS the route is explicitly public
-    if (
-      !user && 
-      !isPublicApiEndpoint &&
-      !isFormApiEndpoint && // Allow all form API endpoints for public access
-      !isFEndpoint &&
-      !isConversationEndpoint && // Allow conversation endpoints for AI interactions
-      !isPublicAnalyticsEndpoint // <-- Allow public analytics endpoints
-    ) {
+    // Return 401 for protected API routes that require auth
+    if (!user && !isPublicRoute) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
-      );
+      )
     }
-  } else {
-    // For non-API routes, check authentication and redirect to login if needed
-    // Public routes that don't require authentication
-    const publicRoutes = [
-      '/',
-      '/pricing',
-      '/features',  // Always lowercase
-      '/about',
-      '/contact',
-      '/blog',
-      '/privacy',
-      '/terms',
-    ];
+  } 
+  // Handle regular page routes
+  else {
+    // Define public routes that don't require authentication
+    const publicRoutes = ['/', '/pricing', '/features', '/about', '/contact', 
+                         '/blog', '/privacy', '/terms']
     
-    // Check if the path starts with any of these prefixes
-    const publicPathPrefixes = [
-      '/f/',
-      '/login',
-      '/auth/',
-      '/signup',
-      '/forgot-password',
-      '/company/',
-      '/features/',  // Always lowercase
-      '/resources/',
-    ];
+    // Define public path prefixes
+    const publicPathPrefixes = ['/f/', '/login', '/auth/', '/signup', 
+                               '/forgot-password', '/company/', '/features/', '/resources/']
     
-    const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname) || 
-                         publicPathPrefixes.some(prefix => request.nextUrl.pathname.startsWith(prefix));
+    // Add special cases to avoid redirect loops
+    const isAuthRedirect = request.nextUrl.searchParams.has('_auth')
+    const isPublicRoute = publicRoutes.includes(path) || 
+                         publicPathPrefixes.some(prefix => path.startsWith(prefix)) ||
+                         isAuthRedirect
     
+    // Redirect unauthenticated users to login for protected routes
     if (!user && !isPublicRoute) {
-      // For protected routes, redirect to login
-      console.log("Redirecting to login (not authenticated)")
       const url = request.nextUrl.clone()
       url.pathname = '/login'
-      return NextResponse.redirect(url)
+      url.searchParams.set('returnTo', path)
+      
+      return NextResponse.redirect(url, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache'
+        }
+      })
     }
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as is.
   return supabaseResponse
 }
 
