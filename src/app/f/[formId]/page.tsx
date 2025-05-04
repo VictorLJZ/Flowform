@@ -245,6 +245,8 @@ export default function FormViewerPage() {
                 formId={formId}
                 analytics={analytics}
                 aiConversationRef={aiConversationRef}
+                index={currentIndex}
+                totalBlocks={blocks.length}
               />
             ) : (
               <div>No block to display</div> 

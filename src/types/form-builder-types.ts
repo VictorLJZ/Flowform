@@ -11,6 +11,7 @@ export interface FormData {
   workspace_id?: string;  // for Supabase
   created_by?: string;    // for Supabase
   status?: 'draft' | 'published' | 'archived';
+  published_at?: string;  // ISO date string when form was published
   settings: {
     showProgressBar: boolean;
     requireSignIn: boolean;
