@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { useAuthSession } from "@/hooks/useAuthSession"
 
 // Import the existing components to maintain functionality
 import { MembersHeader } from "@/components/workspace/members/members-header"
@@ -31,6 +32,9 @@ export default function TeamSettings() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
 
+  // Get current user's ID for sorting
+  const { user: currentUser } = useAuthSession()
+  const currentUserId = currentUser?.id
   
   const {
     members,
@@ -58,6 +62,13 @@ export default function TeamSettings() {
   
   // Sort members
   const sortedMembers = [...filteredMembers].sort((a, b) => {
+    // Prioritize the current user
+    if (currentUserId) {
+      if (a.user_id === currentUserId) return -1 // Current user 'a' comes first
+      if (b.user_id === currentUserId) return 1  // Current user 'b' comes first (so 'a' comes after)
+    }
+    
+    // Existing sorting logic for other members
     let valueA, valueB
     
     switch (sortBy) {
@@ -138,7 +149,7 @@ export default function TeamSettings() {
             <MembersList 
               members={sortedMembers}
               isCurrentUserAdmin={isCurrentUserAdmin()}
-              currentUserId={null} // Will be filled in component
+              currentUserId={currentUserId} // Pass current user ID to component
             />
           )}
       </div>
