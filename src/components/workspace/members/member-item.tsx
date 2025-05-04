@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
+import { useAuthSession } from "@/hooks/useAuthSession"
 import { changeUserRoleClient, removeWorkspaceMemberClient } from "@/services/workspace/client"
 import { WorkspaceMemberWithProfile } from "@/types/workspace-types"
 import { WorkspaceRole } from "@/types/workspace-types"
@@ -47,6 +48,7 @@ export function MemberItem({
 }: MemberItemProps) {
   const { toast } = useToast()
   const { mutate } = useWorkspaceMembers(member.workspace_id)
+  const { user: authUser } = useAuthSession()
   
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -148,7 +150,7 @@ export function MemberItem({
           {member.profile.full_name}
         </div>
         <div className="text-xs text-muted-foreground">
-          {isCurrentUser ? 'your.email@example.com' : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
+          {isCurrentUser ? authUser?.email : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
         </div>
       </div>
 

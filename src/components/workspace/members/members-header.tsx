@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Filter, SortAsc, SortDesc, Users, UserPlus, Search } from "lucide-react"
+import { Filter, SortAsc, SortDesc, Users, Search } from "lucide-react"
 import { WorkspaceRole } from "@/types/workspace-types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -165,12 +165,7 @@ export function MembersHeader({
           </DropdownMenuContent>
         </DropdownMenu>
         
-        {isAdmin && (
-          <Button onClick={onInviteClick} className="gap-1">
-            <UserPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Invite</span>
-          </Button>
-        )}
+
       </div>
     </div>
   )

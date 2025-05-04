@@ -3,8 +3,6 @@ import { getWorkspaceMembersClient } from '@/services/workspace/getWorkspaceMemb
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { WorkspaceMemberWithProfile } from '@/types/workspace-types'
 import { WorkspaceRole } from '@/types/workspace-types'
-
-// We'll implement these services later
 import { changeUserRoleClient, removeWorkspaceMemberClient } from '@/services/workspace/client'
 
 /**

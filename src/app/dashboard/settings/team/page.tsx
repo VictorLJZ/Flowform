@@ -5,11 +5,9 @@ import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { WorkspaceRole } from "@/types/workspace-types"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
-import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Users } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 
 // Import the existing components to maintain functionality
@@ -25,7 +23,7 @@ export default function TeamSettings() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState("members")
+
   
   const {
     members,
@@ -92,18 +90,7 @@ export default function TeamSettings() {
         )}
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 w-[400px] mb-6">
-          <TabsTrigger value="members">
-            <Users className="mr-2 h-4 w-4" />
-            Members
-          </TabsTrigger>
-          <TabsTrigger value="workspace">
-            Workspace Settings
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="members" className="space-y-6">
+      <div className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -147,53 +134,7 @@ export default function TeamSettings() {
               currentUserId={null} // Will be filled in component
             />
           )}
-        </TabsContent>
-        
-        <TabsContent value="workspace" className="space-y-8">
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium">Workspace Settings</h2>
-            <Separator />
-            
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <h3 className="font-medium">Workspace Name</h3>
-                <p className="text-sm text-muted-foreground">
-                  {currentWorkspace?.name || "Loading..."}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="font-medium">Workspace Description</h3>
-                <p className="text-sm text-muted-foreground">
-                  {currentWorkspace?.description || "No description provided"}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="font-medium">Workspace ID</h3>
-                <p className="text-sm text-muted-foreground">
-                  {currentWorkspace?.id || "Loading..."}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="font-medium">Created On</h3>
-                <p className="text-sm text-muted-foreground">
-                  {currentWorkspace?.created_at 
-                    ? new Date(currentWorkspace.created_at).toLocaleDateString() 
-                    : "Loading..."}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {isCurrentUserAdmin() && (
-            <div className="pt-4">
-              <Button variant="outline">Edit Workspace Settings</Button>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      </div>
       
       <InviteDialog
         open={showInviteDialog}
