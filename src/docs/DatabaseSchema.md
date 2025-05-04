@@ -76,6 +76,7 @@ Tracks pending invitations to workspaces.
 | Users can view invitations sent to them | SELECT | `email = get_auth_email() OR is_workspace_admin(workspace_id)` | null |
 | Workspace owners and admins can create invitations | INSERT | null | `is_workspace_admin(workspace_id)` |
 | Workspace owners and admins can manage invitations | ALL | `is_workspace_admin(workspace_id)` | null |
+| Anyone can view invitations by token | SELECT | `true` | null |
 
 ### 4. workspace_members
 

@@ -6,7 +6,7 @@ import { WorkspaceRole } from '@/types/workspace-types';
 // Get invitation URL using the token
 function getInvitationUrl(token: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return `${baseUrl}/invitations/${token}`;
+  return `${baseUrl}/invite/${token}`; // Fixed path to match route handler
 }
 
 // Process workspace invitation email
@@ -184,9 +184,12 @@ export async function POST(request: Request) {
     `;
     
     // Determine if we're using the test domain and apply restrictions
-    const isUsingTestDomain = true; // Set to false when you verify your own domain
-    const verifiedTestEmail = 'phemonoex@gmail.com'; // Your verified email for testing
-    const fromAddress = 'Flowform Invitations <onboarding@resend.dev>'; // Update with verified domain later
+    const isUsingTestDomain = process.env.RESEND_TEST_MODE === 'true'; // Use environment variable
+    const verifiedTestEmail = process.env.RESEND_TEST_EMAIL || 'phemonoex@gmail.com'; // Use environment variable
+    const fromAddress = process.env.SENDER_EMAIL || 'Flowform Invitations <onboarding@resend.dev>';
+    
+    // Log test mode status
+    console.log(`[sendInvitationEmail] Using test mode: ${isUsingTestDomain}`)
     
     // For test domain, we can only send to the developer's verified email
     // In production with a verified domain, we can send to any recipient
