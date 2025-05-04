@@ -148,6 +148,7 @@ export async function middleware(request: NextRequest) {
       '/login',
       '/auth/',
       '/signup',
+      '/forgot-password',
       '/company/',
       '/features/',  // Always lowercase
       '/resources/',
