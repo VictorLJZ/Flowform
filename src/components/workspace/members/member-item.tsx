@@ -141,7 +141,7 @@ export function MemberItem({
           {member.profile.full_name}
         </div>
         <div className="text-xs text-muted-foreground">
-          {isCurrentUser ? authUser?.email : `${member.profile.full_name.toLowerCase().replace(/\s+/g, '.')}@example.com`}
+          {member.profile.email} {/* Display actual email from profile */}
         </div>
       </div>
 
