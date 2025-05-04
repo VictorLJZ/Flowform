@@ -42,11 +42,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               const updatedWorkspaces = [...existingWorkspaces, workspace];
               set({ workspaces: updatedWorkspaces });
               
-              // Select this workspace if none is selected
-              if (!get().currentWorkspaceId) {
-                console.log('[WorkspaceStore] Setting current workspace after invitation:', workspaceId);
-                set({ currentWorkspaceId: workspaceId });
-              }
+              // Always set the newly joined workspace as the current workspace
+              console.log('[WorkspaceStore] Setting newly joined workspace as current workspace:', workspaceId);
+              set({ currentWorkspaceId: workspaceId });
             }
           }
         } catch (error) {

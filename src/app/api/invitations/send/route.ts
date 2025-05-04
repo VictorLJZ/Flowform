@@ -185,8 +185,8 @@ export async function POST(request: Request) {
     
     // Determine if we're using the test domain and apply restrictions
     const isUsingTestDomain = process.env.RESEND_TEST_MODE === 'true'; // Use environment variable
-    const verifiedTestEmail = process.env.RESEND_TEST_EMAIL || 'phemonoex@gmail.com'; // Use environment variable
-    const fromAddress = process.env.SENDER_EMAIL || 'Flowform Invitations <onboarding@resend.dev>';
+    const verifiedTestEmail = process.env.RESEND_TEST_EMAIL; // Use environment variable
+    const fromAddress = process.env.SENDER_EMAIL || "";
     
     // Log test mode status
     console.log(`[sendInvitationEmail] Using test mode: ${isUsingTestDomain}`)
