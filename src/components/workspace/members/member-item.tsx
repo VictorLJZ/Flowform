@@ -126,7 +126,7 @@ export function MemberItem({
   }
   
   return (
-    <div className="grid grid-cols-[auto_1fr_120px_150px_auto] items-center p-3 hover:bg-secondary/20 border-b gap-3">
+    <div className="grid grid-cols-[auto_1fr_120px_150px_48px] items-center p-3 hover:bg-secondary/20 border-b gap-3">
       {/* Avatar cell */}
       <div>
         <Avatar className="h-8 w-8">
@@ -156,7 +156,7 @@ export function MemberItem({
       </div>
       
       {/* Actions cell */}
-      <div>
+      <div className="flex justify-center items-center">
         {isAdmin && !isCurrentUser && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

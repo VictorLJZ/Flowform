@@ -28,7 +28,7 @@ export function MembersList({
   return (
     <div className="mt-4">
       {/* Column headers */}
-      <div className="grid grid-cols-[auto_1fr_120px_150px_auto] px-3 py-2 text-sm font-medium text-muted-foreground border-b gap-3">
+      <div className="grid grid-cols-[auto_1fr_120px_150px_48px] px-3 py-2 text-sm font-medium text-muted-foreground border-b gap-3">
         {/* Avatar spacer */}
         <div></div>
         

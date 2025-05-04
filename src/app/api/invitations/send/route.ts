@@ -102,61 +102,144 @@ export async function POST(request: Request) {
       day: 'numeric'
     });
     
-    // HTML email template
+    // HTML email template - Updated with improved styling
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Invitation to join ${workspace.name} on Flowform</title>
         <style>
+          /* Reset and base styles */
           body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            line-height: 1.5;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; 
+            line-height: 1.6;
+            color: #1D172C; /* --foreground */
+            background-color: #f9fafb; /* Use a light grey background for contrast */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
           }
-          .header { padding-bottom: 20px; }
-          .content { padding: 20px 0; }
+          .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff; /* white */
+            border: 1px solid #E3E1E8; /* --border */
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .email-header {
+            background-color: #221C35; /* --primary */
+            color: #F8F8FA; /* --primary-foreground */
+            padding: 24px;
+            text-align: center;
+          }
+          .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+          }
+          .email-content {
+            padding: 32px;
+          }
+          .email-content p {
+            margin: 0 0 16px;
+            font-size: 16px;
+            color: #1D172C; /* --foreground */
+          }
+          .email-content strong {
+            color: #1D172C; /* --foreground */
+            font-weight: 600;
+          }
+          .button-container {
+            margin: 32px 0;
+            text-align: center;
+          }
           .button {
             display: inline-block;
-            background-color: #4F46E5;
-            color: white;
-            padding: 12px 24px;
+            background-color: #4f46e5; /* Keep distinct interactive color */
+            color: #ffffff !important; /* Ensure text is white */
+            padding: 14px 28px;
             text-decoration: none;
-            border-radius: 4px;
-            margin: 20px 0;
-            font-weight: bold;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
           }
-          .footer { 
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eaeaea;
-            font-size: 0.8em;
-            color: #666;
+          .button:hover {
+            background-color: #4338ca; /* Darker shade of button color */
+          }
+          .details {
+            font-size: 14px;
+            color: #7A738B; /* --muted-foreground */
+            margin-bottom: 16px;
+          }
+          .email-footer { 
+            margin-top: 32px;
+            padding: 24px;
+            border-top: 1px solid #E3E1E8; /* --border */
+            font-size: 12px;
+            color: #7A738B; /* --muted-foreground */
+            text-align: center;
+          }
+          .email-footer p {
+            margin: 0 0 8px;
+          }
+
+          /* Responsive adjustments */
+          @media (max-width: 640px) {
+            .email-container {
+              margin: 20px;
+              width: auto;
+            }
+            .email-content {
+              padding: 24px;
+            }
+            .email-header {
+              padding: 20px;
+            }
+             .email-header h1 {
+               font-size: 20px;
+             }
+            .email-content p, .details {
+              font-size: 15px;
+            }
+            .button {
+              padding: 12px 24px;
+              font-size: 15px;
+            }
+            .email-footer {
+              padding: 20px;
+              font-size: 11px;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>You've been invited to Flowform</h1>
-        </div>
-        <div class="content">
-          <p>Hello,</p>
-          <p><strong>${inviter?.full_name || 'A Flowform user'}</strong> has invited you to join <strong>${workspace.name}</strong> as a <strong>${roleName}</strong> on Flowform.</p>
-          <p>As a ${roleName}, you'll be able to collaborate on forms and workflows in this workspace.</p>
-          
-          <a href="${invitationUrl}" class="button">Accept Invitation</a>
-          
-          <p>This invitation will expire on ${expirationDate}.</p>
-          <p>If you don't have a Flowform account yet, you'll be able to create one when you accept the invitation.</p>
-        </div>
-        <div class="footer">
-          <p>If you have any questions, please contact the person who invited you.</p>
-          <p>This is an automated email from Flowform.</p>
+        <div class="email-container">
+          <div class="email-header">
+            <h1>You're Invited to Flowform</h1>
+          </div>
+          <div class="email-content">
+            <p>Hello,</p>
+            <p><strong>${inviter?.full_name || 'A Flowform user'}</strong> has invited you to collaborate on the <strong>${workspace.name}</strong> workspace as a <strong>${roleName}</strong>.</p>
+            <p>Flowform helps teams build and manage forms and workflows efficiently.</p>
+            
+            <div class="button-container">
+              <a href="${invitationUrl}" class="button" target="_blank" style="color: #ffffff;">Accept Invitation</a>
+            </div>
+            
+            <p class="details">This invitation will expire on: <strong>${expirationDate}</strong>.</p>
+            <p class="details">If you don't have a Flowform account, you'll be prompted to create one after accepting.</p>
+          </div>
+          <div class="email-footer">
+            <p>If you have questions or weren't expecting this, please contact the person who invited you.</p>
+            <p>Flowform Team</p>
+          </div>
         </div>
       </body>
       </html>
