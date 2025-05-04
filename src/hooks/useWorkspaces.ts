@@ -1,9 +1,14 @@
-import useSWR from 'swr'
 import { getUserWorkspacesClient } from '@/services/workspace/client'
 import { useAuthSession } from '@/hooks/useAuthSession'
+import useSWR from 'swr'
+import { Workspace } from '@/types/supabase-types'
 
 /**
  * Fetches the current user's workspaces using the authenticated user from useAuthSession.
+ * 
+ * Note: This hook is different from other workspace hooks because it fetches workspaces
+ * for a user, rather than data within a workspace. Therefore it uses the standard SWR hook
+ * instead of the workspace-aware SWR hook.
  */
 export function useWorkspaces() {
   // Get user and loading state from the SWR auth hook
@@ -11,10 +16,10 @@ export function useWorkspaces() {
   const userId = user?.id; // Get userId from the session user
 
   // SWR key depends on userId being available
-  const key = userId ? ['workspaces', userId] : null;
+  const key = userId ? ['userWorkspaces', userId] : null;
 
-  // Fetcher remains the same, takes userId from the key
-  const fetcher = async ([, uid]: [string, string]) => {
+  // Fetcher function defined with explicit typing
+  const fetcher = async ([, uid]: [string, string]): Promise<Workspace[]> => {
     console.log(`[useWorkspaces] Fetching workspaces for user: ${uid}`);
     return await getUserWorkspacesClient(uid);
   };
@@ -22,11 +27,17 @@ export function useWorkspaces() {
   const {
     data,
     error,
-    isLoading: isLoadingWorkspaces, // Loading state specifically for workspace fetching
+    isLoading: isLoadingWorkspaces,
     mutate
-  } = useSWR(key, fetcher, {
-     // Optional: Keep previous data while revalidating
+  } = useSWR<Workspace[]>(key, fetcher, {
+     // Keep previous data while revalidating
      keepPreviousData: true,
+     // Deduplicate requests within 5 seconds
+     dedupingInterval: 5000,
+     // Standard error handling
+     onError: (err) => {
+       console.error('[useWorkspaces] Error fetching workspaces:', err);
+     }
   });
 
   // Combine loading states: Loading if auth is loading OR workspaces are loading
