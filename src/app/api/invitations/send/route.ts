@@ -183,27 +183,28 @@ export async function POST(request: Request) {
       This is an automated email from Flowform.
     `;
     
-    // Determine if we're using the test domain and apply restrictions
-    const isUsingTestDomain = process.env.RESEND_TEST_MODE === 'true'; // Use environment variable
-    const verifiedTestEmail = process.env.RESEND_TEST_EMAIL; // Use environment variable
-    const fromAddress = process.env.SENDER_EMAIL || "";
+    // Get the sender email address from environment variables
+    const fromAddress = process.env.SENDER_EMAIL;
     
-    // Log test mode status
-    console.log(`[sendInvitationEmail] Using test mode: ${isUsingTestDomain}`)
+    if (!fromAddress) {
+      console.error('[sendInvitationEmail] Error: SENDER_EMAIL environment variable is not set.');
+      // Consider throwing an error or returning a specific response
+      // For now, just log and potentially fail silently or gracefully
+      return; // Or throw new Error('Sender email not configured');
+    }
     
-    // For test domain, we can only send to the developer's verified email
-    // In production with a verified domain, we can send to any recipient
-    const toEmail = isUsingTestDomain ? verifiedTestEmail : invitation.email;
+    // Always send to the actual invited email address
+    const toEmail = invitation.email;
     
-    // Log what's happening for debugging
-    console.log(`Sending invitation email in ${isUsingTestDomain ? 'TEST' : 'PRODUCTION'} mode`);
-    console.log(`Original recipient: ${invitation.email}`);
-    console.log(`Actual recipient: ${toEmail}`);
+    // Log sending details
+    console.log(`[sendInvitationEmail] Sending production invitation email`);
+    console.log(`From: ${fromAddress}`);
+    console.log(`To: ${toEmail}`);
     
     // Send email via Resend
     const { error } = await resend.emails.send({
-      from: fromAddress,
-      to: [toEmail],
+      from: fromAddress, // Use the configured sender email
+      to: [toEmail],    // Send to the actual recipient
       subject: `You've been invited to join ${workspace.name} on Flowform`,
       html: htmlContent,
       text: textContent,
