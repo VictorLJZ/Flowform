@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation } from '@/types/supabase-types';
+import { WorkspaceInvitation, Workspace } from '@/types/supabase-types';
 import { WorkspaceRole } from '@/types/workspace-types';
 import { v4 as uuidv4 } from 'uuid';
+import { sendInvitationEmail } from '@/services/email/sendInvitationEmail';
 
 /**
  * Send an invitation to join a workspace
@@ -95,6 +96,52 @@ export async function inviteToWorkspace(
     }
     
     console.log('[inviteToWorkspace] Successfully created invitation with ID:', data.id);
+    
+    // Get workspace and inviter details to include in the email
+    try {
+      console.log('[inviteToWorkspace] Getting workspace and inviter details for email');
+      
+      // Fetch workspace details
+      const { data: workspace, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select('name')
+        .eq('id', workspaceId)
+        .single();
+        
+      if (workspaceError) {
+        console.error('[inviteToWorkspace] Error fetching workspace:', workspaceError);
+        // Continue without workspace details
+      }
+      
+      // Fetch inviter's profile
+      const { data: inviter, error: inviterError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', invitedBy)
+        .single();
+        
+      if (inviterError) {
+        console.error('[inviteToWorkspace] Error fetching inviter profile:', inviterError);
+        // Continue without inviter details
+      }
+      
+      // Send invitation email
+      console.log('[inviteToWorkspace] Sending invitation email');
+      const emailResult = await sendInvitationEmail(
+        data,
+        workspace?.name || 'Flowform Workspace',
+        inviter?.full_name || 'A Flowform user'
+      );
+      
+      console.log('[inviteToWorkspace] Email send result:', emailResult);
+      
+      // We don't fail the invitation if email sending fails
+      // The invitation is still valid and can be accessed by the token
+    } catch (emailError) {
+      console.error('[inviteToWorkspace] Error sending invitation email:', emailError);
+      // Continue without failing the invitation process
+    }
+    
     return data;
   } catch (error) {
     console.error('[inviteToWorkspace] Unexpected error:', error);
