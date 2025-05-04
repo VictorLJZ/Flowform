@@ -40,8 +40,10 @@ export default function TeamSettings() {
     members,
     isLoading,
     error,
-    isCurrentUserAdmin,
   } = useWorkspaceMembers(currentWorkspaceId)
+  
+  // Find current user's role
+  const currentUserRole = members?.find(m => m.user_id === currentUserId)?.role as WorkspaceRole | undefined;
   
   // Filter members based on role and search query
   const filteredMembers = members.filter(member => {
@@ -101,7 +103,7 @@ export default function TeamSettings() {
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Team Management</h1>
-        {isCurrentUserAdmin() && (
+        {members?.some(m => m.user_id === currentUserId && m.role === 'admin') && (
           <Button onClick={() => setShowInviteDialog(true)}>
             Invite Team Member
           </Button>
@@ -125,7 +127,7 @@ export default function TeamSettings() {
             onSortDirectionChange={setSortDirection}
             onSearchChange={setSearchQuery}
             onInviteClick={() => setShowInviteDialog(true)}
-            isAdmin={isCurrentUserAdmin()}
+            isAdmin={members?.some(m => m.user_id === currentUserId && m.role === 'admin')}
             currentFilter={filterRole}
             currentSort={sortBy}
             currentSortDirection={sortDirection}
@@ -148,8 +150,8 @@ export default function TeamSettings() {
           ) : (
             <MembersList 
               members={sortedMembers}
-              isCurrentUserAdmin={isCurrentUserAdmin()}
-              currentUserId={currentUserId} // Pass current user ID to component
+              currentUserRole={currentUserRole} 
+              currentUserId={currentUserId} 
             />
           )}
       </div>

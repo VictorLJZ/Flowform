@@ -96,9 +96,11 @@ Primary key: (workspace_id, user_id)
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| insert_own_membership | INSERT | null | `user_id = auth.uid()` |
-| view_own_memberships | SELECT | `user_id = auth.uid()` | null |
-| admin_manage_members | ALL | `user_id = auth.uid() OR role IN ('owner', 'admin')` | null |
+| Members can view other members in the same workspace | SELECT | `EXISTS (SELECT 1 FROM public.workspace_members w1 WHERE w1.user_id = auth.uid() AND w1.workspace_id = workspace_members.workspace_id)` | null |
+| Owners/Admins can update member roles | UPDATE | `(SELECT role FROM public.workspace_members WHERE workspace_id = workspace_members.workspace_id AND user_id = auth.uid()) IN ('owner', 'admin')` | `((SELECT role FROM ... WHERE user_id = auth.uid()) = 'owner') OR ((SELECT role FROM ... WHERE user_id = auth.uid()) = 'admin' AND role IN ('editor', 'viewer'))` |
+| Owners/Admins can remove members | DELETE | `((SELECT role FROM ... WHERE user_id = auth.uid()) = 'owner') OR ((SELECT role FROM ... WHERE user_id = auth.uid()) = 'admin' AND role IN ('editor', 'viewer'))` | null |
+| Members can view their own membership details | SELECT | `user_id = auth.uid()` | null |
+| Users can be added upon accepting an invitation (handled by function) | INSERT | `true` | `true` |
 
 ## Form Management Tables
 
