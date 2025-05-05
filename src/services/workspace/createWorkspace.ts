@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Workspace } from '@/types/supabase-types';
 import { WorkspaceInput } from '@/types/workspace-types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 /**
  * Create a new workspace and automatically add the creator as an owner
@@ -81,24 +80,6 @@ export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Wo
     }
 
     console.log('[createWorkspace] Successfully created workspace:', newWorkspace.id);
-    
-    // Add the workspace to the store and select it
-    try {
-      // Access the store
-      const workspaceStore = useWorkspaceStore.getState();
-      
-      // Add the workspace to the store
-      workspaceStore.addWorkspace(newWorkspace);
-      
-      // Select the new workspace
-      workspaceStore.setCurrentWorkspaceId(newWorkspace.id);
-      
-      console.log('[createWorkspace] Workspace added to store and selected:', newWorkspace.id);
-    } catch (storeError) {
-      console.error('[createWorkspace] Error updating workspace store:', storeError);
-      // Don't throw here - we still want to return the workspace even if store update fails
-    }
-    
     return newWorkspace;
   } catch (error) {
     console.error('[createWorkspace] Unexpected error:', error);
