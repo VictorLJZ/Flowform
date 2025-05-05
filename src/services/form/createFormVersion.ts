@@ -15,6 +15,11 @@ export async function createFormVersion(
   createdBy: string,
   blocks: FrontendFormBlock[]
 ): Promise<FormVersion | null> {
+  // SAFEGUARD: Prevent blocks from being incorrectly marked as deleted when an empty array is provided
+  if (!blocks || blocks.length === 0) {
+    console.error('Attempted to create a form version with an empty blocks array. This would mark all blocks as deleted.');
+    throw new Error('Cannot create a form version with an empty blocks array. This would result in data loss.');
+  }
   const supabase = createClient();
   
   try {
@@ -75,11 +80,19 @@ export async function createFormVersion(
     
     // Handle deleted blocks (ones that existed in previous version but not in this one)
     if (existingBlocks && existingBlocks.length > 0) {
-      const currentBlockIds = new Set(blocks.map(b => b.id));
-      
-      const deletedBlocks = existingBlocks
-        .filter(b => !currentBlockIds.has(b.id))
-        .map(b => ({
+      // SAFEGUARD: Double-check that we have current blocks before attempting to mark anything as deleted
+      if (!blocks || blocks.length === 0) {
+        console.warn('No current blocks provided when creating a form version. Skipping deleted blocks processing to prevent data loss.');
+        // Skip the deleted blocks processing entirely
+      } else {
+        const currentBlockIds = new Set(blocks.map(b => b.id));
+        
+        // Log how many blocks we're comparing to help with debugging
+        console.log(`Comparing ${existingBlocks.length} existing blocks with ${blocks.length} current blocks`);
+        
+        const deletedBlocks = existingBlocks
+          .filter(b => !currentBlockIds.has(b.id))
+          .map(b => ({
           block_id: b.id,
           form_version_id: formVersion.id,
           title: '',        // These fields will be populated from the database
@@ -117,6 +130,7 @@ export async function createFormVersion(
         
         blockVersions.push(...deletedBlocks);
       }
+    }
     }
     
     // Insert block versions

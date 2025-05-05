@@ -14,12 +14,12 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Save, Globe } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useForm } from "@/hooks/useForm"
+import { usePublishForm } from "@/hooks/usePublishForm"
 import { getBlockDefinition } from "@/registry/blockRegistry"
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping'
 import { BlockType } from '@/types/block-types'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { FormData } from "@/types/form-builder-types"
@@ -55,7 +55,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   
   const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
-  const [isPublishing, setIsPublishing] = useState(false)
+  const { publishCurrentForm, isPublishing } = usePublishForm()
   
   // Update viewMode state
   const [viewMode, setViewMode] = useState<"form" | "workflow" | "connect">("form")
@@ -137,14 +137,12 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   const handlePublish = async () => {
     if (isPublishing) return
     
-    setIsPublishing(true)
-    
     try {
       // First save the form to ensure all changes are persisted
       await saveForm()
       
-      // Then publish
-      const result = await publishFormWithFormBuilderStore(formId, [])
+      // Then publish using our new centralized hook (which uses blocks from store)
+      const result = await publishCurrentForm(formId)
       
       // Update the form data in state to reflect published status
       if (result.form) {
@@ -170,8 +168,6 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         title: "Publish failed",
         description: "There was an error publishing your form. Please try again.",
       })
-    } finally {
-      setIsPublishing(false)
     }
   }
   

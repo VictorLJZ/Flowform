@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
 import { useAuthSession } from "@/hooks/useAuthSession"
-import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore"
+import { usePublishForm } from "@/hooks/usePublishForm"
 import { getFormWithBlocksClient } from "@/services/form/getFormWithBlocksClient"
 import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
 import type { FormBlock, BlockType } from "@/types/block-types"
@@ -46,6 +46,7 @@ export default function FormsPage() {
   const isLoading = isFormsLoading || isAuthLoading
   const error = formsError
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
+  const { publishFormWithBlocks } = usePublishForm()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   
   // Refresh forms when workspace changes
@@ -91,8 +92,8 @@ export default function FormsPage() {
         };
       });
       
-      // Publish via our improved versioning service that properly updates versions
-      const { version } = await publishFormWithFormBuilderStore(formId, convertedBlocks)
+      // Publish via our centralized hook
+      const { version } = await publishFormWithBlocks(formId, convertedBlocks)
       // refresh list
       await mutate()
       
