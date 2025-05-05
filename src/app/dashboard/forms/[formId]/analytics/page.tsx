@@ -1,6 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { useState, useMemo } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Breadcrumb,
@@ -12,10 +13,13 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 import { useForm } from "@/hooks/useForm"
 
 import { VersionedResponsesTable } from "@/components/analytics/versioned-responses-table"
 import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
+import { FormAnalyticsDashboard } from "@/components/analytics/form-analytics-dashboard"
+import { BasicMetricsCard } from "@/components/analytics/basic-metrics-card"
 
 // Component to display responses with versioning support
 function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
@@ -26,20 +30,74 @@ function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
     error
   } = useVersionedFormResponses(formId);
 
+  // State for version selection
+  const [selectedVersionId, setSelectedVersionId] = useState<string | 'all'>('all');
+
   // Check if the form has multiple versions
   const hasMultipleVersions = versions.length > 1;
+
+  // Filter responses based on selected version
+  const filteredResponses = useMemo(() => {
+    if (selectedVersionId === 'all') return responses;
+    return responses.filter(r => r.form_version?.id === selectedVersionId);
+  }, [responses, selectedVersionId]);
+
+  // Get the selected version number for display
+  const selectedVersionNumber = useMemo(() => {
+    if (selectedVersionId === 'all') return null;
+    const version = versions.find(v => v.id === selectedVersionId);
+    return version?.version_number || null;
+  }, [selectedVersionId, versions]);
 
   return (
     <div className="space-y-4">
       {hasMultipleVersions && (
-        <div className="bg-muted/50 rounded-md p-4 mb-4">
-          <div className="flex items-center">
-            <div className="mr-2">
-              <span className="text-sm font-medium">Form Versions:</span>
-              <span className="ml-2 text-sm text-muted-foreground">
-                This form has {versions.length} versions. Responses are shown with their corresponding form version.
+        <div className="flex flex-col space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Form Versions</h3>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                {versions.length} versions detected
               </span>
             </div>
+          </div>
+          
+          {/* Version selector */}
+          <div className="inline-flex items-center p-0.5 rounded-md bg-muted text-sm">
+            <button
+              onClick={() => setSelectedVersionId('all')}
+              className={cn(
+                "px-3 py-1.5 rounded-sm transition-all",
+                selectedVersionId === 'all' 
+                  ? "bg-background shadow-sm" 
+                  : "hover:bg-background/50"
+              )}
+            >
+              All Versions
+            </button>
+            
+            {versions.map(version => (
+              <button
+                key={version.id}
+                onClick={() => setSelectedVersionId(version.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-sm transition-all",
+                  selectedVersionId === version.id 
+                    ? "bg-background shadow-sm" 
+                    : "hover:bg-background/50"
+                )}
+              >
+                v{version.version_number}
+              </button>
+            ))}
+          </div>
+          
+          {/* Additional context about current view */}
+          <div className="text-xs text-muted-foreground">
+            {selectedVersionId === 'all' 
+              ? `Showing all responses across ${versions.length} versions` 
+              : `Showing responses from version ${selectedVersionNumber}`}
           </div>
         </div>
       )}
@@ -50,8 +108,9 @@ function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
         </div>
       ) : (
         <VersionedResponsesTable
-          responses={responses}
+          responses={filteredResponses}
           loading={loading}
+          selectedVersionId={selectedVersionId}
         />
       )}
     </div>
@@ -121,7 +180,7 @@ export default function FormAnalyticsPage() {
                 <TabsTrigger value="summary" disabled>
                   Summary
                 </TabsTrigger>
-                <TabsTrigger value="insights" disabled>
+                <TabsTrigger value="insights">
                   Insights
                 </TabsTrigger>
               </TabsList>
@@ -130,15 +189,20 @@ export default function FormAnalyticsPage() {
                 <ResponsesWithVersioningSupport formId={formId} />
               </TabsContent>
               
+              <TabsContent value="insights" className="space-y-4">
+                {/* Ensure formId is always a string */}
+                <BasicMetricsCard formId={String(params.formId)} />
+              </TabsContent>
+              
               <TabsContent value="summary">
                 <div className="text-center p-12 text-muted-foreground">
-                  Summary analytics coming soon
+                  Summary coming soon
                 </div>
               </TabsContent>
               
               <TabsContent value="insights">
-                <div className="text-center p-12 text-muted-foreground">
-                  AI-powered insights coming soon
+                <div className="p-4">
+                  <FormAnalyticsDashboard formId={formId} />
                 </div>
               </TabsContent>
             </Tabs>

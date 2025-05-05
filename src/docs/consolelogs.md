@@ -1,30 +1,50 @@
-Error: The result of getServerSnapshot should be cached to avoid an infinite loop
-    at createUnhandledError (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:879:71)
-    at handleClientError (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:1052:56)
-    at console.error (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:1191:56)
-    at mountSyncExternalStore (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5777:92)
-    at Object.useSyncExternalStore (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:15005:20)
-    at exports.useSyncExternalStore (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:1687:36)
-    at useStore (http://localhost:3000/_next/static/chunks/node_modules_e07720f1._.js:55:188)
-    at useBoundStore (http://localhost:3000/_next/static/chunks/node_modules_e07720f1._.js:65:39)
-    at FormViewerPage (http://localhost:3000/_next/static/chunks/src_6a9105a5._.js:6993:205)
-    at ClientPageRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_1a6ee436._.js:2053:50)
-
-
-Error: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
-    at createUnhandledError (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:879:71)
-    at handleClientError (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:1052:56)
-    at console.error (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_43e3ffb8._.js:1191:56)
-    at getRootForUpdatedFiber (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:4702:143)
-    at enqueueConcurrentRenderForLane (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:4689:16)
-    at forceStoreRerender (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5854:20)
-    at updateStoreInstance (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5836:41)
-    at ClientPageRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_1a6ee436._.js:2053:50)
-
-
-Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
-    at getRootForUpdatedFiber (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:4701:171)
-    at enqueueConcurrentRenderForLane (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:4689:16)
-    at forceStoreRerender (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5854:20)
-    at updateStoreInstance (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5836:41)
-    at ClientPageRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_1a6ee436._.js:2053:50)
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:06.541Z:2025-05-05T04:39:06.541Z
+31Fetch failed loading: HEAD "<URL>".
+31Fetch finished loading: GET "<URL>".
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:06.838Z:2025-05-05T04:39:06.838Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:07.166Z:2025-05-05T04:39:07.166Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:07.474Z:2025-05-05T04:39:07.474Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:07.762Z:2025-05-05T04:39:07.762Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:08.042Z:2025-05-05T04:39:08.042Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:08.347Z:2025-05-05T04:39:08.347Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:08.622Z:2025-05-05T04:39:08.622Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:08.905Z:2025-05-05T04:39:08.905Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:09.202Z:2025-05-05T04:39:09.202Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:09.477Z:2025-05-05T04:39:09.477Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:09.769Z:2025-05-05T04:39:09.769Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:10.072Z:2025-05-05T04:39:10.072Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:10.447Z:2025-05-05T04:39:10.447Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:10.727Z:2025-05-05T04:39:10.727Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics
+useFormAnalyticsDashboard.ts:195 Analytics Dashboard: Successfully processed blocks data
+useFormAnalyticsDashboard.ts:135 Analytics Dashboard: Fetching data with key: analytics-dashboard:9071b996-0521-4a6d-ba51-c332a4f6bc37:2025-04-05T04:39:11.065Z:2025-05-05T04:39:11.065Z
+useFormAnalyticsDashboard.ts:147 Analytics Dashboard: Successfully fetched base metrics

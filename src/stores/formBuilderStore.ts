@@ -7,7 +7,7 @@ import { getBlockDefinition } from '@/registry/blockRegistry'
 import { v4 as uuidv4 } from 'uuid'
 
 // service imports
-import { saveFormWithVersioning } from '@/services/form/saveFormWithVersioning'
+import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 
@@ -351,7 +351,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         }
       };
       
-      const result = await saveFormWithVersioning({
+      const result = await saveFormWithBlocks({
         form_id: formData.form_id,
         title: formData.title,
         description: formData.description || '',
@@ -389,10 +389,7 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
             }
           });
           
-          // If a new form version was created, log it
-          if (result.version) {
-            console.log(`Created new form version: ${result.version.version_number}`);
-          }
+          // Note: Form versioning is now handled separately by the publishForm flow
           
           // Update the blocks in the store with the new IDs
           set({ blocks: updatedBlocks });

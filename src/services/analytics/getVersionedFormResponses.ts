@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormVersion, FormBlockVersion, VersionedResponse } from '@/types/form-version-types';
 
+// Debug flag - set to true to enable detailed logging
+const DEBUG = true;
+
 /**
  * Fetches form responses with version information to support displaying responses
  * for forms that have been modified over time.
@@ -25,6 +28,8 @@ export async function getVersionedFormResponses(
   const supabase = createClient();
   
   try {
+    if (DEBUG) console.log(`[getVersionedFormResponses] Starting fetch for form: ${formId}`);
+    
     // Step 1: Get form responses with version information
     const { data: responses, error: responseError, count } = await supabase
       .from('form_responses')
@@ -42,13 +47,21 @@ export async function getVersionedFormResponses(
     }
     
     if (!responses || responses.length === 0) {
+      console.log('[getVersionedFormResponses] No responses found for form');
       return { responses: [], totalCount: 0 };
+    }
+    
+    if (DEBUG) {
+      console.log(`[getVersionedFormResponses] Found ${responses.length} responses`);
+      console.log('[getVersionedFormResponses] Response form_version_ids:', responses.map(r => r.form_version_id));
     }
     
     // Step 2: Get the form versions for these responses
     const versionIds = responses
       .map(r => r.form_version_id)
       .filter(Boolean) as string[];
+      
+    if (DEBUG) console.log(`[getVersionedFormResponses] Unique form version IDs: ${versionIds.length}`, versionIds);
       
     let formVersions: FormVersion[] = [];
     
@@ -64,6 +77,13 @@ export async function getVersionedFormResponses(
       }
       
       formVersions = versions || [];
+      
+      if (DEBUG) {
+        console.log(`[getVersionedFormResponses] Retrieved ${formVersions.length} form versions`);
+        console.log('[getVersionedFormResponses] Form versions:', formVersions.map(v => ({ id: v.id, number: v.version_number })));
+      }
+    } else {
+      console.warn('[getVersionedFormResponses] No valid form version IDs found in responses');
     }
     
     // Step 3: Get the block versions for these form versions
@@ -81,6 +101,26 @@ export async function getVersionedFormResponses(
       }
       
       blockVersions = blocks || [];
+      
+      if (DEBUG) {
+        console.log(`[getVersionedFormResponses] Retrieved ${blockVersions.length} block versions`);
+        // Group block versions by form_version_id for more readable logs
+        const blocksByVersion = blockVersions.reduce((acc, block) => {
+          const versionId = block.form_version_id;
+          if (!acc[versionId]) acc[versionId] = [];
+          acc[versionId].push({
+            id: block.id,
+            block_id: block.block_id,
+            title: block.title,
+            is_deleted: block.is_deleted
+          });
+          return acc;
+        }, {} as Record<string, any[]>);
+        
+        console.log('[getVersionedFormResponses] Block versions by form version:', blocksByVersion);
+      }
+    } else {
+      console.warn('[getVersionedFormResponses] No blocks fetched because no version IDs exist');
     }
     
     // Step 4: Get all static answers and dynamic responses
@@ -125,6 +165,15 @@ export async function getVersionedFormResponses(
       const responseDynamicResponses = dynamicResponses
         ? dynamicResponses.filter(d => d.response_id === response.id)
         : [];
+      
+      if (DEBUG) {
+        console.log(`[getVersionedFormResponses] Building response ${response.id}:`);
+        console.log(`  - form_version_id: ${response.form_version_id || 'null'}`);
+        console.log(`  - formVersion found: ${formVersion ? 'yes' : 'no'}`);
+        console.log(`  - version_blocks found: ${versionBlocks.length}`);
+        console.log(`  - static_answers: ${responseStaticAnswers.length}`);
+        console.log(`  - dynamic_responses: ${responseDynamicResponses.length}`);
+      }
         
       return {
         ...response,
@@ -134,6 +183,16 @@ export async function getVersionedFormResponses(
         dynamic_responses: responseDynamicResponses
       };
     });
+    
+    if (DEBUG) {
+      // Log summary statistics
+      let versionBlocksStats = versionedResponses.map(r => (r.version_blocks || []).length);
+      console.log('[getVersionedFormResponses] Versioned responses summary:');
+      console.log(`  - Total responses: ${versionedResponses.length}`);
+      console.log(`  - Responses with form_version: ${versionedResponses.filter(r => r.form_version).length}`);
+      console.log(`  - Responses with version_blocks: ${versionedResponses.filter(r => r.version_blocks && r.version_blocks.length > 0).length}`);
+      console.log(`  - version_blocks count per response: [${versionBlocksStats.join(', ')}]`);
+    }
     
     return {
       responses: versionedResponses,
