@@ -1,5 +1,3 @@
-import { getVisitorId, isUniqueFormVisit } from '@/lib/analytics/visitorId';
-import { queueEvent } from '@/lib/analytics/eventQueue';
 import { createClient } from '@/lib/supabase/client';
 
 /**
@@ -14,8 +12,9 @@ export async function trackFormViewClient(
   formId: string,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
-  const visitorId = getVisitorId();
-  const isUnique = isUniqueFormVisit(formId);
+  // Use visitor ID from metadata if provided, otherwise it should be provided by the caller
+  const visitorId = metadata.visitor_id as string || '';
+  const isUnique = metadata.is_unique as boolean || false;
   const timestamp = new Date().toISOString();
   
   // Get device and browser information
@@ -35,19 +34,8 @@ export async function trackFormViewClient(
     screen_size: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
   };
 
-  // Queue the event for analytics batch processing
-  queueEvent({
-    type: 'form_view',
-    timestamp,
-    properties: {
-      form_id: formId,
-      visitor_id: visitorId,
-      is_unique: isUnique,
-      device_type: deviceType,
-      browser,
-      ...metadata
-    }
-  });
+  // Removed event queuing to eliminate redundancy
+  // We now use only the direct API call as the single source of truth
 
   // Use the API route to track the form view
   const apiPayload = {

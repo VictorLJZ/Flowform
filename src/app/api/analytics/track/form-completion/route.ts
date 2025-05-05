@@ -1,6 +1,21 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+// Create a secure service client that only exists server-side and doesn't require auth
+// This is safe because this code only runs on the server in an API route
+const createServiceClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
+    }
+  );
+};
 
 // Define validation schema for request body
 const formCompletionSchema = z.object({
@@ -31,63 +46,39 @@ export async function POST(request: Request) {
     }
     
     const data = validationResult.data;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const timestamp = new Date().toISOString();
     
-    // Create a form interaction for the completion event
-    try {
-      await supabase
-        .from('form_interactions')
-        .insert({
-          response_id: data.response_id,
-          block_id: null, // No specific block for form completion
-          interaction_type: 'submit',
-          timestamp,
-          duration_ms: data.total_time_seconds ? data.total_time_seconds * 1000 : null,
-          metadata: {
-            visitor_id: data.visitor_id,
-            form_id: data.form_id,
-            ...(data.metadata || {})
-          }
-        });
-    } catch (error) {
-      console.warn('[API] Non-critical error logging form completion interaction:', error);
-      // Don't throw here, we still want to update the response status
-    }
+    // Call the RPC function to track form completion and update metrics in one transaction
+    console.log('[API DEBUG] Calling track_form_completion RPC with form_id:', data.form_id);
     
-    // Update the form response status to 'completed'
-    const { data: updatedResponse, error: responseError } = await supabase
-      .from('form_responses')
-      .update({
-        status: 'completed',
-        completed_at: timestamp,
-        metadata: {
-          ...(data.metadata || {}),
-          total_time_seconds: data.total_time_seconds,
-          visitor_id: data.visitor_id
-        }
-      })
-      .eq('id', data.response_id)
-      .select()
-      .single();
+    const { data: rpcResult, error } = await supabase.rpc('track_form_completion', {
+      p_form_id: data.form_id,
+      p_response_id: data.response_id,
+      p_total_time_seconds: data.total_time_seconds || null,
+      p_metadata: data.metadata || {}
+    });
       
-    if (responseError) {
-      console.error('[API] Error updating form response status:', responseError);
+    if (error || (rpcResult && !rpcResult.success)) {
+      const errorMessage = error ? error.message : (rpcResult ? rpcResult.error : 'Unknown error');
+      console.error('[API] Error tracking form completion:', errorMessage);
       return NextResponse.json(
-        { success: false, error: responseError.message },
+        { success: false, error: errorMessage },
         { status: 500 }
       );
     }
     
-    // Update form metrics (non-critical operation)
-    try {
-      await supabase.rpc('increment_form_completion', { 
-        p_form_id: data.form_id,
-        p_time_seconds: data.total_time_seconds || null 
-      });
-    } catch (metricsError) {
-      console.warn('[API] Non-critical error updating form completion metrics:', metricsError);
-    }
+    console.log('[API] Form completion tracked successfully via RPC');
+    
+    // Create a simple response object to return to the client
+    const updatedResponse = {
+      id: data.response_id,
+      form_id: data.form_id,
+      status: 'completed',
+      completed_at: timestamp,
+      total_time_seconds: rpcResult.completion_time_seconds
+    };
+    
     
     return NextResponse.json({
       success: true,

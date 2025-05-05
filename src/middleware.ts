@@ -83,6 +83,7 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.match(/^\/api\/forms\/[^/]+/) !== null ||
       request.nextUrl.pathname.startsWith('/api/conversation') ||
       request.nextUrl.pathname.startsWith('/api/analytics/track/form-view') ||
+      request.nextUrl.pathname.startsWith('/api/analytics/track/form-completion') ||
       request.nextUrl.pathname.startsWith('/api/analytics/batch')
     
     // Return 401 for protected API routes that require auth

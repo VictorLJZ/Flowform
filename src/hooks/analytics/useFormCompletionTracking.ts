@@ -25,6 +25,14 @@ export function useFormCompletionTracking(
     metadata = {}
   } = options;
   
+  // DEBUGGING: Log hook initialization
+  console.log('[TRACKING DEBUG] useFormCompletionTracking initialized with:', {
+    formId,
+    responseId,
+    disabled,
+    has_metadata: !!metadata && Object.keys(metadata).length > 0
+  });
+  
   // Track when the form was started for duration calculation
   const startTimeRef = useRef<number>(Date.now());
   const hasTracked = useRef<boolean>(false);
@@ -38,8 +46,23 @@ export function useFormCompletionTracking(
   const trackCompletion = useCallback(async (
     additionalMetadata: Record<string, unknown> = {}
   ) => {
+    // DEBUGGING: Log what data is received by trackCompletion
+    console.log('[TRACKING DEBUG] trackCompletion called with:', {
+      additionalMetadata,
+      formId,
+      responseId,
+      hasTracked: hasTracked.current,
+      disabled
+    });
+    
     // Don't track if disabled, missing IDs, or already tracked
     if (disabled || !formId || !responseId || hasTracked.current) {
+      console.warn('[TRACKING DEBUG] Skipping form completion tracking due to:', {
+        disabled,
+        formId_missing: !formId,
+        responseId_missing: !responseId,
+        already_tracked: hasTracked.current
+      });
       return;
     }
     
@@ -47,6 +70,7 @@ export function useFormCompletionTracking(
     hasTracked.current = true;
     
     const visitorId = getVisitorId();
+    console.log('[TRACKING DEBUG] Got visitor ID:', visitorId);
     
     // Calculate total time spent on form
     const totalTimeSeconds = Math.floor(
@@ -54,9 +78,25 @@ export function useFormCompletionTracking(
     );
     
     try {
+      console.log('[TRACKING DEBUG] Preparing form completion tracking payload:', {
+        form_id: formId,
+        response_id: responseId,
+        visitor_id: visitorId,
+        total_time_seconds: totalTimeSeconds,
+        metadata_keys: Object.keys(metadata),
+        additionalMetadata_keys: Object.keys(additionalMetadata)
+      });
+      
+      // IMPORTANT: We need to match the client function's snake_case parameter naming
+      // Convert from camelCase variables to snake_case parameters
+      console.log('[TRACKING DEBUG] Calling trackFormCompletionClient with parameters:',
+        formId,
+        responseId
+      );
+      
       await trackFormCompletionClient(
-        formId, 
-        responseId,
+        formId, // This becomes form_id in the client function 
+        responseId, // This becomes response_id in the client function
         {
           visitor_id: visitorId,
           total_time_seconds: totalTimeSeconds,
@@ -65,6 +105,7 @@ export function useFormCompletionTracking(
         }
       );
       
+      console.log('[TRACKING DEBUG] Successfully called completion tracking client');
       // No return value from client implementation
       return true;
     } catch (error) {

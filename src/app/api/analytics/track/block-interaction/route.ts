@@ -36,55 +36,39 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const timestamp = new Date().toISOString();
     
-    // Create interaction record
-    const { data: interaction, error } = await supabase
-      .from('form_interactions')
-      .insert({
-        block_id: data.block_id,
-        response_id: data.response_id || null,
-        interaction_type: data.interaction_type,
-        timestamp,
-        duration_ms: data.duration_ms || null,
-        metadata: {
-          visitor_id: data.visitor_id,
-          form_id: data.form_id,
-          ...(data.metadata || {})
-        }
-      })
-      .select()
-      .single();
+    // Call the RPC function to track block interaction and update metrics in one transaction
+    console.log(`[API DEBUG] Calling track_block_interaction RPC with block_id: ${data.block_id}, interaction_type: ${data.interaction_type}`);
+    
+    const { data: rpcResult, error } = await supabase.rpc('track_block_interaction', {
+      p_block_id: data.block_id,
+      p_form_id: data.form_id,
+      p_response_id: data.response_id || null,
+      p_interaction_type: data.interaction_type,
+      p_duration_ms: data.duration_ms || null,
+      p_visitor_id: data.visitor_id,
+      p_metadata: data.metadata || null
+    });
       
-    if (error) {
-      console.error('[API] Error tracking block interaction:', error);
+    if (error || (rpcResult && !rpcResult.success)) {
+      const errorMessage = error ? error.message : (rpcResult ? rpcResult.error : 'Unknown error');
+      console.error('[API] Error tracking block interaction:', errorMessage);
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: errorMessage },
         { status: 500 }
       );
     }
     
-    // For specific interaction types, update metrics
-    if (data.interaction_type === 'view') {
-      // Try to update block_metrics for views (not critical if it fails)
-      try {
-        await supabase.rpc('increment_block_view', { 
-          p_block_id: data.block_id,
-          p_form_id: data.form_id 
-        });
-      } catch (metricsError) {
-        console.warn('[API] Non-critical error updating block view metrics:', metricsError);
-      }
-    } else if (data.interaction_type === 'submit' && data.duration_ms) {
-      // Try to update time spent metrics (not critical if it fails)
-      try {
-        await supabase.rpc('update_block_time_spent', { 
-          p_block_id: data.block_id,
-          p_form_id: data.form_id,
-          p_duration_seconds: Math.floor(data.duration_ms / 1000)
-        });
-      } catch (metricsError) {
-        console.warn('[API] Non-critical error updating block time metrics:', metricsError);
-      }
-    }
+    console.log(`[API] Block ${data.interaction_type} interaction tracked successfully via RPC`);
+    
+    // Create interaction object to return to the client
+    const interaction = {
+      id: rpcResult.interaction_id,
+      block_id: data.block_id,
+      form_id: data.form_id,
+      interaction_type: data.interaction_type,
+      timestamp: rpcResult.timestamp,
+      duration_ms: data.duration_ms
+    };
     
     return NextResponse.json({
       success: true,

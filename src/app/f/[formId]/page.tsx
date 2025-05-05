@@ -8,6 +8,7 @@ import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers';
 import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
 import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useViewTracking } from "@/hooks/analytics/useViewTracking";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
 import type { AIConversationHandle } from "@/components/form/blocks/AIConversationBlock"; 
@@ -88,7 +89,13 @@ export default function FormViewerPage() {
     loadAnswerForBlock,
   } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
 
-  // 4. Analytics Hook (Needs formId, responseId after submission)
+  // 4. Analytics Hooks - split into view tracking and other analytics
+  // View tracking doesn't require responseId - we want to track all views
+  const viewTracking = useViewTracking(formId, {
+    metadata: { source: 'form_viewer' }
+  });
+  
+  // Other analytics tracking that requires responseId
   const analytics = useAnalytics({
     formId: formId,
     responseId: responseId || undefined, 

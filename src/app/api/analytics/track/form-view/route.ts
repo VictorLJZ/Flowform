@@ -69,44 +69,35 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     console.log('[API DEBUG] Using service client for analytics tracking');
     
-    // Create form view record
-    const insertData = {
-      form_id: data.form_id,
-      visitor_id: data.visitor_id,
-      device_type: data.device_type || null,
-      browser: data.browser || null,
-      source: data.source || null,
-      is_unique: !!data.is_unique,
-      timestamp: new Date().toISOString(),
-      // metadata: data.metadata || null, // Temporarily removed - DB column missing
-    };
+    // Call the RPC function to track form view and update metrics in one transaction
+    console.log('[API DEBUG] Calling track_form_view RPC with form_id:', data.form_id);
     
-    console.log('[API DEBUG] Attempting insert with data:', insertData);
-    
-    const { data: formView, error } = await supabase
-      .from('form_views')
-      .insert(insertData)
-      .select()
-      .single();
+    const { data: rpcResult, error } = await supabase.rpc('track_form_view', {
+      p_form_id: data.form_id,
+      p_visitor_id: data.visitor_id,
+      p_is_unique: !!data.is_unique,
+      p_device_type: data.device_type || null,
+      p_browser: data.browser || null,
+      p_source: data.source || null
+    });
       
-    if (error) {
-      console.error('[API] Error tracking form view:', error);
+    if (error || (rpcResult && !rpcResult.success)) {
+      const errorMessage = error ? error.message : (rpcResult ? rpcResult.error : 'Unknown error');
+      console.error('[API] Error tracking form view:', errorMessage);
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: errorMessage },
         { status: 500 }
       );
     }
     
-    // Try to update form_metrics (not critical if it fails)
-    try {
-      await supabase.rpc('increment_form_view', { 
-        p_form_id: data.form_id,
-        p_is_unique: !!data.is_unique
-      });
-    } catch (metricsError) {
-      console.warn('[API] Non-critical error updating form metrics:', metricsError);
-      // Continue without throwing error since this is a non-critical operation
-    }
+    console.log('[API] Form view tracked successfully via RPC');
+    
+    const formView = {
+      id: rpcResult.view_id,
+      form_id: data.form_id,
+      timestamp: rpcResult.timestamp
+    };
+    
     
     const response = NextResponse.json({
       success: true,

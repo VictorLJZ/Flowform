@@ -2,9 +2,8 @@
  * Main analytics hook that integrates all tracking capabilities
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import {
-  useFormViewTracking,
   useBlockViewTracking,
   useBlockInteractionTracking,
   useFormCompletionTracking,
@@ -37,11 +36,8 @@ export function useAnalytics(options: {
     abandonmentReason
   } = options;
 
-  // Initialize individual tracking hooks
-  const formView = useFormViewTracking(formId, {
-    disabled,
-    metadata
-  });
+  // NOTE: Form view tracking has been migrated to useViewTracking hook.
+  // All view tracking should now use the dedicated hook instead of this one.
 
   const blockView = useBlockViewTracking(blockId, formId, {
     responseId,
@@ -62,21 +58,30 @@ export function useAnalytics(options: {
 
   const timing = useTimingMeasurement();
 
-  // Helper to track a full form session in one call
+  // Function to track the entire form session (except views)
+  // Form views are now tracked separately via useViewTracking
   const trackFormSession = useCallback(async (sessionMetadata: Record<string, unknown> = {}) => {
     if (!formId || !responseId || disabled) {
-      return;
+      return false;
     }
     
     // Stop the timer and get the total elapsed time
     const elapsedTimeMs = timing.stopTimer();
     const elapsedTimeSeconds = Math.floor(elapsedTimeMs / 1000);
     
-    // Track the completion with timing information
-    await formCompletion.trackCompletion({
-      ...sessionMetadata,
-      elapsed_time_seconds: elapsedTimeSeconds
-    });
+    try {
+      // Track the completion with timing information
+      await formCompletion.trackCompletion({
+        ...sessionMetadata,
+        elapsed_time_seconds: elapsedTimeSeconds
+      });
+      
+      console.log('[ANALYTICS] Form session tracking complete');
+      return true;
+    } catch (error) {
+      console.error('Error tracking form session:', error);
+      return false;
+    }
   }, [formId, responseId, disabled, timing, formCompletion]);
 
   // Track form abandonment
@@ -87,38 +92,55 @@ export function useAnalytics(options: {
     // TODO: Send data to analytics backend
   }, [formId, disabled, abandonmentReason]);
 
-  return useMemo(() => ({
-    // Combined refs
-    blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
+  useEffect(() => {
+    console.log('[ANALYTICS DEBUG] useAnalytics detected changes:', { 
+      formId, 
+      responseId, 
+      disabled,
+      formCompletionDisabled: disabled
+    });
+  }, [formId, responseId, disabled]);
+
+  // Memoize the return object
+  return useMemo(() => {
+    console.log('[ANALYTICS DEBUG] useAnalytics re-rendering return value with:', { 
+      responseId, 
+      disabled,
+      formCompletionDisabled: disabled 
+    });
     
-    // Status indicators
-    formViewTracked: formView.hasTracked,
-    blockViewTracked: blockView.hasTracked,
-    formCompleted: formCompletion.hasTracked,
-    
-    // Block interaction handlers
-    trackFocus: blockInteraction.handleFocus,
-    trackBlur: blockInteraction.handleBlur,
-    trackChange: blockInteraction.handleChange,
-    trackSubmit: blockInteraction.handleSubmit,
-    trackError: blockInteraction.handleError,
-    trackInteraction: blockInteraction.trackInteraction,
-    
-    // Form completion tracking
-    trackCompletion: formCompletion.trackCompletion,
-    
-    // Combined tracking
-    trackFormSession,
-    trackAbandonment,
-    
-    // Timing utilities
-    timing,
-    
-    // Raw hooks for advanced usage
-    formView,
-    blockView,
-    blockInteraction,
-    formCompletion
+    return {
+      // Combined refs
+      blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
+      
+      // Status indicators
+      blockViewTracked: blockView.hasTracked,
+      formCompleted: formCompletion.hasTracked,
+      
+      // Block interaction handlers
+      trackFocus: blockInteraction.handleFocus,
+      trackBlur: blockInteraction.handleBlur,
+      trackChange: blockInteraction.handleChange,
+      trackSubmit: blockInteraction.handleSubmit,
+      trackError: blockInteraction.handleError,
+      trackInteraction: blockInteraction.trackInteraction,
+      
+      // Form completion tracking
+      trackCompletion: formCompletion.trackCompletion,
+      
+      // Combined tracking
+      trackFormSession,
+      trackAbandonment,
+      
+      // Timing utilities
+      timing,
+      
+      // Raw hooks for advanced usage
+      blockView,
+      blockInteraction,
+      formCompletion
+    };
+  // Add formId, responseId, and disabled as dependencies to ensure the hook re-initializes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), []);
+  }, [formId, responseId, disabled, formCompletion]);
 }

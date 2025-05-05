@@ -2,6 +2,31 @@
 
 This document outlines the database schema for the FlowForm-neo application in Supabase.
 
+## Analytics Functions Note
+
+The RPC function `track_form_completion` was fixed to resolve a SQL error related to multiple assignments to the same column. In the original function, there were two separate updates to the `total_completions` column in a single SQL statement:
+
+```sql
+-- Previously (incorrect):
+DO UPDATE SET
+  -- Increment completions
+  total_completions = form_metrics.total_completions + 1,
+  
+  -- Ensure data integrity: completions can't exceed starts
+  total_completions = LEAST(form_metrics.total_completions + 1, form_metrics.total_starts),
+```
+
+This was fixed by combining these into a single assignment:
+
+```sql
+-- Fixed version:
+DO UPDATE SET
+  -- Increment completions (with data integrity check)
+  total_completions = LEAST(form_metrics.total_completions + 1, form_metrics.total_starts),
+```
+
+This ensures that form completions are properly tracked and counted in the analytics metrics.
+
 ## Foreign Key Cascade Behavior
 
 The following foreign key relationships are configured with ON DELETE CASCADE, meaning that when a referenced record is deleted, all related records are automatically deleted:
@@ -361,19 +386,46 @@ Tracks visitors viewing forms.
 
 ### 16. form_metrics
 
-Aggregated metrics for form performance.
+Aggregated metrics for form performance. These metrics are automatically calculated and maintained by RPC functions.
 
-| Column                        | Type                    | Description                       |
-|-------------------------------|-------------------------|-----------------------------------|
-| form_id                       | UUID                    | References forms.form_id (primary key) |
-| total_views                   | INTEGER                 | Total number of form views        |
-| unique_views                  | INTEGER                 | Unique visitors count             |
-| total_starts                  | INTEGER                 | Number of form starts             |
-| total_completions             | INTEGER                 | Number of form completions        |
-| completion_rate               | FLOAT                   | Percentage of completions vs starts |
-| average_completion_time_seconds | INTEGER               | Average time to complete form     |
-| bounce_rate                   | FLOAT                   | Percentage of visitors who left without interacting |
-| last_updated                  | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
+| Column                        | Type                    | Description                       | Constraints |
+|-------------------------------|-------------------------|-----------------------------------|-------------|
+| form_id                       | UUID                    | References forms.form_id (primary key) | NOT NULL |
+| total_views                   | INTEGER                 | Total number of form views        | NOT NULL, DEFAULT 0 |
+| unique_views                  | INTEGER                 | Unique visitors count             | NOT NULL, DEFAULT 0 |
+| total_starts                  | INTEGER                 | Number of form starts             | NOT NULL, DEFAULT 0 |
+| total_completions             | INTEGER                 | Number of form completions        | NOT NULL, DEFAULT 0 |
+| completion_rate               | FLOAT                   | Percentage of completions vs starts | NOT NULL, DEFAULT 0, CHECK (completion_rate >= 0 AND completion_rate <= 1) |
+| average_completion_time_seconds | INTEGER               | Average time to complete form     | DEFAULT 0 |
+| bounce_rate                   | FLOAT                   | Percentage of visitors who left without interacting | NOT NULL, DEFAULT 0, CHECK (bounce_rate >= 0 AND bounce_rate <= 1) |
+| last_updated                  | TIMESTAMP WITH TIME ZONE| When metrics were last updated    | NOT NULL, DEFAULT NOW() |
+
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| check_total_completions_lte_starts | `CHECK (total_completions <= total_starts)` | Ensures data integrity by verifying completions never exceed starts |
+| check_completion_rate_range | `CHECK (completion_rate >= 0 AND completion_rate <= 1)` | Ensures completion rate is a valid percentage (0-100%) |
+| check_bounce_rate_range | `CHECK (bounce_rate >= 0 AND bounce_rate <= 1)` | Ensures bounce rate is a valid percentage (0-100%) |
+
+#### RPC-Based Analytics
+
+Metrics in this table are automatically calculated through RPC functions:
+
+1. **track_form_view**: Called when a form is viewed
+   - Updates `total_views`, `unique_views`, and `bounce_rate`
+   - Calculates bounce rate as: (views without interactions) / total views
+
+2. **track_form_start**: Called when a form session is created
+   - Updates `total_starts` and recalculates `bounce_rate` and `completion_rate`
+   - Ensures all rates stay within valid ranges (0-100%)
+
+3. **track_form_completion**: Called when a form is completed
+   - Updates `total_completions`, `completion_rate`, and `average_completion_time_seconds`
+   - Ensures data integrity by enforcing completions ≤ starts
+   - Ensures all rates stay within valid ranges (0-100%)
+
+See [AnalyticsRPCSchema.md](./AnalyticsRPCSchema.md) for detailed documentation of all analytics RPC functions.
 
 #### Row Level Security Policies
 

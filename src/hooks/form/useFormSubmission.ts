@@ -171,8 +171,22 @@ export const useFormSubmission = ({
         // Mark form as complete in local storage or state
         localStorage.setItem(`${storageKey}-completed`, 'true');
         setCompleted(true);
+        
+        // DEBUGGING: Log what parameters we're sending to the completion tracker
+        console.log('[TRACKING DEBUG] useFormSubmission calling onFormCompleteRef with:', {
+          responseId,
+          formId,
+          has_ref: !!onFormCompleteRef.current,
+          payload: { response_id: responseId }
+        });
+        
         // Use the specific form completion tracker via ref
-        await onFormCompleteRef.current({ response_id: responseId });
+        try {
+          await onFormCompleteRef.current({ response_id: responseId });
+          console.log('[TRACKING DEBUG] onFormCompleteRef.current completed successfully');
+        } catch (error) {
+          console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);
+        }
       } else {
         console.log("[SubmitAnswer] Not last question, moving next");
         goToNext();
