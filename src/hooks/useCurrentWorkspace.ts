@@ -45,6 +45,10 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
   // Combine loading states
   const isLoading = isLoadingAuth || isLoadingWorkspace;
 
+  // Get access to the shared stores and mutation methods
+  const workspaceStore = useWorkspaceStore();
+  const { mutate: mutateWorkspacesList } = useWorkspaces();
+  
   // Mutation functions now use the authenticated client from useAuth
   const rename = async (name: string) => {
     if (!workspaceId) throw new Error('Workspace ID is required');
@@ -53,20 +57,34 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
     await updateWorkspace(supabase, workspaceId, { name }); 
     return mutate(); // Revalidate after update
   };
-
+  
   const remove = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
     if (!supabase) throw new Error('Supabase client is not available');
-    // Pass only workspaceId as deleteWorkspace expects one argument
-    await deleteWorkspace(workspaceId); 
-    // Optionally redirect or clear selection after delete
-    return mutate(); // Revalidate (will likely result in null data)
+    
+    try {
+      // Delete the workspace
+      await deleteWorkspace(workspaceId);
+      
+      // Update workspace store by removing the deleted workspace
+      const currentWorkspaces = workspaceStore.workspaces;
+      const updatedWorkspaces = currentWorkspaces.filter(w => w.id !== workspaceId);
+      
+      // Force refresh the workspaces list to get updated list
+      await mutateWorkspacesList();
+      
+      // Update the store with the filtered list
+      workspaceStore.setWorkspaces(updatedWorkspaces);
+      
+      // Force mutation of the current workspace data to null
+      await mutate(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      throw error;
+    }
   };
-
-  // Get the workspace store to handle state after leaving
-  const workspaceStore = useWorkspaceStore();
-  // Get the workspaces mutation function to refresh after leaving
-  const { mutate: mutateWorkspacesList } = useWorkspaces();
   
   const leave = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
