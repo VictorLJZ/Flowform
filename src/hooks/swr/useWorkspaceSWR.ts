@@ -77,12 +77,27 @@ export function useWorkspaceSWR<Data = any, Error = any>(
   options?: SWRConfiguration,
   explicitWorkspaceId?: string | null
 ): SWRResponse<Data, Error> & { workspaceId: string | null } {
+  // Get available workspaces from the store
+  const availableWorkspaces = useWorkspaceStore(state => state.workspaces);
+  const isInitialLoad = availableWorkspaces.length === 0;
+  
   // Use explicit workspace ID if provided, otherwise get from store
   const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   const workspaceId = explicitWorkspaceId !== undefined ? explicitWorkspaceId : storeWorkspaceId;
   
+  // Validate the workspace ID is valid before attempting to fetch
+  const isWorkspaceValid = workspaceId && 
+    availableWorkspaces.some(w => w.id === workspaceId);
+  
+  // Skip fetching in these cases:
+  // 1. If we have a workspace ID but it's not in the available workspaces
+  // 2. If we're in the initial loading state but trying to use a workspace ID from localStorage
+  const shouldSkipFetch = 
+    (!!workspaceId && !isWorkspaceValid && availableWorkspaces.length > 0) || 
+    (isInitialLoad && !!workspaceId && !explicitWorkspaceId);
+  
   // Create the key with workspace context
-  const key = createWorkspaceKey(resource, workspaceId);
+  const key = shouldSkipFetch ? null : createWorkspaceKey(resource, workspaceId);
   
   // SWR request with optional configuration
   const response = useSWR<Data, Error>(key, fetcher, {
@@ -91,7 +106,14 @@ export function useWorkspaceSWR<Data = any, Error = any>(
     revalidateIfStale: true,
     keepPreviousData: true,
     dedupingInterval: 5000, // Deduplicate requests within 5 seconds
-    onError: (err) => handleWorkspaceError(err, resource),
+    onError: (err) => {
+      // If workspace is invalid but we got past the key check, prevent error message
+      if (shouldSkipFetch) {
+        console.warn(`[WorkspaceSWR] Skipping error for invalid workspace: ${workspaceId}`);
+        return;
+      }
+      handleWorkspaceError(err, resource);
+    },
     ...options,
   });
   

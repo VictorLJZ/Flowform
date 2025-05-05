@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { WorkspaceMember } from '@/types/supabase-types';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { getWorkspaceClient } from './getWorkspaceClient';
 
 /**
  * Accept a workspace invitation using the invitation token
@@ -106,6 +108,26 @@ export async function acceptInvitation(
     }
     
     console.log('[acceptInvitation] Successfully accepted invitation');
+    
+    // Sync the workspace in the global store and set it as the current workspace
+    if (membership && invitation.workspace_id) {
+      try {
+        // Get the workspace store
+        const workspaceStore = useWorkspaceStore.getState();
+        
+        // Use the syncWorkspaceAfterInvitation function to add the workspace and select it
+        await workspaceStore.syncWorkspaceAfterInvitation(
+          invitation.workspace_id, 
+          getWorkspaceClient
+        );
+        
+        console.log('[acceptInvitation] Workspace synced and selected:', invitation.workspace_id);
+      } catch (syncError) {
+        console.error('[acceptInvitation] Error syncing workspace:', syncError);
+        // Don't throw here, we still want to return the membership even if sync fails
+      }
+    }
+    
     return membership;
   } catch (error) {
     console.error('[acceptInvitation] Unexpected error:', error);

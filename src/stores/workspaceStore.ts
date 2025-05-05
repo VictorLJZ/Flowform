@@ -26,26 +26,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       currentWorkspaceId: null,
       workspaces: [],
       syncWorkspaceAfterInvitation: async (workspaceId, fetchWorkspaceFn) => {
+        // Validate the workspace ID to prevent errors during login
+        if (!workspaceId) {
+          console.warn('[WorkspaceStore] Cannot sync workspace after invitation: No workspace ID provided');
+          return;
+        }
+        
         console.log('[WorkspaceStore] Syncing workspace after invitation:', workspaceId);
         try {
+          // Check if we already have this workspace in the store before fetching
+          const existingWorkspaces = get().workspaces;
+          const existingWorkspace = existingWorkspaces.find(w => w.id === workspaceId);
+          
+          // If we already have this workspace, no need to fetch it again
+          if (existingWorkspace) {
+            console.log('[WorkspaceStore] Workspace already in store, setting as current:', workspaceId);
+            set({ currentWorkspaceId: workspaceId });
+            return;
+          }
+          
           // Fetch the workspace details
           const workspace = await fetchWorkspaceFn(workspaceId);
           
           if (workspace) {
-            // Check if we already have this workspace in the store
-            const existingWorkspaces = get().workspaces;
-            const alreadyExists = existingWorkspaces.some(w => w.id === workspaceId);
+            // Add the workspace to the store
+            console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
+            const updatedWorkspaces = [...existingWorkspaces, workspace];
             
-            if (!alreadyExists) {
-              // Add the workspace to the store
-              console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
-              const updatedWorkspaces = [...existingWorkspaces, workspace];
-              set({ workspaces: updatedWorkspaces });
-              
-              // Always set the newly joined workspace as the current workspace
-              console.log('[WorkspaceStore] Setting newly joined workspace as current workspace:', workspaceId);
-              set({ currentWorkspaceId: workspaceId });
-            }
+            // Update workspaces and set the current workspace ID
+            set({ 
+              workspaces: updatedWorkspaces,
+              currentWorkspaceId: workspaceId 
+            });
           }
         } catch (error) {
           console.error('[WorkspaceStore] Error syncing workspace after invitation:', error);
