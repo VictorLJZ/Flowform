@@ -3,6 +3,8 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAuth } from '@/providers/auth-provider';
 import type { Workspace } from '@/types/supabase-types';
 import { createWorkspaceFetcher, useWorkspaceSWR } from './swr';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaces } from './useWorkspaces';
 
 /**
  * Hook to fetch and manage a single workspace via SWR, dependent on auth session.
@@ -61,13 +63,31 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
     return mutate(); // Revalidate (will likely result in null data)
   };
 
+  // Get the workspace store to handle state after leaving
+  const workspaceStore = useWorkspaceStore();
+  // Get the workspaces mutation function to refresh after leaving
+  const { mutate: mutateWorkspacesList } = useWorkspaces();
+  
   const leave = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
     if (!supabase) throw new Error('Supabase client is not available');
-    // Pass only workspaceId as leaveWorkspace expects one argument
-    await leaveWorkspace(workspaceId); 
-    // Optionally redirect or clear selection after leave
-    return mutate(); // Revalidate
+    
+    try {
+      // Leave the workspace
+      await leaveWorkspace(workspaceId);
+      
+      // Force refresh the workspaces list to get updated memberships
+      await mutateWorkspacesList();
+      
+      // Force mutation of the current workspace data (will return error since no longer a member)
+      // This is important for the UI to update properly
+      await mutate(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error leaving workspace:', error);
+      throw error;
+    }
   };
 
   return {

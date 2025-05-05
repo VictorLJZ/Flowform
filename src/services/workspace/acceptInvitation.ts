@@ -77,17 +77,16 @@ export async function acceptInvitation(
       throw new Error(`This invitation was sent to ${invitation.email}. You are logged in with a different email address.`);
     }
     
-    // Start a transaction by using a single connection
-    // Add the user as a workspace member
-    const { data: membership, error: membershipError } = await supabase
-      .from('workspace_members')
-      .insert({
-        workspace_id: invitation.workspace_id,
-        user_id: userId,
-        role: invitation.role,
-      })
-      .select()
-      .single();
+    // Use a stored procedure/RPC function to add the member
+    // This bypasses RLS since the function runs with definer's privileges 
+    const { data: result, error: membershipError } = await supabase
+      .rpc('accept_workspace_invitation', {
+        p_invitation_id: invitation.id,
+        p_user_id: userId
+      });
+      
+    // Extract the membership from the RPC result
+    const membership = result as WorkspaceMember | null;
     
     if (membershipError) {
       console.error('[acceptInvitation] Error creating workspace membership:', membershipError);
