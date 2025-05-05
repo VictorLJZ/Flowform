@@ -79,6 +79,7 @@ export interface SaveDynamicResponseInput {
   isStarterQuestion?: boolean; // Whether this is the first question
   isComplete?: boolean; // Override completion status (for special cases)
   mode?: 'builder' | 'viewer'; // Application mode for context
+  questionIndex?: number; // Index of the question being answered (for truncating the conversation)
 }
 
 /**

@@ -84,6 +84,8 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
   const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({})
   // Add a local loading state to prevent UI changes during submission
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(false)
+  // Track whether we're changing an earlier answer that will reset later questions
+  const [isChangingEarlierAnswer, setIsChangingEarlierAnswer] = useState(false)
 
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
@@ -114,29 +116,114 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
   const hasReachedMaxQuestions = maxQuestions > 0 && activeQuestionIndex >= maxQuestions;
   const starterPrompt = title || '';
 
-  // Get the current question to display
-  let activeQuestion = "";
-  if (isFirstQuestion) {
-    activeQuestion = starterPrompt;
-  } else if (effectiveConversation[activeQuestionIndex] !== undefined) {
-    activeQuestion = effectiveConversation[activeQuestionIndex].question;
-  } else {
-    activeQuestion = nextQuestion;
-  }
+  // Create state to directly manage the displayed question with better control
+  const [displayQuestion, setDisplayQuestion] = useState<string>("");
+  
+  // Store the current data state for debugging
+  const dataStateRef = useRef<{index: number, conversation: QAPair[], nextQ: string}>({index: -1, conversation: [], nextQ: ""});
+  
+  // Force component re-render when key data changes
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Debug specifically for the nextQuestion state
+  useEffect(() => {
+    if (nextQuestion) {
+      console.log('IMPORTANT: nextQuestion changed to:', nextQuestion.substring(0, 40) + '...');
+      // Force update display question when nextQuestion changes
+      setDisplayQuestion(nextQuestion);
+    }
+  }, [nextQuestion]);
+  
+  // Key debug function to determine what question should be displayed
+  const determineCurrentQuestion = () => {
+    const currentState = {
+      isFirstQ: isFirstQuestion,
+      promptText: starterPrompt,
+      activeIndex: activeQuestionIndex,
+      convoLength: effectiveConversation.length,
+      hasQuestion: activeQuestionIndex < effectiveConversation.length, 
+      nextQuestion: nextQuestion || "[none]"
+    };
     
-  // Calculate display title
-  const displayTitle = activeQuestion;
+    console.log('Question determination data:', currentState);
+    
+    if (isFirstQuestion) {
+      return { text: starterPrompt, source: 'starter' };
+    } else if (activeQuestionIndex < effectiveConversation.length && effectiveConversation[activeQuestionIndex]?.question) {
+      return { text: effectiveConversation[activeQuestionIndex].question, source: 'conversation' };
+    } else if (nextQuestion) {
+      return { text: nextQuestion, source: 'api' };
+    } else {
+      return { text: "Loading next question...", source: 'loading' };
+    }
+  }
+  
+  // Update displayed question when key dependencies change
+  useEffect(() => {
+    // Capture previous state for comparison
+    const prevState = {
+      index: dataStateRef.current.index,
+      convoLength: dataStateRef.current.conversation.length,
+      nextQ: dataStateRef.current.nextQ
+    };
+    
+    // Update the reference with new state
+    dataStateRef.current = {
+      index: activeQuestionIndex,
+      conversation: [...effectiveConversation],
+      nextQ: nextQuestion || ""
+    };
+    
+    // Detect what changed
+    const changes = {
+      indexChanged: prevState.index !== activeQuestionIndex,
+      convoChanged: prevState.convoLength !== effectiveConversation.length,
+      nextQChanged: prevState.nextQ !== nextQuestion
+    };
+    
+    console.log('State changes detected:', changes);
+    
+    // Determine the new question to display
+    const newQuestionData = determineCurrentQuestion();
+    
+    // Only update if the question source or text actually changed
+    if (newQuestionData.text && newQuestionData.text !== displayQuestion) {
+      console.log(`Updating question from ${newQuestionData.source} source:`, {
+        current: displayQuestion.substring(0, 30) + (displayQuestion.length > 30 ? '...' : ''),
+        new: newQuestionData.text.substring(0, 30) + (newQuestionData.text.length > 30 ? '...' : '')
+      });
+      
+      // Don't show loading state if we're just waiting a moment for nextQuestion to load
+      // and we already have an existing question displayed
+      if (newQuestionData.source === 'loading' && displayQuestion && displayQuestion !== "Loading next question...") {
+        console.log('Skipping transition to loading state, keeping existing question displayed');
+        return;
+      }
+      
+      setDisplayQuestion(newQuestionData.text);
+    }
+  }, [starterPrompt, isFirstQuestion, activeQuestionIndex, effectiveConversation, nextQuestion]);
+  
+  // Calculate display title and force update when needed
+  const displayTitle = displayQuestion;
+  
+  // Force a component update when crucial values change
+  const renderKey = `${activeQuestionIndex}-${nextQuestion ? 'hasNext' : 'noNext'}-${effectiveConversation.length}`;
 
   // Determine if current question is answered
-  const isActiveQuestionAnswered = activeQuestionIndex < effectiveConversation.length && !!effectiveConversation[activeQuestionIndex]?.answer;
+  const isActiveQuestionAnswered = isFirstQuestion
+    ? true // First question is always considered "answered" as it's just a prompt
+    : activeQuestionIndex < effectiveConversation.length;
     
   // Show input in the following cases:
   // 1. When submitting to prevent UI flicker
   // 2. When viewing a previous question to allow editing
   // 3. When we're within max questions and the current question needs an answer
-  const showInput = isLocalSubmitting || 
+  const showInput = (isLocalSubmitting || 
     // Always show input when navigating back to previous questions
-    activeQuestionIndex < maxQuestions;
+    activeQuestionIndex < maxQuestions) && 
+    // Don't show input if we're still loading the next question
+    displayQuestion !== "Loading next question...";
   
 
   useEffect(() => {
@@ -168,18 +255,28 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
   // Navigation between questions
   const handlePrevious = () => {
     if (activeQuestionIndex > 0) {
-      // Save current input before navigating
-      setQuestionInputs(prev => ({
-        ...prev,
-        [activeQuestionIndex]: userInput
-      }))
+      // Save current input value if any
+      if (userInput && !isSubmitting) {
+        setQuestionInputs(prev => ({ ...prev, [activeQuestionIndex]: userInput }));
+      }
       
-      // Navigate to previous question
-      const prevIndex = activeQuestionIndex - 1
-      setActiveQuestionIndex(prevIndex)
+      const prevIndex = activeQuestionIndex - 1;
+      setActiveQuestionIndex(prevIndex);
       
-      // Restore previous input if it exists
-      setUserInput(questionInputs[prevIndex] || "")
+      // Restore previous input value if any
+      setUserInput(questionInputs[prevIndex] || '');
+      
+      if (analytics?.trackChange) {
+        analytics.trackChange({ 
+          action: 'navigate_question',
+          direction: 'backward',
+          from_index: activeQuestionIndex,
+          to_index: prevIndex
+        });
+      }
+      
+      // If going to a previous question and user changes the answer,
+      // subsequent questions will be reset - we could show a message here
     }
   }
 
@@ -203,14 +300,20 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!userInput.trim() || isSubmitting) return
+    // Check if there's an answer to submit
+    if (!userInput.trim() || isSubmitting || isLocalSubmitting) return;
     
     try {
-      // Set local submitting state to prevent UI changes
-      setIsLocalSubmitting(true)
+      // Set local loading state to prevent UI changes
+      setIsLocalSubmitting(true);
+      // Determine if this is the starter question
+      const isStarter = activeQuestionIndex === 0;
       
-      // If this is the first question, use the starter prompt
-      const questionToAnswer = isFirstQuestion ? starterPrompt : activeQuestion
+      // Determine the question text based on active index
+      let questionText = isStarter ? starterPrompt : displayQuestion;
+      
+      // Get the answer
+      const answer = userInput.trim();
       
       // Track the conversation submission for analytics
       if (analytics?.trackChange) {
@@ -218,47 +321,159 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
           input_type: 'ai_conversation',
           action: 'submit_response',
           question_index: activeQuestionIndex,
-          response_length: userInput.trim().length,
-          is_first_question: isFirstQuestion,
+          response_length: answer.length,
+          is_first_question: isStarter,
           conversation_length: effectiveConversation.length
         });
       }
       
-      // Save the current input in our record before submitting
-      setQuestionInputs(prev => ({
-        ...prev,
-        [activeQuestionIndex]: userInput
-      }))
+      // Track the answer in local state
+      setQuestionInputs(prev => ({ ...prev, [activeQuestionIndex]: answer }));
       
-      // Check if we've reached max questions and should move to next block
-      const isLastQuestion = activeQuestionIndex >= maxQuestions - 1;
-      await submitAnswer(questionToAnswer, userInput, isFirstQuestion)
+      // Reset input
+      setUserInput("");
       
-      // If this is the last question and we have onNext, use it to move to next block
-      if (isLastQuestion && onNext) {
-        // Update the conversation first to ensure the answer is saved
-        if (onChange) {
-          onChange([...effectiveConversation, { 
-            question: questionToAnswer, 
-            answer: userInput,
-            timestamp: new Date().toISOString(),
-            is_starter: isFirstQuestion
-          }])
+      // Determine if we're changing an earlier answer that should reset later questions
+      const shouldResetLaterQuestions = activeQuestionIndex < effectiveConversation.length - 1;
+      
+      if (isBuilder) {
+        // In builder mode, we'll need to manually update the state
+        // since we're not making API calls
+        const newPair = {
+          question: questionText,
+          answer,
+          timestamp: new Date().toISOString(),
+          is_starter: isStarter
+        };
+        
+        // If we're editing an existing QA pair, replace it; otherwise add a new one
+        let updatedValue;
+        
+        if (activeQuestionIndex < value.length) {
+          if (shouldResetLaterQuestions) {
+            // Truncate the conversation at this index and replace the current QA pair
+            updatedValue = value.slice(0, activeQuestionIndex).concat([newPair]);
+            console.log(`Builder mode: Truncating conversation at index ${activeQuestionIndex}`);
+          } else {
+            // Replace existing QA pair without truncation
+            updatedValue = value.map((item, i) => i === activeQuestionIndex ? newPair : item);
+          }
+          
+          // Stay at the current question if we reset later questions, otherwise move to next
+          if (!shouldResetLaterQuestions && activeQuestionIndex + 1 < value.length) {
+            setActiveQuestionIndex(activeQuestionIndex + 1);
+          }
+        } else {
+          // Add new QA pair
+          updatedValue = [...value, newPair];
+          
+          // Advance to next question if we haven't reached the max
+          if (activeQuestionIndex < settings.maxQuestions - 1) {
+            setActiveQuestionIndex(activeQuestionIndex + 1);
+          }
         }
-        setUserInput("")
-        // Use the onNext prop to go to the next block/question
-        onNext()
-        setIsLocalSubmitting(false)
-        return
+        
+        // Update the form data
+        if (onChange) {
+          onChange(updatedValue);
+        }
+      } else {
+        // In viewer mode, make a real API call
+        // Check if we've reached max questions and should move to next block
+        const isLastQuestion = activeQuestionIndex >= maxQuestions - 1;
+        
+        // Pass the questionIndex to indicate where to truncate the conversation if we're changing an earlier answer
+        if (shouldResetLaterQuestions) {
+          console.log(`Submitting answer for question ${activeQuestionIndex}, will reset later questions`);
+          setIsChangingEarlierAnswer(true);
+          
+          try {
+            // Submit answer with the questionIndex to trigger truncation
+            const result = await submitAnswer(questionText, answer, activeQuestionIndex, isStarter);
+            
+            // After submitting an answer that resets later questions:
+            // 1. The conversation is truncated at the specified index
+            // 2. A new question will have been generated and returned in nextQuestion
+            
+            console.log('Conversation after truncation:', {
+              conversationLength: result?.conversation?.length,
+              hasNextQuestion: !!result?.nextQuestion
+            });
+            
+            // Important: We're staying at the current index, not advancing
+            // The next question will be displayed via the activeQuestion logic since
+            // the effectiveConversation array will have been shortened
+          } finally {
+            // Reset the warning flag after submission
+            setIsChangingEarlierAnswer(false);
+          }
+        } else {
+          // Normal case - append to conversation
+          try {
+            const result = await submitAnswer(questionText, answer, undefined, isStarter);
+            
+            console.log('Conversation after normal submission:', {
+              conversationLength: result?.conversation?.length,
+              hasNextQuestion: !!result?.nextQuestion,
+              currentIndex: activeQuestionIndex
+            });
+            
+            // If this is the last question and we have onNext, use it to move to next block
+            if (isLastQuestion && onNext) {
+              onNext();
+              setIsLocalSubmitting(false);
+              return;
+            }
+            
+            // Force a refresh of active question index to trigger re-render
+            const currentLength = result?.conversation?.length || 0;
+            
+            // If we just answered the last question in the conversation, move to the next index
+            // which will show the next question (from nextQuestion)
+            if (activeQuestionIndex === currentLength - 1) {
+              // Add a small delay to ensure the state has been updated properly
+              // This helps with synchronization issues in the UI
+              
+              // Add an immediate update with important flag setting to prevent flash of loading state
+              if (nextQuestion) {
+                console.log('IMPORTANT: Moving to next question with:', nextQuestion.substring(0, 20) + '...');
+                // Directly set the display question to the next question first
+                // This prevents the flash of "Loading next question..."
+                setDisplayQuestion(nextQuestion);
+              }
+              
+              // IMPORTANT: Update the index AFTER setting the display question
+              // This sequence ensures we don't get the loading state showing
+              setActiveQuestionIndex(currentLength);
+              
+              // Force a component update to ensure the UI reflects the changes
+              setForceUpdate(prev => prev + 1);
+              
+              // Add a more aggressive refresh mechanism to catch potential race conditions
+              setTimeout(() => {
+                // Force update the display question again after a delay
+                if (nextQuestion) {
+                  console.log('DELAYED UPDATE: Setting display question to next question');
+                  setDisplayQuestion(nextQuestion);
+                }
+                
+                // Also update the active index
+                if (activeQuestionIndex !== currentLength) {
+                  setActiveQuestionIndex(currentLength);
+                }
+                
+                // Force another component update
+                setForceUpdate(prev => prev + 1);
+              }, 100);
+            }
+          } catch (error) {
+            console.error('Error processing normal submission:', error);
+          }
+        }
       }
-      
-      // For normal flow, just clear input and move to next question in this conversation
-      setUserInput("")
-      setActiveQuestionIndex(activeQuestionIndex + 1)
-      setIsLocalSubmitting(false)
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
-      console.error("Error submitting answer:", error)
+      console.error("Error submitting answer:", error);
       
       // Track error for analytics
       if (analytics?.trackChange) {
@@ -268,10 +483,10 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
           error_message: error.message || 'Unknown error'
         });
       }
-      
-      setIsLocalSubmitting(false)
+    } finally {
+      setIsLocalSubmitting(false);
     }
-  }
+  };
 
   // Handle Enter key to submit
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -301,6 +516,7 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
+      key={renderKey} // Add a key to force re-render when needed
     >
       <div className="space-y-4">
         {/* Subtle navigation controls - show when we're past first question or have answers */}
@@ -333,6 +549,13 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
         )}
         
         {/* We no longer display the previously answered question box in any mode */}
+        
+        {/* Message when changing an earlier answer */}
+        {isChangingEarlierAnswer && (
+          <div className="mb-4 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-2">
+            Changing this answer will reset all subsequent questions.
+          </div>
+        )}
         
         {/* Input area - always visible, disabled during submission */}
         {showInput && (
