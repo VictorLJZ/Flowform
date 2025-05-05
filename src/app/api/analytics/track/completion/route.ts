@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient } from '@/lib/supabase/publicClient';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 /**
  * API route for tracking form completions
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the Supabase public client for unauthenticated access
-    const supabase = createPublicClient();
+    // Create the Supabase service client for trusted server operations
+    const supabase = createServiceClient();
     
     // First, update the response status to completed
     const { error: responseError } = await supabase

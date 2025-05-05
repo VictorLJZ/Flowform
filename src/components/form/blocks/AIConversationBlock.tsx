@@ -301,6 +301,7 @@ const AIConversationBlockInternal = forwardRef<AIConversationHandle, AIConversat
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled || (required && isFirstQuestion)}
+      blockRef={analytics?.blockRef}
     >
       <div className="space-y-4">
         {/* Subtle navigation controls - show when we're past first question or have answers */}

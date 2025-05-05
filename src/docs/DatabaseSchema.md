@@ -414,7 +414,7 @@ Metrics in this table are automatically calculated through RPC functions:
 
 1. **track_form_view**: Called when a form is viewed
    - Updates `total_views`, `unique_views`, and `bounce_rate`
-   - Calculates bounce rate as: (views without interactions) / total views
+   - Ensures all rates stay within valid ranges (0-100%)
 
 2. **track_form_start**: Called when a form session is created
    - Updates `total_starts` and recalculates `bounce_rate` and `completion_rate`
@@ -424,6 +424,14 @@ Metrics in this table are automatically calculated through RPC functions:
    - Updates `total_completions`, `completion_rate`, and `average_completion_time_seconds`
    - Ensures data integrity by enforcing completions ≤ starts
    - Ensures all rates stay within valid ranges (0-100%)
+
+4. **track_block_view**: Called when a block is viewed
+   - Records a 'view' interaction in `form_interactions` table
+   - Updates the view count in `block_metrics` table
+
+5. **track_block_interaction**: Called when a user interacts with a block
+   - Records various interaction types (focus, blur, change, submit) in `form_interactions`
+   - Updates appropriate metrics in `block_metrics` based on interaction type
 
 See [AnalyticsRPCSchema.md](./AnalyticsRPCSchema.md) for detailed documentation of all analytics RPC functions.
 
@@ -449,6 +457,12 @@ Performance metrics for individual question blocks.
 | drop_off_rate         | FLOAT                   | Percentage of users who dropped off |
 | last_updated          | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
 
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| block_metrics_block_id_key | `UNIQUE (block_id)` | Ensures only one metrics record per block for upsert operations |
+
 #### Row Level Security Policies
 
 | Policy Name | Command | Using (qual) | With Check |
@@ -464,10 +478,19 @@ Granular tracking of user interactions with form elements.
 | id               | UUID                    | Primary key                       |
 | response_id      | UUID                    | References form_responses.id      |
 | block_id         | UUID                    | References form_blocks.id         |
+| form_id          | UUID                    | References forms.form_id          |
 | interaction_type | TEXT                    | view, focus, blur, change, submit, error |
 | timestamp        | TIMESTAMP WITH TIME ZONE| When interaction occurred         |
 | duration_ms      | INTEGER                 | Duration of interaction (if applicable) |
 | metadata         | JSONB                   | Additional context data           |
+
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| form_interactions_response_id_fkey | `FOREIGN KEY (response_id) REFERENCES form_responses(id)` | Ensures response_id links to valid form_responses |
+| form_interactions_block_id_fkey | `FOREIGN KEY (block_id) REFERENCES form_blocks(id)` | Ensures block_id links to valid form_blocks |
+| form_interactions_form_id_fkey | `FOREIGN KEY (form_id) REFERENCES forms(form_id)` | Ensures form_id links to valid forms |
 
 #### Row Level Security Policies
 

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 
 // Get analytics data for a specific form
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // Get form views count
     const { count: viewCount, error: viewError } = await supabase

@@ -18,7 +18,7 @@ import { AIConversationBlock } from '@/components/form/blocks/AIConversationBloc
 import type { AIConversationHandle } from '@/components/form/blocks/AIConversationBlock';
 import { FormBlock } from '@/types/block-types';
 import type { QAPair } from '@/types/supabase-types';
-import type { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import type { BaseBlockMapperProps } from '@/services/form/blockMappers';
 import {
   mapToPropsText,
@@ -39,7 +39,7 @@ interface BlockRendererProps {
   submitting: boolean;
   responseId: string | null;
   formId: string;
-  analytics: ReturnType<typeof useAnalytics>; // Get the type from the hook
+  analytics: ReturnType<typeof useAnalytics>; // Parent-level analytics
   aiConversationRef: React.RefObject<AIConversationHandle | null>; // Allow null
   index?: number; // Current block index for numbering
   totalBlocks?: number; // Total number of blocks for progress
@@ -64,8 +64,18 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
   console.log('BlockRenderer - rendering block:', { 
     id: block?.id, 
     blockTypeId: block?.blockTypeId,
-    currentAnswer
+    currentAnswer,
+    hasAnalytics: !!analytics,
+    hasBlockRef: analytics && 'blockRef' in analytics
   });
+  
+  // Debug log for analytics.blockRef if it exists
+  if (analytics && 'blockRef' in analytics) {
+    console.log(`🔍 DEBUG BlockRenderer - analytics.blockRef for block ${block?.id}:`, {
+      blockRef: analytics.blockRef,
+      refCurrent: analytics.blockRef?.current
+    });
+  }
 
   // Safety check - if no block, return nothing
   if (!block) {
@@ -125,6 +135,49 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     // Map the base props to component-specific props using the mapper function
     const componentProps = mapperFn(baseMapperProps);
     
+    // Create block-specific analytics by initializing a new useAnalytics instance with block ID
+    const blockAnalytics = useAnalytics({
+      formId,
+      blockId: block.id, // Pass the block ID directly to useAnalytics
+      responseId: responseId || undefined,
+      disabled: !responseId,
+      metadata: { blockType: block.blockTypeId }
+    });
+    
+    // Enhanced analytics with block-specific tracking and logging
+    const enhancedAnalytics = {
+      ...blockAnalytics,
+      // Add debug logging to track when the block becomes visible
+      trackFocus: () => {
+        console.log(`[BlockAnalytics] Block ${block.id} focused`);
+        if (blockAnalytics.trackFocus) {
+          blockAnalytics.trackFocus();
+        }
+      },
+      trackBlur: () => {
+        console.log(`[BlockAnalytics] Block ${block.id} blurred`);
+        if (blockAnalytics.trackBlur) {
+          blockAnalytics.trackBlur();
+        }
+      },
+      trackChange: (value?: string | number | string[] | Record<string, unknown>) => {
+        console.log(`[BlockAnalytics] Block ${block.id} changed:`, value);
+        if (blockAnalytics.trackChange) {
+          blockAnalytics.trackChange({
+            blockId: block.id,
+            ...(typeof value === 'object' ? value : { value })
+          });
+        }
+      },
+      trackInteraction: (type: string, metadata: Record<string, unknown> = {}) => {
+        console.log(`[BlockAnalytics] Block ${block.id} interaction: ${type}`, metadata);
+        if (blockAnalytics.trackInteraction) {
+          // @ts-ignore - The trackInteraction function might have different signature
+          blockAnalytics.trackInteraction(type, metadata);
+        }
+      }
+    };
+    
     // Merge slideWrapperProps into componentProps for proper handling in the block component
     // The block components already wrap themselves in SlideWrapper
     return (
@@ -134,6 +187,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
         totalBlocks={totalBlocks}
         onNext={slideWrapperProps.onNext}
         isNextDisabled={slideWrapperProps.isNextDisabled}
+        analytics={enhancedAnalytics} // Pass enhanced analytics with block-specific tracking
+        blockRef={blockAnalytics.blockRef} // Pass blockRef from the block-specific analytics
       />
     );
   };

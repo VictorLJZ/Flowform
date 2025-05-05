@@ -389,12 +389,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 - `p_total_time_seconds`: Optional total time taken to complete the form
 - `p_metadata`: Additional metadata about the completion event
 
-**Returns:**
-- JSON object with success status, response ID, completion time, and timestamp
 
 ### 4. track_block_view
 
-Records when a user views a specific block and updates block metrics.
+Records when a user views a specific block and updates metrics.
 
 ```sql
 CREATE OR REPLACE FUNCTION track_block_view(
@@ -409,11 +407,12 @@ DECLARE
   v_view_id UUID;
   v_timestamp TIMESTAMPTZ := NOW();
 BEGIN
-  -- Step 1: Insert the block view record
-  INSERT INTO block_views(
+  -- Step 1: Insert the block view as an interaction with type 'view'
+  INSERT INTO form_interactions(
     block_id,
     form_id,
     response_id,
+    interaction_type,
     timestamp,
     metadata
   )
@@ -421,57 +420,13 @@ BEGIN
     p_block_id,
     p_form_id,
     p_response_id,
+    'view', -- Interaction type for views
     v_timestamp,
-    p_metadata
+    jsonb_build_object('visitor_id', p_visitor_id) || COALESCE(p_metadata, '{}'::jsonb)
   )
   RETURNING id INTO v_view_id;
   
   -- Step 2: Update metrics in block_metrics table
-  INSERT INTO block_metrics (
-    block_id,
-    form_id,
-    views,
-    skips,
-    average_time_seconds,
-    drop_off_count,
-    drop_off_rate,
-    last_updated
-  )
-  VALUES (
-    p_block_id,
-    p_form_id,
-    1, -- Initial view count
-    0, -- Initial skip count
-    0, -- Initial avg time
-    0, -- Initial drop-off count
-    0, -- Initial drop-off rate
-    v_timestamp
-  )
-  ON CONFLICT (block_id) 
-  DO UPDATE SET 
-    views = block_metrics.views + 1,
-    last_updated = v_timestamp;
-  
-  -- Return success with view ID
-  RETURN jsonb_build_object(
-    'success', true,
-    'view_id', v_view_id,
-    'timestamp', v_timestamp
-  );
-  
-EXCEPTION WHEN OTHERS THEN
-  -- Return error information
-  RETURN jsonb_build_object(
-    'success', false,
-    'error', SQLERRM,
-    'error_detail', SQLSTATE
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-**Parameters:**
-- `p_block_id`: UUID of the block being viewed
 - `p_form_id`: UUID of the form containing the block
 - `p_response_id`: Optional UUID of the response session
 - `p_visitor_id`: Unique identifier for the visitor
@@ -479,6 +434,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 **Returns:**
 - JSON object with success status, view ID, and timestamp
+
+**Note:** This function records block views directly in the `form_interactions` table with an interaction_type of 'view' rather than using a separate block_views table. This ensures all interactions are tracked consistently in a single table.
 
 ### 5. track_block_interaction
 
@@ -494,7 +451,10 @@ CREATE OR REPLACE FUNCTION track_block_interaction(
   p_visitor_id TEXT DEFAULT NULL,
   p_metadata JSONB DEFAULT NULL
 )
-RETURNS JSONB AS $$
+RETURNS JSONB
+SECURITY DEFINER -- Run with the privileges of the function creator
+SET search_path = public -- Prevent search path injection
+AS $$
 DECLARE
   v_interaction_id UUID;
   v_timestamp TIMESTAMPTZ := NOW();
@@ -502,6 +462,7 @@ BEGIN
   -- Step 1: Insert the interaction record
   INSERT INTO form_interactions(
     block_id,
+    form_id,
     response_id,
     interaction_type,
     timestamp,
@@ -510,43 +471,17 @@ BEGIN
   )
   VALUES (
     p_block_id,
+    p_form_id,
     p_response_id,
     p_interaction_type,
     v_timestamp,
     p_duration_ms,
-    jsonb_build_object('visitor_id', p_visitor_id, 'form_id', p_form_id) || COALESCE(p_metadata, '{}'::jsonb)
+    jsonb_build_object('visitor_id', p_visitor_id) || COALESCE(p_metadata, '{}'::jsonb)
   )
   RETURNING id INTO v_interaction_id;
   
-  -- Step 2: Update metrics based on interaction type
-  IF p_interaction_type = 'view' THEN
-    -- Update views in block_metrics table
-    INSERT INTO block_metrics (
-      block_id,
-      form_id,
-      views,
-      skips,
-      average_time_seconds,
-      drop_off_count,
-      drop_off_rate,
-      last_updated
-    )
-    VALUES (
-      p_block_id,
-      p_form_id,
-      1, -- Initial view count
-      0, -- Initial skip count
-      0, -- Initial avg time
-      0, -- Initial drop-off count
-      0, -- Initial drop-off rate
-      v_timestamp
-    )
-    ON CONFLICT (block_id) 
-    DO UPDATE SET 
-      views = block_metrics.views + 1,
-      last_updated = v_timestamp;
-      
-  ELSIF p_interaction_type = 'submit' AND p_duration_ms IS NOT NULL THEN
+  -- Step 2: Update metrics based on interaction type if needed
+  IF p_interaction_type = 'submit' AND p_duration_ms IS NOT NULL THEN
     -- Update time spent in block_metrics table
     UPDATE block_metrics
     SET
@@ -559,28 +494,41 @@ BEGIN
     WHERE block_id = p_block_id;
   END IF;
   
-  -- Return success with interaction ID
+  -- Return success info
   RETURN jsonb_build_object(
-    'success', true,
+    'success', TRUE,
     'interaction_id', v_interaction_id,
     'timestamp', v_timestamp
   );
-  
 EXCEPTION WHEN OTHERS THEN
-  -- Return error information
+  -- Return error info
   RETURN jsonb_build_object(
-    'success', false,
-    'error', SQLERRM,
-    'error_detail', SQLSTATE
+    'success', FALSE,
+    'error', SQLERRM
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION track_block_interaction TO authenticated;
+```
+
+**Parameters:**
+- `p_block_id`: UUID of the block that was interacted with
+- `p_form_id`: UUID of the form containing the block
+- `p_interaction_type`: Type of interaction (focus, blur, change, submit, error)
+- `p_response_id`: Optional UUID of the response session
+- `p_duration_ms`: Optional duration of the interaction in milliseconds
+- `p_visitor_id`: Optional unique identifier for the visitor
+- `p_metadata`: Additional metadata about the interaction
+
+**Returns:**
+- JSON object with success status, interaction ID, and timestamp SECURITY DEFINER;
 ```
 
 **Parameters:**
 - `p_block_id`: UUID of the block being interacted with
 - `p_form_id`: UUID of the form containing the block
-- `p_interaction_type`: Type of interaction (view, focus, blur, submit, etc.)
 - `p_response_id`: Optional UUID of the response session
 - `p_duration_ms`: Optional duration of the interaction in milliseconds
 - `p_visitor_id`: Unique identifier for the visitor

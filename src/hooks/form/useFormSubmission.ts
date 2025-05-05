@@ -177,12 +177,13 @@ export const useFormSubmission = ({
           responseId,
           formId,
           has_ref: !!onFormCompleteRef.current,
-          payload: { response_id: responseId }
+          payload: {} // No longer passing response_id in metadata
         });
         
         // Use the specific form completion tracker via ref
+        // We no longer need to pass response_id here as it's already passed as a parameter to the hook
         try {
-          await onFormCompleteRef.current({ response_id: responseId });
+          await onFormCompleteRef.current({}); // Pass empty object instead of duplicating response_id
           console.log('[TRACKING DEBUG] onFormCompleteRef.current completed successfully');
         } catch (error) {
           console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);

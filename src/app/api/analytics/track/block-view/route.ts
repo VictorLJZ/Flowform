@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient } from '@/lib/supabase/publicClient';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 /**
  * API route for tracking block views
@@ -23,8 +23,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the Supabase public client for unauthenticated access
-    const supabase = createPublicClient();
+    // Create the Supabase service client for trusted server operations
+    const supabase = createServiceClient();
     
     // Call the RPC function to track block view and update metrics in one transaction
     console.log('[API DEBUG] Calling track_block_view RPC with block_id:', blockId, 'form_id:', formId);

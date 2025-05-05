@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     }
     
     const data = validationResult.data;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const timestamp = new Date().toISOString();
     
     // Call the RPC function to track block interaction and update metrics in one transaction

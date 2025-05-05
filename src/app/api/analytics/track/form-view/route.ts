@@ -1,21 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-// Create a secure service client that only exists server-side
-// This is safe because this code only runs on the server in an API route
-const createServiceClient = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      }
-    }
-  );
-};
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 // Mark this route as dynamic to prevent caching
 export const dynamic = 'force-dynamic';

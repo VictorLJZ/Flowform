@@ -157,6 +157,7 @@ export function EmailBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      blockRef={analytics?.blockRef}
     >
       {emailField}
       {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
