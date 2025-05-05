@@ -33,7 +33,10 @@ export async function POST(request: Request) {
     const visitorId = metadata?.visitor_id || null;
     
     // Remove visitor_id from metadata to avoid duplication
-    const { visitor_id: _, ...cleanMetadata } = metadata || {};
+    const cleanMetadata = { ...metadata };
+    if (cleanMetadata) {
+      delete cleanMetadata.visitor_id;
+    }
     
     const { data: rpcResult, error } = await supabase.rpc('track_block_interaction', {
       p_block_id: blockId,

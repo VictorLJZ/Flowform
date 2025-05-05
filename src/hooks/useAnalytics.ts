@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import {
   useBlockViewTracking,
-  useBlockInteractionTracking,
+  useBlockSubmitTracking, // Use the new simplified tracking hook
   useFormCompletionTracking,
   useTimingMeasurement
 } from '@/hooks/analytics';
@@ -32,8 +32,8 @@ export function useAnalytics(options: {
     blockId,
     responseId,
     disabled = false,
-    metadata = {},
-    abandonmentReason
+    metadata = {}
+    // abandonmentReason removed as it's not used anywhere
   } = options;
 
   // NOTE: Form view tracking has been migrated to useViewTracking hook.
@@ -45,7 +45,8 @@ export function useAnalytics(options: {
     metadata
   });
 
-  const blockInteraction = useBlockInteractionTracking(blockId, formId, {
+  // Use the new block submit tracking hook which focuses only on submit events
+  const blockSubmit = useBlockSubmitTracking(blockId, formId, {
     responseId,
     disabled,
     metadata
@@ -84,13 +85,8 @@ export function useAnalytics(options: {
     }
   }, [formId, responseId, disabled, timing, formCompletion]);
 
-  // Track form abandonment
-  const trackAbandonment = useCallback((data: Record<string, unknown> = {}) => {
-    if (!formId || disabled) return;
-    const eventData = { ...data, event_type: 'form_abandonment', abandonment_reason: abandonmentReason };
-    console.log('[Analytics] trackAbandonment:', eventData);
-    // TODO: Send data to analytics backend
-  }, [formId, disabled, abandonmentReason]);
+  // Track form abandonment functionality removed as it's not being used
+  // Keeping abandonmentReason variable as it might be used elsewhere
 
   useEffect(() => {
     console.log('[ANALYTICS DEBUG] useAnalytics detected changes:', { 
@@ -110,37 +106,48 @@ export function useAnalytics(options: {
     });
     
     return {
-      // Combined refs
-      blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
+      // Block-specific tracking
+      blockView,
+      blockSubmit,
       
-      // Status indicators
-      blockViewTracked: blockView.hasTracked,
-      formCompleted: formCompletion.hasTracked,
+      // Legacy property name for backward compatibility
+      blockInteraction: blockSubmit,
       
-      // Block interaction handlers
-      trackFocus: blockInteraction.handleFocus,
-      trackBlur: blockInteraction.handleBlur,
-      trackChange: blockInteraction.handleChange,
-      trackSubmit: blockInteraction.handleSubmit,
-      trackError: blockInteraction.handleError,
-      trackInteraction: blockInteraction.trackInteraction,
-      
-      // Form completion tracking
-      trackCompletion: formCompletion.trackCompletion,
-      
-      // Combined tracking
-      trackFormSession,
-      trackAbandonment,
+      // Form tracking
+      formCompletion,
       
       // Timing utilities
       timing,
       
-      // Raw hooks for advanced usage
-      blockView,
-      blockInteraction,
-      formCompletion
+      // Status flags
+      blockViewTracked: blockView.hasTracked,
+      formCompleted: formCompletion.hasTracked,
+      
+      // Track block submission 
+      trackBlockInteraction: (interactionType: 'submit', valueInfo: Record<string, unknown> = {}) => {
+        if (blockId) {
+          blockSubmit.trackSubmit(valueInfo);
+        }
+      },
+      
+      // Shortcuts to specific handlers
+      trackSubmit: blockSubmit.handleSubmit,
+      
+      // Form completion tracking
+      trackCompletion: formCompletion.trackCompletion,
+      
+      // Timing utilities
+      startTiming: timing.startTimer,
+      pauseTiming: timing.pauseTimer,
+      stopTiming: timing.stopTimer,
+      getElapsedTiming: timing.getElapsedTime,
+      formatTiming: timing.formatTime,
+      
+      // Combined tracking functions
+      trackFormSession,
+      
+      // Helper references for parent components
+      blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
     };
-  // Add formId, responseId, and disabled as dependencies to ensure the hook re-initializes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formId, responseId, disabled, formCompletion]);
+  }, [blockId, blockView, blockSubmit, formCompletion, timing, trackFormSession, disabled, responseId]);
 }

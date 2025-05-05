@@ -11,8 +11,8 @@ export async function POST(request: Request) {
       blockId, 
       formId, 
       responseId, 
-      metadata,
-      timestamp 
+      metadata
+      // timestamp is available but not used
     } = await request.json();
 
     // Validate required fields

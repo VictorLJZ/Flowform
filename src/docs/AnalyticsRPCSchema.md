@@ -437,16 +437,15 @@ BEGIN
 
 **Note:** This function records block views directly in the `form_interactions` table with an interaction_type of 'view' rather than using a separate block_views table. This ensures all interactions are tracked consistently in a single table.
 
-### 5. track_block_interaction
+### 5. track_block_submit
 
-Records when a user interacts with a specific block and updates metrics.
+Tracks form block submissions, focusing only on the most important interaction: when users submit their answers.
 
 ```sql
-CREATE OR REPLACE FUNCTION track_block_interaction(
+CREATE OR REPLACE FUNCTION track_block_submit(
   p_block_id UUID,
   p_form_id UUID,
-  p_interaction_type TEXT,
-  p_response_id UUID DEFAULT NULL,
+  p_response_id UUID,
   p_duration_ms INTEGER DEFAULT NULL,
   p_visitor_id TEXT DEFAULT NULL,
   p_metadata JSONB DEFAULT NULL
@@ -456,15 +455,15 @@ SECURITY DEFINER -- Run with the privileges of the function creator
 SET search_path = public -- Prevent search path injection
 AS $$
 DECLARE
-  v_interaction_id UUID;
+  v_submit_id UUID;
   v_timestamp TIMESTAMPTZ := NOW();
 BEGIN
-  -- Step 1: Insert the interaction record
+  -- Step 1: Insert the submit record in form_interactions
   INSERT INTO form_interactions(
     block_id,
     form_id,
     response_id,
-    interaction_type,
+    interaction_type, -- Still use 'submit' for compatibility
     timestamp,
     duration_ms,
     metadata
@@ -473,23 +472,95 @@ BEGIN
     p_block_id,
     p_form_id,
     p_response_id,
-    p_interaction_type,
+    'submit',
     v_timestamp,
     p_duration_ms,
-    jsonb_build_object('visitor_id', p_visitor_id) || COALESCE(p_metadata, '{}'::jsonb)
+    COALESCE(p_metadata, '{}'::jsonb) -- Not adding visitor_id to metadata
   )
-  RETURNING id INTO v_interaction_id;
+  RETURNING id INTO v_submit_id;
   
-  -- Step 2: Update metrics based on interaction type if needed
-  IF p_interaction_type = 'submit' AND p_duration_ms IS NOT NULL THEN
-    -- Update time spent in block_metrics table
-    UPDATE block_metrics
-    SET
-      average_time_seconds = CASE 
-                             WHEN views > 0 
-                             THEN ((average_time_seconds * views) + (p_duration_ms / 1000.0)) / (views + 1)
-                             ELSE (p_duration_ms / 1000.0)
-                           END,
+  -- Step 2: Update metrics in block_metrics
+  -- This part handles:
+  -- - Average time spent on the block
+  -- - Submission counts and success rates
+  INSERT INTO block_metrics (
+    block_id,
+    form_id,
+    views,
+    submissions,
+    success_rate,
+    average_time_seconds,
+    completion_rate,
+    last_updated
+  )
+  VALUES (
+    p_block_id,
+    p_form_id,
+    1, -- Default to 1 view
+    1, -- This is a submission
+    1.0, -- Default success rate
+    COALESCE(p_duration_ms / 1000.0, 0), -- Convert ms to seconds
+    1.0, -- Default completion rate
+    v_timestamp
+  )
+  ON CONFLICT (block_id)
+  DO UPDATE SET
+    submissions = block_metrics.submissions + 1,
+    -- Update time spent calculation
+    average_time_seconds = CASE 
+                           WHEN block_metrics.views > 0 
+                           THEN ((block_metrics.average_time_seconds * block_metrics.views) + 
+                                COALESCE(p_duration_ms / 1000.0, 0)) / (block_metrics.views + 1)
+                           ELSE COALESCE(p_duration_ms / 1000.0, 0)
+                          END,
+    -- Update success rate
+    success_rate = CASE 
+                   WHEN block_metrics.submissions > 0 
+                   THEN (block_metrics.success_rate * block_metrics.submissions + 1.0) / 
+                        (block_metrics.submissions + 1)
+                   ELSE 1.0
+                  END,
+    -- Update completion rate (views to submissions ratio)
+    completion_rate = CASE 
+                     WHEN block_metrics.views > 0 
+                     THEN (block_metrics.submissions + 1)::FLOAT / block_metrics.views
+                     ELSE 1.0
+                    END,
+    last_updated = v_timestamp;
+
+  -- Return success information
+  RETURN jsonb_build_object(
+    'success', TRUE,
+    'submit_id', v_submit_id,
+    'timestamp', v_timestamp
+  );
+EXCEPTION WHEN OTHERS THEN
+  -- Return error info
+  RETURN jsonb_build_object(
+    'success', FALSE,
+    'error', SQLERRM
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION track_block_submit TO authenticated;
+```
+
+**Parameters:**
+- `p_block_id`: ID of the form block being submitted
+- `p_form_id`: ID of the form containing the block
+- `p_response_id`: ID of the form response session
+- `p_duration_ms`: Optional. Duration in milliseconds the user spent on the block
+- `p_visitor_id`: Optional. Unique identifier for the visitor
+- `p_metadata`: Optional. Additional metadata about the submission event
+
+**Returns:**
+- JSON object with success status, submission ID, and timestamp
+
+**Note:** This function records block submissions directly in the `form_interactions` table with an interaction_type of 'submit' and updates aggregated metrics in the `block_metrics` table.
+                        ELSE 1.0
+                       END,
       last_updated = v_timestamp
     WHERE block_id = p_block_id;
   END IF;
@@ -514,25 +585,12 @@ GRANT EXECUTE ON FUNCTION track_block_interaction TO authenticated;
 ```
 
 **Parameters:**
-- `p_block_id`: UUID of the block that was interacted with
+- `p_block_id`: UUID of the block being submitted
 - `p_form_id`: UUID of the form containing the block
-- `p_interaction_type`: Type of interaction (focus, blur, change, submit, error)
-- `p_response_id`: Optional UUID of the response session
-- `p_duration_ms`: Optional duration of the interaction in milliseconds
-- `p_visitor_id`: Optional unique identifier for the visitor
-- `p_metadata`: Additional metadata about the interaction
-
-**Returns:**
-- JSON object with success status, interaction ID, and timestamp SECURITY DEFINER;
-```
-
-**Parameters:**
-- `p_block_id`: UUID of the block being interacted with
-- `p_form_id`: UUID of the form containing the block
-- `p_response_id`: Optional UUID of the response session
-- `p_duration_ms`: Optional duration of the interaction in milliseconds
+- `p_response_id`: UUID for the form response (required for submissions)
+- `p_duration_ms`: Optional duration spent on the block in milliseconds
 - `p_visitor_id`: Unique identifier for the visitor
-- `p_metadata`: Additional metadata about the interaction
+- `p_metadata`: Additional metadata about the submission
 
 **Returns:**
 - JSON object with success status, interaction ID, and timestamp
@@ -556,4 +614,5 @@ These RPC functions are called from corresponding API endpoints:
 - `track_form_start` - Called from `/api/forms/[formId]/sessions/route.ts`
 - `track_form_completion` - Called from `/api/analytics/track/form-completion/route.ts`
 - `track_block_view` - Called from `/api/analytics/track/block-view/route.ts`
-- `track_block_interaction` - Called from `/api/analytics/track/block-interaction/route.ts`
+- `track_block_interaction` - Called from `/api/analytics/track/block-interaction/route.ts` (Legacy)
+- `track_block_submit` - Called from `/api/analytics/track/block-submit/route.ts` (Preferred)

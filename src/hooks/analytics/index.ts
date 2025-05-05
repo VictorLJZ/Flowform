@@ -3,12 +3,12 @@
  * Centralizes exports for all analytics-related hooks
  */
 
-// Legacy tracking hooks
+// Core tracking hooks for form and block analytics
 export * from './useFormViewTracking';
 export * from './useBlockViewTracking';
-export * from './useBlockInteractionTracking';
+export * from './useBlockSubmitTracking';
 export * from './useFormCompletionTracking';
 export * from './useTimingMeasurement';
 
-// New unified tracking hooks
+// Unified tracking hooks
 export * from './useViewTracking';

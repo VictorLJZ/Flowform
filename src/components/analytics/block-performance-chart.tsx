@@ -5,6 +5,7 @@ import { EnhancedBlockStats } from "@/hooks/useFormAnalyticsDashboard"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { ChartPayload, ChartEvent } from "@/types"
 
 // Updated props interface to reflect our simplified data structure
 interface BlockPerformanceChartProps {
@@ -84,7 +85,7 @@ export function BlockPerformanceChart({
   })
 
   // Helper function for custom tooltip content
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean, payload?: ChartPayload[], label?: string }) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload
       return (
@@ -154,7 +155,7 @@ export function BlockPerformanceChart({
               data={chartData}
               layout="vertical"
               margin={{ top: 10, right: 30, left: 100, bottom: 0 }}
-              onMouseMove={(state: any) => {
+              onMouseMove={(state: ChartEvent) => {
                 if (state?.activeTooltipIndex !== undefined) {
                   setActiveIndex(state.activeTooltipIndex)
                 }

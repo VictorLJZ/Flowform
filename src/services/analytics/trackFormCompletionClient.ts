@@ -28,14 +28,14 @@ export async function trackFormCompletionClient(
     metadata_values: metadata
   });
   try {
-    // Extract visitor_id from metadata if present, or use a fallback
+    // Extract these values once
     const visitor_id = metadata?.visitor_id || getVisitorId();
-    
-    // Extract total_time_seconds from metadata if present
     const total_time_seconds = metadata?.total_time_seconds || null;
     
-    // Remove these keys from metadata to avoid duplication
-    const { visitor_id: _, total_time_seconds: __, ...cleanMetadata } = metadata || {};
+    // Create a clean metadata object without these properties 
+    const cleanMetadata = { ...metadata };
+    delete cleanMetadata?.visitor_id;
+    delete cleanMetadata?.total_time_seconds;
     
     const timestamp = new Date().toISOString();
     

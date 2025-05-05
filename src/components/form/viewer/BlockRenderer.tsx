@@ -59,6 +59,16 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     index,
     totalBlocks
   } = props;
+  
+  // Create analytics at the component level - unconditionally to comply with React Hooks rules
+  // We're setting disabled: true when appropriate instead of conditionally calling the hook
+  const blockAnalytics = useAnalytics({
+    formId: formId || '', // Ensure formId is never undefined
+    blockId: block?.id || '', // Ensure blockId is never undefined
+    responseId: responseId || undefined,
+    disabled: !responseId || !block?.id || !formId, // Disable if any required values are missing
+    metadata: { blockType: block?.blockTypeId || '' }
+  });
 
   // Log the block being rendered for debugging
   console.log('BlockRenderer - rendering block:', { 
@@ -129,51 +139,40 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     totalBlocks: totalBlocks // Add total blocks for progress and Submit button text
   };
 
+  // Note: useAnalytics hook is called at the top of the component to comply with React Hooks rules
+
   // Function to render a block - now passing SlideWrapper props to block components directly
   // This avoids double-wrapping with SlideWrapper since each block component already includes it
   const renderBlock = <T extends object>(BlockComponent: React.ComponentType<T>, mapperFn: (props: BaseBlockMapperProps) => T) => {
     // Map the base props to component-specific props using the mapper function
     const componentProps = mapperFn(baseMapperProps);
     
-    // Create block-specific analytics by initializing a new useAnalytics instance with block ID
-    const blockAnalytics = useAnalytics({
-      formId,
-      blockId: block.id, // Pass the block ID directly to useAnalytics
-      responseId: responseId || undefined,
-      disabled: !responseId,
-      metadata: { blockType: block.blockTypeId }
-    });
-    
-    // Enhanced analytics with block-specific tracking and logging
+    // Simplified analytics with block-specific tracking (submit events only)
     const enhancedAnalytics = {
       ...blockAnalytics,
-      // Add debug logging to track when the block becomes visible
-      trackFocus: () => {
-        console.log(`[BlockAnalytics] Block ${block.id} focused`);
-        if (blockAnalytics.trackFocus) {
-          blockAnalytics.trackFocus();
-        }
-      },
-      trackBlur: () => {
-        console.log(`[BlockAnalytics] Block ${block.id} blurred`);
-        if (blockAnalytics.trackBlur) {
-          blockAnalytics.trackBlur();
-        }
-      },
-      trackChange: (value?: string | number | string[] | Record<string, unknown>) => {
-        console.log(`[BlockAnalytics] Block ${block.id} changed:`, value);
-        if (blockAnalytics.trackChange) {
-          blockAnalytics.trackChange({
-            blockId: block.id,
-            ...(typeof value === 'object' ? value : { value })
-          });
-        }
-      },
+      
+      // Single method for tracking block interactions, focused on submit events
       trackInteraction: (type: string, metadata: Record<string, unknown> = {}) => {
         console.log(`[BlockAnalytics] Block ${block.id} interaction: ${type}`, metadata);
-        if (blockAnalytics.trackInteraction) {
-          // @ts-ignore - The trackInteraction function might have different signature
-          blockAnalytics.trackInteraction(type, metadata);
+        
+        // We only track submit events in our new simplified approach
+        if (type === 'submit') {
+          console.log(`[BlockAnalytics] Tracking block submit for ${block.id}`);
+          
+          // Track submit using the new blockSubmit functionality
+          if (blockAnalytics.trackSubmit) {
+            blockAnalytics.trackSubmit(metadata);
+          } else if (blockAnalytics.blockSubmit?.trackSubmit) {
+            blockAnalytics.blockSubmit.trackSubmit(metadata);
+          } else if (blockAnalytics.trackBlockInteraction) {
+            // Last resort - try the renamed method
+            blockAnalytics.trackBlockInteraction('submit', metadata);
+          } else {
+            console.error('[BlockAnalytics] Could not find any submit tracking method');
+          }
+        } else {
+          // Log but don't track other interaction types
+          console.log(`[BlockAnalytics] Ignoring non-submit interaction: ${type}`);
         }
       }
     };

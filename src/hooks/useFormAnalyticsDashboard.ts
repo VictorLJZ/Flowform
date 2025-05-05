@@ -1,5 +1,4 @@
 import useSWR from 'swr';
-import { getFormAnalyticsSummary } from '@/services/analytics/getFormAnalyticsSummary';
 import type { FormMetrics } from '@/types/supabase-types';
 
 // API response fetcher for SWR

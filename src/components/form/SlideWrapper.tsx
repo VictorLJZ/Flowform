@@ -186,11 +186,7 @@ export function SlideWrapper({
     </div>
   )
   
-  // Render the appropriate layout based on the slide layout type
-  // Wrap all slide layouts in the aspect ratio container when in builder mode
-  // Use the existing isViewer variable
-  const wrappedContent = (layoutComponent: React.ReactNode) => {
-    // Log when the block ref is connected
+  // Log when the block ref is connected - do this at the component level, not inside wrappedContent 
   useEffect(() => {
     if (containerRef.current && isViewer) {
       console.log(`[BlockTracking] Block ${id} ref attached to DOM`);
@@ -207,7 +203,12 @@ export function SlideWrapper({
         console.log(`📌 DEBUG: No blockRef provided for SlideWrapper ${id}`);
       }
     }
-  }, [containerRef.current, blockRef, id, isViewer]);
+  }, [containerRef, blockRef, id, isViewer]); // Fixed dependency array to not include .current property
+  
+  // Render the appropriate layout based on the slide layout type
+  // Wrap all slide layouts in the aspect ratio container when in builder mode
+  // Use the existing isViewer variable
+  const wrappedContent = (layoutComponent: React.ReactNode) => {
     
     return (
       <div 

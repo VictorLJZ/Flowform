@@ -91,7 +91,8 @@ export default function FormViewerPage() {
 
   // 4. Analytics Hooks - split into view tracking and other analytics
   // View tracking doesn't require responseId - we want to track all views
-  const viewTracking = useViewTracking(formId, {
+  // Call useViewTracking directly to record the form view
+  useViewTracking(formId, {
     metadata: { source: 'form_viewer' }
   });
   
@@ -125,9 +126,28 @@ export default function FormViewerPage() {
 
   // Memoize ref update functions to prevent creating new function references on every render
   // This helps break the update cycle by ensuring stable function references
-  const trackSubmitFn = useCallback((data: SubmitData) => analytics.trackSubmit(data), [analytics]);
-  const trackErrorFn = useCallback((error: unknown, data: ErrorData) => analytics.trackError({ ...data, error: String(error) }), [analytics]);
-  const trackCompletionFn = useCallback(async (data: CompletionData) => { await analytics.trackCompletion(data); }, [analytics]);
+  // Memoized functions for tracking with proper type handling
+  const trackSubmitFn = useCallback((data: SubmitData) => {
+    console.log('[Analytics] Track submit:', data);
+    // Use formCompletion directly
+    if (analytics.formCompletion?.trackCompletion) {
+      analytics.formCompletion.trackCompletion(data);
+    }
+  }, [analytics]);
+  
+  const trackErrorFn = useCallback((error: unknown, data: ErrorData) => {
+    console.log('[Analytics] Track error:', { ...data, error: String(error) });
+    // We don't have a specific error tracking method, so just log it
+  }, []);
+  
+  const trackCompletionFn = useCallback(async (data: CompletionData) => { 
+    console.log('[Analytics] Track completion:', data);
+    if (analytics.trackCompletion) {
+      await analytics.trackCompletion(data);
+    } else if (analytics.formCompletion?.trackCompletion) {
+      await analytics.formCompletion.trackCompletion(data); 
+    }
+  }, [analytics]);
   const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | QAPair[]) => saveCurrentAnswer(blockId, answer), [saveCurrentAnswer]);
   
   // Effect to update callback refs - only runs when the memoized functions change
@@ -210,10 +230,38 @@ export default function FormViewerPage() {
       }
     }
 
+    // Track the block submission before submitting the answer
+    const submitMetadata = {
+      block_id: block.id,
+      block_type: block.blockTypeId,
+      response_id: responseId,
+      form_id: formId,
+      has_value: Boolean(answerToSubmit),
+      event_type: isLastQuestion ? 'form_submission' : 'block_submission'
+    };
+    
+    console.log('[handleAnswer] Tracking block submit with metadata:', submitMetadata);
+    if (analytics.blockSubmit && analytics.blockSubmit.trackSubmit) {
+      // Use the new tracking method directly
+      await analytics.blockSubmit.trackSubmit(submitMetadata);
+    } else if (analytics.trackSubmit) {
+      // Use the convenience method if available
+      await analytics.trackSubmit(submitMetadata);
+    } else {
+      // Fallback to legacy method
+      console.log('[handleAnswer] Using trackBlockInteraction');
+      if (analytics.trackBlockInteraction) {
+        analytics.trackBlockInteraction('submit', submitMetadata);
+      } else {
+        // Last resort - just log that we couldn't track it
+        console.warn('[handleAnswer] No tracking method available for block submission');
+      }
+    }
+    
     // Call the submission hook's function directly.
     // Use the callbacks provided by the analytics and navigation hooks.
     await submitAnswer(block, answerToSubmit);
-  }, [block, currentAnswer, submitAnswer, isNextDisabled, aiConversationRef]);
+  }, [block, currentAnswer, submitAnswer, isNextDisabled, aiConversationRef, analytics, formId, isLastQuestion, responseId]);
 
   // Callback to handle going to the previous block
   const handlePrevious = useCallback(() => { 

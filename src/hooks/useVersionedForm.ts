@@ -1,12 +1,13 @@
 import useSWR from 'swr';
 import { getLatestFormVersionWithBlocksClient } from '@/services/form/getLatestFormVersionWithBlocksClient';
 import { CompleteForm } from '@/types/supabase-types';
+import { KeyedMutator } from 'swr';
 
 interface UseVersionedFormReturn {
   form: CompleteForm | null;
   isLoading: boolean;
   error: Error | null;
-  mutate: () => Promise<any>; // Use more generic type for mutate to avoid TypeScript errors
+  mutate: KeyedMutator<CompleteForm | null>; // Using SWR's KeyedMutator type
 }
 
 /**

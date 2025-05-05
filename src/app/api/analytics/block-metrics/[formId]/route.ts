@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import { FormattedBlockMetrics } from '@/types';
 
 /**
  * API route for fetching block metrics for a specific form
@@ -8,12 +9,11 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
  * @param params - The route parameters with formId
  * @returns JSON response with block metrics
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { formId: string } }
-) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const { formId } = params;
+    // Extract formId from URL
+    const pathParts = request.nextUrl.pathname.split('/');
+    const formId = pathParts[pathParts.length - 1];
 
     if (!formId) {
       return NextResponse.json(
@@ -58,16 +58,21 @@ export async function GET(
     }
 
     // Format the data for the client
-    const formattedData = blockMetrics.map((metric: any) => ({
-      id: metric.block_id,
-      title: metric.blocks?.title || 'Untitled Block',
-      blockTypeId: metric.blocks?.block_type_id || 'unknown',
-      count: metric.views_count || 0,
-      uniqueViews: metric.unique_views_count || 0,
-      avgTimeSpent: metric.avg_time_spent || 0,
-      interactionCount: metric.interaction_count || 0,
-      completionRate: metric.completion_rate || 0,
-    }));
+    const formattedData = blockMetrics.map((metric): FormattedBlockMetrics => {
+      // If blocks is an array, get the first item
+      const blockData = Array.isArray(metric.blocks) ? metric.blocks[0] : metric.blocks;
+      
+      return {
+        id: metric.block_id,
+        title: blockData?.title || 'Untitled Block',
+        blockTypeId: blockData?.block_type_id || 'unknown',
+        count: metric.views_count || 0,
+        uniqueViews: metric.unique_views_count || 0,
+        avgTimeSpent: metric.avg_time_spent || 0,
+        interactionCount: metric.interaction_count || 0,
+        completionRate: metric.completion_rate || 0,
+      };
+    });
 
     return NextResponse.json({
       success: true,

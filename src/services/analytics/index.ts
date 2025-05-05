@@ -14,7 +14,6 @@ export * from './getVersionedFormResponses';
 // Analytics tracking services
 export * from './trackFormView';
 export * from './trackFormViewClient';
-export * from './trackBlockInteractionClient';
 export * from './trackFormCompletionClient';
 export * from './trackBlockViewClient';
 export * from './trackBlockView';

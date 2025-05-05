@@ -1,32 +1,25 @@
 /**
- * Track block interactions - Client-side implementation
- * Simplified to only track submit events to avoid unnecessary API calls
+ * Track block submit events - Client-side implementation
+ * Simplified approach that only tracks block submissions
  */
 
 /**
- * Track a block submit event
+ * Track when a form block is submitted
  * 
  * @param blockId - The ID of the block
  * @param formId - The ID of the form
- * @param eventType - The type of interaction (only 'submit' is actively tracked)
- * @param responseId - Optional ID of the form response
- * @param metadata - Additional metadata about the interaction
+ * @param responseId - ID of the form response (required for submissions)
+ * @param metadata - Additional metadata about the submission
  * @returns Promise that resolves when tracking is complete
  */
-export async function trackBlockInteractionClient(
+export async function trackBlockSubmitClient(
   blockId: string,
   formId: string,
-  eventType: string,
-  responseId?: string,
+  responseId: string,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
-  // Only track submit events, ignore other event types
-  if (eventType !== 'submit') {
-    return;
-  }
-  
   try {
-    const response = await fetch('/api/analytics/track/interaction', {
+    const response = await fetch('/api/analytics/track/block-submit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +28,6 @@ export async function trackBlockInteractionClient(
         blockId,
         formId,
         responseId,
-        eventType,
         metadata,
         timestamp: new Date().toISOString()
       }),
