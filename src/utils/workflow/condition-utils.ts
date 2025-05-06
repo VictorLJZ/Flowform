@@ -1,5 +1,5 @@
 import { FormBlock } from '@/types/block-types';
-import { BlockChoiceOption, operatorLabels } from './condition-types';
+import { BlockChoiceOption, operatorLabels } from '@/types/workflow-condition-types';
 import { Edge } from 'reactflow';
 import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
 
@@ -43,10 +43,15 @@ export const getConditionSummary = (
   sourceBlock: FormBlock | null | undefined, 
   sourceBlockType: string
 ): string => {
-  // Handle different input formats (Edge or Connection)
-  const condition = 'condition' in connectionData 
-    ? connectionData.condition 
-    : connectionData.data?.connection?.condition;
+  // Type guard to check if the object is an Edge with data property
+  const isEdge = (data: Connection | Edge<WorkflowEdgeData>): data is Edge<WorkflowEdgeData> => {
+    return 'data' in data && data.data !== undefined;
+  };
+
+  // Get condition based on the type with proper null checking
+  const condition = isEdge(connectionData) && connectionData.data?.connection?.condition
+    ? connectionData.data.connection.condition
+    : 'condition' in connectionData ? connectionData.condition : undefined;
 
   if (!condition) return 'No condition set';
   
@@ -55,7 +60,7 @@ export const getConditionSummary = (
   if (!field) return 'No condition set';
   
   const fieldName = getFieldName(field, sourceBlock);
-  const operatorText = operatorLabels[operator] || operator;
+  const operatorText = operatorLabels[operator as keyof typeof operatorLabels] || operator;
   
   // Safely convert value to string for display
   const valueStr = value !== undefined && value !== null ? String(value) : '(empty)';

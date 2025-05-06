@@ -6,7 +6,7 @@ import { FormBlock } from '@/types/block-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { getConditionSummary } from './condition-utils';
+import { getConditionSummary } from '@/utils/workflow/condition-utils';
 
 interface ConnectionOverviewProps {
   element: Edge<WorkflowEdgeData>;

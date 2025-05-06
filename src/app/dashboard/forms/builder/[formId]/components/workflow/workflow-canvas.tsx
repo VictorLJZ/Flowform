@@ -25,7 +25,7 @@ import WorkflowNode from './workflow-node'
 import WorkflowEdge from './workflow-edge'
 import WorkflowSidebar from './workflow-sidebar'
 import WorkflowControls from './workflow-controls'
-import { useWorkflowData } from './use-workflow-data'
+import { useWorkflowData } from '@/hooks/workflow'
 import { calculateLayout } from './workflow-layout'
 import { flowAnimationStyles } from './workflow-styles'
 import { 
