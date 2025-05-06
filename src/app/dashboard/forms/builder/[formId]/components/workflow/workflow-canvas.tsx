@@ -246,6 +246,28 @@ export default function WorkflowCanvas() {
     }
   }, [selectedElement])
   
+  // Handle clicking on the empty canvas area
+  const handlePaneClick = useCallback(() => {
+    // Clear the selected element
+    setSelectedElement(null)
+    
+    // Reset any other UI state related to selection
+    setTargetNode(null)
+    
+    // Ensure ReactFlow knows we're not in connecting mode
+    setIsConnecting(false)
+    
+    // Set the current viewport without changing it (refreshes the view)
+    if (reactFlowInstance) {
+      try {
+        const currentViewport = reactFlowInstance.getViewport();
+        reactFlowInstance.setViewport(currentViewport);
+      } catch (error) {
+        console.error('Error refreshing viewport on pane click:', error);
+      }
+    }
+  }, [reactFlowInstance, setSelectedElement, setTargetNode, setIsConnecting]);
+  
   // Enhanced edge refresh - monitor both connections length and the actual edges array
   useEffect(() => {
     // Only trigger a refresh after a reasonable delay
@@ -348,7 +370,7 @@ export default function WorkflowCanvas() {
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onEdgeDoubleClick={handleEdgeDoubleClick}
-          onPaneClick={() => setSelectedElement(null)}
+          onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultViewport={{ x: 0, y: 0, zoom: 0.7 }} // Increased default zoom
