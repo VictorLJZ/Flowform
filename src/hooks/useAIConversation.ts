@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { SaveDynamicResponseInput, DynamicResponseData } from '@/types/form-service-types'
 
@@ -6,6 +7,7 @@ const CONVERSATION_KEY_PREFIX = 'conversation'
 // Extended interfaces to support our builder mode and additional properties
 interface ExtendedSaveDynamicResponseInput extends SaveDynamicResponseInput {
   isComplete?: boolean;
+  questionIndex?: number; // Added to support truncating the conversation at a specific index
 }
 
 interface ExtendedDynamicResponseData extends DynamicResponseData {
@@ -87,9 +89,9 @@ export function useAIConversation(responseId: string, blockId: string, formId: s
   );
   
   // Safe submit function that works in both modes
-  const submitAnswer = async (question: string, answer: string, isStarterQuestion = false) => {
+  const submitAnswer = async (question: string, answer: string, questionIndex?: number, isStarterQuestion = false) => {
     if (isBuilder) {
-      console.log('Builder mode submit:', { question, answer, isStarterQuestion });
+      console.log('Builder mode submit:', { question, answer, questionIndex, isStarterQuestion });
       return Promise.resolve(undefined);
     }
     
@@ -102,24 +104,59 @@ export function useAIConversation(responseId: string, blockId: string, formId: s
         question, 
         answer,
         isStarterQuestion,
-        isComplete: data?.isComplete
+        isComplete: data?.isComplete,
+        questionIndex // Add the question index to support truncating the conversation
       };
+      
+      // Prepare the optimistic data
+      let optimisticConversation;
+      let optimisticNextQuestion = data?.nextQuestion;
+      
+      if (data && questionIndex !== undefined && questionIndex < data.conversation.length) {
+        // If we're answering a question that's not the last one,
+        // truncate the conversation and force regeneration of subsequent questions
+        if (typeof questionIndex === 'number' && questionIndex < data.conversation.length - 1) {
+          console.log(`Truncating conversation at index ${questionIndex}`);
+          console.log('Previous conversation state:', {
+            length: data.conversation.length,
+            current: data.conversation.map(item => item.question.substring(0, 20) + '...').join(' -> ')
+          });
+          
+          // Always set isComplete to false when truncating to force regeneration
+          input.isComplete = false;
+          
+          // Make sure questionIndex is explicitly set to trigger truncation logic
+          input.questionIndex = questionIndex;
+          
+          // Create optimistic UI update with the truncated conversation
+          optimisticConversation = [
+            ...data.conversation.slice(0, questionIndex),
+            { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+          ];
+        }
+        // When truncating, we should clear the nextQuestion since it will be regenerated
+        optimisticNextQuestion = undefined;
+      } else if (data) {
+        // Normal case - append to the conversation
+        optimisticConversation = [
+          ...data.conversation,
+          { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+        ];
+      }
       
       // Call the API and update the SWR cache with result
       const result = await mutate(
         conversationKey,
         fetchers.saveAnswer(input),
         {
-          optimisticData: data ? {
+          optimisticData: data && optimisticConversation ? {
             ...data,
-            conversation: [
-              ...data.conversation,
-              { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
-            ]
+            conversation: optimisticConversation,
+            nextQuestion: optimisticNextQuestion
           } : undefined,
           rollbackOnError: true,
           populateCache: true,
-          revalidate: false
+          revalidate: true // Force revalidation to get the updated nextQuestion
         }
       );
       
@@ -130,14 +167,47 @@ export function useAIConversation(responseId: string, blockId: string, formId: s
     }
   };
   
+  // Add a derived state property that combines the conversation and nextQuestion
+  // This helps ensure we maintain consistent UI state even during loading states
+  const derivedState = useMemo(() => {
+    return {
+      conversation: data?.conversation || [],
+      nextQuestion: data?.nextQuestion || '',
+      isComplete: data?.isComplete || false,
+      maxQuestions: data?.maxQuestions || 5,
+      isLoading: isBuilder ? false : isLoading,
+      isSubmitting: isBuilder ? false : isValidating,
+      error: isBuilder ? null : (error ? (error instanceof Error ? error.message : String(error)) : null)
+    };
+  }, [data, isBuilder, isLoading, isValidating, error]);
+  
+  // Explicitly log state changes to help debug UI issues
+  useEffect(() => {
+    if (!isBuilder && data) {
+      console.log('Conversation state updated:', {
+        conversationLength: data.conversation?.length,
+        hasNextQuestion: !!data.nextQuestion,
+        nextQuestion: data.nextQuestion ? data.nextQuestion.substring(0, 30) + (data.nextQuestion.length > 30 ? '...' : '') : '',
+        isComplete: data.isComplete
+      });
+      
+      // CRITICAL: Force a re-validation if we don't have a nextQuestion and conversation isn't complete
+      // This helps when the backend succeeds in generating a question but the frontend doesn't notice
+      if (!data.nextQuestion && !data.isComplete && data.conversation?.length > 0) {
+        console.log('No next question but conversation not complete - forcing refresh');
+        // Use a small delay to avoid infinite loops
+        const refreshTimer = setTimeout(() => {
+          // Trigger a refresh of the data without any optimistic update
+          mutate(undefined, { revalidate: true });
+        }, 1500);
+        
+        return () => clearTimeout(refreshTimer);
+      }
+    }
+  }, [data, isBuilder, mutate]);
+  
   return {
-    conversation: data?.conversation || [],
-    nextQuestion: data?.nextQuestion || '',
-    isComplete: data?.isComplete || false,
-    maxQuestions: data?.maxQuestions || 5,
-    isLoading: isBuilder ? false : isLoading,
-    isSubmitting: isBuilder ? false : isValidating,
-    error: isBuilder ? null : (error ? (error instanceof Error ? error.message : String(error)) : null),
+    ...derivedState,
     submitAnswer
   };
 }
