@@ -6,7 +6,7 @@ import { WorkflowEdgeData } from '@/types/workflow-types'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { Check, ArrowRight, X, ChevronUp, ChevronDown, ListFilter, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getConditionSummary } from './condition-utils'
+import { getConditionSummary } from '@/utils/workflow/condition-utils'
 
 const WorkflowEdge = ({
   id,

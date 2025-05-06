@@ -1,6 +1,6 @@
 "use client"
 
-import { ConditionComponentProps, FieldOption, getAvailableFieldsForBlock } from './condition-types';
+import { ConditionComponentProps, FieldOption, getAvailableFieldsForBlock } from '@/types/workflow-condition-types';
 import { Label } from '@/components/ui/label';
 import { 
   Select,

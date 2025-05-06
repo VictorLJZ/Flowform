@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ConditionComponentProps, ValueSuggestion } from './condition-types';
+import { ConditionComponentProps, ValueSuggestion, BlockChoiceOption } from '@/types/workflow-condition-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,7 +14,6 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { FormBlock } from '@/types/block-types';
-import { BlockChoiceOption } from './condition-types';
 import { Connection } from '@/types/workflow-types';
 
 interface ConditionValueProps extends ConditionComponentProps {

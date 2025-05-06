@@ -3,9 +3,9 @@
 import { 
   ConditionComponentProps, 
   ConditionOperator, 
-  operatorLabels, 
-  getOperatorsForField 
-} from './condition-types';
+  getOperatorsForField, 
+  operatorLabels 
+} from '@/types/workflow-condition-types';
 import { Label } from '@/components/ui/label';
 import { 
   Select,
