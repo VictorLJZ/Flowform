@@ -1,6 +1,7 @@
 import useSWR, { SWRConfiguration, SWRResponse } from 'swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { toast } from '@/components/ui/use-toast';
+import { SWRErrorResponse, isSWRErrorResponse } from '@/types/workspace-swr-types';
 
 /**
  * Create a SWR key that includes workspace context
@@ -13,8 +14,8 @@ import { toast } from '@/components/ui/use-toast';
 export function createWorkspaceKey(
   resource: string, 
   workspaceId?: string | null,
-  ...params: any[]
-): [string, string, ...any[]] | null {
+  ...params: unknown[]
+): [string, string, ...unknown[]] | null {
   // If explicit workspaceId is provided, use it
   const wsId = workspaceId !== undefined ? workspaceId : useWorkspaceStore.getState().currentWorkspaceId;
   
@@ -32,19 +33,18 @@ export function createWorkspaceKey(
  * The fetcher receives an array where the first item is the resource name
  * and the second item is the workspace ID
  */
-export type WorkspaceFetcher<Data> = (key: [string, string, ...any[]]) => Promise<Data>;
+export type WorkspaceFetcher<Data> = (key: [string, string, ...unknown[]]) => Promise<Data>;
 
 /**
  * Default error handler for workspace-related errors
  */
-export function handleWorkspaceError(error: any, resourceName: string): void {
+export function handleWorkspaceError(error: Error | SWRErrorResponse, resourceName: string): void {
   console.error(`[WorkspaceSWR] Error fetching ${resourceName}:`, error);
   
   // Determine if this is a workspace access error
   const isPermissionError = 
-    error?.status === 403 || 
-    error?.message?.includes('permission') ||
-    error?.message?.includes('access');
+    (isSWRErrorResponse(error) && error.status === 403) || 
+    (error.message && (error.message.includes('permission') || error.message.includes('access')));
   
   if (isPermissionError) {
     toast({
@@ -71,7 +71,7 @@ export function handleWorkspaceError(error: any, resourceName: string): void {
  * @param explicitWorkspaceId - Optional explicit workspace ID to use instead of the current one
  * @returns SWR response with the fetched data
  */
-export function useWorkspaceSWR<Data = any, Error = any>(
+export function useWorkspaceSWR<Data, Error = SWRErrorResponse>(
   resource: string,
   fetcher: WorkspaceFetcher<Data>,
   options?: SWRConfiguration,
@@ -106,13 +106,19 @@ export function useWorkspaceSWR<Data = any, Error = any>(
     revalidateIfStale: true,
     keepPreviousData: true,
     dedupingInterval: 5000, // Deduplicate requests within 5 seconds
-    onError: (err) => {
+    onError: (err: unknown) => {
       // If workspace is invalid but we got past the key check, prevent error message
       if (shouldSkipFetch) {
         console.warn(`[WorkspaceSWR] Skipping error for invalid workspace: ${workspaceId}`);
         return;
       }
-      handleWorkspaceError(err, resource);
+      // Ensure we're passing an Error object to the handler
+      if (err instanceof Error) {
+        handleWorkspaceError(err, resource);
+      } else {
+        // Create a standard error if we received something else
+        handleWorkspaceError(new Error(String(err)), resource);
+      }
     },
     ...options,
   });
@@ -131,11 +137,11 @@ export function useWorkspaceSWR<Data = any, Error = any>(
  * @param fetchFn - Function that accepts a workspace ID and optional parameters and returns a promise
  * @returns A workspace-aware fetcher function compatible with useWorkspaceSWR
  */
-export function createWorkspaceFetcher<Data, Params extends any[] = []>(
+export function createWorkspaceFetcher<Data, Params extends unknown[] = []>(
   fetchFn: (workspaceId: string, ...params: Params) => Promise<Data>
 ): WorkspaceFetcher<Data> {
-  // Using any[] for params in the returned function to handle the type mismatch
-  return async ([resource, workspaceId, ...rest]: [string, string, ...any[]]): Promise<Data> => {
+  // Using proper type for params in the returned function
+  return async ([resource, workspaceId, ...rest]: [string, string, ...unknown[]]): Promise<Data> => {
     console.log(`[WorkspaceFetcher:${resource}] Fetching with workspace: ${workspaceId}`);
     // Cast rest to Params since we're controlling how this function is called
     return await fetchFn(workspaceId, ...(rest as unknown as Params));

@@ -5,7 +5,8 @@ import { TimeSeriesPoint } from "@/hooks/useFormAnalyticsDashboard"
 import { cn } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
 import { useState } from "react"
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { ChartEvent, ChartTooltipProps } from "@/types"
 
 type ChartType = "area" | "bar" | "line"
 
@@ -36,7 +37,8 @@ export function TimeSeriesChart({
   dateFormatter = (date: string) => format(parseISO(date), "MMM d"),
   showGridLines = true,
 }: TimeSeriesChartProps) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  // Use state to track hover index if needed for future functionality
+  const [, setActiveIndex] = useState<number | null>(null)
 
   // Format the chart data
   const chartData = data.map((item, index) => ({
@@ -47,7 +49,7 @@ export function TimeSeriesChart({
   }))
 
   // Helper function for custom tooltip content
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload
       return (
@@ -75,7 +77,7 @@ export function TimeSeriesChart({
               <BarChart
                 data={chartData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                onMouseMove={(state: any) => {
+                onMouseMove={(state: ChartEvent) => {
                   if (state?.activeTooltipIndex !== undefined) {
                     setActiveIndex(state.activeTooltipIndex)
                   }
@@ -112,7 +114,7 @@ export function TimeSeriesChart({
               <AreaChart
                 data={chartData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                onMouseMove={(state: any) => {
+                onMouseMove={(state: ChartEvent) => {
                   if (state?.activeTooltipIndex !== undefined) {
                     setActiveIndex(state.activeTooltipIndex)
                   }

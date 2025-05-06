@@ -11,7 +11,7 @@ interface BasicMetricsCardProps {
 
 export function BasicMetricsCard({ formId, className }: BasicMetricsCardProps) {
   // Use our simplified hook that only fetches base metrics
-  const { metrics, isLoading, error } = useFormAnalyticsDashboard(formId)
+  const { metrics, isLoading, hasError, analyticsError } = useFormAnalyticsDashboard(formId)
 
   if (isLoading) {
     return (
@@ -32,7 +32,7 @@ export function BasicMetricsCard({ formId, className }: BasicMetricsCardProps) {
     )
   }
 
-  if (error || !metrics) {
+  if (hasError || !metrics) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -40,7 +40,7 @@ export function BasicMetricsCard({ formId, className }: BasicMetricsCardProps) {
           <CardDescription>We encountered an error loading the analytics data</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-destructive">{error || "No metrics data available"}</p>
+          <p className="text-destructive">{analyticsError?.message || "No metrics data available"}</p>
         </CardContent>
       </Card>
     )

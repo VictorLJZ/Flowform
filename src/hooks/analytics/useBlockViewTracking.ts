@@ -1,6 +1,12 @@
 import { useEffect, useRef, useMemo } from 'react';
-import { trackBlockViewClient } from '@/services/analytics/client';
+// Import directly from the source file instead of the index
+import { trackBlockViewClient } from '@/services/analytics/trackBlockViewClient';
 import { getVisitorId } from '@/lib/analytics/visitorId';
+
+// Verify the import is working
+console.log('🚨 DEBUG useBlockViewTracking - trackBlockViewClient import check:', {
+  trackBlockViewClientExists: typeof trackBlockViewClient === 'function'
+});
 
 /**
  * Hook to track when a form block becomes visible
@@ -34,8 +40,18 @@ export function useBlockViewTracking(
   const observerRef = useRef<IntersectionObserver | null>(null);
   
   useEffect(() => {
+    // Debug: Log initial state of hook
+    console.log(`🔍 DEBUG: useBlockViewTracking for block ${blockId}`, {
+      disabled,
+      hasTrackedCurrent: hasTracked.current,
+      blockRefExists: !!blockRef.current
+    });
+    
     // If disabled, either ID is missing, or already tracked, don't track
     if (disabled || !blockId || !formId || hasTracked.current) {
+      console.log(`🚫 DEBUG: Skipping block tracking for ${blockId}`, {
+        reason: disabled ? 'disabled' : !blockId ? 'missing blockId' : !formId ? 'missing formId' : 'already tracked'
+      });
       return;
     }
     
@@ -57,6 +73,9 @@ export function useBlockViewTracking(
           hasTracked.current = true;
           
           const visitorId = getVisitorId();
+          
+          // 👀 DISTINCTIVE VERIFICATION LOG - Look for this in console
+          console.log('👀 BLOCK TRACKING VERIFICATION: About to track block', blockId);
           
           // Track the block view
           trackBlockViewClient(blockId, formId, responseId, {
@@ -80,7 +99,13 @@ export function useBlockViewTracking(
     
     // Start observing the block element if it exists
     if (blockRef.current) {
+      console.log(`📣 DEBUG: Starting observation of block ${blockId}`, {
+        element: blockRef.current,
+        threshold
+      });
       observer.observe(blockRef.current);
+    } else {
+      console.log(`⚠️ DEBUG: Cannot observe block ${blockId} - ref is null`);
     }
     
     // Cleanup function

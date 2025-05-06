@@ -162,7 +162,7 @@ export default function FormsPage() {
     return (
       <Alert variant="destructive" className="m-4">
         <AlertTitle>Error loading forms</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{error?.message || 'An unexpected error occurred'}</AlertDescription>
       </Alert>
     )
   }

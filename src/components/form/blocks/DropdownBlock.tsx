@@ -41,6 +41,13 @@ interface DropdownBlockProps {
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
 }
 
 export function DropdownBlock({
@@ -51,6 +58,7 @@ export function DropdownBlock({
   index,
   totalBlocks,
   settings,
+  analytics,
   value,
   onChange,
   onUpdate,
@@ -105,6 +113,7 @@ export function DropdownBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      blockRef={analytics?.blockRef}
     >
       {selectField}
     </SlideWrapper>

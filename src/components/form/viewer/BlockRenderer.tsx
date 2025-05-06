@@ -18,7 +18,7 @@ import { AIConversationBlock } from '@/components/form/blocks/AIConversationBloc
 import type { AIConversationHandle } from '@/components/form/blocks/AIConversationBlock';
 import { FormBlock } from '@/types/block-types';
 import type { QAPair } from '@/types/supabase-types';
-import type { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import type { BaseBlockMapperProps } from '@/services/form/blockMappers';
 import {
   mapToPropsText,
@@ -39,7 +39,7 @@ interface BlockRendererProps {
   submitting: boolean;
   responseId: string | null;
   formId: string;
-  analytics: ReturnType<typeof useAnalytics>; // Get the type from the hook
+  analytics: ReturnType<typeof useAnalytics>; // Parent-level analytics
   aiConversationRef: React.RefObject<AIConversationHandle | null>; // Allow null
   index?: number; // Current block index for numbering
   totalBlocks?: number; // Total number of blocks for progress
@@ -59,13 +59,33 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     index,
     totalBlocks
   } = props;
+  
+  // Create analytics at the component level - unconditionally to comply with React Hooks rules
+  // We're setting disabled: true when appropriate instead of conditionally calling the hook
+  const blockAnalytics = useAnalytics({
+    formId: formId || '', // Ensure formId is never undefined
+    blockId: block?.id || '', // Ensure blockId is never undefined
+    responseId: responseId || undefined,
+    disabled: !responseId || !block?.id || !formId, // Disable if any required values are missing
+    metadata: { blockType: block?.blockTypeId || '' }
+  });
 
   // Log the block being rendered for debugging
   console.log('BlockRenderer - rendering block:', { 
     id: block?.id, 
     blockTypeId: block?.blockTypeId,
-    currentAnswer
+    currentAnswer,
+    hasAnalytics: !!analytics,
+    hasBlockRef: analytics && 'blockRef' in analytics
   });
+  
+  // Debug log for analytics.blockRef if it exists
+  if (analytics && 'blockRef' in analytics) {
+    console.log(`🔍 DEBUG BlockRenderer - analytics.blockRef for block ${block?.id}:`, {
+      blockRef: analytics.blockRef,
+      refCurrent: analytics.blockRef?.current
+    });
+  }
 
   // Safety check - if no block, return nothing
   if (!block) {
@@ -119,11 +139,43 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     totalBlocks: totalBlocks // Add total blocks for progress and Submit button text
   };
 
+  // Note: useAnalytics hook is called at the top of the component to comply with React Hooks rules
+
   // Function to render a block - now passing SlideWrapper props to block components directly
   // This avoids double-wrapping with SlideWrapper since each block component already includes it
   const renderBlock = <T extends object>(BlockComponent: React.ComponentType<T>, mapperFn: (props: BaseBlockMapperProps) => T) => {
     // Map the base props to component-specific props using the mapper function
     const componentProps = mapperFn(baseMapperProps);
+    
+    // Simplified analytics with block-specific tracking (submit events only)
+    const enhancedAnalytics = {
+      ...blockAnalytics,
+      
+      // Single method for tracking block interactions, focused on submit events
+      trackInteraction: (type: string, metadata: Record<string, unknown> = {}) => {
+        console.log(`[BlockAnalytics] Block ${block.id} interaction: ${type}`, metadata);
+        
+        // We only track submit events in our new simplified approach
+        if (type === 'submit') {
+          console.log(`[BlockAnalytics] Tracking block submit for ${block.id}`);
+          
+          // Track submit using the new blockSubmit functionality
+          if (blockAnalytics.trackSubmit) {
+            blockAnalytics.trackSubmit(metadata);
+          } else if (blockAnalytics.blockSubmit?.trackSubmit) {
+            blockAnalytics.blockSubmit.trackSubmit(metadata);
+          } else if (blockAnalytics.trackBlockInteraction) {
+            // Last resort - try the renamed method
+            blockAnalytics.trackBlockInteraction('submit', metadata);
+          } else {
+            console.error('[BlockAnalytics] Could not find any submit tracking method');
+          }
+        } else {
+          // Log but don't track other interaction types
+          console.log(`[BlockAnalytics] Ignoring non-submit interaction: ${type}`);
+        }
+      }
+    };
     
     // Merge slideWrapperProps into componentProps for proper handling in the block component
     // The block components already wrap themselves in SlideWrapper
@@ -134,6 +186,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
         totalBlocks={totalBlocks}
         onNext={slideWrapperProps.onNext}
         isNextDisabled={slideWrapperProps.isNextDisabled}
+        analytics={enhancedAnalytics} // Pass enhanced analytics with block-specific tracking
+        blockRef={blockAnalytics.blockRef} // Pass blockRef from the block-specific analytics
       />
     );
   };

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isPostgrestError } from '@/types';
 import { changeUserRole } from '@/services/workspace/changeUserRole';
 import { transferWorkspaceOwnership } from '@/services/workspace/transferWorkspaceOwnership';
 import { createClient } from '@/lib/supabase/server';
@@ -74,9 +75,9 @@ export async function PATCH(request: Request) {
     console.error('[API] Error changing member role (stringified):', JSON.stringify(error, null, 2));
     
     // Check if it's a Supabase specific error (PostgrestError)
-    if (error && typeof error === 'object' && 'message' in error && 'details' in error && 'hint' in error && 'code' in error) {
-      // It looks like a Supabase error, use its message
-      const dbErrorMessage = (error as any).message || 'An unspecified database error occurred.';
+    if (isPostgrestError(error)) {
+      // It's a Supabase error, use its message
+      const dbErrorMessage = error.message || 'An unspecified database error occurred.';
       return NextResponse.json({ error: `Database error: ${dbErrorMessage}` }, { status: 500 });
     } else if (error instanceof Error) {
       // Standard JS error

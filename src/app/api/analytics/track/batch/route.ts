@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
     
     const { events } = validationResult.data;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // Initialize results
     const results = {

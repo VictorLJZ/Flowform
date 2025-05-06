@@ -1,22 +1,24 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BlockStats } from "@/hooks/useFormAnalyticsDashboard"
+import { EnhancedBlockStats } from "@/hooks/useFormAnalyticsDashboard"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { ChartPayload, ChartEvent } from "@/types"
 
 // Updated props interface to reflect our simplified data structure
 interface BlockPerformanceChartProps {
   title: string
   description?: string
-  data: BlockStats[]
+  data: EnhancedBlockStats[]
   height?: number
   className?: string
   color?: string
   isLoading?: boolean
   valueFormatter?: (value: number) => string
   maxBars?: number
+  metricType?: 'views' | 'uniqueViews' | 'avgTimeSpent' | 'interactionCount' | 'completionRate'
 }
 
 export function BlockPerformanceChart({
@@ -29,36 +31,102 @@ export function BlockPerformanceChart({
   isLoading = false,
   valueFormatter = (value: number) => value.toString(),
   maxBars = 10,
+  metricType = 'views',
 }: BlockPerformanceChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
-  // Sort blocks by response count (highest first)
-  let sortedData = [...data].sort((a, b) => b.count - a.count)
+  // Get the proper metric value accessor based on metricType
+  const getMetricValue = (block: EnhancedBlockStats) => {
+    switch (metricType) {
+      case 'uniqueViews': return block.uniqueViews || 0;
+      case 'avgTimeSpent': return block.avgTimeSpent || 0;
+      case 'interactionCount': return block.interactionCount || 0;
+      case 'completionRate': return block.completionRate || 0;
+      case 'views':
+      default: return block.count || 0;
+    }
+  };
+  
+  // Get a human-readable label for the metric
+  const getMetricLabel = () => {
+    switch (metricType) {
+      case 'uniqueViews': return 'Unique Views';
+      case 'avgTimeSpent': return 'Avg. Time Spent (sec)';
+      case 'interactionCount': return 'Interactions';
+      case 'completionRate': return 'Completion Rate (%)';
+      case 'views':
+      default: return 'Views';
+    }
+  };
+
+  // Sort blocks by the selected metric (highest first)
+  let sortedData = [...data].sort((a, b) => getMetricValue(b) - getMetricValue(a));
 
   // Limit to specified number of bars
-  sortedData = sortedData.slice(0, maxBars)
+  sortedData = sortedData.slice(0, maxBars);
 
   // Format the data for the chart
   const chartData = sortedData.map((block, index) => {
     return {
       name: block.title.length > 20 ? block.title.substring(0, 20) + "..." : block.title,
-      value: block.count,
+      value: getMetricValue(block),
       id: block.id,
+      blockType: block.blockTypeId,
       fullTitle: block.title,
+      allMetrics: {
+        views: block.count,
+        uniqueViews: block.uniqueViews,
+        avgTimeSpent: block.avgTimeSpent,
+        interactionCount: block.interactionCount,
+        completionRate: block.completionRate
+      },
       index,
     }
   })
 
   // Helper function for custom tooltip content
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean, payload?: ChartPayload[], label?: string }) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload
       return (
-        <div className="custom-tooltip bg-background border rounded-md shadow-md p-3">
+        <div className="custom-tooltip bg-background border rounded-md shadow-md p-3 min-w-[180px]">
           <p className="mb-1 font-medium">{dataPoint.fullTitle}</p>
+          <p className="mb-1 text-xs text-muted-foreground">{dataPoint.blockType} block</p>
+          
+          {/* Display the primary metric */}
           <p className="text-primary font-bold">
-            {valueFormatter(dataPoint.value)} responses
+            {valueFormatter(dataPoint.value)} {getMetricLabel()}
           </p>
+          
+          {/* Show additional metrics if available */}
+          {dataPoint.allMetrics && (
+            <div className="mt-2 pt-2 border-t border-border text-xs">
+              {metricType !== 'views' && (
+                <p className="flex justify-between">
+                  <span>Total Views:</span>
+                  <span className="font-medium">{dataPoint.allMetrics.views}</span>
+                </p>
+              )}
+              {metricType !== 'uniqueViews' && dataPoint.allMetrics.uniqueViews > 0 && (
+                <p className="flex justify-between">
+                  <span>Unique Views:</span>
+                  <span className="font-medium">{dataPoint.allMetrics.uniqueViews}</span>
+                </p>
+              )}
+              {metricType !== 'avgTimeSpent' && dataPoint.allMetrics.avgTimeSpent > 0 && (
+                <p className="flex justify-between">
+                  <span>Avg Time Spent:</span>
+                  <span className="font-medium">{dataPoint.allMetrics.avgTimeSpent.toFixed(1)}s</span>
+                </p>
+              )}
+              {metricType !== 'interactionCount' && dataPoint.allMetrics.interactionCount > 0 && (
+                <p className="flex justify-between">
+                  <span>Interactions:</span>
+                  <span className="font-medium">{dataPoint.allMetrics.interactionCount}</span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )
     }
@@ -66,7 +134,7 @@ export function BlockPerformanceChart({
   }
 
   // Human-readable metric label for the y-axis
-  const metricLabel = "Response Count"
+  const metricLabel = getMetricLabel()
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -87,7 +155,7 @@ export function BlockPerformanceChart({
               data={chartData}
               layout="vertical"
               margin={{ top: 10, right: 30, left: 100, bottom: 0 }}
-              onMouseMove={(state: any) => {
+              onMouseMove={(state: ChartEvent) => {
                 if (state?.activeTooltipIndex !== undefined) {
                   setActiveIndex(state.activeTooltipIndex)
                 }

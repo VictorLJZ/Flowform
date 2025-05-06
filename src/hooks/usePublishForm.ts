@@ -5,6 +5,7 @@ import { useFormBuilderStore } from "@/stores/formBuilderStore";
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore";
 import { FormVersion } from "@/types/form-version-types";
 import { Form } from "@/types/supabase-types";
+import { FormBlock } from "@/types/block-types";
 
 /**
  * Hook to handle form publishing with consistent behavior
@@ -63,7 +64,7 @@ export function usePublishForm() {
    */
   const publishFormWithBlocks = async (
     formId: string,
-    blocksToPublish: any[]
+    blocksToPublish: FormBlock[]
   ): Promise<{
     form: Form;
     version?: FormVersion | null;

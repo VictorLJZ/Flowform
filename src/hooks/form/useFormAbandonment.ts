@@ -23,11 +23,19 @@ export const useFormAbandonment = ({
       // Only track abandonment if the form isn't completed and we have a responseId
       if (!completed && responseId) {
         console.log(`[Analytics] Tracking form abandonment. Response ID: ${responseId}, Last Block ID: ${currentBlockId}`);
-        // Call the analytics function (assuming it exists)
-        analytics.trackAbandonment({
-          response_id: responseId,
-          last_block_id: currentBlockId,
-        });
+        
+        // Since trackAbandonment is now removed from the analytics hook,
+        // we'll use blockSubmit.trackSubmit instead, with abandonment metadata
+        if (analytics.blockSubmit && typeof analytics.blockSubmit.trackSubmit === 'function') {
+          analytics.blockSubmit.trackSubmit({
+            event_type: 'form_abandonment',
+            response_id: responseId,
+            last_block_id: currentBlockId,
+            is_abandoned: true
+          }).catch(err => {
+            console.error('[Analytics] Error tracking form abandonment:', err);
+          });
+        }
       }
     };
 

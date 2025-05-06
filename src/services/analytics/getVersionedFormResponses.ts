@@ -1,6 +1,14 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormVersion, FormBlockVersion, VersionedResponse } from '@/types/form-version-types';
 
+// Type for simplified block version data used in the response
+interface SimpleBlockVersion {
+  id: string;
+  block_id: string;
+  title: string;
+  is_deleted: boolean;
+}
+
 // Debug flag - set to true to enable detailed logging
 const DEBUG = true;
 
@@ -115,7 +123,7 @@ export async function getVersionedFormResponses(
             is_deleted: block.is_deleted
           });
           return acc;
-        }, {} as Record<string, any[]>);
+        }, {} as Record<string, SimpleBlockVersion[]>);
         
         console.log('[getVersionedFormResponses] Block versions by form version:', blocksByVersion);
       }
@@ -186,7 +194,7 @@ export async function getVersionedFormResponses(
     
     if (DEBUG) {
       // Log summary statistics
-      let versionBlocksStats = versionedResponses.map(r => (r.version_blocks || []).length);
+      const versionBlocksStats = versionedResponses.map(r => (r.version_blocks || []).length);
       console.log('[getVersionedFormResponses] Versioned responses summary:');
       console.log(`  - Total responses: ${versionedResponses.length}`);
       console.log(`  - Responses with form_version: ${versionedResponses.filter(r => r.form_version).length}`);

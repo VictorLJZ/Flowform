@@ -8,6 +8,7 @@ import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers';
 import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
 import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useViewTracking } from "@/hooks/analytics/useViewTracking";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
 import type { AIConversationHandle } from "@/components/form/blocks/AIConversationBlock"; 
@@ -66,7 +67,7 @@ export default function FormViewerPage() {
     submitting, 
     submitError, 
     completed, 
-    submitAnswer 
+    submitAnswer
   } = useFormSubmission({
     formId,
     storageKey,
@@ -88,7 +89,14 @@ export default function FormViewerPage() {
     loadAnswerForBlock,
   } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
 
-  // 4. Analytics Hook (Needs formId, responseId after submission)
+  // 4. Analytics Hooks - split into view tracking and other analytics
+  // View tracking doesn't require responseId - we want to track all views
+  // Call useViewTracking directly to record the form view
+  useViewTracking(formId, {
+    metadata: { source: 'form_viewer' }
+  });
+  
+  // Other analytics tracking that requires responseId
   const analytics = useAnalytics({
     formId: formId,
     responseId: responseId || undefined, 
@@ -115,12 +123,95 @@ export default function FormViewerPage() {
   type SubmitData = Parameters<AnalyticsSubmitHandler>[0];
   type ErrorData = Parameters<AnalyticsErrorHandler>[1];
   type CompletionData = Parameters<AnalyticsCompletionHandler>[0];
+  
+  // Extended submit data type that includes the event_type property
+  type ExtendedSubmitData = SubmitData & {
+    event_type?: string;
+    response_id?: string;
+    form_id?: string;
+    is_last_block?: boolean;
+  };
 
+  // Create refs at the component level, not inside callbacks
+  // This ensures we follow React's rules of hooks
+  const hasTrackedCompletionRef = useRef(false);
+  
   // Memoize ref update functions to prevent creating new function references on every render
   // This helps break the update cycle by ensuring stable function references
-  const trackSubmitFn = useCallback((data: SubmitData) => analytics.trackSubmit(data), [analytics]);
-  const trackErrorFn = useCallback((error: unknown, data: ErrorData) => analytics.trackError({ ...data, error: String(error) }), [analytics]);
-  const trackCompletionFn = useCallback(async (data: CompletionData) => { await analytics.trackCompletion(data); }, [analytics]);
+  // Memoized functions for tracking with proper type handling
+  const trackSubmitFn = useCallback((data: SubmitData) => {
+    console.log('📝 [Analytics] Track submit with data:', data);
+    
+    // Cast data to extended type that may include event_type
+    const extendedData = data as ExtendedSubmitData;
+    
+    // All block-related submissions should be tracked, regardless of event_type
+    // We'll always treat these as block submissions unless they're explicitly form completions
+    const isFormCompletion = extendedData.event_type === 'form_submission' || extendedData.is_last_block === true;
+    
+    // If this is a form completion, let the form completion tracker handle it
+    if (isFormCompletion && extendedData.is_last_block) {
+      console.log('🏁 [Analytics] This is the last block, will be handled by form completion tracker');
+      // We'll let the form completion handler take care of this
+      return;
+    }
+    
+    // For all other cases, this is a block submission
+    console.log('🔄 [Analytics] Tracking as block submission');
+    
+    // Create a complete tracking payload with all required fields
+    const trackingPayload = {
+      ...extendedData,
+      block_id: extendedData.block_id,
+      form_id: formId, // Ensure formId is included
+      response_id: responseId // Ensure responseId is included
+    };
+    
+    // Use the blockSubmit tracking function for block submissions
+    if (analytics.blockSubmit?.trackSubmit) {
+      console.log('🔄 [Analytics] Using blockSubmit.trackSubmit for block submission');
+      analytics.blockSubmit.trackSubmit(trackingPayload);
+    } else if (analytics.trackSubmit) {
+      console.log('🔄 [Analytics] Using analytics.trackSubmit for block submission');
+      analytics.trackSubmit(trackingPayload);
+    } else {
+      console.warn('⚠️ [Analytics] No block submit tracking function available');
+    }
+  }, [analytics, formId, responseId]);
+  
+  const trackErrorFn = useCallback((error: unknown, data: ErrorData) => {
+    console.log('[Analytics] Track error:', { ...data, error: String(error) });
+    // We don't have a specific error tracking method, so just log it
+  }, []);
+  
+  const trackCompletionFn = useCallback(async (data: CompletionData) => { 
+    console.log('🏁 [Analytics] Track form completion:', data);
+    
+    // Don't track completion if we've already tracked it for this form
+    if (hasTrackedCompletionRef.current) {
+      console.log('🔄 [Analytics] Form completion already tracked, skipping');
+      return;
+    }
+    
+    try {
+      if (analytics.trackCompletion) {
+        console.log('✅ [Analytics] Using analytics.trackCompletion');
+        await analytics.trackCompletion(data);
+      } else if (analytics.formCompletion?.trackCompletion) {
+        console.log('✅ [Analytics] Using formCompletion.trackCompletion');
+        await analytics.formCompletion.trackCompletion(data); 
+      } else {
+        console.warn('⚠️ [Analytics] No form completion tracking function available');
+        return;
+      }
+      
+      // Mark as tracked to prevent duplicate tracking
+      hasTrackedCompletionRef.current = true;
+      console.log('✅ [Analytics] Form completion tracking successful');
+    } catch (error) {
+      console.error('❌ [Analytics] Error tracking form completion:', error);
+    }
+  }, [analytics]);
   const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | QAPair[]) => saveCurrentAnswer(blockId, answer), [saveCurrentAnswer]);
   
   // Effect to update callback refs - only runs when the memoized functions change
@@ -180,33 +271,42 @@ export default function FormViewerPage() {
     return false; 
   }, [block, currentAnswer, submitting]);
 
-  // Callback to handle submitting an answer
-  const handleAnswer = useCallback(async () => {
-    console.log('[handleAnswer] Triggered for block:', block?.id);
+  // Helper to prepare the answer value for submission
+  const prepareAnswer = useCallback(() => {
+    console.log('[prepareAnswer] Preparing answer for block:', block?.id);
     if (!block) {
       console.error('Block is not defined, cannot submit.');
-      return;
+      return null;
     } 
+    
+    // Don't submit if the Next button is disabled
     if (isNextDisabled) {
       console.log('Next button disabled, submission prevented.');
-      return;
+      return null;
     }
+    
+    // Determine the answer to submit - special handling for AI conversations
     let answerToSubmit = currentAnswer;
     if (block.blockTypeId === 'ai_conversation') { 
       if (aiConversationRef.current && typeof aiConversationRef.current.getMessages === 'function') {
         answerToSubmit = aiConversationRef.current.getMessages();
-        console.log('[handleAnswer] Submitting AI conversation:', answerToSubmit);
+        console.log('[prepareAnswer] Using AI conversation messages');
       } else {
         console.error('AIConversation ref or getMessages not available');
-        // Error handled within submitAnswer hook
-        return;
+        return null;
       }
     }
-
-    // Call the submission hook's function directly.
-    // Use the callbacks provided by the analytics and navigation hooks.
-    await submitAnswer(block, answerToSubmit);
-  }, [block, currentAnswer, submitAnswer, isNextDisabled, aiConversationRef]);
+    
+    return answerToSubmit;
+  }, [block, currentAnswer, isNextDisabled, aiConversationRef]);
+  
+  // Simplified handler for submitting an answer
+  const handleSubmit = useCallback(async () => {
+    const answerToSubmit = prepareAnswer();
+    if (answerToSubmit !== null && block) {
+      await submitAnswer(block, answerToSubmit);
+    }
+  }, [block, prepareAnswer, submitAnswer]);
 
   // Callback to handle going to the previous block
   const handlePrevious = useCallback(() => { 
@@ -266,7 +366,7 @@ export default function FormViewerPage() {
       
       <FormNavigationControls 
         onPrevious={handlePrevious}
-        onNext={handleAnswer} 
+        onNext={handleSubmit} 
         isPreviousDisabled={currentIndex === 0 || submitting}
         isNextDisabled={isNextDisabled || isLastQuestion} 
         isSubmitting={submitting}

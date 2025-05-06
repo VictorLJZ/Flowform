@@ -1,70 +1,108 @@
 import useSWR from 'swr';
-import { getFormAnalyticsSummary } from '@/services/analytics/getFormAnalyticsSummary';
-import { useState } from 'react';
 import type { FormMetrics } from '@/types/supabase-types';
 
-// Minimal types for dashboard data - focusing only on base metrics to start
-export type BaseAnalyticsDashboardData = {
-  metrics: FormMetrics | null;
-  isLoading: boolean;
-  error: string | null;
+// API response fetcher for SWR
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.statusText}`);
+  }
+  return response.json();
 };
 
-// Keep old type exports for backward compatibility
+// Date range filter types
+export type DateRangeFilter = 'last7days' | 'last30days' | 'last3months' | 'alltime' | 'custom';
+
+// Analytics summary data interface
+export interface FormAnalyticsSummary {
+  formId: string;
+  views: number;
+  uniqueViews: number;
+  completions: number;
+  submissionRate: number;
+  bounceRate: number;
+  avgTimeToComplete: number;
+}
+
+// Enhanced block statistics interface
+export interface EnhancedBlockStats {
+  id: string;
+  title: string;
+  blockTypeId: string;
+  count: number;
+  uniqueViews: number;
+  avgTimeSpent: number;
+  interactionCount: number;
+  completionRate: number;
+}
+
+// Legacy types kept for backward compatibility
 export type DeviceMetrics = { device_type: string; count: number; percentage: number; };
 export type SourceMetrics = { source: string; count: number; percentage: number; };
 export type TimeSeriesPoint = { date: string; value: number; };
 export type BlockPerformance = { block_id: string; title: string; avg_time_seconds: number; error_count: number; abandonment_count: number; };
 export type BlockStats = { id: string; title: string; count: number; };
 export type BasicInsight = { id: string; title: string; description: string; };
-
-// Date range filter types
-export type DateRangeFilter = 'last7days' | 'last30days' | 'last3months' | 'alltime' | 'custom';
+export type BaseAnalyticsDashboardData = {
+  metrics: FormMetrics | null;
+  isLoading: boolean;
+  error: string | null;
+};
 
 /**
- * Simplified hook for fetching just the base form analytics metrics
+ * Hook to fetch analytics summary and block metrics for a form
  * 
- * @param formId - ID of the form to fetch analytics for
- * @returns Object containing basic analytics data and loading state
+ * @param formId - ID of the form to fetch analytics for (or null if none)
+ * @returns Object containing analytics data, block metrics, and loading states
  */
-export function useFormAnalyticsDashboard(formId: string | undefined) {
-  // Create a simple cache key based on form ID
-  const cacheKey = formId ? `analytics-base-metrics:${formId}` : null;
-  
-  // Simplified fetcher that only gets the base metrics
-  const fetcher = async (key: string): Promise<FormMetrics> => {
-    if (!formId) throw new Error('Form ID is required');
-    
-    console.log('Analytics Dashboard: Fetching base metrics for:', formId);
-    
-    // Get the form ID from the cache key
-    const id = key.split(':')[1];
-    
-    // Fetch only the base metrics
-    const metrics = await getFormAnalyticsSummary(id);
-    if (!metrics) {
-      throw new Error('Failed to fetch base metrics');
-    }
-    
-    console.log('Analytics Dashboard: Successfully fetched base metrics');
-    return metrics;
-  };
-  
-  // Use SWR to fetch the data with minimal configuration
-  const { data, error, isLoading } = useSWR<FormMetrics>(
-    cacheKey,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000, // Deduplicate requests within 1 minute
-      errorRetryCount: 3, // Limit retries to prevent infinite loops
-    }
+export function useFormAnalyticsDashboard(formId: string | null) {
+  // Fetch form analytics summary
+  const { 
+    data: analyticsData, 
+    error: analyticsError, 
+    isLoading: analyticsLoading 
+  } = useSWR<{ success: boolean; data: FormAnalyticsSummary }>(
+    formId ? `/api/analytics/summary/${formId}` : null, 
+    fetcher
   );
-  
-  // Return a simplified result
+
+  // Fetch block metrics
+  const { 
+    data: blockMetricsData, 
+    error: blockMetricsError, 
+    isLoading: blockMetricsLoading 
+  } = useSWR<{ success: boolean; data: EnhancedBlockStats[] }>(
+    formId ? `/api/analytics/block-metrics/${formId}` : null, 
+    fetcher
+  );
+
+  // Return consolidated data with appropriate loading and error states
   return {
-    metrics: data || null,
-    isLoading,
-    error: error ? (error instanceof Error ? error.message : 'Unknown error') : null,
+    // Form analytics summary
+    analytics: analyticsData?.data,
+    analyticsError,
+    isAnalyticsLoading: analyticsLoading,
+    
+    // Block metrics
+    blockStats: blockMetricsData?.data || [],
+    blockStatsError: blockMetricsError,
+    isBlockStatsLoading: blockMetricsLoading,
+    
+    // Combined loading state
+    isLoading: analyticsLoading || blockMetricsLoading,
+    
+    // Combined error state
+    hasError: !!analyticsError || !!blockMetricsError,
+    
+    // For backward compatibility
+    metrics: analyticsData?.data ? {
+      id: analyticsData.data.formId,
+      views: analyticsData.data.views,
+      unique_views: analyticsData.data.uniqueViews,
+      completions: analyticsData.data.completions,
+      submission_rate: analyticsData.data.submissionRate,
+      bounce_rate: analyticsData.data.bounceRate,
+      avg_time_to_complete: analyticsData.data.avgTimeToComplete,
+    } as unknown as FormMetrics : null
   };
 }

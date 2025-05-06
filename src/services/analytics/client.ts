@@ -7,7 +7,6 @@ export * from './getBlockPerformanceClient';
 
 // Analytics tracking services (client-side)
 export * from './trackFormViewClient';
-export * from './trackBlockInteractionClient';
 export * from './trackFormCompletionClient';
 export * from './trackBlockViewClient';
 

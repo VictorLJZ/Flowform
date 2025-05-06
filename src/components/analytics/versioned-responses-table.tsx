@@ -73,7 +73,7 @@ export function VersionedResponsesTable({
         }
       }
     }
-  }, [responses]);
+  }, [responses, selectedVersionId]);
   // Transform the responses into a format suitable for the table
   const data = useMemo(() => {
     return responses.map((response) => {
@@ -82,7 +82,7 @@ export function VersionedResponsesTable({
 
       // Get the version number for this response
       const versionNumber = response.form_version?.version_number || null;
-      const versionId = response.form_version?.id || null;
+      // versionId is available from the API but not used in this component currently
 
       // Process static answers (questions with a single answer)
       response.static_answers.forEach((answer) => {
@@ -133,7 +133,7 @@ export function VersionedResponsesTable({
         answers: answerMap,
       };
     });
-  }, [responses]);
+  }, [responses, selectedVersionId]);
 
   // Create a dynamic set of columns based on the responses
   const columns = useMemo<ColumnDef<VersionedResponseRow>[]>(() => {
@@ -294,7 +294,7 @@ export function VersionedResponsesTable({
       },
       ...dynamicColumns,
     ];
-  }, [responses]);
+  }, [responses, selectedVersionId]);
 
   // Get the dynamic columns from the columns array
   const dynamicColsCount = columns.length - 5; // Subtract the 5 static columns
@@ -306,7 +306,7 @@ export function VersionedResponsesTable({
           <h3 className="font-semibold">Debug Info: No Question Columns</h3>
           <p className="text-sm">No question columns were generated. This could be because:</p>
           <ul className="text-sm list-disc pl-5 mt-2">
-            <li>Responses don't have valid form_version_id values</li>
+            <li>Responses don&apos;t have valid form_version_id values</li>
             <li>No block versions were found for the response versions</li>
             <li>All blocks are marked as deleted</li>
           </ul>
@@ -320,6 +320,8 @@ export function VersionedResponsesTable({
             Showing form structure exactly as it appeared in this version.
           </div>
         )}
+        
+        {responses.length === 0 && <p className="text-center text-muted-foreground py-8">No responses found. Either no one&apos;s submitted the form, or the responses don&apos;t match your filters.</p>}
         
         <div className="custom-scrollbar">
           <style jsx global>{`

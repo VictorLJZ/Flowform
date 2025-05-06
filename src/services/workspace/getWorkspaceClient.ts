@@ -33,8 +33,8 @@ export async function getWorkspaceClient(workspaceId: string): Promise<Workspace
             localStorage.setItem('workspace-state-storage', JSON.stringify(store));
             console.log('[getWorkspaceClient] Removed invalid workspace from localStorage');
           }
-        } catch (e) {
-          // Ignore localStorage errors
+        } catch {
+          // Ignore localStorage errors - we just want to prevent any localStorage issues from breaking the app
         }
         return null;
       }

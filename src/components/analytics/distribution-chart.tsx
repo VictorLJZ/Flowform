@@ -1,8 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import React from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { ChartTooltipProps } from '@/types'
+import { cn } from '@/lib/utils'
 
 interface DistributionChartProps {
   title: string
@@ -11,6 +13,7 @@ interface DistributionChartProps {
     name: string
     value: number
     color?: string
+    percentage?: number
   }>
   height?: number
   className?: string
@@ -62,14 +65,14 @@ export function DistributionChart({
   const isValidData = chartData.some(item => item.value > 0)
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
         <div className="custom-tooltip bg-background border rounded-md shadow-md p-3">
           <p className="text-sm font-medium">{data.name}</p>
           <p className="text-primary font-bold">{valueFormatter(data.value)}</p>
-          <p className="text-xs text-muted-foreground">{data.percentage.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground">{data.percentage && typeof data.percentage === 'number' ? `${data.percentage.toFixed(1)}%` : ''}</p>
         </div>
       )
     }
@@ -77,15 +80,21 @@ export function DistributionChart({
   }
 
   // Custom legend to add percentages
-  const CustomizedLegend = (props: any) => {
-    const { payload } = props
+  const CustomizedLegend = (props: { payload?: Array<{ color: string; value: string }> }) => {
+    const { payload = [] } = props
     return (
       <ul className="flex flex-col gap-2 text-sm">
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index: number) => (
           <li key={`item-${index}`} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
             <span className="text-muted-foreground">{entry.value}</span>
-            <span className="font-medium">{chartData.find(d => d.name === entry.value)?.percentage.toFixed(1)}%</span>
+            <span className="font-medium">
+              {(() => {
+                const item = chartData.find(d => d.name === entry.value);
+                const percentage = item?.percentage;
+                return percentage && typeof percentage === 'number' ? `${percentage.toFixed(1)}%` : '';
+              })()}
+            </span>
           </li>
         ))}
       </ul>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 import { BlockMetrics } from '@/types/supabase-types';
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // First, get the blocks information
     let blocksQuery = supabase

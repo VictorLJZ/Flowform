@@ -41,6 +41,13 @@ interface NumberBlockProps {
   }>) => void
   onNext?: () => void
   isNextDisabled?: boolean
+  // Analytics props
+  analytics?: {
+    trackFocus?: (data?: Record<string, unknown>) => void
+    trackBlur?: (data?: Record<string, unknown>) => void
+    trackChange?: (data?: Record<string, unknown>) => void
+    blockRef?: React.RefObject<HTMLDivElement | null>
+  }
 }
 
 export function NumberBlock({
@@ -51,6 +58,7 @@ export function NumberBlock({
   index,
   totalBlocks,
   settings,
+  analytics,
   value,
   onChange,
   onUpdate,
@@ -162,6 +170,7 @@ export function NumberBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      blockRef={analytics?.blockRef}
     >
       {numberField}
     </SlideWrapper>

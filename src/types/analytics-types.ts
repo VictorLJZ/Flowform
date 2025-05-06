@@ -29,3 +29,12 @@ export type Analytics = {
   metrics: FormMetrics | null;
   views_over_time: { date: string; count: number }[];
 };
+
+/**
+ * Response to an analytics API request
+ */
+export type AnalyticsApiResponse<T> = {
+  success: boolean;
+  data: T;
+  error?: string;
+};
