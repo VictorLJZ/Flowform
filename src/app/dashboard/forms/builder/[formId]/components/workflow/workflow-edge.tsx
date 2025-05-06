@@ -5,6 +5,8 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow
 import { WorkflowEdgeData } from '@/types/workflow-types'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { Check, ArrowRight, X, ChevronUp, ChevronDown, ListFilter, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { getConditionSummary } from './condition-utils'
 
 const WorkflowEdge = ({
   id,
@@ -20,13 +22,24 @@ const WorkflowEdge = ({
 }: EdgeProps<WorkflowEdgeData>) => {
   const blocks = useFormBuilderStore(state => state.blocks)
   const removeConnection = useFormBuilderStore(state => state.removeConnection)
+  const saveForm = useFormBuilderStore(state => state.saveForm)
+  
+  // Get the connection data for consistent access
+  const connection = data?.connection || null;
   
   // Get the source block details to determine edge style
   const sourceBlock = useMemo(() => {
-    if (!data?.connection?.sourceId) return null
-    return blocks.find(block => block.id === data.connection.sourceId)
-  }, [blocks, data?.connection?.sourceId])
+    if (!connection?.sourceId) return null
+    return blocks.find(block => block.id === connection.sourceId)
+  }, [blocks, connection?.sourceId])
   
+  // Get the target block details for condition display
+  const targetBlock = useMemo(() => {
+    if (!connection?.targetId) return null
+    return blocks.find(block => block.id === connection.targetId)
+  }, [blocks, connection?.targetId])
+  
+  // Use straighter lines between nodes
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -34,51 +47,34 @@ const WorkflowEdge = ({
     targetX,
     targetY,
     targetPosition,
-    curvature: 0.2 // Even lower curvature for almost straight lines
+    curvature: 0.15 // Slight curve for better visibility
   })
 
   // Handle edge deletion
   const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent default behavior
-    e.stopPropagation(); // Prevent triggering other click handlers
+    e.preventDefault();
+    e.stopPropagation();
     
     if (id) {
-      console.log(`Deleting connection with id: ${id}`); // Add logging
-      
-      // Use setTimeout to ensure the event completes before we modify state
-      setTimeout(() => {
-        removeConnection(id);
-      }, 0);
-      
-      // Show feedback directly
-      const feedback = document.createElement('div');
-      feedback.textContent = 'Connection deleted';
-      feedback.className = 'fixed z-50 top-4 right-4 bg-red-100 text-red-700 px-4 py-2 rounded-md shadow-md text-sm font-medium delete-toast';
-      document.body.appendChild(feedback);
-      
-      // Remove feedback after delay
-      setTimeout(() => {
-        if (document.body.contains(feedback)) {
-          document.body.removeChild(feedback);
-        }
-      }, 2000);
+      console.log(`Deleting connection with id: ${id}`);
+      removeConnection(id);
     }
   }, [id, removeConnection]);
 
   // Determine edge style based on block type and condition
   const getEdgeStyles = () => {
     const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
-    const hasCondition = !!data?.connection?.condition?.field
-    const conditionType = data?.connection?.condition?.field || ''
-    const operatorType = data?.connection?.condition?.operator || ''
+    const hasCondition = !!connection?.condition?.field
+    const conditionType = connection?.condition?.field || ''
+    const operatorType = connection?.condition?.operator || ''
     
-    // Edge colors
-    const baseColor = '#000000' // Pure black for normal edges
-    const selectedColor = '#f59e0b' // Amber-500 for selected edges
+    // Edge colors - always use gold for selected state
+    const baseColor = '#000000' // Black for normal edges
+    const goldColor = '#f59e0b' // Amber-500 for selected/hovered edges
     
-    // Style settings
+    // Style settings - make edges more visible
     let dashArray = '0' // solid line by default
-    const edgeWidth = selected ? 3 : 2 // Increased width for better visibility
+    const edgeWidth = selected ? 3 : 2 // Increase thickness for better visibility
     
     // Style based on condition presence/type
     if (!hasCondition) {
@@ -90,182 +86,206 @@ const WorkflowEdge = ({
     } else if (operatorType.includes('greater') || operatorType.includes('less')) {
       dashArray = '10,3' // dashed for comparison
     }
-    
-    // Use amber color when selected
-    const edgeColor = selected ? selectedColor : baseColor
 
     return {
-      stroke: edgeColor,
+      stroke: baseColor, // Always use base color for normal state
+      goldColor, // Store gold color for selected/hover states
       strokeWidth: edgeWidth,
       strokeDasharray: dashArray,
       transition: 'stroke 0.2s, stroke-width 0.2s',
       sourceBlockType,
       hasCondition,
       conditionType,
-      operatorType,
-      baseColor: selected ? selectedColor : baseColor // Use amber when selected
+      operatorType
     }
   }
   
   const edgeStyles = getEdgeStyles()
   
-  // Format the condition to be more human-readable
+  // Format condition text
   const formatCondition = () => {
-    if (!data?.connection?.condition) return null
+    if (!connection?.condition) return "Always proceed";
     
-    const { field, operator, value } = data.connection.condition
+    const { field, operator, value } = connection.condition;
     
-    // Format field name nicely
-    let fieldDisplay = field
+    // Format field name more clearly
+    let fieldDisplay = field;
+    let choiceValue = '';
+    
     if (field === 'answer') {
-      fieldDisplay = 'Answer'
+      fieldDisplay = 'Answer';
     } else if (field === 'selected') {
-      fieldDisplay = 'Selected'
+      fieldDisplay = 'Selected';
     } else if (field === 'rating') {
-      fieldDisplay = 'Rating'
+      fieldDisplay = 'Rating';
     } else if (field.startsWith('choice:')) {
-      // For choice fields, extract just the choice value
-      const choiceValue = field.split(':')[1]
-      fieldDisplay = `Option "${choiceValue}"`
+      // For choice fields, extract the display part, removing the index suffix
+      // The format is now choice:value_index
+      const choiceWithIndex = field.split(':')[1];
+      // Extract just the choice value without the index
+      choiceValue = choiceWithIndex.split('_')[0];
+      fieldDisplay = `Option "${choiceValue}"`;
     }
     
-    // Format operator
-    let operatorDisplay
+    // Format operator with more clarity
+    let operatorDisplay;
     switch (operator) {
-      case 'equals': operatorDisplay = 'is'; break
-      case 'not_equals': operatorDisplay = 'is not'; break
-      case 'contains': operatorDisplay = 'contains'; break
-      case 'greater_than': operatorDisplay = 'is greater than'; break
-      case 'less_than': operatorDisplay = 'is less than'; break
-      default: operatorDisplay = operator
+      case 'equals': operatorDisplay = 'is'; break;
+      case 'not_equals': operatorDisplay = 'is not'; break;
+      case 'contains': operatorDisplay = 'contains'; break;
+      case 'greater_than': operatorDisplay = 'is greater than'; break;
+      case 'less_than': operatorDisplay = 'is less than'; break;
+      default: operatorDisplay = operator;
     }
     
-    // Format based on field and operator
+    // Format value more clearly
+    let valueDisplay = `${value}`;
+    if (typeof value === 'boolean') {
+      valueDisplay = value ? 'Yes' : 'No';
+    }
+    
+    // Handle special cases for clearer messaging
     if (field.startsWith('choice:')) {
-      return operator === 'equals' ? 'When selected' : 'When not selected'
+      return operator === 'equals' 
+        ? `"${choiceValue}" is selected`
+        : `"${choiceValue}" is not selected`;
     }
     
-    // Handle special cases
+    // Special case for checkboxes
     if (field === 'selected' && operator === 'equals') {
-      return value ? 'When checked' : 'When unchecked'
+      return value 
+        ? `Checked` 
+        : `Not checked`;
     }
     
-    return `When ${fieldDisplay.toLowerCase()} ${operatorDisplay} ${value}`
+    // Special case for ratings
+    if (field === 'rating') {
+      return `Rating ${operatorDisplay} ${valueDisplay}`;
+    }
+    
+    // Default formatting without arrow and target name
+    return `${fieldDisplay.toLowerCase()} ${operatorDisplay} ${valueDisplay}`;
   }
   
   // Get the appropriate icon for the condition
   const getConditionIcon = () => {
-    if (!data?.connection?.condition) return ArrowRight
+    if (!connection?.condition) return ArrowRight;
     
-    const { field, operator } = data.connection.condition
+    const { field, operator } = connection.condition;
     
     if (field.startsWith('choice:')) {
-      return operator === 'equals' ? Check : X
+      return operator === 'equals' ? Check : X;
     }
     
     if (field === 'selected') {
-      return operator === 'equals' ? Check : X
+      return operator === 'equals' ? Check : X;
     }
     
     if (field === 'rating' || field === 'answer') {
-      if (operator === 'greater_than') return ChevronUp
-      if (operator === 'less_than') return ChevronDown
-      if (operator === 'equals') return Check
-      if (operator === 'not_equals') return X
+      if (operator === 'greater_than') return ChevronUp;
+      if (operator === 'less_than') return ChevronDown;
+      if (operator === 'equals') return Check;
+      if (operator === 'not_equals') return X;
     }
     
-    return ListFilter // default icon
+    return ListFilter; // default icon
   }
   
-  const ConditionIcon = getConditionIcon()
-  const condition = formatCondition()
-  const labelBgColor = selected ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'
-  // Remove unused variables
+  const ConditionIcon = getConditionIcon();
+  const condition = formatCondition();
+  const labelBgColor = selected ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200';
   
   // Track hover state for the edge
-  const [, setIsHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <>
-      {/* Add a glow effect when selected */}
-      {selected && (
-        <BaseEdge 
-          path={edgePath} 
-          id={`${id}-glow`} 
-          style={{
-            stroke: '#f8e0a8', // amber-100/200
-            strokeWidth: 8,
-            strokeOpacity: 0.6,
-            filter: 'blur(3px)',
-          }} 
-        />
-      )}
+      {/* Define a unique marker for this edge */}
+      <defs>
+        <marker
+          id={`arrow-${id}`}
+          viewBox="0 0 10 10"
+          refX="5"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
+        >
+          <path 
+            d="M 0 0 L 10 5 L 0 10 z" 
+            fill={selected || isHovered ? edgeStyles.goldColor : edgeStyles.stroke} 
+          />
+        </marker>
+      </defs>
 
-      <div 
-        className="edge-wrapper"
+      {/* Edge wrapper for hover detection */}
+      <g 
+        className={`edge-wrapper ${selected ? 'selected' : ''}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        style={{ cursor: 'pointer' }}
       >
-        <BaseEdge 
-          path={edgePath} 
-          id={id} 
+        {/* Enhanced background path for easier interaction */}
+        {(selected || isHovered) && (
+          <path
+            d={edgePath}
+            stroke={selected ? '#fff8e6' : '#e5e7eb'}
+            strokeWidth={10}
+            strokeOpacity={0.5}
+            fill="none"
+            pointerEvents="stroke"
+          />
+        )}
+        
+        {/* Main visible edge path with arrow */}
+        <path
+          id={id}
+          d={edgePath}
+          className="workflow-edge-path"
+          stroke={selected || isHovered ? edgeStyles.goldColor : edgeStyles.stroke}
+          strokeWidth={selected || isHovered ? edgeStyles.strokeWidth + 1 : edgeStyles.strokeWidth}
+          strokeDasharray={edgeStyles.strokeDasharray}
+          fill="none"
+          markerEnd={`url(#arrow-${id})`}
           style={{
-            ...style,
-            strokeWidth: edgeStyles.strokeWidth,
-            stroke: edgeStyles.stroke,
-            strokeDasharray: edgeStyles.strokeDasharray,
-            transition: edgeStyles.transition,
-          }} 
-          markerEnd={`url(#${id}-marker)`}
-          data-edge-id={id}
+            pointerEvents: 'stroke',
+            cursor: 'pointer',
+            transition: 'stroke 0.2s',
+            // Force the stroke color via inline style to override any class styles
+            stroke: selected || isHovered ? '#f59e0b' : '#000000'
+          }}
         />
-      </div>
-      <svg>
-        <defs>
-          <marker
-            id={`${id}-marker`}
-            viewBox="0 0 10 10"
-            refX="5"
-            refY="5"
-            markerWidth="6" // Smaller marker
-            markerHeight="6" // Smaller marker
-            orient="auto-start-reverse"
-          >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={edgeStyles.stroke} />
-          </marker>
-        </defs>
-      </svg>
+      </g>
       
-      {/* Enhanced label with icon and clearer formatting with multi-line support */}
-      {condition && (
-        <EdgeLabelRenderer>
-          <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: 'all',
-              color: edgeStyles.stroke,
-              backgroundColor: selected ? '#fff8e6' : 'white',
-              borderColor: selected ? edgeStyles.stroke : '#e2e8f0',
-              maxWidth: '200px', // Limit width to force wrapping on long text
-            }}
-            className={`
-              nodrag nopan px-2 py-1.5 rounded-md text-xs shadow-md border 
-              transition-colors flex gap-1.5 font-medium
-              ${labelBgColor}
-            `}
-            data-edge-id={id}
-          >
-            <ConditionIcon size={14} className="flex-shrink-0 mt-0.5" />
-            <div className="overflow-hidden flex flex-col">
-              <span className="whitespace-normal hyphens-auto break-words">
-                {condition}
-              </span>
-            </div>
+      {/* Enhanced label with clearer formatting - position ABOVE the edge */}
+      <EdgeLabelRenderer>
+        <div 
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY}px)`, // Position directly above the edge
+            pointerEvents: 'all',
+            color: selected || isHovered ? '#f59e0b' : edgeStyles.stroke,
+            backgroundColor: selected ? '#fff8e6' : 'white',
+            borderColor: selected ? '#f59e0b' : isHovered ? '#f59e0b80' : '#e2e8f0',
+            maxWidth: '280px',
+            zIndex: 1000, // Very high z-index to ensure it's always on top
+            opacity: 1, // Always visible
+          }}
+          className={`
+            nodrag nopan px-3 py-2 rounded-md text-xs shadow-md border 
+            transition-colors flex gap-2 font-medium
+            ${selected ? 'shadow-md' : isHovered ? 'shadow-lg' : ''}
+          `}
+          data-edge-id={id}
+        >
+          <div className="overflow-hidden flex flex-col">
+            <span className="whitespace-normal hyphens-auto break-words leading-tight">
+              {condition}
+            </span>
           </div>
-        </EdgeLabelRenderer>
-      )}
-
+        </div>
+      </EdgeLabelRenderer>
+      
       {/* Delete button - shown on hover/selection */}
       <EdgeLabelRenderer>
         <button
@@ -273,26 +293,19 @@ const WorkflowEdge = ({
           onClick={handleDelete}
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 30}px)`,
+            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 60}px)`,
             pointerEvents: 'all',
-            zIndex: 50,
-            opacity: selected ? 1 : 0,
+            zIndex: 20,
+            opacity: selected || isHovered ? 1 : 0,
             transition: 'opacity 0.2s, background-color 0.2s',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           }}
-          className="nodrag nopan w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md border border-red-300 group edge-delete-button"
+          className="nodrag nopan w-7 h-7 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full border border-red-300 group edge-delete-button"
           aria-label="Delete connection"
           title="Delete connection"
           data-edge-id={id}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
-          onMouseLeave={(e) => {
-            if (!selected) {
-              e.currentTarget.style.opacity = '0';
-            }
-          }}
         >
-          <Trash2 size={12} className="group-hover:text-red-700" />
+          <Trash2 size={14} className="group-hover:text-red-700" />
         </button>
       </EdgeLabelRenderer>
     </>
@@ -300,3 +313,29 @@ const WorkflowEdge = ({
 }
 
 export default memo(WorkflowEdge)
+
+// Add CSS globally to ensure workflow edge paths are always visible
+const globalStyles = `
+.workflow-edge-path {
+  stroke-opacity: 1 !important;
+  visibility: visible !important;
+  fill: none !important;
+}
+
+.edge-wrapper.selected .workflow-edge-path,
+.edge-wrapper:hover .workflow-edge-path {
+  stroke: #f59e0b !important;
+}
+
+.edge-wrapper.selected marker path,
+.edge-wrapper:hover marker path {
+  fill: #f59e0b !important;
+}
+`;
+
+// Insert styles into document head to ensure they are applied
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = globalStyles;
+  document.head.appendChild(styleElement);
+}

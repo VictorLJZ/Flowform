@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
+import { createClient } from '@/lib/supabase/client'
 
 // type imports
 import { mapFromDbBlockType, mapToDbBlockType } from '@/utils/blockTypeMapping'
@@ -89,21 +90,25 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     
     // Only add linear connection if blocks exist
     if (blocks.length > 0) {
-      // Find the block with the highest order (the current last block)
-      const lastBlock = blocks.reduce((prev, current) => 
-        prev.order > current.order ? prev : current
-      );
-      
-      // Create a new connection from the last block to the new block
-      const newConnection: Connection = {
-        id: uuidv4(),
-        sourceId: lastBlock.id,
-        targetId: newBlockId,
-        order: connections.length
-      };
-      
-      updatedConnections = [...connections, newConnection];
-      console.log(`Created new linear connection from block ${lastBlock.id} to ${newBlockId}`);
+      try {
+        // Find the block with the highest order (the current last block)
+        const lastBlock = blocks.reduce((prev, current) => 
+          prev.order > current.order ? prev : current
+        );
+        
+        // Create a new connection from the last block to the new block
+        const newConnection: Connection = {
+          id: uuidv4(),
+          sourceId: lastBlock.id,
+          targetId: newBlockId,
+          order: connections.length
+        };
+        
+        updatedConnections = [...connections, newConnection];
+        console.log(`Created new linear connection from block ${lastBlock.id} to ${newBlockId}`);
+      } catch (error) {
+        console.error("Error creating connection for new block:", error);
+      }
     }
     
     set(() => ({
@@ -188,46 +193,57 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     }
     
     // Update connections when removing a block
-    const removedBlockConnections = state.connections.filter(
-      conn => conn.sourceId === blockId || conn.targetId === blockId
-    )
-    
-    // Find incoming and outgoing connections of the removed block
-    const incomingConnections = removedBlockConnections.filter(conn => conn.targetId === blockId)
-    const outgoingConnections = removedBlockConnections.filter(conn => conn.sourceId === blockId)
-    
-    // Create new connections to maintain linear flow
-    const newConnections: Connection[] = []
-    
-    // For each source that was connected to the removed block,
-    // connect it to each target that the removed block was connected to
-    incomingConnections.forEach(incoming => {
-      outgoingConnections.forEach(outgoing => {
-        newConnections.push({
-          id: uuidv4(),
-          sourceId: incoming.sourceId,
-          targetId: outgoing.targetId,
-          order: state.connections.length,
-          // Preserve condition from the incoming connection if it exists
-          ...(incoming.condition ? { condition: incoming.condition } : {})
+    try {
+      const removedBlockConnections = state.connections.filter(
+        conn => conn.sourceId === blockId || conn.targetId === blockId
+      )
+      
+      // Find incoming and outgoing connections of the removed block
+      const incomingConnections = removedBlockConnections.filter(conn => conn.targetId === blockId)
+      const outgoingConnections = removedBlockConnections.filter(conn => conn.sourceId === blockId)
+      
+      // Create new connections to maintain linear flow
+      const newConnections: Connection[] = []
+      
+      // For each source that was connected to the removed block,
+      // connect it to each target that the removed block was connected to
+      incomingConnections.forEach(incoming => {
+        outgoingConnections.forEach(outgoing => {
+          newConnections.push({
+            id: uuidv4(),
+            sourceId: incoming.sourceId,
+            targetId: outgoing.targetId,
+            order: state.connections.length,
+            // Preserve condition from the incoming connection if it exists
+            ...(incoming.condition ? { condition: incoming.condition } : {})
+          })
         })
       })
-    })
-    
-    // Get all connections that don't involve the removed block
-    const remainingConnections = state.connections.filter(
-      conn => conn.sourceId !== blockId && conn.targetId !== blockId
-    )
-    
-    // Combine remaining connections with the new bypass connections
-    const updatedConnections = [...remainingConnections, ...newConnections]
-    
-    console.log(`Removed block ${blockId} and created ${newConnections.length} new connections to maintain flow`)
-    
-    return {
-      blocks: updatedBlocks,
-      currentBlockId: newCurrentBlockId,
-      connections: updatedConnections
+      
+      // Get all connections that don't involve the removed block
+      const remainingConnections = state.connections.filter(
+        conn => conn.sourceId !== blockId && conn.targetId !== blockId
+      )
+      
+      // Combine remaining connections with the new bypass connections
+      const updatedConnections = [...remainingConnections, ...newConnections]
+      
+      console.log(`Removed block ${blockId} and created ${newConnections.length} new connections to maintain flow`)
+      
+      return {
+        blocks: updatedBlocks,
+        currentBlockId: newCurrentBlockId,
+        connections: updatedConnections
+      }
+    } catch (error) {
+      console.error("Error updating connections after block removal:", error);
+      return {
+        blocks: updatedBlocks,
+        currentBlockId: newCurrentBlockId,
+        connections: state.connections.filter(
+          conn => conn.sourceId !== blockId && conn.targetId !== blockId
+        )
+      }
     }
   }),
   
@@ -242,37 +258,46 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     }))
     
     // After reordering, recreate linear connections if enabled
-    let updatedConnections = [...state.connections]
-    
-    // Only update connections if the order has significantly changed
-    if (Math.abs(endIndex - startIndex) > 1) {
-      // We consider this a major reordering, so we'll rebuild the linear connections
-      console.log('Major block reordering detected, rebuilding linear connections')
+    try {
+      let updatedConnections = [...state.connections]
       
-      // Remove any existing linear connections (those without conditions)
-      // Keep any conditional connections intact
-      const conditionalConnections = updatedConnections.filter(conn => conn.condition)
+      // Only update connections if the order has significantly changed
+      if (Math.abs(endIndex - startIndex) > 1) {
+        // We consider this a major reordering, so we'll rebuild the linear connections
+        console.log('Major block reordering detected, rebuilding linear connections')
+        
+        // Remove any existing linear connections (those without conditions)
+        // Keep any conditional connections intact
+        const conditionalConnections = updatedConnections.filter(conn => conn.condition)
+        
+        // Create fresh linear connections between adjacent blocks
+        const linearConnections = updatedBlocks.slice(0, -1).map((block, index) => {
+          const nextBlock = updatedBlocks[index + 1]
+          return {
+            id: uuidv4(),
+            sourceId: block.id,
+            targetId: nextBlock.id,
+            order: index,
+            // No condition means this is an "always" connection
+          }
+        })
+        
+        // Combine conditional connections with new linear ones
+        updatedConnections = [...conditionalConnections, ...linearConnections]
+        console.log(`Rebuilt ${linearConnections.length} linear connections after reordering`)
+      }
       
-      // Create fresh linear connections between adjacent blocks
-      const linearConnections = updatedBlocks.slice(0, -1).map((block, index) => {
-        const nextBlock = updatedBlocks[index + 1]
-        return {
-          id: uuidv4(),
-          sourceId: block.id,
-          targetId: nextBlock.id,
-          order: index,
-          // No condition means this is an "always" connection
-        }
-      })
-      
-      // Combine conditional connections with new linear ones
-      updatedConnections = [...conditionalConnections, ...linearConnections]
-      console.log(`Rebuilt ${linearConnections.length} linear connections after reordering`)
-    }
-    
-    return { 
-      blocks: updatedBlocks,
-      connections: updatedConnections
+      return { 
+        blocks: updatedBlocks,
+        connections: updatedConnections
+      }
+    } catch (error) {
+      console.error("Error rebuilding connections after reordering:", error);
+      // Return the reordered blocks but keep existing connections intact
+      return { 
+        blocks: updatedBlocks,
+        connections: state.connections
+      }
     }
   }),
   
@@ -321,6 +346,32 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
     
     if (isSaving) return
     
+    // Handle missing form_id
+    if (!formData.form_id) {
+      const newFormId = uuidv4();
+      const updatedFormData = { ...formData, form_id: newFormId }; 
+      set({ formData: updatedFormData });
+      console.log(`Generated missing form_id: ${newFormId}`);
+    }
+    
+    // Handle missing workspace_id 
+    if (!formData.workspace_id) {
+      try {
+        const { data } = await createClient().from('workspaces').select('id').limit(1);
+        if (data && data.length > 0) {
+          const updatedFormData = { ...formData, workspace_id: data[0].id };
+          set({ formData: updatedFormData });
+          console.log(`Using workspace_id: ${data[0].id}`);
+        } else {
+          console.error('No workspace found and no workspace_id provided');
+          return; // Cannot save without workspace_id
+        }
+      } catch (err) {
+        console.error('Error getting workspace:', err);
+        return; // Cannot save after error
+      }
+    }
+    
     set({ isSaving: true })
     
     try {
@@ -358,12 +409,12 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
         workspace_id: formData.workspace_id,
         created_by: formData.created_by,
         status: formData.status || 'draft',
-        theme: formData.theme as unknown as Record<string, unknown>,
+        theme: (formData.theme ? { ...defaultFormTheme, ...formData.theme } : defaultFormTheme) as unknown as Record<string, unknown>,
         settings: updatedSettings
       }, blocksToSave)
       
       if (result.success) {
-        console.log('Form saved successfully')
+        console.log('Form saved successfully!')
         
         // Create a mapping of original block IDs to database IDs
         const blockIdMap = new Map<string, string>();
@@ -393,6 +444,22 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           
           // Update the blocks in the store with the new IDs
           set({ blocks: updatedBlocks });
+          
+          // Update connection IDs to match new block IDs
+          if (connections.length > 0) {
+            try {
+              const updatedConnections = connections.map(conn => ({
+                ...conn,
+                sourceId: blockIdMap.get(conn.sourceId) || conn.sourceId,
+                targetId: blockIdMap.get(conn.targetId) || conn.targetId
+              }));
+              
+              // Update connections in local state only
+              set({ connections: updatedConnections });
+            } catch (error) {
+              console.error('Error updating connection IDs:', error);
+            }
+          }
         }
         
         // Find any dynamic blocks that need their config saved separately
@@ -404,21 +471,25 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           
           // Save each dynamic block's configuration using the database ID
           for (const block of dynamicBlocks) {
-            // Use the database ID if it exists in our mapping, otherwise use the original ID
-            const dbBlockId = blockIdMap.get(block.id) || block.id;
-            
-            // Ensure the block title is used as the startingPrompt in settings
-            const settingsWithPrompt = {
-              ...block.settings,
-              startingPrompt: block.title // Use the block title as the starting prompt
-            };
-            
-            await saveDynamicBlockConfig(dbBlockId, settingsWithPrompt);
-            console.log(`Saved configuration for dynamic block: ${dbBlockId} (original ID: ${block.id})`)
+            try {
+              // Use the database ID if it exists in our mapping, otherwise use the original ID
+              const dbBlockId = blockIdMap.get(block.id) || block.id;
+              
+              // Ensure the block title is used as the startingPrompt in settings
+              const settingsWithPrompt = {
+                ...block.settings,
+                startingPrompt: block.title // Use the block title as the starting prompt
+              };
+              
+              await saveDynamicBlockConfig(dbBlockId, settingsWithPrompt);
+              console.log(`Saved configuration for dynamic block: ${dbBlockId} (original ID: ${block.id})`)
+            } catch (configError) {
+              console.error(`Error saving dynamic block config for ${block.id}:`, configError);
+            }
           }
         }
       } else {
-        console.error('Error saving form')
+        console.error('Error saving form:', result)
       }
     } catch (error) {
       console.error('Error in saveForm:', error)
@@ -429,6 +500,14 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
   
   loadForm: async (formId: string) => {
     set({ isLoading: true })
+    
+    if (!formId) {
+      console.error('[loadForm] Cannot load form: formId is undefined or empty');
+      set({ isLoading: false });
+      return;
+    }
+    
+    console.log(`[loadForm] Loading form ${formId}`);
     
     try {
       // Use the getFormWithBlocks service to get the form and its blocks
@@ -500,14 +579,29 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       // Safely extract workflow connections if they exist
       let workflowConnections: Connection[] = [];
       try {
-        // Use our FormSettings type instead of any
-        const workflowSettings = formData.settings as FormSettings | null;
-        workflowConnections = workflowSettings?.workflow?.connections || [];
-        if (Array.isArray(workflowConnections)) {
-          console.log(`Loaded ${workflowConnections.length} workflow connections`);
-        } else {
-          console.warn('Workflow connections not found or not an array, using empty array');
-          workflowConnections = [];
+        // Use the type-safe approach to get workflow connections
+        if (formData.settings && 
+            typeof formData.settings === 'object' && 
+            formData.settings.workflow && 
+            typeof formData.settings.workflow === 'object' &&
+            'connections' in formData.settings.workflow) {
+          const settingsConnections = (formData.settings.workflow as WorkflowSettings).connections;
+          if (Array.isArray(settingsConnections) && settingsConnections.length > 0) {
+            console.log(`Loaded ${settingsConnections.length} workflow connections from settings`);
+            
+            // Filter connections to ensure they reference valid blocks
+            workflowConnections = settingsConnections.filter(conn => {
+              const sourceExists = frontendBlocks.some(block => block.id === conn.sourceId);
+              const targetExists = frontendBlocks.some(block => block.id === conn.targetId);
+              
+              if (!sourceExists || !targetExists) {
+                console.warn(`[loadForm] Skipping invalid connection: source=${conn.sourceId}, target=${conn.targetId}`);
+                return false;
+              }
+              
+              return true;
+            });
+          }
         }
       } catch (error) {
         console.error('Error extracting workflow connections:', error);
@@ -518,22 +612,26 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
       if (workflowConnections.length === 0 && frontendBlocks.length > 1) {
         console.log('No existing connections found, creating default linear workflow');
         
-        // Sort blocks by order to ensure proper sequence
-        const sortedBlocks = [...frontendBlocks].sort((a, b) => a.order - b.order);
-        
-        // Create connections from each block to the next one
-        workflowConnections = sortedBlocks.slice(0, -1).map((block, index) => {
-          const nextBlock = sortedBlocks[index + 1];
-          return {
-            id: uuidv4(),
-            sourceId: block.id,
-            targetId: nextBlock.id,
-            order: index,
-            // No condition means this is an "always" connection
-          };
-        });
-        
-        console.log(`Created ${workflowConnections.length} default linear connections`);
+        try {
+          // Sort blocks by order to ensure proper sequence
+          const sortedBlocks = [...frontendBlocks].sort((a, b) => a.order - b.order);
+          
+          // Create connections from each block to the next one
+          workflowConnections = sortedBlocks.slice(0, -1).map((block, index) => {
+            const nextBlock = sortedBlocks[index + 1];
+            return {
+              id: uuidv4(),
+              sourceId: block.id,
+              targetId: nextBlock.id,
+              order: index,
+              // No condition means this is an "always" connection
+            };
+          });
+          
+          console.log(`Created ${workflowConnections.length} default linear connections`);
+        } catch (error) {
+          console.error('Error creating default connections:', error);
+        }
       }
       
       // Update the store with form and blocks
@@ -546,19 +644,14 @@ export const formBuilderStoreInitializer: StateCreator<FormBuilderState> = (set,
           created_by: formData.created_by,
           status: formData.status || 'draft',
           // Always use defaultFormTheme as the base and merge with any available theme properties
-          theme: defaultFormTheme,
-          settings: {
-            showProgressBar: typeof formData.settings?.showProgressBar === 'boolean' ? formData.settings.showProgressBar : defaultFormData.settings.showProgressBar,
-            requireSignIn: typeof formData.settings?.requireSignIn === 'boolean' ? formData.settings.requireSignIn : defaultFormData.settings.requireSignIn,
-            theme: typeof formData.settings?.theme === 'string' ? formData.settings.theme : defaultFormData.settings.theme,
-            primaryColor: typeof formData.settings?.primaryColor === 'string' ? formData.settings.primaryColor : defaultFormData.settings.primaryColor,
-            fontFamily: typeof formData.settings?.fontFamily === 'string' ? formData.settings.fontFamily : defaultFormData.settings.fontFamily,
-            estimatedTime: typeof formData.settings?.estimatedTime === 'number' ? formData.settings.estimatedTime : undefined,
-            estimatedTimeUnit: formData.settings?.estimatedTimeUnit as 'minutes' | 'hours' | undefined,
-            redirectUrl: typeof formData.settings?.redirectUrl === 'string' ? formData.settings.redirectUrl : undefined,
-            customCss: typeof formData.settings?.customCss === 'string' ? formData.settings.customCss : undefined,
-            workflow: { connections: workflowConnections }
-          }
+          theme: formData.theme ? { 
+            ...defaultFormTheme, 
+            ...(typeof formData.theme === 'object' ? formData.theme : {}) 
+          } : defaultFormTheme,
+          settings: formData.settings ? {
+            ...defaultFormData.settings,
+            ...(typeof formData.settings === 'object' ? formData.settings : {})
+          } : { ...defaultFormData.settings }
         },
         blocks: frontendBlocks,
         currentBlockId: frontendBlocks.length > 0 ? frontendBlocks[0].id : null,

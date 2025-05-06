@@ -100,22 +100,24 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
     <div 
       className={cn(
         "p-4 rounded-md border shadow-sm bg-white",
-        "min-w-[220px] h-[72px]", // Fixed height of 72px for consistency
+        "min-w-[240px] h-[80px]", // Increased dimensions for better visibility
         "relative",
-        "transition-all duration-200",
         "flex items-center", // Center content vertically
-        isConnectionTarget && "ring-2 ring-black ring-opacity-70 shadow-md",
-        selected && "ring-2 ring-amber-400 ring-opacity-80 shadow-lg shadow-amber-100"
+        isConnectionTarget && "ring-1 ring-green-500 ring-opacity-50",
+        isHovered && "shadow-sm" // Add shadow on hover
       )}
+      style={{ 
+        willChange: 'transform', // Hardware acceleration for dragging
+        transform: 'translateZ(0)' 
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Source handle (output) - right side - Arrow pointing right */}
       <div 
         className={cn(
-          "absolute right-[-18px] top-1/2 transform -translate-y-1/2 z-10",
-          "transition-opacity duration-200",
-          isHovered || isOutputHandleHovered ? "opacity-100" : "opacity-60"
+          "absolute right-[-14px] top-1/2 transform -translate-y-1/2 z-10",
+          isHovered || isOutputHandleHovered ? "opacity-100" : "opacity-70"
         )}
         onMouseEnter={() => setIsOutputHandleHovered(true)}
         onMouseLeave={() => setIsOutputHandleHovered(false)}
@@ -124,36 +126,32 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
         <div 
           className={cn(
             "relative flex items-center justify-center",
-            "w-7 h-7 rounded-full",
-            isOutputHandleHovered ? "bg-black/20" : "bg-transparent",
-            "transition-all duration-200"
+            "w-8 h-8 rounded-full", // Increased size for better touch target
+            isOutputHandleHovered ? "bg-black/10" : "bg-black/5",
+            selected && "bg-amber-100"
           )}
         >
           <ArrowRight 
-            size={15} 
+            size={16} 
             className={cn(
-              "text-black",
-              selected && "text-amber-500",
-              "transition-transform duration-200",
-              isOutputHandleHovered && "translate-x-0.5"
+              selected ? "text-amber-500" : "text-black"
             )} 
           />
-          {/* Actual ReactFlow handle (hidden but functional) */}
+          {/* Actual ReactFlow handle - invisible but functional */}
           <Handle 
             type="source" 
             position={Position.Right} 
-            className="!opacity-0 !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
+            className="!opacity-0 !border-0 !bg-transparent !w-8 !h-8"
             style={{ right: 0, zIndex: 20 }}
           />
         </div>
       </div>
       
-      {/* Target handle (input) - left side - Arrow pointing right (for consistency) */}
+      {/* Target handle (input) - left side */}
       <div 
         className={cn(
-          "absolute left-[-18px] top-1/2 transform -translate-y-1/2 z-10",
-          "transition-opacity duration-200",
-          isHovered || isInputHandleHovered ? "opacity-100" : "opacity-60"
+          "absolute left-[-14px] top-1/2 transform -translate-y-1/2 z-10",
+          isHovered || isInputHandleHovered ? "opacity-100" : "opacity-70"
         )}
         onMouseEnter={() => setIsInputHandleHovered(true)}
         onMouseLeave={() => setIsInputHandleHovered(false)}
@@ -162,40 +160,37 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
         <div 
           className={cn(
             "relative flex items-center justify-center",
-            "w-7 h-7 rounded-full",
-            isInputHandleHovered ? "bg-black/20" : "bg-transparent",
-            "transition-all duration-200"
+            "w-8 h-8 rounded-full", // Increased size
+            isInputHandleHovered ? "bg-black/10" : "bg-black/5",
+            selected && "bg-amber-100"
           )}
         >
           <ArrowRight 
-            size={15} 
+            size={16}
             className={cn(
-              "text-black",
-              selected && "text-amber-500",
-              "transition-transform duration-200",
-              isInputHandleHovered && "translate-x-0.5"
+              selected ? "text-amber-500" : "text-black"
             )} 
           />
-          {/* Actual ReactFlow handle (hidden but functional) */}
+          {/* Actual ReactFlow handle - invisible but functional */}
           <Handle 
             type="target" 
             position={Position.Left} 
-            className="!opacity-0 !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
+            className="!opacity-0 !border-0 !bg-transparent !w-8 !h-8"
             style={{ left: 0, zIndex: 20 }}
           />
         </div>
       </div>
       
       {/* Block content */}
-      <div className="flex gap-2 items-center w-full">
+      <div className="flex gap-3 items-center w-full">
         <div 
           className={cn(
-            "h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0",
+            "h-10 w-10 rounded-md flex items-center justify-center flex-shrink-0", // Larger icon
             selected && "bg-amber-100 text-amber-700"
           )}
           style={selected ? {} : { backgroundColor: blockColors.bg, color: blockColors.text }}
         >
-          <Icon size={16} />
+          <Icon size={18} />
         </div>
         <div className="flex-1 overflow-hidden">
           <h4 className={cn(
@@ -218,14 +213,9 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
         </div>
       </div>
 
-      {/* Selection glow effect */}
+      {/* Selection indicator - simplified */}
       {selected && (
-        <div className="absolute inset-0 rounded-md pointer-events-none" 
-          style={{
-            background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.15), transparent 70%)',
-            zIndex: -1
-          }}
-        />
+        <div className="absolute inset-0 rounded-md pointer-events-none border border-amber-400" />
       )}
     </div>
   )

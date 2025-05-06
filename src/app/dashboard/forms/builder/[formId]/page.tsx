@@ -60,17 +60,27 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Update viewMode state
   const [viewMode, setViewMode] = useState<"form" | "workflow" | "connect">("form")
   
-  // Save whenever connections change (debounced)
+  // Replace aggressive auto-save with a much less frequent one
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (connections && connections.length > 0) {
-        console.log("Auto-saving workflow connections");
-        saveForm();
-      }
-    }, 1000);
+    // Only save if there are more than 5 connections and we've been on the page for a while
+    // This prevents frequent saving during initial setup
+    let saveTimer: NodeJS.Timeout | null = null;
     
-    return () => clearTimeout(timer);
-  }, [connections, saveForm]);
+    if (viewMode === "workflow") {
+      // Wait until user has had time to make multiple changes
+      saveTimer = setTimeout(() => {
+        // Only save if we're still in workflow view
+        if (viewMode === "workflow") {
+          console.log(`Auto-saving workflow state: ${connections.length} connections`);
+          saveForm();
+        }
+      }, 30000); // Only save after 30 seconds of inactivity
+    }
+    
+    return () => {
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, [viewMode, saveForm]); // Only run when view mode changes, not on every connection change
   
   // Load form data from API
   useEffect(() => {
