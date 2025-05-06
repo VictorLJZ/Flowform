@@ -1,0 +1,286 @@
+import { forwardRef, useState } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { PaperPlaneIcon, ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
+import { AnimatePresence, motion } from '@/lib/motion';
+import { useAIConversation } from '@/hooks/useAIConversation';
+import { useFormBuilderStore } from '@/stores/formBuilderStore';
+import { QAPair } from '@/types/supabase-types';
+import { useConversationDisplay } from '@/hooks/useConversationDisplay';
+import { useConversationInteraction } from '@/hooks/useConversationInteraction';
+import { useConversationNavigation } from '@/hooks/useConversationNavigation';
+
+interface AIConversationBlockProps {
+  id: string;
+  title?: string;
+  description?: string;
+  maxQuestions?: number;
+  temperature?: number;
+  value?: QAPair[];
+  onChange?: (value: QAPair[]) => void;
+  onUpdate?: () => void;
+  onNext?: () => void;
+  isNextDisabled?: boolean;
+  responseId: string;
+  formId: string;
+}
+
+/**
+ * AI Conversation Block Component
+ * 
+ * A dynamic block that facilitates AI-driven conversations based on user inputs.
+ * Uses multiple custom hooks to manage different aspects of the conversation flow.
+ */
+export const AIConversationBlock = forwardRef<HTMLDivElement, AIConversationBlockProps>(({
+  id,
+  title,
+  description,
+  maxQuestions = 0,
+  temperature = 0.7,
+  value = [],
+  onChange,
+  onUpdate,
+  onNext,
+  isNextDisabled,
+  responseId,
+  formId
+}, ref) => {
+  // Local state
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
+  const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({});
+
+  // Determine if we're in builder or viewer mode
+  const { mode } = useFormBuilderStore();
+  const isBuilder = mode === 'builder';
+
+  // Use our AIConversation hook for managing the conversation state
+  const {
+    conversation, 
+    nextQuestion, 
+    maxQuestions: configuredMaxQuestions, 
+    isComplete,
+    isLoading: isConversationLoading,
+    submitAnswer
+  } = useAIConversation(
+    responseId,
+    id, // blockId
+    formId,
+    isBuilder
+  );
+
+  // Effective max questions (from config or prop)
+  const effectiveMaxQuestions = configuredMaxQuestions || maxQuestions;
+  
+  // Effective conversation (from hook or prop)
+  const effectiveConversation = isBuilder ? value || [] : conversation;
+
+  // Use our conversation display hook to manage what question is shown
+  const { 
+    displayQuestion, 
+    isLoading: isQuestionLoading 
+  } = useConversationDisplay({
+    conversation: effectiveConversation,
+    nextQuestion,
+    activeQuestionIndex,
+    isFirstQuestion: activeQuestionIndex === 0 && effectiveConversation.length === 0,
+    starterPrompt: title || ''
+  });
+
+  // Use our interaction hook to manage user input and submissions
+  const {
+    userInput,
+    setUserInput,
+    isLocalSubmitting,
+    isChangingEarlierAnswer,
+    textareaRef,
+    handleInputChange,
+    handleSubmit,
+    handleKeyDown
+  } = useConversationInteraction({
+    conversation: effectiveConversation,
+    activeQuestionIndex,
+    questionInputs,
+    isFirstQuestion: activeQuestionIndex === 0 && effectiveConversation.length === 0,
+    starterPrompt: title || '',
+    submitAnswer,
+    onNext,
+    onChange,
+    onUpdate
+  });
+
+  // Use our navigation hook to manage question navigation
+  const {
+    isFirstQuestion,
+    isFinalQuestion,
+    isLastAnswered,
+    hasReachedMaxQuestions,
+    canMoveToNextQuestion,
+    handlePreviousQuestion,
+    handleNextQuestion,
+    moveToSpecificQuestion,
+    handleCompletingConversation
+  } = useConversationNavigation({
+    conversation: effectiveConversation,
+    nextQuestion,
+    isComplete,
+    maxQuestions: effectiveMaxQuestions,
+    activeQuestionIndex,
+    setActiveQuestionIndex,
+    questionInputs,
+    displayQuestion,
+    onNext
+  });
+
+  // Loading states
+  const isLoading = isConversationLoading || isQuestionLoading || isLocalSubmitting;
+
+  return (
+    <div
+      ref={ref}
+      className="w-full flex flex-col gap-6 transition-all"
+      data-testid="ai-conversation-block"
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Navigation buttons */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handlePreviousQuestion}
+              disabled={activeQuestionIndex === 0 || isLoading}
+              className={cn(
+                "rounded-full w-8 h-8",
+                activeQuestionIndex === 0 && "opacity-0 pointer-events-none"
+              )}
+              aria-label="Previous question"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+            </Button>
+            
+            {/* Question display */}
+            <h3 className="text-lg font-medium">
+              {displayQuestion}
+            </h3>
+            
+            {/* Next button, only shown when appropriate */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleNextQuestion}
+              disabled={!canMoveToNextQuestion || isLoading}
+              className={cn(
+                "rounded-full w-8 h-8 shrink-0",
+                (!canMoveToNextQuestion) && "opacity-0 pointer-events-none"
+              )}
+              aria-label="Next question"
+            >
+              <ChevronRightIcon className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          {/* Progress indicator */}
+          {effectiveMaxQuestions > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {Math.min(activeQuestionIndex + 1, effectiveMaxQuestions)} of {effectiveMaxQuestions}
+            </div>
+          )}
+        </div>
+        
+        {/* Description text shown for the first question only */}
+        {isFirstQuestion && description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      
+      {/* Warning when changing earlier answers */}
+      {isChangingEarlierAnswer && (
+        <div className="bg-yellow-50 border border-yellow-200 p-2 rounded-md text-sm text-yellow-700">
+          Changing this answer will reset later questions in the conversation.
+        </div>
+      )}
+      
+      {/* Input area - only shown when not the last question with an answer */}
+      {(!isComplete && !hasReachedMaxQuestions) && (
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            value={userInput}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={isLoading ? "Processing..." : "Type your response..."}
+            disabled={isLoading}
+            className="pr-12 min-h-[100px] resize-none"
+            data-testid="ai-conversation-input"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={handleSubmit}
+            disabled={!userInput.trim() || isLoading}
+            className="absolute right-2 bottom-2 rounded-full w-8 h-8"
+            aria-label="Submit response"
+          >
+            <PaperPlaneIcon className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      
+      {/* History of previous questions and answers */}
+      <div className="space-y-4">
+        <AnimatePresence mode="wait">
+          {effectiveConversation.map((item, index) => (
+            // Only show items that come before the current active index
+            index < activeQuestionIndex && (
+              <motion.div
+                key={`qa-${index}`}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="border rounded-lg p-4"
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">{item.question}</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => moveToSpecificQuestion(index)}
+                      disabled={isLoading}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground">{item.answer}</p>
+                </div>
+              </motion.div>
+            )
+          ))}
+        </AnimatePresence>
+      </div>
+      
+      {/* Complete button shown when all questions are answered */}
+      {isComplete && onNext && (
+        <Button
+          type="button"
+          onClick={handleCompletingConversation}
+          disabled={isNextDisabled}
+          className="mt-4"
+        >
+          Complete
+        </Button>
+      )}
+    </div>
+  );
+});
+
+AIConversationBlock.displayName = "AIConversationBlock";
+
+// We need to recreate the forwarded ref pattern for the AIConversationBlockInternal
+export default AIConversationBlock;
