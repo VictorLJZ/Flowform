@@ -2,6 +2,31 @@
 
 This document outlines the database schema for the FlowForm-neo application in Supabase.
 
+## Analytics Functions Note
+
+The RPC function `track_form_completion` was fixed to resolve a SQL error related to multiple assignments to the same column. In the original function, there were two separate updates to the `total_completions` column in a single SQL statement:
+
+```sql
+-- Previously (incorrect):
+DO UPDATE SET
+  -- Increment completions
+  total_completions = form_metrics.total_completions + 1,
+  
+  -- Ensure data integrity: completions can't exceed starts
+  total_completions = LEAST(form_metrics.total_completions + 1, form_metrics.total_starts),
+```
+
+This was fixed by combining these into a single assignment:
+
+```sql
+-- Fixed version:
+DO UPDATE SET
+  -- Increment completions (with data integrity check)
+  total_completions = LEAST(form_metrics.total_completions + 1, form_metrics.total_starts),
+```
+
+This ensures that form completions are properly tracked and counted in the analytics metrics.
+
 ## Foreign Key Cascade Behavior
 
 The following foreign key relationships are configured with ON DELETE CASCADE, meaning that when a referenced record is deleted, all related records are automatically deleted:
@@ -12,6 +37,9 @@ The following foreign key relationships are configured with ON DELETE CASCADE, m
 - `workspace_invitations.invited_by` → `auth.users.id`: When a user is deleted, invitations they sent are automatically deleted
 - `forms.created_by` → `auth.users.id`: When a user is deleted, forms they created are automatically deleted
 - `subscriptions.user_id` → `auth.users.id`: When a user is deleted, their subscription records are automatically deleted
+- `workflow_edges.form_id` → `forms.form_id`: When a form is deleted, all related workflow edges are automatically deleted
+- `workflow_edges.source_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges originating from it are automatically deleted
+- `workflow_edges.target_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges pointing to it are automatically deleted
 
 ## Workspace Management Tables
 
@@ -96,9 +124,11 @@ Primary key: (workspace_id, user_id)
 
 | Policy Name | Command | Using (qual) | With Check |
 |-------------|---------|--------------|------------|
-| insert_own_membership | INSERT | null | `user_id = auth.uid()` |
-| view_own_memberships | SELECT | `user_id = auth.uid()` | null |
-| admin_manage_members | ALL | `user_id = auth.uid() OR role IN ('owner', 'admin')` | null |
+| Members can view other members in the same workspace | SELECT | `EXISTS (SELECT 1 FROM public.workspace_members w1 WHERE w1.user_id = auth.uid() AND w1.workspace_id = workspace_members.workspace_id)` | null |
+| Owners/Admins can update member roles | UPDATE | `(SELECT role FROM public.workspace_members WHERE workspace_id = workspace_members.workspace_id AND user_id = auth.uid()) IN ('owner', 'admin')` | `((SELECT role FROM ... WHERE user_id = auth.uid()) = 'owner') OR ((SELECT role FROM ... WHERE user_id = auth.uid()) = 'admin' AND role IN ('editor', 'viewer'))` |
+| Owners/Admins can remove members | DELETE | `((SELECT role FROM ... WHERE user_id = auth.uid()) = 'owner') OR ((SELECT role FROM ... WHERE user_id = auth.uid()) = 'admin' AND role IN ('editor', 'viewer'))` | null |
+| Members can view their own membership details | SELECT | `user_id = auth.uid()` | null |
+| Users can be added upon accepting an invitation (handled by function) | INSERT | `true` | `true` |
 
 ## Form Management Tables
 
@@ -197,7 +227,31 @@ Stores options for multiple choice and similar blocks.
 |-------------|---------|--------------|------------|
 | Public can view options in published forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` | null |
 
-### 9. form_responses
+### 9. workflow_edges
+
+Stores the connections between form blocks in the workflow, including any conditional logic for form navigation.
+
+| Column            | Type                    | Description                       |
+|-------------------|-------------------------|-----------------------------------|
+| id                | UUID                    | Primary key                       |
+| form_id           | UUID                    | References forms.form_id (CASCADE) |
+| source_block_id   | UUID                    | References form_blocks.id (CASCADE) |
+| target_block_id   | UUID                    | References form_blocks.id (CASCADE) |
+| condition_field   | TEXT                    | Field name for the condition (nullable) |
+| condition_operator| TEXT                    | Operator (equals, not_equals, etc.) |
+| condition_value   | JSONB                   | Value for the condition comparison |
+| order_index       | INTEGER                 | Order of the edge in the workflow |
+| created_at        | TIMESTAMP WITH TIME ZONE| When edge was created             |
+| updated_at        | TIMESTAMP WITH TIME ZONE| When edge was last updated        |
+
+#### Row Level Security Policies
+
+| Policy Name | Command | Using (qual) | With Check |
+|-------------|---------|--------------|------------|
+| Form owners and workspace members can manage edges | ALL | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
+| Public can view edges in published forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` | null |
+
+### 10. form_responses
 
 Stores form submissions.
 
@@ -224,7 +278,7 @@ Stores form submissions.
 | Allow form owners to view responses | SELECT | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 | Allow form owners to delete responses | DELETE | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND role IN ('owner', 'admin')))` | null |
 
-### 10. form_versions
+### 11. form_versions
 
 Stores versioning information for forms to track changes over time.
 
@@ -243,7 +297,7 @@ Stores versioning information for forms to track changes over time.
 | Form owners can create versions | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.created_by = auth.uid())` |
 | Anyone with form access can view versions | SELECT | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published' OR forms.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm JOIN forms f ON f.workspace_id = wm.workspace_id WHERE f.form_id = form_id AND wm.user_id = auth.uid()))` | null |
 
-### 11. form_block_versions
+### 12. form_block_versions
 
 Stores the state of form blocks at specific versions, enabling historical view of forms.
 
@@ -269,7 +323,7 @@ Stores the state of form blocks at specific versions, enabling historical view o
 | Form owners can create block versions | INSERT | null | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.created_by = auth.uid())` |
 | Anyone with form access can view block versions | SELECT | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.status = 'published' OR f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 12. static_block_answers
+### 13. static_block_answers
 +**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
 Stores answers to static blocks.
@@ -288,7 +342,7 @@ Stores answers to static blocks.
 |-------------|---------|--------------|------------|
 | Form owners and workspace members can view static answers | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 11. dynamic_block_responses
+### 14. dynamic_block_responses
 
 Stores AI-driven conversations.
 
@@ -308,7 +362,7 @@ Stores AI-driven conversations.
 | Form owners and workspace members can view dynamic responses | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 ## Analytics Tables
 
-### 12. form_views
+### 15. form_views
 
 Tracks visitors viewing forms.
 
@@ -330,21 +384,56 @@ Tracks visitors viewing forms.
 | Anonymous users can create form views | INSERT | `authenticated, anon` | `true` |
 | Workspace members can view form views | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 13. form_metrics
+### 16. form_metrics
 
-Aggregated metrics for form performance.
+Aggregated metrics for form performance. These metrics are automatically calculated and maintained by RPC functions.
 
-| Column                        | Type                    | Description                       |
-|-------------------------------|-------------------------|-----------------------------------|
-| form_id                       | UUID                    | References forms.form_id (primary key) |
-| total_views                   | INTEGER                 | Total number of form views        |
-| unique_views                  | INTEGER                 | Unique visitors count             |
-| total_starts                  | INTEGER                 | Number of form starts             |
-| total_completions             | INTEGER                 | Number of form completions        |
-| completion_rate               | FLOAT                   | Percentage of completions vs starts |
-| average_completion_time_seconds | INTEGER               | Average time to complete form     |
-| bounce_rate                   | FLOAT                   | Percentage of visitors who left without interacting |
-| last_updated                  | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
+| Column                        | Type                    | Description                       | Constraints |
+|-------------------------------|-------------------------|-----------------------------------|-------------|
+| form_id                       | UUID                    | References forms.form_id (primary key) | NOT NULL |
+| total_views                   | INTEGER                 | Total number of form views        | NOT NULL, DEFAULT 0 |
+| unique_views                  | INTEGER                 | Unique visitors count             | NOT NULL, DEFAULT 0 |
+| total_starts                  | INTEGER                 | Number of form starts             | NOT NULL, DEFAULT 0 |
+| total_completions             | INTEGER                 | Number of form completions        | NOT NULL, DEFAULT 0 |
+| completion_rate               | FLOAT                   | Percentage of completions vs starts | NOT NULL, DEFAULT 0, CHECK (completion_rate >= 0 AND completion_rate <= 1) |
+| average_completion_time_seconds | INTEGER               | Average time to complete form     | DEFAULT 0 |
+| bounce_rate                   | FLOAT                   | Percentage of visitors who left without interacting | NOT NULL, DEFAULT 0, CHECK (bounce_rate >= 0 AND bounce_rate <= 1) |
+| last_updated                  | TIMESTAMP WITH TIME ZONE| When metrics were last updated    | NOT NULL, DEFAULT NOW() |
+
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| check_total_completions_lte_starts | `CHECK (total_completions <= total_starts)` | Ensures data integrity by verifying completions never exceed starts |
+| check_completion_rate_range | `CHECK (completion_rate >= 0 AND completion_rate <= 1)` | Ensures completion rate is a valid percentage (0-100%) |
+| check_bounce_rate_range | `CHECK (bounce_rate >= 0 AND bounce_rate <= 1)` | Ensures bounce rate is a valid percentage (0-100%) |
+
+#### RPC-Based Analytics
+
+Metrics in this table are automatically calculated through RPC functions:
+
+1. **track_form_view**: Called when a form is viewed
+   - Updates `total_views`, `unique_views`, and `bounce_rate`
+   - Ensures all rates stay within valid ranges (0-100%)
+
+2. **track_form_start**: Called when a form session is created
+   - Updates `total_starts` and recalculates `bounce_rate` and `completion_rate`
+   - Ensures all rates stay within valid ranges (0-100%)
+
+3. **track_form_completion**: Called when a form is completed
+   - Updates `total_completions`, `completion_rate`, and `average_completion_time_seconds`
+   - Ensures data integrity by enforcing completions ≤ starts
+   - Ensures all rates stay within valid ranges (0-100%)
+
+4. **track_block_view**: Called when a block is viewed
+   - Records a 'view' interaction in `form_interactions` table
+   - Updates the view count in `block_metrics` table
+
+5. **track_block_interaction**: Called when a user interacts with a block
+   - Records various interaction types (focus, blur, change, submit) in `form_interactions`
+   - Updates appropriate metrics in `block_metrics` based on interaction type
+
+See [AnalyticsRPCSchema.md](./AnalyticsRPCSchema.md) for detailed documentation of all analytics RPC functions.
 
 #### Row Level Security Policies
 
@@ -352,7 +441,7 @@ Aggregated metrics for form performance.
 |-------------|---------|--------------|------------|
 | Workspace members can view form analytics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 14. block_metrics
+### 17. block_metrics
 
 Performance metrics for individual question blocks.
 
@@ -362,11 +451,18 @@ Performance metrics for individual question blocks.
 | block_id              | UUID                    | References form_blocks.id         |
 | form_id               | UUID                    | References forms.form_id          |
 | views                 | INTEGER                 | How many times block was viewed   |
+| submissions           | INTEGER                 | Number of times block was submitted | 
 | skips                 | INTEGER                 | Times optional questions skipped  |
 | average_time_seconds  | FLOAT                   | Average time spent on block       |
 | drop_off_count        | INTEGER                 | Number of users who dropped off   |
 | drop_off_rate         | FLOAT                   | Percentage of users who dropped off |
 | last_updated          | TIMESTAMP WITH TIME ZONE| When metrics were last updated    |
+
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| block_metrics_block_id_key | `UNIQUE (block_id)` | Ensures only one metrics record per block for upsert operations |
 
 #### Row Level Security Policies
 
@@ -374,7 +470,7 @@ Performance metrics for individual question blocks.
 |-------------|---------|--------------|------------|
 | Workspace members can view block metrics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 15. form_interactions
+### 18. form_interactions
 
 Granular tracking of user interactions with form elements.
 
@@ -383,10 +479,19 @@ Granular tracking of user interactions with form elements.
 | id               | UUID                    | Primary key                       |
 | response_id      | UUID                    | References form_responses.id      |
 | block_id         | UUID                    | References form_blocks.id         |
-| interaction_type | TEXT                    | view, focus, blur, change, submit, error |
+| form_id          | UUID                    | References forms.form_id          |
+| interaction_type | TEXT                    | view, focus, blur, change, submit, block_submit, error |
 | timestamp        | TIMESTAMP WITH TIME ZONE| When interaction occurred         |
 | duration_ms      | INTEGER                 | Duration of interaction (if applicable) |
 | metadata         | JSONB                   | Additional context data           |
+
+#### Constraints
+
+| Constraint Name | Definition | Description |
+|-----------------|------------|-------------|
+| form_interactions_response_id_fkey | `FOREIGN KEY (response_id) REFERENCES form_responses(id)` | Ensures response_id links to valid form_responses |
+| form_interactions_block_id_fkey | `FOREIGN KEY (block_id) REFERENCES form_blocks(id)` | Ensures block_id links to valid form_blocks |
+| form_interactions_form_id_fkey | `FOREIGN KEY (form_id) REFERENCES forms(form_id)` | Ensures form_id links to valid forms |
 
 #### Row Level Security Policies
 
@@ -395,7 +500,7 @@ Granular tracking of user interactions with form elements.
 | Form owners and workspace members can view interactions | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 | Anonymous users can create interactions | INSERT | null | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` |
 
-### 16. dynamic_block_analytics
+### 19. dynamic_block_analytics
 
 Analytics specific to AI-driven conversation blocks.
 

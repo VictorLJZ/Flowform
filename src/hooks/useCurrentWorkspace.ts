@@ -1,10 +1,10 @@
-import useSWR from 'swr';
 import { getWorkspaceClient, updateWorkspace, deleteWorkspace, leaveWorkspace } from '@/services/workspace/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAuth } from '@/providers/auth-provider';
 import type { Workspace } from '@/types/supabase-types';
-
-const FETCH_KEY = 'currentWorkspace';
+import { createWorkspaceFetcher, useWorkspaceSWR } from './swr';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaces } from './useWorkspaces';
 
 /**
  * Hook to fetch and manage a single workspace via SWR, dependent on auth session.
@@ -15,51 +15,97 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
   // Use the auth hook to get the Supabase client instance
   const { supabase } = useAuth(); 
 
-  // SWR key depends on having a workspaceId AND the user session being loaded (user is not null)
-  const key = workspaceId && user ? [FETCH_KEY, workspaceId] : null;
+  // Create a workspace-specific fetcher that doesn't use the generic workspace pattern
+  // This hook is unique because it fetches the workspace itself rather than resources within a workspace
+  const workspaceFetcher = createWorkspaceFetcher(async (wsId: string) => {
+    console.log(`[useCurrentWorkspace] Fetching details for workspace: ${wsId}`);
+    return await getWorkspaceClient(wsId);
+  });
 
-  const fetcher = async ([, id]: [string, string]) => {
-    console.log(`[useCurrentWorkspace] Fetching details for workspace: ${id}`);
-    return await getWorkspaceClient(id);
-  };
+  // Special case: We need user to be authenticated to fetch workspace details
+  // If no user is available, don't trigger the fetch
+  const shouldFetch = !!user;
 
   const {
     data,
     error,
-    isLoading: isLoadingWorkspace, // Loading state for this specific fetch
+    isLoading: isLoadingWorkspace,
     mutate
-  } = useSWR<Workspace | null>(key, fetcher, {
-     keepPreviousData: true, // Keep showing old name while new one loads
-  });
+  } = useWorkspaceSWR<Workspace | null>(
+    'currentWorkspace',
+    workspaceFetcher,
+    {
+      keepPreviousData: true, // Keep showing old name while new one loads
+      // Don't fetch if user is not available
+      isPaused: () => !shouldFetch,
+    },
+    workspaceId // Pass explicit workspaceId
+  );
 
   // Combine loading states
   const isLoading = isLoadingAuth || isLoadingWorkspace;
 
+  // Get access to the shared stores and mutation methods
+  const workspaceStore = useWorkspaceStore();
+  const { mutate: mutateWorkspacesList } = useWorkspaces();
+  
   // Mutation functions now use the authenticated client from useAuth
   const rename = async (name: string) => {
     if (!workspaceId) throw new Error('Workspace ID is required');
-    if (!supabase) throw new Error('Supabase client is not available'); // Add check for client
+    if (!supabase) throw new Error('Supabase client is not available');
     // Pass the authenticated client as the first argument
     await updateWorkspace(supabase, workspaceId, { name }); 
     return mutate(); // Revalidate after update
   };
-
+  
   const remove = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
     if (!supabase) throw new Error('Supabase client is not available');
-    // Pass only workspaceId as deleteWorkspace expects one argument
-    await deleteWorkspace(workspaceId); 
-    // Optionally redirect or clear selection after delete
-    return mutate(); // Revalidate (will likely result in null data)
+    
+    try {
+      // Delete the workspace
+      await deleteWorkspace(workspaceId);
+      
+      // Update workspace store by removing the deleted workspace
+      const currentWorkspaces = workspaceStore.workspaces;
+      const updatedWorkspaces = currentWorkspaces.filter(w => w.id !== workspaceId);
+      
+      // Force refresh the workspaces list to get updated list
+      await mutateWorkspacesList();
+      
+      // Update the store with the filtered list
+      workspaceStore.setWorkspaces(updatedWorkspaces);
+      
+      // Force mutation of the current workspace data to null
+      await mutate(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      throw error;
+    }
   };
-
+  
   const leave = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
     if (!supabase) throw new Error('Supabase client is not available');
-    // Pass only workspaceId as leaveWorkspace expects one argument
-    await leaveWorkspace(workspaceId); 
-    // Optionally redirect or clear selection after leave
-    return mutate(); // Revalidate
+    
+    try {
+      // Leave the workspace
+      await leaveWorkspace(workspaceId);
+      
+      // Force refresh the workspaces list to get updated memberships
+      await mutateWorkspacesList();
+      
+      // Force mutation of the current workspace data (will return error since no longer a member)
+      // This is important for the UI to update properly
+      await mutate(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error leaving workspace:', error);
+      throw error;
+    }
   };
 
   return {

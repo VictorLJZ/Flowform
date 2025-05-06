@@ -2,11 +2,10 @@
  * Main analytics hook that integrates all tracking capabilities
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import {
-  useFormViewTracking,
   useBlockViewTracking,
-  useBlockInteractionTracking,
+  useBlockSubmitTracking, // Use the new simplified tracking hook
   useFormCompletionTracking,
   useTimingMeasurement
 } from '@/hooks/analytics';
@@ -33,15 +32,12 @@ export function useAnalytics(options: {
     blockId,
     responseId,
     disabled = false,
-    metadata = {},
-    abandonmentReason
+    metadata = {}
+    // abandonmentReason removed as it's not used anywhere
   } = options;
 
-  // Initialize individual tracking hooks
-  const formView = useFormViewTracking(formId, {
-    disabled,
-    metadata
-  });
+  // NOTE: Form view tracking has been migrated to useViewTracking hook.
+  // All view tracking should now use the dedicated hook instead of this one.
 
   const blockView = useBlockViewTracking(blockId, formId, {
     responseId,
@@ -49,7 +45,8 @@ export function useAnalytics(options: {
     metadata
   });
 
-  const blockInteraction = useBlockInteractionTracking(blockId, formId, {
+  // Use the new block submit tracking hook which focuses only on submit events
+  const blockSubmit = useBlockSubmitTracking(blockId, formId, {
     responseId,
     disabled,
     metadata
@@ -62,63 +59,95 @@ export function useAnalytics(options: {
 
   const timing = useTimingMeasurement();
 
-  // Helper to track a full form session in one call
+  // Function to track the entire form session (except views)
+  // Form views are now tracked separately via useViewTracking
   const trackFormSession = useCallback(async (sessionMetadata: Record<string, unknown> = {}) => {
     if (!formId || !responseId || disabled) {
-      return;
+      return false;
     }
     
     // Stop the timer and get the total elapsed time
     const elapsedTimeMs = timing.stopTimer();
     const elapsedTimeSeconds = Math.floor(elapsedTimeMs / 1000);
     
-    // Track the completion with timing information
-    await formCompletion.trackCompletion({
-      ...sessionMetadata,
-      elapsed_time_seconds: elapsedTimeSeconds
-    });
+    try {
+      // Track the completion with timing information
+      await formCompletion.trackCompletion({
+        ...sessionMetadata,
+        elapsed_time_seconds: elapsedTimeSeconds
+      });
+      
+      console.log('[ANALYTICS] Form session tracking complete');
+      return true;
+    } catch (error) {
+      console.error('Error tracking form session:', error);
+      return false;
+    }
   }, [formId, responseId, disabled, timing, formCompletion]);
 
-  // Track form abandonment
-  const trackAbandonment = useCallback((data: Record<string, unknown> = {}) => {
-    if (!formId || disabled) return;
-    const eventData = { ...data, event_type: 'form_abandonment', abandonment_reason: abandonmentReason };
-    console.log('[Analytics] trackAbandonment:', eventData);
-    // TODO: Send data to analytics backend
-  }, [formId, disabled, abandonmentReason]);
+  // Track form abandonment functionality removed as it's not being used
+  // Keeping abandonmentReason variable as it might be used elsewhere
 
-  return useMemo(() => ({
-    // Combined refs
-    blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
+  useEffect(() => {
+    console.log('[ANALYTICS DEBUG] useAnalytics detected changes:', { 
+      formId, 
+      responseId, 
+      disabled,
+      formCompletionDisabled: disabled
+    });
+  }, [formId, responseId, disabled]);
+
+  // Memoize the return object
+  return useMemo(() => {
+    console.log('[ANALYTICS DEBUG] useAnalytics re-rendering return value with:', { 
+      responseId, 
+      disabled,
+      formCompletionDisabled: disabled 
+    });
     
-    // Status indicators
-    formViewTracked: formView.hasTracked,
-    blockViewTracked: blockView.hasTracked,
-    formCompleted: formCompletion.hasTracked,
-    
-    // Block interaction handlers
-    trackFocus: blockInteraction.handleFocus,
-    trackBlur: blockInteraction.handleBlur,
-    trackChange: blockInteraction.handleChange,
-    trackSubmit: blockInteraction.handleSubmit,
-    trackError: blockInteraction.handleError,
-    trackInteraction: blockInteraction.trackInteraction,
-    
-    // Form completion tracking
-    trackCompletion: formCompletion.trackCompletion,
-    
-    // Combined tracking
-    trackFormSession,
-    trackAbandonment,
-    
-    // Timing utilities
-    timing,
-    
-    // Raw hooks for advanced usage
-    formView,
-    blockView,
-    blockInteraction,
-    formCompletion
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), []);
+    return {
+      // Block-specific tracking
+      blockView,
+      blockSubmit,
+      
+      // Legacy property name for backward compatibility
+      blockInteraction: blockSubmit,
+      
+      // Form tracking
+      formCompletion,
+      
+      // Timing utilities
+      timing,
+      
+      // Status flags
+      blockViewTracked: blockView.hasTracked,
+      formCompleted: formCompletion.hasTracked,
+      
+      // Track block submission 
+      trackBlockInteraction: (interactionType: 'submit', valueInfo: Record<string, unknown> = {}) => {
+        if (blockId) {
+          blockSubmit.trackSubmit(valueInfo);
+        }
+      },
+      
+      // Shortcuts to specific handlers
+      trackSubmit: blockSubmit.handleSubmit,
+      
+      // Form completion tracking
+      trackCompletion: formCompletion.trackCompletion,
+      
+      // Timing utilities
+      startTiming: timing.startTimer,
+      pauseTiming: timing.pauseTimer,
+      stopTiming: timing.stopTimer,
+      getElapsedTiming: timing.getElapsedTime,
+      formatTiming: timing.formatTime,
+      
+      // Combined tracking functions
+      trackFormSession,
+      
+      // Helper references for parent components
+      blockRef: blockView.blockRef as MutableRefObject<HTMLDivElement | null>,
+    };
+  }, [blockId, blockView, blockSubmit, formCompletion, timing, trackFormSession, disabled, responseId]);
 }

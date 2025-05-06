@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { useAuthSession } from "@/hooks/useAuthSession"
 
 // Import the existing components to maintain functionality
 import { MembersHeader } from "@/components/workspace/members/members-header"
@@ -31,13 +32,18 @@ export default function TeamSettings() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
 
+  // Get current user's ID for sorting
+  const { user: currentUser } = useAuthSession()
+  const currentUserId = currentUser?.id
   
   const {
     members,
     isLoading,
     error,
-    isCurrentUserAdmin,
   } = useWorkspaceMembers(currentWorkspaceId)
+  
+  // Find current user's role
+  const currentUserRole = members?.find(m => m.user_id === currentUserId)?.role as WorkspaceRole | undefined;
   
   // Filter members based on role and search query
   const filteredMembers = members.filter(member => {
@@ -58,6 +64,13 @@ export default function TeamSettings() {
   
   // Sort members
   const sortedMembers = [...filteredMembers].sort((a, b) => {
+    // Prioritize the current user
+    if (currentUserId) {
+      if (a.user_id === currentUserId) return -1 // Current user 'a' comes first
+      if (b.user_id === currentUserId) return 1  // Current user 'b' comes first (so 'a' comes after)
+    }
+    
+    // Existing sorting logic for other members
     let valueA, valueB
     
     switch (sortBy) {
@@ -90,7 +103,7 @@ export default function TeamSettings() {
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Team Management</h1>
-        {isCurrentUserAdmin() && (
+        {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
           <Button onClick={() => setShowInviteDialog(true)}>
             Invite Team Member
           </Button>
@@ -114,7 +127,7 @@ export default function TeamSettings() {
             onSortDirectionChange={setSortDirection}
             onSearchChange={setSearchQuery}
             onInviteClick={() => setShowInviteDialog(true)}
-            isAdmin={isCurrentUserAdmin()}
+            isAdmin={currentUserRole === 'admin'}
             currentFilter={filterRole}
             currentSort={sortBy}
             currentSortDirection={sortDirection}
@@ -137,8 +150,8 @@ export default function TeamSettings() {
           ) : (
             <MembersList 
               members={sortedMembers}
-              isCurrentUserAdmin={isCurrentUserAdmin()}
-              currentUserId={null} // Will be filled in component
+              currentUserRole={currentUserRole} 
+              currentUserId={currentUserId} 
             />
           )}
       </div>

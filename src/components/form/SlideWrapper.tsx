@@ -39,7 +39,7 @@ interface SlideWrapperProps {
   onUpdate?: (updates: Partial<FormBlock>) => void
   onNext?: () => void
   isNextDisabled?: boolean
-  blockRef?: React.RefObject<HTMLDivElement>
+  blockRef?: React.RefObject<HTMLDivElement | null>
   className?: string
 }
 
@@ -59,7 +59,7 @@ export function SlideWrapper({
   className
 }: SlideWrapperProps) {
   const titleRef = useRef<HTMLDivElement>(null)
-  const internalRef = useRef<HTMLDivElement>(null); // Call useRef unconditionally
+  const internalRef = useRef<HTMLDivElement>(null)
   const { mode } = useFormBuilderStore()
   const autosave = useAutosave()
   
@@ -186,20 +186,42 @@ export function SlideWrapper({
     </div>
   )
   
+  // Log when the block ref is connected - do this at the component level, not inside wrappedContent 
+  useEffect(() => {
+    if (containerRef.current && isViewer) {
+      console.log(`[BlockTracking] Block ${id} ref attached to DOM`);
+      
+      // Check if the blockRef prop exists and if it's the same as containerRef
+      if (blockRef) {
+        console.log(`📍 DEBUG SlideWrapper:`, {
+          id,
+          'containerRef === blockRef': containerRef === blockRef,
+          containerRefValue: containerRef.current,
+          blockRefValue: blockRef.current
+        });
+      } else {
+        console.log(`📌 DEBUG: No blockRef provided for SlideWrapper ${id}`);
+      }
+    }
+  }, [containerRef, blockRef, id, isViewer]); // Fixed dependency array to not include .current property
+  
   // Render the appropriate layout based on the slide layout type
   // Wrap all slide layouts in the aspect ratio container when in builder mode
   // Use the existing isViewer variable
-  const wrappedContent = (layoutComponent: React.ReactNode) => (
-    <div 
-      ref={containerRef} 
-      data-block-id={id} 
-      className={isViewer ? "w-full h-full flex-1" : ""}
-    >
-      <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
-        {layoutComponent}
-      </SlideAspectRatioContainer>
-    </div>
-  );
+  const wrappedContent = (layoutComponent: React.ReactNode) => {
+    
+    return (
+      <div 
+        ref={containerRef} 
+        data-block-id={id} 
+        className={isViewer ? "w-full h-full flex-1" : ""}
+      >
+        <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
+          {layoutComponent}
+        </SlideAspectRatioContainer>
+      </div>
+    );
+  };
 
   switch (slideLayout.type) {
     case 'media-left':

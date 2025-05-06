@@ -29,13 +29,43 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Always debug in dev mode
   const isDev = process.env.NODE_ENV === 'development';
 
-  // Only set initial workspace selection if none exists
+  // Handle workspace selection logic
   useEffect(() => {
-    // This effect runs separately to focus only on workspace selection
-    if (workspaceData.workspaces && workspaceData.workspaces.length > 0 && !currentWorkspaceId) {
+    // Only proceed if we have workspaces data
+    if (!workspaceData.workspaces || workspaceData.workspaces.length === 0) {
+      return;
+    }
+    
+    // If we have a saved workspace ID from localStorage, validate it
+    if (currentWorkspaceId) {
+      // Check if the saved workspace is still valid (user still has access)
+      const isWorkspaceValid = workspaceData.workspaces.some(w => w.id === currentWorkspaceId);
+      
+      if (isWorkspaceValid) {
+        // Current workspace selection is valid, keep using it
+        if (isDev) {
+          console.log('[Workspace] Using existing workspace selection:', currentWorkspaceId);
+        }
+      } else {
+        // Current workspace selection is invalid, select first available workspace
+        const firstWorkspace = workspaceData.workspaces[0];
+        
+        if (isDev) {
+          console.log('[Workspace] Saved workspace not found, selecting first workspace', { 
+            previousId: currentWorkspaceId,
+            newId: firstWorkspace.id,
+            workspaceCount: workspaceData.workspaces.length
+          });
+        }
+        
+        // Set to a valid workspace ID
+        setCurrentWorkspaceId(firstWorkspace.id);
+      }
+    } 
+    // No workspace selected yet, set to the first one
+    else if (workspaceData.workspaces.length > 0) {
       const firstWorkspace = workspaceData.workspaces[0];
       
-      // Debug what's happening
       if (isDev) {
         console.log('[Workspace] Setting initial workspace', { 
           currentId: 'none',
@@ -44,12 +74,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         });
       }
       
-      // Only set if no workspace is currently selected
       setCurrentWorkspaceId(firstWorkspace.id);
-    } else if (currentWorkspaceId) {
-      if (isDev) {
-        console.log('[Workspace] Using existing workspace selection:', currentWorkspaceId);
-      }
     }
   }, [workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
   

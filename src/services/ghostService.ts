@@ -1,57 +1,41 @@
+import type { GhostPost, GhostTag, GhostBrowseParams, GhostReadParams } from '@/types';
+
+/**
+ * Ghost Content API Service
+ * Provides methods to interact with the Ghost Content API.
+ * 'ghost.d.ts' contains the type definition for the API client.
+ */
+
+// Standard ES Module import with TypeScript support
 import GhostContentAPI from '@tryghost/content-api';
 
-// Initialize Ghost Content API
-// @ts-ignore - The type definitions for GhostContentAPI are provided in types/ghost.d.ts
-const ghost = new GhostContentAPI({
+/**
+ * Initialize the Ghost Content API client
+ */
+const ghost = GhostContentAPI({
   url: process.env.GHOST_API_URL || '',
   key: process.env.GHOST_CONTENT_API_KEY || '',
   version: 'v5.0'
 });
 
-export type GhostPost = {
-  id: string;
-  uuid: string;
-  title: string;
-  slug: string;
-  html: string;
-  excerpt: string;
-  feature_image: string | null;
-  featured: boolean;
-  published_at: string;
-  created_at: string;
-  updated_at: string;
-  reading_time: number;
-  primary_author: {
-    id: string;
-    name: string;
-    slug: string;
-    profile_image: string | null;
-  };
-  primary_tag?: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  tags?: Array<{
-    id: string;
-    name: string;
-    slug: string;
-  }>;
-};
-
 /**
  * Fetch posts from Ghost CMS
  * @param limit Number of posts to fetch (default: 5)
  * @param options Additional query options
+ * @returns Promise containing array of GhostPost objects
  */
-export const getPosts = async (limit = 5, options = {}) => {
+export const getPosts = async (limit = 5, options: Partial<GhostBrowseParams> = {}): Promise<GhostPost[]> => {
   try {
-    return await ghost.posts.browse({
+    // Combine default options with any provided options
+    const queryOptions: GhostBrowseParams = {
       limit,
       include: ['tags', 'authors'],
       order: 'published_at DESC',
       ...options
-    }) as GhostPost[];
+    };
+    
+    const posts = await ghost.posts.browse(queryOptions);
+    return posts as GhostPost[];
   } catch (error) {
     console.error('Error fetching posts:', error);
     return [];
@@ -61,13 +45,17 @@ export const getPosts = async (limit = 5, options = {}) => {
 /**
  * Fetch a single post by slug
  * @param slug The post slug
+ * @returns Promise containing a GhostPost object or null if not found
  */
-export const getPostBySlug = async (slug: string) => {
+export const getPostBySlug = async (slug: string): Promise<GhostPost | null> => {
   try {
-    return await ghost.posts.read({
+    const queryOptions: GhostReadParams = {
       slug,
       include: ['tags', 'authors']
-    }) as GhostPost;
+    };
+    
+    const post = await ghost.posts.read(queryOptions);
+    return post as GhostPost;
   } catch (error) {
     console.error(`Error fetching post with slug ${slug}:`, error);
     return null;
@@ -78,15 +66,19 @@ export const getPostBySlug = async (slug: string) => {
  * Fetch posts by tag
  * @param tag Tag slug
  * @param limit Number of posts to fetch (default: 5)
+ * @returns Promise containing array of GhostPost objects
  */
-export const getPostsByTag = async (tag: string, limit = 5) => {
+export const getPostsByTag = async (tag: string, limit = 5): Promise<GhostPost[]> => {
   try {
-    return await ghost.posts.browse({
+    const queryOptions: GhostBrowseParams = {
       limit,
       filter: `tag:${tag}`,
       include: ['tags', 'authors'],
       order: 'published_at DESC'
-    }) as GhostPost[];
+    };
+    
+    const posts = await ghost.posts.browse(queryOptions);
+    return posts as GhostPost[];
   } catch (error) {
     console.error(`Error fetching posts with tag ${tag}:`, error);
     return [];
@@ -95,12 +87,14 @@ export const getPostsByTag = async (tag: string, limit = 5) => {
 
 /**
  * Fetch all tags
+ * @returns Promise containing array of GhostTag objects
  */
-export const getTags = async () => {
+export const getTags = async (): Promise<GhostTag[]> => {
   try {
-    return await ghost.tags.browse({
+    const tags = await ghost.tags.browse({
       limit: 'all'
     });
+    return tags as GhostTag[];
   } catch (error) {
     console.error('Error fetching tags:', error);
     return [];

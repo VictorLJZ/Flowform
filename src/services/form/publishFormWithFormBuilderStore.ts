@@ -4,7 +4,9 @@ import { Form } from '@/types/supabase-types';
 import { invalidateFormCacheClient } from './invalidateCacheClient';
 import { createFormVersion } from './createFormVersion';
 import { updateFormVersion } from './updateFormVersion';
-import type { FormBlock } from '@/types/block-types';
+import { getFormWithBlocksClient } from './getFormWithBlocksClient';
+import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
+import type { FormBlock, BlockType } from '@/types/block-types';
 
 /**
  * Publish a form with proper versioning using blocks from the form builder store
@@ -33,6 +35,39 @@ export async function publishFormWithFormBuilderStore(
     if (formError) {
       console.error('Error fetching form for publishing:', formError);
       throw formError;
+    }
+    
+    // SAFEGUARD: If blocks array is empty, retrieve the blocks from the database
+    // This prevents blocks from being incorrectly marked as deleted due to empty array
+    let blocksToUse = blocks;
+    if (!blocks || blocks.length === 0) {
+      console.warn('Empty blocks array provided to publishFormWithFormBuilderStore. Retrieving blocks from database to prevent data loss.');
+      
+      const formWithBlocks = await getFormWithBlocksClient(formId);
+      if (formWithBlocks && formWithBlocks.blocks && formWithBlocks.blocks.length > 0) {
+        // Convert database blocks to the format expected by createFormVersion/updateFormVersion
+        blocksToUse = formWithBlocks.blocks.map(dbBlock => {
+          const blockTypeId = mapFromDbBlockType(dbBlock.type || 'static', dbBlock.subtype || 'short_text');
+          const blockType: BlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
+                                       dbBlock.type === 'integration' ? 'integration' : 
+                                       dbBlock.type === 'layout' ? 'layout' : 'static';
+          
+          return {
+            id: dbBlock.id,
+            blockTypeId: blockTypeId,
+            type: blockType,
+            title: dbBlock.title || '',
+            description: dbBlock.description || '',
+            required: !!dbBlock.required,
+            order: dbBlock.order_index || 0,
+            settings: dbBlock.settings || {}
+          };
+        });
+        console.log(`Retrieved ${blocksToUse.length} blocks from database for publishing.`);
+      } else {
+        console.error('Failed to retrieve blocks from database. Cannot proceed with publishing.');
+        throw new Error('No blocks found for this form. Cannot publish an empty form.');
+      }
     }
 
     // Step 2: Check if the form already has versions
@@ -80,7 +115,7 @@ export async function publishFormWithFormBuilderStore(
       const newVersion = await createFormVersion(
         formId,
         form.created_by,
-        blocks
+        blocksToUse
       );
       
       // Assign to outer variable and log if successful
@@ -96,7 +131,7 @@ export async function publishFormWithFormBuilderStore(
       const newVersion = await createFormVersion(
         formId,
         form.created_by,
-        blocks
+        blocksToUse
       );
       
       // Assign to outer variable and log if successful

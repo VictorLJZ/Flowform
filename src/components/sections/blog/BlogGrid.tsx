@@ -1,12 +1,11 @@
-import { type GhostPost } from "@/services/ghostService"
+import type { GhostPost } from '@/types'
 import BlogCard from "./BlogCard"
 
 interface BlogGridProps {
   posts: GhostPost[]
-  title?: string
 }
 
-const BlogGrid = ({ posts, title }: BlogGridProps) => {
+const BlogGrid = ({ posts }: BlogGridProps) => {
   if (posts.length === 0) {
     return (
       <div className="text-center py-20">

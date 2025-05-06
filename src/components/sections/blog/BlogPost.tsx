@@ -1,8 +1,8 @@
-import { type GhostPost } from "@/services/ghostService"
+import type { GhostPost, GhostTag } from "@/types"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Share2, Facebook, Twitter, Linkedin } from "lucide-react"
+import { ArrowLeft, Facebook, Twitter, Linkedin } from "lucide-react"
 
 interface BlogPostProps {
   post: GhostPost
@@ -105,7 +105,7 @@ const BlogPost = ({ post }: BlogPostProps) => {
         <div className="mt-16 pt-8 border-t border-gray-100">
           <h3 className="text-lg font-medium mb-4">Related topics</h3>
           <div className="flex flex-wrap gap-2">
-            {post.tags.map(tag => (
+            {post.tags.map((tag: GhostTag) => (
               <Link 
                 key={tag.id}
                 href={`/blog?tag=${tag.slug}`}

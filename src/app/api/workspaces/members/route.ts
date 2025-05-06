@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     // Fetch all relevant profiles in a single query
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, full_name, email, avatar_url')
       .in('id', userIds);
     
     if (profilesError) {
@@ -64,8 +64,8 @@ export async function GET(request: Request) {
     const membersWithProfiles = membersData.map(member => {
       const profile = profileMap.get(member.user_id) || {
         full_name: 'Unknown User',
-        avatar_url: null,
-        title: null
+        email: 'unknown@example.com',
+        avatar_url: null
       };
       
       return {

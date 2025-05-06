@@ -30,11 +30,13 @@ export interface WorkspaceMemberBasic {
 }
 
 /**
- * Workspace member with profile information
+ * Represents a workspace member joined with their profile information.
  */
-export type WorkspaceMemberWithProfile = WorkspaceMember & {
-  profile: Pick<Profile, 'full_name' | 'avatar_url'> & { title?: string | null };
-};
+export interface WorkspaceMemberWithProfile extends WorkspaceMember {
+  profile: Pick<Profile, 'full_name' | 'avatar_url'> & {
+    email?: string | null;
+  };
+}
 
 /**
  * API error response interface for client-side implementations

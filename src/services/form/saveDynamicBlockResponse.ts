@@ -9,6 +9,7 @@ import { getFormContextClient } from './getFormContextClient';
  * Save a response to a dynamic block and generate the next question if needed
  * 
  * @param input - Object containing response data
+ * @param input.questionIndex - Optional index of the question being answered (for truncating the conversation)
  * @returns Success status with conversation data and next question (if available)
  */
 export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput): Promise<SaveDynamicResponseResult> {
@@ -90,18 +91,81 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     let conversation: QAPair[] = [];
     let isNew = false;
     
-    // If response exists, append to conversation
+    // We'll determine completion state later
+    
+    // If response exists, handle the conversation based on questionIndex
     if (existingResponse && !fetchError) {
-      conversation = [...existingResponse.conversation, newQAPair];
+      // Deep log the existing conversation for debugging
+      console.log('Current conversation state:', {
+        existingLength: existingResponse.conversation.length,
+        questionIndex: input.questionIndex,
+        isDefinedIndex: typeof input.questionIndex === 'number',
+        isValidIndex: typeof input.questionIndex === 'number' && input.questionIndex < existingResponse.conversation.length
+      });
+      
+      if (typeof input.questionIndex === 'number' && input.questionIndex < existingResponse.conversation.length) {
+        // TRUNCATION MODE: We're answering a previous question, truncate the conversation at that index
+        // This is critical for ensuring the QA flow remains coherent when earlier answers change
+        console.log(`TRUNCATION MODE: Truncating conversation at index ${input.questionIndex} (out of ${existingResponse.conversation.length} items)`);
+        
+        // Get the slice of the conversation up to but not including the questionIndex
+        const previousConversation = existingResponse.conversation.slice(0, input.questionIndex);
+        
+        // Log each item being retained for debugging
+        previousConversation.forEach((item: QAPair, idx: number) => {
+          console.log(`Keeping QA pair ${idx}:`, {
+            question: item.question.substring(0, 30) + '...',
+            answer: item.answer.substring(0, 30) + '...'
+          });
+        });
+        
+        // Log what we're truncating for debugging
+        const truncatedItems = existingResponse.conversation.slice(input.questionIndex);
+        console.log(`Truncating ${truncatedItems.length} items:`);
+        truncatedItems.forEach((item: QAPair, idx: number) => {
+          const questionIndex = typeof input.questionIndex === 'number' ? input.questionIndex : 0;
+          console.log(`Truncated QA pair ${questionIndex + idx}:`, {
+            question: item.question.substring(0, 30) + '...',
+            answer: item.answer.substring(0, 30) + '...'
+          });
+        });
+        
+        // Create the new conversation array with previous items plus the new QA pair
+        conversation = [...previousConversation, newQAPair];
+        console.log(`New conversation has ${conversation.length} items. Explicitly forcing regeneration of next question.`);
+        
+        // CRITICAL FIX: Make a note that we need to regenerate questions
+        // We will use this later to ensure isComplete is false
+        console.log('Marking for question regeneration after truncation');
+      } else {
+        // APPEND MODE: Normal case - append to the conversation
+        console.log('APPEND MODE: Adding new QA pair to the end of conversation');
+        conversation = [...existingResponse.conversation, newQAPair];
+      }
     } else {
-      // Create new conversation
+      // CREATE MODE: Create new conversation
+      console.log('CREATE MODE: Creating new conversation with first QA pair');
       conversation = [newQAPair];
       isNew = true;
     }
     
     // Determine if we've reached max questions or if completion is explicitly set
-    // If isComplete is provided in the input, use that value; otherwise calculate based on max_questions
-    const isComplete = input.isComplete !== undefined ? input.isComplete : conversation.length >= config.max_questions;
+    // When truncating an earlier question, always consider the conversation incomplete
+    // so that a new question will be generated
+    let shouldMarkComplete = conversation.length >= config.max_questions;
+    
+    // If explicitly provided in input, use that value, unless we're truncating
+    if (input.isComplete !== undefined) {
+      shouldMarkComplete = input.isComplete;
+    }
+    
+    // If we're truncating an earlier answer, always mark as incomplete to force question regeneration
+    if (typeof input.questionIndex === 'number' && input.questionIndex < existingResponse?.conversation.length) {
+      shouldMarkComplete = false;
+      console.log('Conversation marked as incomplete to regenerate questions after truncation');
+    }
+    
+    const isComplete = shouldMarkComplete;
     
     let nextQuestion: string | undefined;
     

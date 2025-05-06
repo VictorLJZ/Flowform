@@ -23,6 +23,7 @@ interface FormSubmissionState {
   submitError: string | null;
   completed: boolean;
   submitAnswer: (block: FormBlock, answer: string | number | string[] | QAPair[]) => Promise<void>;
+  trackBlockSubmission: (block: FormBlock) => Promise<void>;
 }
 
 export const useFormSubmission = ({
@@ -107,96 +108,37 @@ export const useFormSubmission = ({
     initializeFormResponse();
   }, [storageKey, formId]);
 
-  // Create the answer response if it doesn't exist
-  const initializeResponse = useCallback(async () => {
-    if (responseId) return; // Already initialized
-    
+  // Helper function to track block submission
+  const trackBlockSubmission = useCallback(async (block: FormBlock) => {
     try {
-      // Check if we have a saved response ID in local storage
-      let savedResponseId = null;
-      try {
-        savedResponseId = localStorage.getItem(`${storageKey}-responseId`);
-        if (savedResponseId) {
-          setResponseId(savedResponseId);
-          return;
-        }
-      } catch (error) {
-        console.error('Error reading from localStorage:', error);
-        // Continue execution to create a new response
+      if (!onSubmitSuccessRef.current) {
+        console.warn('⚠️ [useFormSubmission] onSubmitSuccessRef.current not available');
+        return;
       }
+
+      // Create tracking metadata
+      const submitMetadata = {
+        block_id: block.id,
+        block_type: block.blockTypeId,
+        response_id: responseId,
+        form_id: formId,
+        event_type: 'block_submission',
+        is_last_block: isLastQuestion
+      };
+
+      console.log('🌟 [useFormSubmission] Tracking block submission:', submitMetadata);
       
-      // Generate a random visitor ID to use as respondent_id
-      // This could be replaced with a user ID if the user is logged in
-      const visitorId = crypto.randomUUID();
-      
-      // Create a new response
-      const response = await fetch(`/api/responses`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add public access header for form viewer
-          'x-flowform-public-access': 'true'
-        },
-        body: JSON.stringify({
-          form_id: formId,
-          respondent_id: visitorId,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            referrer: document.referrer
-          }
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Failed to create response';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // If it's not valid JSON, use the text directly for debugging
-          console.error('Server returned non-JSON response:', errorText);
-        }
-        throw new Error(errorMessage);
-      }
-      
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Invalid JSON in response:', responseText);
-        throw new Error('Server returned invalid JSON');
-      }
-      
-      const newResponseId = data.response_id;
-      if (!newResponseId) {
-        throw new Error('No response ID returned from server');
-      }
-      
-      // Save the response ID to local storage
-      try {
-        localStorage.setItem(`${storageKey}-responseId`, newResponseId);
-        // Also save respondent_id for future reference
-        if (data.respondent_id) {
-          localStorage.setItem(`${storageKey}-respondentId`, data.respondent_id);
-        }
-      } catch (e) {
-        console.error('Failed to save to localStorage:', e);
-        // Continue anyway since we have the responseId in memory
-      }
-      
-      setResponseId(newResponseId);
+      // Call the onSubmitSuccessRef directly with the metadata
+      // The page.tsx will handle passing this to the correct analytics function
+      onSubmitSuccessRef.current(submitMetadata);
       
     } catch (error) {
-      console.error('Error initializing response:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to initialize session');
+      // Never fail the submission due to tracking failure
+      console.error('💥 [useFormSubmission] Error tracking block submission:', error);
     }
-  }, [responseId, formId, storageKey]);
+  }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
 
-  // Complete the form and set completed status
-  const completeForm = useCallback(async () => {
+  const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | QAPair[]) => {
     if (!responseId) {
       console.error('Cannot complete form: responseId is not set');
       return;
@@ -275,6 +217,9 @@ export const useFormSubmission = ({
 
     setSubmitting(true);
     setSubmitError(null);
+    
+    // Track block submission before doing the actual submission
+    await trackBlockSubmission(block);
 
     try {
       // Save the current answer to local storage
@@ -391,22 +336,41 @@ export const useFormSubmission = ({
         throw lastError || new Error('Failed to submit answer after multiple attempts');
       }
 
-      // Call analytics callback
-      try {
-        if (onSubmitSuccessRef.current) {
-          onSubmitSuccessRef.current({
-            block_id: block.id,
-            block_type: block.blockTypeId
-          });
-        }
-      } catch (error) {
-        console.error('Error calling analytics success callback:', error);
-        // Continue execution - analytics error shouldn't stop form progression
-      }
+      const data = await res.json();
+      console.log('[useFormSubmission] Submission response:', data);
+
+      // No need to create a separate submissionData object here since we're using trackBlockSubmission
+      // which will create the proper metadata with all required fields
+      
+      // Track block submission before doing anything else
+      await trackBlockSubmission(block);
+
+      // Save answer locally via the answers hook
+      saveCurrentAnswerRef.current(block.id, answer);
 
       // On last question, mark form as completed
       if (isLastQuestion) {
-        await completeForm();
+        console.log("[SubmitAnswer] Last question, marking form complete");
+        // Mark form as complete in local storage or state
+        localStorage.setItem(`${storageKey}-completed`, 'true');
+        setCompleted(true);
+        
+        // DEBUGGING: Log what parameters we're sending to the completion tracker
+        console.log('[TRACKING DEBUG] useFormSubmission calling onFormCompleteRef with:', {
+          responseId,
+          formId,
+          has_ref: !!onFormCompleteRef.current,
+          payload: {} // No longer passing response_id in metadata
+        });
+        
+        // Use the specific form completion tracker via ref
+        // We no longer need to pass response_id here as it's already passed as a parameter to the hook
+        try {
+          await onFormCompleteRef.current({}); // Pass empty object instead of duplicating response_id
+          console.log('[TRACKING DEBUG] onFormCompleteRef.current completed successfully');
+        } catch (error) {
+          console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);
+        }
       } else {
         // Navigate to the next question based on workflow connections
         const moved = goToNext(block, answer);
@@ -436,7 +400,17 @@ export const useFormSubmission = ({
     } finally {
       setSubmitting(false);
     }
-  }, [responseId, submitting, isLastQuestion, goToNext, completeForm]);
+  }, [
+    responseId, 
+    formId, 
+    isLastQuestion, 
+    onSubmitErrorRef, 
+    onFormCompleteRef, 
+    saveCurrentAnswerRef, 
+    goToNext,
+    storageKey,
+    trackBlockSubmission
+  ]);
 
   return {
     responseId,
@@ -444,5 +418,6 @@ export const useFormSubmission = ({
     submitError,
     completed,
     submitAnswer,
+    trackBlockSubmission,
   };
 };

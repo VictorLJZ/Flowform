@@ -1,8 +1,9 @@
-import useSWR from 'swr'
 import { getWorkspaceMembersClient } from '@/services/workspace/getWorkspaceMembersClient'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { WorkspaceRole } from '@/types/workspace-types'
 import { changeUserRoleClient, removeWorkspaceMemberClient } from '@/services/workspace/client'
+import { useWorkspaceSWR, createWorkspaceFetcher } from './swr'
+import { WorkspaceMemberWithProfile } from '@/types/workspace-types'
 
 /**
  * Hook for fetching and managing workspace members
@@ -11,22 +12,31 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   const { user } = useAuthSession()
   const userId = user?.id
   
-  // Only fetch if we have both workspaceId and userId
-  const key = workspaceId && userId ? ['workspaceMembers', workspaceId] : null
+  // Create a workspace-aware fetcher
+  const membersFetcher = createWorkspaceFetcher(async (wsId: string) => {
+    return await getWorkspaceMembersClient(wsId)
+  })
   
-  const fetcher = async ([, id]: [string, string]) => {
-    return await getWorkspaceMembersClient(id)
-  }
+  // Special case: We need user to be authenticated to fetch members
+  // If no user is available, don't trigger the fetch
+  const shouldFetch = !!userId
   
   const { 
     data, 
     error, 
     isLoading, 
     mutate 
-  } = useSWR(key, fetcher, {
-    // Keep previous data while revalidating
-    keepPreviousData: true,
-  })
+  } = useWorkspaceSWR<WorkspaceMemberWithProfile[]>(
+    'workspaceMembers',
+    membersFetcher,
+    {
+      // Keep previous data while revalidating
+      keepPreviousData: true,
+      // Don't fetch if user is not available
+      isPaused: () => !shouldFetch,
+    },
+    workspaceId // Pass explicit workspaceId
+  )
   
   /**
    * Change the role of a workspace member

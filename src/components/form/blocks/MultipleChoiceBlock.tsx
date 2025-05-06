@@ -137,6 +137,7 @@ export function MultipleChoiceBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      blockRef={analytics?.blockRef}
     >
       {radioGroupField}
     </SlideWrapper>

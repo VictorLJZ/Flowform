@@ -7,13 +7,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface MembersListProps {
   members: WorkspaceMemberWithProfile[]
-  isCurrentUserAdmin: boolean
+  currentUserRole?: WorkspaceRole
   currentUserId?: string | null
 }
 
 export function MembersList({ 
   members, 
-  isCurrentUserAdmin, 
+  currentUserRole, 
   currentUserId: propUserId 
 }: MembersListProps) {
   const { user } = useAuthSession()
@@ -28,7 +28,7 @@ export function MembersList({
   return (
     <div className="mt-4">
       {/* Column headers */}
-      <div className="grid grid-cols-[auto_1fr_120px_150px_auto] px-3 py-2 text-sm font-medium text-muted-foreground border-b gap-3">
+      <div className="grid grid-cols-[auto_1fr_120px_150px_48px] px-3 py-2 text-sm font-medium text-muted-foreground border-b gap-3">
         {/* Avatar spacer */}
         <div></div>
         
@@ -57,7 +57,7 @@ export function MembersList({
                 key={member.user_id}
                 member={member}
                 joinedDate={formatJoinDate(member.joined_at)}
-                isAdmin={isCurrentUserAdmin}
+                currentUserRole={currentUserRole}
                 isCurrentUser={member.user_id === currentUserId}
                 isLastOwner={
                   member.role === 'owner' && 

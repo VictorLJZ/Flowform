@@ -26,28 +26,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       currentWorkspaceId: null,
       workspaces: [],
       syncWorkspaceAfterInvitation: async (workspaceId, fetchWorkspaceFn) => {
+        // Validate the workspace ID to prevent errors during login
+        if (!workspaceId) {
+          console.warn('[WorkspaceStore] Cannot sync workspace after invitation: No workspace ID provided');
+          return;
+        }
+        
         console.log('[WorkspaceStore] Syncing workspace after invitation:', workspaceId);
         try {
+          // Check if we already have this workspace in the store before fetching
+          const existingWorkspaces = get().workspaces;
+          const existingWorkspace = existingWorkspaces.find(w => w.id === workspaceId);
+          
+          // If we already have this workspace, no need to fetch it again
+          if (existingWorkspace) {
+            console.log('[WorkspaceStore] Workspace already in store, setting as current:', workspaceId);
+            set({ currentWorkspaceId: workspaceId });
+            return;
+          }
+          
           // Fetch the workspace details
           const workspace = await fetchWorkspaceFn(workspaceId);
           
           if (workspace) {
-            // Check if we already have this workspace in the store
-            const existingWorkspaces = get().workspaces;
-            const alreadyExists = existingWorkspaces.some(w => w.id === workspaceId);
+            // Add the workspace to the store
+            console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
+            const updatedWorkspaces = [...existingWorkspaces, workspace];
             
-            if (!alreadyExists) {
-              // Add the workspace to the store
-              console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
-              const updatedWorkspaces = [...existingWorkspaces, workspace];
-              set({ workspaces: updatedWorkspaces });
-              
-              // Select this workspace if none is selected
-              if (!get().currentWorkspaceId) {
-                console.log('[WorkspaceStore] Setting current workspace after invitation:', workspaceId);
-                set({ currentWorkspaceId: workspaceId });
-              }
-            }
+            // Update workspaces and set the current workspace ID
+            set({ 
+              workspaces: updatedWorkspaces,
+              currentWorkspaceId: workspaceId 
+            });
           }
         } catch (error) {
           console.error('[WorkspaceStore] Error syncing workspace after invitation:', error);
@@ -68,17 +78,28 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setWorkspaces: (workspaces) => {
         const currentId = get().currentWorkspaceId;
         
-        // If no workspace is selected but we have workspaces, select the first one
-        if (!currentId && workspaces.length > 0) {
-          console.log('[WorkspaceStore] Auto-selecting first workspace:', workspaces[0].id);
-          // Update both workspaces and currentWorkspaceId in one call
-          set({ 
-            workspaces,
-            currentWorkspaceId: workspaces[0].id 
-          });
+        // If we have workspaces available
+        if (workspaces.length > 0) {
+          // Check if the currently selected workspace is still in the list
+          const currentWorkspaceExists = currentId && workspaces.some(w => w.id === currentId);
+          
+          if (!currentId || !currentWorkspaceExists) {
+            // Either no workspace selected or the selected one is no longer available
+            console.log('[WorkspaceStore] Auto-selecting workspace:', workspaces[0].id);
+            // Update both workspaces and currentWorkspaceId in one call
+            set({ 
+              workspaces,
+              currentWorkspaceId: workspaces[0].id 
+            });
+          } else {
+            // Keep current selection and just update the list
+            console.log('[WorkspaceStore] Keeping current selection:', currentId);
+            set({ workspaces });
+          }
         } else {
-          // Just update workspaces
-          set({ workspaces });
+          // If no workspaces, clear everything
+          console.log('[WorkspaceStore] No workspaces available, clearing selection');
+          set({ workspaces, currentWorkspaceId: null });
         }
       },
       // Add a single workspace to the existing list
@@ -97,18 +118,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // Fetch fresh workspace data
           const freshWorkspaces = await fetchFn();
           console.log('[WorkspaceStore] Fetched fresh workspaces:', freshWorkspaces.length);
-          // Update the store with fresh data
-          const currentId = get().currentWorkspaceId;
           
-          if (!currentId && freshWorkspaces.length > 0) {
-            // If no workspace selected but we have workspaces, select the first one
+          // Get saved workspace ID from localStorage (for after login restore)
+          const savedWorkspaceId = get().currentWorkspaceId;
+          console.log('[WorkspaceStore] Saved workspace ID:', savedWorkspaceId);
+          
+          // Check if the saved workspace is still in the fresh workspaces
+          const savedWorkspaceExists = savedWorkspaceId && 
+            freshWorkspaces.some(w => w.id === savedWorkspaceId);
+          
+          if (freshWorkspaces.length > 0) {
+            if (savedWorkspaceExists) {
+              // If we have a saved workspace and it still exists, restore it
+              console.log('[WorkspaceStore] Restoring saved workspace:', savedWorkspaceId);
+              set({ 
+                workspaces: freshWorkspaces,
+                currentWorkspaceId: savedWorkspaceId 
+              });
+            } else {
+              // If no valid saved workspace, select the first one
+              console.log('[WorkspaceStore] Selecting first workspace:', freshWorkspaces[0].id);
+              set({ 
+                workspaces: freshWorkspaces,
+                currentWorkspaceId: freshWorkspaces[0].id 
+              });
+            }
+          } else {
+            // No workspaces, clear selection
+            console.log('[WorkspaceStore] No workspaces available, clearing selection');
             set({ 
               workspaces: freshWorkspaces,
-              currentWorkspaceId: freshWorkspaces[0].id 
+              currentWorkspaceId: null 
             });
-          } else {
-            // Just update workspaces
-            set({ workspaces: freshWorkspaces });
           }
           
           return freshWorkspaces;
@@ -124,7 +165,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       partialize: (state) => ({
         currentWorkspaceId: state.currentWorkspaceId,
         // Don't persist the full workspace data, just the ID
-      })
+      }),
+      // Setup proper rehydration
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('[WorkspaceStore] Rehydrated from storage, saved workspace ID:', state.currentWorkspaceId);
+        } else {
+          console.log('[WorkspaceStore] No stored state found');
+        }
+      }
     }
   )
 );

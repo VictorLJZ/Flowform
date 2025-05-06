@@ -63,27 +63,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.warn('Error checking for form versions:', versionError);
     }
     
-    // Create a new form response using the service client with the version ID
-    const { data: responseData, error: responseError } = await serviceSupabase
-      .from('form_responses')
-      .insert({
-        form_id: formId,
-        respondent_id: respondentId,
-        status: 'in_progress',
-        // Include the form version ID if we found one
-        form_version_id: latestVersion?.id || null, 
-        metadata: {
-          ...metadata,
-          timestamp: new Date().toISOString(),
-        }
-      })
-      .select()
-      .single();
-
-    if (responseError) {
-      console.error('Error creating form response:', responseError);
-      throw responseError;
+    // Use the RPC function to track form start in a single transaction
+    console.log('[API DEBUG] Calling track_form_start RPC with form_id:', formId);
+    
+    // Create response metadata
+    const responseMetadata = {
+      ...metadata,
+      timestamp: new Date().toISOString(),
+      form_version_id: latestVersion?.id || null
+    };
+    
+    // Call track_form_start RPC function
+    const { data: rpcResult, error: rpcError } = await serviceSupabase.rpc('track_form_start', {
+      p_form_id: formId,
+      p_response_id: null, // Let the function generate a new UUID
+      p_visitor_id: respondentId,
+      p_metadata: responseMetadata
+    });
+    
+    if (rpcError || (rpcResult && !rpcResult.success)) {
+      const errorMessage = rpcError ? rpcError.message : (rpcResult ? rpcResult.error : 'Unknown error');
+      console.error('[API] Error creating form response via RPC:', errorMessage);
+      throw new Error(errorMessage);
     }
+    
+    console.log('[API] Form start tracked successfully via RPC');
+    
+    // Create response data object for further processing
+    const responseData = {
+      id: rpcResult.response_id,
+      form_id: formId,
+      respondent_id: respondentId,
+      status: 'in_progress',
+      form_version_id: latestVersion?.id || null,
+      started_at: rpcResult.timestamp,
+      metadata: responseMetadata
+    };
     
     // Get the first block to retrieve the starter question
     const { data: blocks, error: blocksError } = await serviceSupabase

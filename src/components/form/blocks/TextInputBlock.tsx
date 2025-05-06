@@ -137,6 +137,7 @@ export function TextInputBlock({
       onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
+      blockRef={analytics?.blockRef}
       className="w-full"
     >
       {inputField}

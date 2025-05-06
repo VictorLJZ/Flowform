@@ -26,10 +26,21 @@ export async function getFormContextClient(
     });
     
     // Get base URL - empty for browser, absolute URL for server
+    // Note: In browser context, this will be an empty string which is correct for relative URLs
     const baseUrl = getBaseUrl();
     
-    // Make the API request with proper URL construction
-    const response = await fetch(`${baseUrl}/api/forms/context?${params.toString()}`);
+    // Properly construct the URL based on environment
+    let url = '';
+    if (baseUrl === '') {
+      // In browser context, use a relative URL
+      url = `/api/forms/context?${params.toString()}`;
+    } else {
+      // In server context, use absolute URL but avoid double slashes
+      url = `${baseUrl}/api/forms/context?${params.toString()}`;
+    }
+    
+    console.log('Fetching form context from:', url);
+    const response = await fetch(url);
     
     // Check if the response was successful
     if (!response.ok) {
