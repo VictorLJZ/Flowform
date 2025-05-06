@@ -49,15 +49,16 @@ export function useViewTracking(
     if (!viewedRecently) {
       console.log('[useViewTracking] Tracking view for form:', formId);
       
-      // Track the view and mark as tracked for this component instance
+      // CRITICAL FIX: Set tracking flag IMMEDIATELY to prevent race conditions
+      // This prevents duplicate tracking even if the component mounts multiple times
+      hasTrackedRef.current = true;
+      
+      // Track the view after setting the flag
       trackView(formId, metadata)
-        .then(tracked => {
-          if (tracked) {
-            hasTrackedRef.current = true;
-          }
-        })
         .catch(error => {
           console.error('[useViewTracking] Error tracking view:', error);
+          // Note: We're intentionally NOT resetting the flag on error
+          // This prevents retry attempts from causing duplicates
         });
     } else {
       console.log('[useViewTracking] Skipping duplicate view for form:', formId);

@@ -48,6 +48,19 @@ export const useViewTrackingStore = create<ViewTrackingState>()(
         // Only track if not viewed recently
         if (isUniqueView) {
           try {
+            // CRITICAL FIX: Update local store BEFORE making the API call
+            // This prevents race conditions where multiple calls happen before state updates
+            set((state) => ({
+              viewedForms: {
+                ...state.viewedForms,
+                [formId]: {
+                  formId,
+                  lastViewedAt: now,
+                  viewCount: existingView ? existingView.viewCount + 1 : 1
+                }
+              }
+            }));
+            
             // Get visitor ID for tracking
             const visitorId = getVisitorId();
             
@@ -61,21 +74,10 @@ export const useViewTrackingStore = create<ViewTrackingState>()(
               visitor_id: visitorId,
             };
             
-            // Track via API directly
+            // Track via API after the state is already updated
             console.log('[ViewTracking] Tracking form view:', formId);
             await trackFormViewClient(formId, enrichedMetadata);
             
-            // Update local store
-            set((state) => ({
-              viewedForms: {
-                ...state.viewedForms,
-                [formId]: {
-                  formId,
-                  lastViewedAt: now,
-                  viewCount: existingView ? existingView.viewCount + 1 : 1
-                }
-              }
-            }));
             return true;
           } catch (error) {
             console.error('[ViewTracking] Failed to track view:', error);
