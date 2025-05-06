@@ -6,14 +6,14 @@ export type AnalyticsSubmitHandler = (data: { block_id: string; block_type: stri
 export type AnalyticsErrorHandler = (error: unknown, data: { block_id: string; block_type: string; response_id?: string }) => void;
 export type AnalyticsCompletionHandler = (data: { response_id?: string }) => Promise<void>;
 
-export interface FormSubmissionOptions {
+interface UseFormSubmissionProps {
   formId: string;
   storageKey: string;
-  onSubmitSuccessRef: React.MutableRefObject<AnalyticsSubmitHandler>;
-  onSubmitErrorRef: React.MutableRefObject<AnalyticsErrorHandler>;
-  onFormCompleteRef: React.MutableRefObject<AnalyticsCompletionHandler>;
-  saveCurrentAnswerRef: React.MutableRefObject<(blockId: string, answer: any) => void>;
-  goToNext: (block: FormBlock, answer: any) => boolean;
+  onSubmitSuccessRef: MutableRefObject<AnalyticsSubmitHandler>;
+  onSubmitErrorRef: MutableRefObject<AnalyticsErrorHandler>;
+  onFormCompleteRef: MutableRefObject<AnalyticsCompletionHandler>;
+  saveCurrentAnswerRef: MutableRefObject<(blockId: string, answer: string | number | string[] | QAPair[]) => void>;
+  goToNext: () => void;
   isLastQuestion: boolean;
 }
 
@@ -35,7 +35,7 @@ export const useFormSubmission = ({
   saveCurrentAnswerRef,
   goToNext,
   isLastQuestion,
-}: FormSubmissionOptions): FormSubmissionState => {
+}: UseFormSubmissionProps): FormSubmissionState => {
   const [responseId, setResponseId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -140,79 +140,14 @@ export const useFormSubmission = ({
 
   const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | QAPair[]) => {
     if (!responseId) {
-      console.error('Cannot complete form: responseId is not set');
+      console.error('No responseId available for submission');
+      setSubmitError('Session ID is missing. Cannot submit.');
       return;
     }
-    
-    try {
-      // Mark the response as completed
-      const response = await fetch(`/api/responses/${responseId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add public access header for form viewer
-          'x-flowform-public-access': 'true'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Failed to complete form';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          console.error('Server returned non-JSON response:', errorText);
-        }
-        throw new Error(errorMessage);
-      }
-      
-      // Update local storage
-      try {
-        localStorage.setItem(`${storageKey}-completed`, 'true');
-      } catch (e) {
-        console.error('Failed to save completion status to localStorage:', e);
-        // Continue anyway since we have the completed state in memory
-      }
-      
-      setCompleted(true);
-      
-      // Call analytics completion callback
-      try {
-        if (onFormCompleteRef.current) {
-          await onFormCompleteRef.current({ 
-            response_id: responseId 
-          });
-        }
-      } catch (callbackError) {
-        console.error('Error calling completion callback:', callbackError);
-        // Continue execution - analytics error shouldn't stop form completion
-      }
-    } catch (error) {
-      console.error('Error completing form:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to complete form');
-    }
-  }, [responseId, storageKey, onFormCompleteRef]);
-
-  // Initialize the response on mount
-  useEffect(() => {
-    initializeResponse();
-  }, [initializeResponse]);
-
-  // Submit an answer to a question
-  const submitAnswer = useCallback(async (
-    block: FormBlock, 
-    answer: string | number | string[] | QAPair[]
-  ) => {
-    if (!responseId) {
-      console.error('Cannot submit answer: responseId is not set');
-      setSubmitError('Cannot submit answer: session not initialized');
-      return;
-    }
-
-    if (submitting) {
-      console.log('Already submitting an answer, ignoring this call');
-      return;
+    if (!block) {
+        console.error('Current block is undefined during submission');
+        setSubmitError('Cannot submit answer for an undefined block.');
+        return;
     }
 
     setSubmitting(true);
@@ -222,118 +157,36 @@ export const useFormSubmission = ({
     await trackBlockSubmission(block);
 
     try {
-      // Save the current answer to local storage
-      if (saveCurrentAnswerRef.current) {
-        try {
-          saveCurrentAnswerRef.current(block.id, answer);
-        } catch (error) {
-          console.error('Error saving current answer:', error);
-          // Continue anyway, as this is just for local persistence
-        }
-      }
-
-      console.log(`Submitting answer for block ${block.id}:`, answer);
-
-      // Create a request to save the answer
-      const answerData = {
-        response_id: responseId,
-        block_id: block.id,
-        value: answer
+      // Determine the block type (static or dynamic) based on block properties
+      // AI conversation is dynamic, everything else is static
+      const blockType = block.blockTypeId === 'ai_conversation' ? 'dynamic' : 'static';
+      
+      // Construct payload in the format expected by the API
+      const requestBody = {
+        responseId: responseId,
+        blockId: block.id,
+        blockType: blockType,
+        answer: answer,
+        isCompletion: isLastQuestion,
+        currentQuestion: blockType === 'dynamic' ? block.title : undefined
       };
 
-      // Try up to 3 times with exponential backoff
-      let attemptCount = 0;
-      let savedSuccessfully = false;
-      let lastError: any = null;
-      
-      while (attemptCount < 3 && !savedSuccessfully) {
-        try {
-          attemptCount++;
-          console.log(`Answer submission attempt ${attemptCount}`);
-          
-          // Send the answer to the API
-          const response = await fetch('/api/responses/answers', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              // Add public access header for form viewer
-              'x-flowform-public-access': 'true'
-            },
-            body: JSON.stringify(answerData),
-          });
-    
-          // Log the actual HTTP status for debugging
-          console.log(`Answer submission response status: ${response.status} ${response.statusText}`);
-    
-          // Get response text first 
-          const responseText = await response.text();
-          console.log('Response text:', responseText);
-    
-          // Try to parse as JSON if possible
-          let responseData;
-          try {
-            responseData = JSON.parse(responseText);
-          } catch (e) {
-            console.error('Failed to parse response as JSON:', e);
-            // Continue with responseText as fallback
-          }
-    
-          if (!response.ok) {
-            let errorMessage = 'Failed to submit answer';
-            
-            if (responseData && responseData.error) {
-              errorMessage = responseData.error;
-              console.error('API Error details:', responseData);
-              
-              // Special handling for constraint violation errors which might indicate a duplicate answer
-              if (responseData.code === '23505' || responseData.message?.includes('duplicate key value')) {
-                console.log('Duplicate answer detected, treating as success');
-                savedSuccessfully = true;
-                break;
-              }
-              
-              // If it's an RLS error, we might need different handling
-              if (responseData.code === '42501') {
-                console.error('RLS policy violation - form may not be published or user lacks permissions');
-                throw new Error('Permission denied: Could not save answer due to security policy');
-              }
-            }
-            
-            lastError = new Error(errorMessage);
-            
-            // For server errors, wait before retrying
-            if (response.status >= 500) {
-              const delay = Math.pow(2, attemptCount) * 500; // Exponential backoff
-              console.log(`Waiting ${delay}ms before retry...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-              // Client errors (4xx) are not likely to be resolved by retrying
-              throw lastError;
-            }
-          } else {
-            // Successfully submitted
-            console.log('Answer submitted successfully:', responseData);
-            savedSuccessfully = true;
-          }
-        } catch (retryError) {
-          console.error(`Error in submission attempt ${attemptCount}:`, retryError);
-          lastError = retryError;
-          
-          // For network errors, wait before retrying
-          if (retryError instanceof TypeError && retryError.message.includes('fetch')) {
-            const delay = Math.pow(2, attemptCount) * 500; // Exponential backoff
-            console.log(`Network error, waiting ${delay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-            // Other errors may not be resolved by retrying
-            break;
-          }
-        }
-      }
-      
-      // If we failed after all attempts, throw the last error
-      if (!savedSuccessfully) {
-        throw lastError || new Error('Failed to submit answer after multiple attempts');
+      console.log('[useFormSubmission] Submitting payload:', requestBody);
+
+      // Use the correct endpoint and HTTP method that matches the API
+      const res = await fetch(`/api/forms/${formId}/sessions`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          // Add public access header for form viewer to trigger RLS bypass
+          'x-flowform-public-access': 'true'
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to submit answer');
       }
 
       const data = await res.json();
@@ -348,7 +201,6 @@ export const useFormSubmission = ({
       // Save answer locally via the answers hook
       saveCurrentAnswerRef.current(block.id, answer);
 
-      // On last question, mark form as completed
       if (isLastQuestion) {
         console.log("[SubmitAnswer] Last question, marking form complete");
         // Mark form as complete in local storage or state
@@ -372,31 +224,17 @@ export const useFormSubmission = ({
           console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);
         }
       } else {
-        // Navigate to the next question based on workflow connections
-        const moved = goToNext(block, answer);
-        console.log(`Navigation result: ${moved ? 'moved to next block' : 'failed to find next block'}`);
-        
-        if (!moved) {
-          console.warn('No valid next block found in the workflow');
-          // If no valid next block was found, we might want to take some fallback action
-        }
+        console.log("[SubmitAnswer] Not last question, moving next");
+        goToNext();
       }
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-      setSubmitError(error instanceof Error ? error.message : 'An unknown error occurred');
-      
-      // Call analytics error callback
-      try {
-        if (onSubmitErrorRef.current) {
-          onSubmitErrorRef.current(error, {
-            block_id: block.id,
-            block_type: block.blockTypeId,
-            response_id: responseId
-          });
-        }
-      } catch (callbackError) {
-        console.error('Error calling analytics error callback:', callbackError);
-      }
+
+    } catch (error: unknown) {
+      console.error("Error in submitAnswer:", error);
+      const errorMessage = "Failed to submit answer. Please try again.";
+      setSubmitError(errorMessage);
+      // Use the specific error tracker
+      const errorToReport = error instanceof Error ? error.message : String(error);
+      onSubmitErrorRef.current(errorToReport, { block_id: block.id, block_type: block.type, response_id: responseId });
     } finally {
       setSubmitting(false);
     }

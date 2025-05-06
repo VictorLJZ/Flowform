@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { useWorkflowNavigation } from '@/hooks/form/useWorkflowNavigation';
+import { useFormNavigation } from '@/hooks/form/useFormNavigation';
 import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers'; 
 import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
 import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
@@ -18,22 +18,6 @@ import { CompletionScreen } from "@/components/form/viewer/CompletionScreen";
 import { ErrorMessages } from "@/components/form/viewer/ErrorMessages";
 import { FormNavigationControls } from "@/components/form/viewer/FormNavigationControls";
 import { slideVariants, slideTransition } from '@/utils/animations/slideAnimations'; 
-import type { FormBlock } from '@/types/block-types';
-
-interface SubmitData {
-  block_id: string;
-  block_type: string;
-}
-
-interface ErrorData {
-  block_id: string;
-  block_type: string;
-  response_id?: string;
-}
-
-interface CompletionData {
-  response_id?: string;
-}
 
 export default function FormViewerPage() {
   const params = useParams()
@@ -51,28 +35,29 @@ export default function FormViewerPage() {
   // Select state and actions from the form builder store
   // Use individual selectors for better memoization and to avoid unnecessary re-renders
   const blocks = useFormBuilderStore(state => state.blocks);
-  const connections = useFormBuilderStore(state => state.connections);
   const isLoading = useFormBuilderStore(state => state.isLoading);
   const loadForm = useFormBuilderStore(state => state.loadForm);
   const setMode = useFormBuilderStore(state => state.setMode);
   
-  // Use workflow navigation to handle conditional logic
   const { 
     currentIndex, 
-    currentBlock,
     direction, 
     goToNext, 
-    goToPrevious,
-    isLastQuestion
-  } = useWorkflowNavigation({
-    blocks,
-    connections,
-    initialBlockIndex: 0
-  });
+    goToPrevious
+  } = useFormNavigation(0, blocks.length);
+  // Safely access the current block with proper guards to prevent invalid access
+  const isLastQuestion = blocks.length > 0 && currentIndex === blocks.length - 1;
+  const block = useMemo(() => {
+    // Only access blocks if they exist and index is valid
+    if (blocks.length === 0 || currentIndex < 0 || currentIndex >= blocks.length) {
+      return null;
+    }
+    return blocks[currentIndex];
+  }, [blocks, currentIndex]);
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`
-  
+
   // ---- HOOKS ----
   // Order: Navigation -> Submission -> Answers -> Analytics
 
@@ -90,24 +75,19 @@ export default function FormViewerPage() {
     onSubmitErrorRef,
     onFormCompleteRef,
     saveCurrentAnswerRef,
-    goToNext: (block: FormBlock, answer: any) => goToNext(answer),
-    isLastQuestion 
+    goToNext: goToNext, 
+    isLastQuestion: isLastQuestion 
   });
 
-  // 3. Form Answers Hook (Needs responseId, formId)
-  const {
-    currentAnswer,
-    setCurrentAnswer,
-    saveCurrentAnswer,
-    initializeAnswers,
+  // 3. Answers Hook (Needs storageKey, responseId from submission hook, index)
+  const { 
+    currentAnswer, 
+    setCurrentAnswer, 
+    initializeAnswers, 
     answersInitialized,
-    loadAnswerForBlock
-  } = useFormAnswers({
-    formId,
-    responseId,
-    blockId: currentBlock?.id || null,
-    storageKey
-  });
+    saveCurrentAnswer,
+    loadAnswerForBlock,
+  } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
 
   // 4. Analytics Hooks - split into view tracking and other analytics
   // View tracking doesn't require responseId - we want to track all views
@@ -118,23 +98,26 @@ export default function FormViewerPage() {
   
   // Other analytics tracking that requires responseId
   const analytics = useAnalytics({
-    formId,
-    responseId: responseId || undefined,
-    blockId: currentBlock?.id,
-    metadata: { }
+    formId: formId,
+    responseId: responseId || undefined, 
+    disabled: !responseId 
   });
   
-  // Memoized calculation for disabling next button
-  const isNextDisabled = useMemo(() => {
-    if (!currentBlock) return true; 
-
-    // AI conversation has its own internal submit/next logic
-    if (currentBlock.blockTypeId === 'ai_conversation') {
-      return true; 
+  // Effect to load or reset answer when block changes
+  useEffect(() => {
+    if (block && answersInitialized) {
+      loadAnswerForBlock(block.id);
     }
+  }, [block, answersInitialized, loadAnswerForBlock]);
 
-    // Disable if submitting
-    if (submitting) return true;
+  // Hook for tracking form abandonment
+  const currentBlockId = blocks[currentIndex]?.id || null;
+  useFormAbandonment({
+    responseId,
+    currentBlockId,
+    completed,
+    analytics, 
+  });
 
   // Type aliases for analytics data shapes used in useEffect
   type SubmitData = Parameters<AnalyticsSubmitHandler>[0];
@@ -237,6 +220,8 @@ export default function FormViewerPage() {
     onSubmitErrorRef.current = trackErrorFn;
     onFormCompleteRef.current = trackCompletionFn;
     saveCurrentAnswerRef.current = saveAnswerFn;
+    // No need to depend on analytics or saveCurrentAnswer directly
+    // as we're depending on the stable memoized functions
   }, [trackSubmitFn, trackErrorFn, trackCompletionFn, saveAnswerFn]);
 
   // Load the form data and blocks when the component mounts or formId changes
@@ -252,27 +237,21 @@ export default function FormViewerPage() {
     }
   }, [formId, loadForm, setMode]);
 
-  // Effect to ensure the block and connections stay in sync
-  useEffect(() => {
-    // When blocks or connections change, we might need to re-initialize the workflow navigation
-    if (blocks.length > 0 && connections.length > 0) {
-      console.log(`Form has ${blocks.length} blocks and ${connections.length} connections`);
-    }
-  }, [blocks, connections]);
-
-  // Effect to initialize answers when the form is first loaded
+  // Initialize answers effect
   useEffect(() => {
     // Initialize answers once responseId is available and not already initialized
     if (responseId && !answersInitialized) { 
-      console.log('Initializing answers from storage');
       initializeAnswers();
     }
-  }, [responseId, initializeAnswers, answersInitialized]);
-  
-  // Effect to track form view progress
-  useEffect(() => {
-    if (currentBlock) {
-      console.log(`Viewing block: ${currentBlock.id} (${currentBlock.title || 'Untitled'}) at index ${currentIndex}`);
+  }, [responseId, initializeAnswers, answersInitialized]); 
+
+  // Memoized calculation for disabling next button
+  const isNextDisabled = useMemo(() => {
+    if (!block) return true; 
+
+    // AI conversation has its own internal submit/next logic
+    if (block.blockTypeId === 'ai_conversation') {
+      return true; 
     }
 
     // Disable if submitting
@@ -364,9 +343,9 @@ export default function FormViewerPage() {
             className="absolute inset-0 flex items-center justify-center w-full" 
             style={{ width: '100%', maxWidth: '100%' }}
           >
-            {currentBlock ? (
+            {block ? (
               <BlockRenderer 
-                block={currentBlock}
+                block={block}
                 currentAnswer={currentAnswer}
                 setCurrentAnswer={setCurrentAnswer}
                 submitAnswer={submitAnswer}
