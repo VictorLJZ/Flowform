@@ -1,7 +1,7 @@
 "use client"
 
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData } from '@/types/workflow-types';
+import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Info } from 'lucide-react';
@@ -15,25 +15,32 @@ interface ConditionCardProps {
   sourceBlock: FormBlock | null | undefined;
   sourceBlockType: string;
   onConditionChange: (key: string, value: string | number | boolean) => void;
+  currentConnection: Connection | null;
 }
 
 export function ConditionCard({ 
   element, 
   sourceBlock,
   sourceBlockType, 
-  onConditionChange 
+  onConditionChange,
+  currentConnection
 }: ConditionCardProps) {
-  const field = element?.data?.connection?.condition?.field || '';
+  // Use consistent connection and condition access pattern
+  const connection = currentConnection || element?.data?.connection;
+  // Use consistent condition checking pattern with optional chaining
+  const field = connection?.condition?.field || '';
   
   // Get the context-specific help text based on field type and block type
   const getHelpText = () => {
     if (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown') {
-      if (field.startsWith('choice:')) {
+      if (sourceBlockType === 'multiple_choice') {
+        return "For multiple choice questions, select which specific answer should trigger this path.";
+      } else if (field.startsWith('choice:')) {
         return "This condition checks whether a specific option is selected.";
       } else if (field === 'answer') {
-        return "For multiple choice questions, select which specific answer should trigger this path.";
+        return "Select which specific answer should trigger this path.";
       }
-      return "First select whether to check the entire answer or a specific option.";
+      return "Select the field to check for this condition.";
     } 
     
     else if (sourceBlockType === 'checkbox_group') {
@@ -84,12 +91,15 @@ export function ConditionCard({
             sourceBlock={sourceBlock}
             sourceBlockType={sourceBlockType} 
             onConditionChange={onConditionChange} 
+            currentConnection={currentConnection}
           />
           
           <ConditionOperators 
             element={element} 
+            sourceBlock={sourceBlock}
             sourceBlockType={sourceBlockType} 
             onConditionChange={onConditionChange} 
+            currentConnection={currentConnection}
           />
           
           <ConditionValue 
@@ -97,13 +107,14 @@ export function ConditionCard({
             sourceBlock={sourceBlock}
             sourceBlockType={sourceBlockType} 
             onConditionChange={onConditionChange} 
+            currentConnection={currentConnection}
           />
         </div>
       </CardContent>
       <CardFooter className="px-4 py-3 border-t bg-slate-50">
         <div className="text-xs text-slate-500 flex items-center">
           <Info size={12} className="mr-1.5" />
-          {!element?.data?.connection?.condition?.field 
+          {!field 
             ? "Without conditions, this path is always followed when possible." 
             : "This path will only be followed when the condition is met."}
         </div>

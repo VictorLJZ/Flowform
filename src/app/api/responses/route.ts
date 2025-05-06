@@ -114,3 +114,106 @@ export async function GET(request: Request) {
     );
   }
 }
+
+// Create a new form response
+export async function POST(request: Request) {
+  try {
+    console.log('Starting /api/responses POST request');
+    
+    // Parse the request body
+    const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
+    const { form_id, respondent_id, metadata } = body;
+
+    if (!form_id) {
+      console.error('Form ID is required but not provided');
+      return NextResponse.json(
+        { error: 'Form ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+
+    // Generate a random respondent_id if not provided
+    // This could be an anonymous ID or a user ID if the user is logged in
+    const visitorId = respondent_id || crypto.randomUUID();
+    console.log('Using respondent_id:', visitorId);
+
+    // Check if the form exists
+    console.log('Checking if form exists:', form_id);
+    const { data: formData, error: formError } = await supabase
+      .from('forms')
+      .select('form_id, status')
+      .eq('form_id', form_id)
+      .single();
+      
+    if (formError) {
+      console.error('Form not found:', formError);
+      return NextResponse.json(
+        { error: 'Form not found or error retrieving it', details: formError.message },
+        { status: 404 }
+      );
+    }
+    
+    if (formData.status !== 'published') {
+      console.warn('Attempting to create response for non-published form:', form_id);
+      // We'll still allow this for testing purposes, but log a warning
+    }
+
+    // Prepare record with all required fields
+    const responseRecord = {
+      form_id,
+      respondent_id: visitorId,
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+      metadata: metadata || null
+    };
+    
+    console.log('Creating form response with data:', JSON.stringify(responseRecord, null, 2));
+
+    // Create a new form response
+    const { data: response, error } = await supabase
+      .from('form_responses')
+      .insert(responseRecord)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating form response:', error);
+      console.error('Error code:', error.code);
+      console.error('Error details:', error.details);
+      
+      return NextResponse.json(
+        { error: error.message, code: error.code, details: error.details },
+        { status: 500 }
+      );
+    }
+
+    console.log('Form response created successfully with ID:', response.id);
+    return NextResponse.json({
+      response_id: response.id,
+      form_id: response.form_id,
+      respondent_id: response.respondent_id,
+      created_at: response.created_at,
+      started_at: response.started_at,
+      status: response.status
+    });
+  } catch (error: unknown) {
+    console.error('Unexpected error in create response API:', error);
+    
+    // Check if it's a SyntaxError from parsing the request body
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: 'Invalid request body - could not parse JSON' },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { status: 500 }
+    );
+  }
+}

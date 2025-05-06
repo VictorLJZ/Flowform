@@ -103,8 +103,8 @@ export default function WorkflowSidebar({ element, onClose }: WorkflowSidebarPro
   }
   
   return (
-    <div className="w-[320px] border-l bg-background flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="w-[420px] border-l bg-background flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b shrink-0">
         <h2 className="font-medium">
           {!effectiveElement ? 'Workflow' : (isEdge && edgeExists ? 'Connection Settings' : 'Block Settings')}
         </h2>
@@ -122,19 +122,21 @@ export default function WorkflowSidebar({ element, onClose }: WorkflowSidebarPro
         </div>
       </div>
       
-      {!effectiveElement ? (
-        renderDefaultOverview()
-      ) : isEdge && edgeExists ? (
-        <WorkflowConnectionSidebar 
-          element={element as Edge<WorkflowEdgeData>} 
-          onHasChanges={setHasChanges} 
-        />
-      ) : (
-        <WorkflowBlockSidebar 
-          element={element as Node<WorkflowNodeData>}
-          onHasChanges={setHasChanges}
-        />
-      )}
+      <div className="flex-1 overflow-hidden">
+        {!effectiveElement ? (
+          renderDefaultOverview()
+        ) : isEdge && edgeExists ? (
+          <WorkflowConnectionSidebar 
+            element={element as Edge<WorkflowEdgeData>} 
+            onHasChanges={setHasChanges} 
+          />
+        ) : (
+          <WorkflowBlockSidebar 
+            element={element as Node<WorkflowNodeData>}
+            onHasChanges={setHasChanges}
+          />
+        )}
+      </div>
     </div>
   )
 }

@@ -1,51 +1,42 @@
 // src/app/dashboard/forms/builder/[formId]/components/workflow/workflow-controls.tsx
 "use client"
 
-import { Panel } from 'reactflow'
-import { LayoutGrid, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Wand2, HelpCircle, Layout } from 'lucide-react'
 
-// Add type definition
 interface WorkflowControlsProps {
   onAutoLayout: () => void;
-  onClearSelection?: () => void;
+  onHelp: () => void;
 }
 
-export default function WorkflowControls({ onAutoLayout }: WorkflowControlsProps) {
+export default function WorkflowControls({ onAutoLayout, onHelp }: WorkflowControlsProps) {
+  // Helper to prevent event propagation to the canvas
+  const handleControlClick = (e: React.MouseEvent, callback: () => void) => {
+    e.stopPropagation();
+    e.preventDefault();
+    callback();
+  };
+  
   return (
-    <Panel position="top-right">
-      <div className="bg-background shadow-md rounded-md p-2 flex gap-2">
-        <Button 
-          size="sm" 
-          variant="outline"
-          onClick={onAutoLayout}
-        >
-          <LayoutGrid size={14} className="mr-1" />
-          Auto Layout
-        </Button>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  // Show a brief tutorial
-                  alert("Workflow Tips:\n\n1. Connect blocks by dragging from right handle to left handle\n2. Double-click a connection to delete it\n3. Click a connection to edit its conditions\n4. Use Auto Layout to organize your flow");
-                }}
-              >
-                <HelpCircle size={14} className="mr-1" />
-                Workflow Help
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Learn how to use the workflow editor</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-    </Panel>
+    <div className="workflow-controls absolute top-4 right-4 flex items-center gap-2 z-50">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="flex items-center gap-1.5 shadow-sm bg-white" 
+        onClick={(e) => handleControlClick(e, onAutoLayout)}
+      >
+        <Layout size={14} />
+        <span>Auto-Layout</span>
+      </Button>
+      
+      <Button 
+        variant="outline" 
+        size="icon" 
+        className="shadow-sm bg-white" 
+        onClick={(e) => handleControlClick(e, onHelp)}
+      >
+        <HelpCircle size={16} />
+      </Button>
+    </div>
   )
 }

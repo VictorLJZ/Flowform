@@ -14,6 +14,16 @@ export interface ConditionRule {
   value: string | number | boolean;
 }
 
+export interface NodePosition {
+  x: number;
+  y: number;
+}
+
+export interface WorkflowSettings {
+  connections: Connection[];
+  nodePositions?: Record<string, NodePosition>;
+}
+
 export interface WorkflowNodeData {
   block: FormBlock;
   label: string;

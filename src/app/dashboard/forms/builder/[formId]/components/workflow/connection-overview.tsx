@@ -1,7 +1,7 @@
 "use client"
 
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData } from '@/types/workflow-types';
+import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
@@ -13,17 +13,23 @@ interface ConnectionOverviewProps {
   sourceBlock: FormBlock | null | undefined;
   targetBlock: FormBlock | null | undefined;
   sourceBlockType: string;
+  currentConnection: Connection | null;
 }
 
 export function ConnectionOverview({ 
   element, 
   sourceBlock, 
   targetBlock, 
-  sourceBlockType 
+  sourceBlockType,
+  currentConnection
 }: ConnectionOverviewProps) {
   // Get source and target block display names
   const getSourceName = () => sourceBlock?.title || 'Unknown';
   const getTargetName = () => targetBlock?.title || 'Unknown';
+
+  // Use current connection if available, otherwise use element data
+  const connection = currentConnection || element?.data?.connection;
+  const hasCondition = !!connection?.condition?.field;
 
   return (
     <Card>
@@ -35,7 +41,7 @@ export function ConnectionOverview({
               Flow direction and condition
             </CardDescription>
           </div>
-          {element?.data?.connection?.condition?.field && (
+          {hasCondition && (
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-normal">
               Conditional
             </Badge>
@@ -53,12 +59,12 @@ export function ConnectionOverview({
           </div>
         </div>
         
-        {/* Condition summary */}
-        {element?.data?.connection?.condition?.field && (
+        {/* Condition summary - use current connection for more accurate display */}
+        {hasCondition && (
           <div className="mt-3 pt-3 border-t border-dashed">
             <div className="text-xs text-muted-foreground mb-1">Current condition:</div>
             <div className="text-sm bg-blue-50 p-2 rounded-md">
-              {getConditionSummary(element, sourceBlock, sourceBlockType)}
+              {getConditionSummary(connection, sourceBlock, sourceBlockType)}
             </div>
           </div>
         )}

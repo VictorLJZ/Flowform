@@ -1,7 +1,7 @@
 import { FormBlock } from '@/types/block-types';
 import { BlockChoiceOption, operatorLabels } from './condition-types';
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData } from '@/types/workflow-types';
+import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
 
 // Function to get human-readable field name
 export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): string => {
@@ -16,7 +16,11 @@ export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): s
   if (fieldId === 'sentiment') return 'Sentiment';
   
   if (fieldId.startsWith('choice:')) {
-    const choiceValue = fieldId.split(':')[1];
+    // Get the part after 'choice:' - now in format value_index
+    const choiceWithIndex = fieldId.split(':')[1];
+    // Extract just the value part, removing the index suffix
+    const choiceValue = choiceWithIndex.split('_')[0];
+    
     if (!sourceBlock?.settings) return choiceValue;
     
     const choices = ((sourceBlock.settings.choices || sourceBlock.settings.options) as BlockChoiceOption[] | undefined) || [];
@@ -35,20 +39,28 @@ export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): s
 
 // Get a summary of the current condition in plain language
 export const getConditionSummary = (
-  element: Edge<WorkflowEdgeData>, 
+  connectionData: Connection | Edge<WorkflowEdgeData>, 
   sourceBlock: FormBlock | null | undefined, 
   sourceBlockType: string
 ): string => {
-  if (!element?.data?.connection?.condition) return 'No condition set';
+  // Handle different input formats (Edge or Connection)
+  const condition = 'condition' in connectionData 
+    ? connectionData.condition 
+    : connectionData.data?.connection?.condition;
+
+  if (!condition) return 'No condition set';
   
-  const { field, operator, value } = element.data.connection.condition;
+  const { field, operator, value } = condition;
   
   if (!field) return 'No condition set';
   
   const fieldName = getFieldName(field, sourceBlock);
   const operatorText = operatorLabels[operator] || operator;
   
-  // For choice-specific selections
+  // Safely convert value to string for display
+  const valueStr = value !== undefined && value !== null ? String(value) : '(empty)';
+  
+  // For choice-specific selections (now handling value_index format)
   if (field.startsWith('choice:')) {
     return operator === 'equals' 
       ? `When "${fieldName}" is selected` 
@@ -65,17 +77,24 @@ export const getConditionSummary = (
   
   // For length field
   if (field === 'length') {
-    return `When response length ${operatorText} ${value || '0'} characters`;
+    return `When response length ${operatorText} ${valueStr || '0'} characters`;
   }
   
   // For weekday field
   if (field === 'weekday') {
-    return `When date is${operator === 'not_equals' ? ' not' : ''} on ${value || 'unknown'}`;
+    return `When date is${operator === 'not_equals' ? ' not' : ''} on ${valueStr || 'unknown'}`;
   }
   
   // For date field
   if (field === 'answer' && sourceBlockType === 'date') {
-    const dateText = value ? new Date(value.toString()).toLocaleDateString() : '(no date)';
+    let dateText = '(no date)';
+    try {
+      if (value) {
+        dateText = new Date(value.toString()).toLocaleDateString();
+      }
+    } catch (e) {
+      dateText = String(value);
+    }
     
     switch(operator) {
       case 'equals': return `When date is on ${dateText}`;
@@ -88,34 +107,34 @@ export const getConditionSummary = (
   
   // For number field
   if (field === 'answer' && sourceBlockType === 'number') {
-    return `When number ${operatorText} ${value || '0'}`;
+    return `When number ${operatorText} ${valueStr || '0'}`;
   }
   
   // For email field
   if (field === 'answer' && sourceBlockType === 'email') {
-    return `When email ${operatorText} "${value || ''}"`;
+    return `When email ${operatorText} "${valueStr || ''}"`;
   }
   
   // For domain field
   if (field === 'domain') {
-    return `When email domain ${operatorText} "${value || ''}"`;
+    return `When email domain ${operatorText} "${valueStr || ''}"`;
   }
   
   // For rating field
   if (field === 'rating' || (field === 'answer' && sourceBlockType === 'rating')) {
-    return `When rating ${operatorText} ${value || '0'}`;
+    return `When rating ${operatorText} ${valueStr || '0'}`;
   }
   
   // For multiple choice answer
   if (field === 'answer' && (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown')) {
-    return `When answer ${operatorText} "${value || ''}"`;
+    return `When answer ${operatorText} "${valueStr || ''}"`;
   }
   
   // For sentiment
   if (field === 'sentiment') {
-    return `When sentiment ${operatorText} ${value || ''}`;
+    return `When sentiment ${operatorText} ${valueStr || ''}`;
   }
   
   // Default case
-  return `When ${fieldName.toLowerCase()} ${operatorText} ${value || '(empty)'}`;
+  return `When ${fieldName.toLowerCase()} ${operatorText} ${valueStr || '(empty)'}`;
 }; 

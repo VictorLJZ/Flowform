@@ -1,6 +1,6 @@
 "use client"
 
-import { ConditionComponentProps, FieldOption } from './condition-types';
+import { ConditionComponentProps, FieldOption, getAvailableFieldsForBlock } from './condition-types';
 import { Label } from '@/components/ui/label';
 import { 
   Select,
@@ -10,103 +10,73 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { FormBlock } from '@/types/block-types';
-import { BlockChoiceOption } from './condition-types';
+import { Connection } from '@/types/workflow-types';
 
 interface ConditionFieldsProps extends ConditionComponentProps {
   sourceBlock: FormBlock | null | undefined;
+  currentConnection: Connection | null;
 }
 
 export function ConditionFields({ 
   element, 
   sourceBlock, 
   sourceBlockType, 
-  onConditionChange 
+  onConditionChange,
+  currentConnection
 }: ConditionFieldsProps) {
-  // Generate field options based on source block type
+  // Use currentConnection if available for more accurate UI state
+  const connection = currentConnection || element?.data?.connection;
+  // Use consistent condition checking pattern
+  const currentField = connection?.condition?.field || '';
+
+  // Get field options using standardized function
   const getFieldOptions = (): FieldOption[] => {
-    if (!sourceBlock) return [{ value: 'answer', label: 'Answer' }];
+    if (!sourceBlock) return [];
     
-    const options: FieldOption[] = [];
+    // Get available fields based on source block
+    const availableFields = getAvailableFieldsForBlock(sourceBlock);
     
-    // Add specific field options based on block type
-    if (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown') {
-      options.push({ 
-        value: 'answer', 
-        label: 'Selected Answer Value' 
-      });
-      
-      // Add group header for specific choice options
-      options.push({ 
-        value: 'header-specific-options', 
-        label: '── Check Specific Option ──',
-        disabled: true
-      });
-      
-      // Add specific choices as options
-      const choices = ((sourceBlock.settings?.choices || sourceBlock.settings?.options) as BlockChoiceOption[] | undefined) || [];
-      
-      if (Array.isArray(choices) && choices.length > 0) {
-        choices.forEach((choice: BlockChoiceOption) => {
-          // Use value if available, otherwise use label
-          const value = choice.value || choice.label;
-          options.push({ 
-            value: `choice:${value}`, 
-            label: `${choice.label}` 
-          });
-        });
-      }
-    } else if (sourceBlockType === 'checkbox_group') {
-      options.push({ value: 'selected', label: 'Any Option Selected' });
-      
-      // Add group header for specific checkbox options
-      options.push({ 
-        value: 'header-specific-checkboxes', 
-        label: '── Check Specific Checkbox ──',
-        disabled: true
-      });
-      
-      // Add specific checkboxes as options
-      const choices = (sourceBlock.settings?.options as BlockChoiceOption[] | undefined) || [];
-      
-      if (Array.isArray(choices) && choices.length > 0) {
-        choices.forEach((choice: BlockChoiceOption) => {
-          // Use value if available, otherwise use label
-          const value = choice.value || choice.label;
-          options.push({ 
-            value: `choice:${value}`, 
-            label: `${choice.label}` 
-          });
-        });
-      }
-    } else if (sourceBlockType === 'short_text' || sourceBlockType === 'long_text') {
-      options.push({ value: 'answer', label: 'Text Response' });
-      options.push({ value: 'length', label: 'Response Length' });
-    } else if (sourceBlockType === 'email') {
-      options.push({ value: 'answer', label: 'Email Address' });
-      options.push({ value: 'domain', label: 'Email Domain' });
-    } else if (sourceBlockType === 'number') {
-      options.push({ value: 'answer', label: 'Number Value' });
-    } else if (sourceBlockType === 'date') {
-      options.push({ value: 'answer', label: 'Selected Date' });
-      options.push({ value: 'weekday', label: 'Day of Week' });
-    } else if (sourceBlockType === 'rating') {
-      options.push({ value: 'rating', label: 'Rating Value' });
-    } else if (sourceBlockType.includes('ai_conversation')) {
-      options.push({ value: 'answer', label: 'Last Response' });
-      options.push({ value: 'sentiment', label: 'Sentiment' });
-    } else {
-      // Default for any block type
-      options.push({ value: 'answer', label: 'Answer' });
+    // For multiple choice blocks, we no longer need to modify the label
+    if (sourceBlockType === 'multiple_choice') {
+      return availableFields;
     }
     
-    return options;
+    // For other blocks, organize fields for better UI display:
+    // 1. Standard fields first
+    const standardFieldOptions = availableFields.filter(field => !field.id.startsWith('choice:'));
+    
+    // 2. Choice fields with a header if they exist
+    const choiceFields = availableFields.filter(field => field.id.startsWith('choice:'));
+    
+    if (choiceFields.length > 0) {
+      // Creating the complete options array with a header for choices
+      return [
+        ...standardFieldOptions,
+        // Add header for choices if there are any
+        ...(choiceFields.length > 0 ? [
+          { 
+            id: 'header-choices', 
+            label: '── Specific Options ──',
+            valueType: 'string',
+            blockTypes: [],
+            operators: ['equals'],
+            disabled: true
+          } as FieldOption,
+          ...choiceFields
+        ] : [])
+      ];
+    }
+    
+    return availableFields;
   };
+
+  const fields = getFieldOptions();
 
   return (
     <div>
       <Label className="mb-1.5 block text-xs text-muted-foreground">FIELD</Label>
       <Select 
-        value={element?.data?.connection?.condition?.field || ''}
+        value={currentField}
         onValueChange={(value) => {
           // Skip disabled headers
           if (value.startsWith('header-')) return;
@@ -117,10 +87,10 @@ export function ConditionFields({
           <SelectValue placeholder="Select a field" />
         </SelectTrigger>
         <SelectContent>
-          {getFieldOptions().map((option: FieldOption) => (
+          {fields.map((option: FieldOption) => (
             <SelectItem 
-              key={option.value} 
-              value={option.value}
+              key={option.id} 
+              value={option.id}
               disabled={option.disabled}
               className={option.disabled ? "opacity-60 font-semibold" : ""}
             >
