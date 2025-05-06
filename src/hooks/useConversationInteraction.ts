@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { QAPair } from '@/types/supabase-types';
-import type { ChangeEvent, KeyboardEvent, RefObject, MutableRefObject } from 'react';
+import type { ChangeEvent, KeyboardEvent, MutableRefObject } from 'react';
 
 interface UseConversationInteractionProps {
   conversation: QAPair[];
@@ -8,7 +8,7 @@ interface UseConversationInteractionProps {
   questionInputs: Record<number, string>;
   isFirstQuestion: boolean;
   starterPrompt: string;
-  submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<any>;
+  submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<unknown>;
   onNext?: () => void;
   onChange?: (value: QAPair[]) => void;
   onUpdate?: () => void;
@@ -38,7 +38,8 @@ export function useConversationInteraction({
   isFirstQuestion,
   starterPrompt,
   submitAnswer,
-  onNext,
+  // Not using onNext in this hook but it's in the interface
+  // onNext,
   onChange,
   onUpdate,
 }: UseConversationInteractionProps): UseConversationInteractionReturn {
@@ -112,9 +113,14 @@ export function useConversationInteraction({
       
       // Log the result for debugging if needed
       if (result) {
+        // Use type-safe property access
+        const hasNextQuestion = typeof result === 'object' && result !== null && 'nextQuestion' in result;
+        const conversationProp = typeof result === 'object' && result !== null && 'conversation' in result 
+          ? (result as {conversation?: QAPair[]}).conversation : undefined;
+        
         console.log('Answer submitted successfully:', {
-          hasNextQuestion: !!result.nextQuestion,
-          conversationLength: result.conversation?.length
+          hasNextQuestion,
+          conversationLength: conversationProp?.length
         });
       }
       

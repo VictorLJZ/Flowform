@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { QAPair } from '@/types/supabase-types';
 
 interface UseConversationDisplayProps {
@@ -38,7 +38,8 @@ export function useConversationDisplay({
   });
   
   // Force component re-render when key data changes
-  const [forceUpdate, setForceUpdate] = useState(0);
+  // Not using forceUpdate currently, but commented for reference
+  // const [forceUpdate, setForceUpdate] = useState(0);
   
   // Enhanced handler for nextQuestion state changes
   useEffect(() => {
@@ -61,8 +62,8 @@ export function useConversationDisplay({
           if (nextQuestion) {
             console.log('First delayed update executed');
             setDisplayQuestion(nextQuestion);
-            // Force component to re-render
-            setForceUpdate(prev => prev + 1);
+            // No longer forcing component to re-render
+            // setForceUpdate(prev => prev + 1);
           }
         }, 50),
         
@@ -71,7 +72,8 @@ export function useConversationDisplay({
           if (nextQuestion) {
             console.log('Second delayed update executed');
             setDisplayQuestion(nextQuestion);
-            setForceUpdate(prev => prev + 1);
+            // No longer forcing component to re-render
+            // setForceUpdate(prev => prev + 1);
           }
         }, 200)
       ];
@@ -84,7 +86,8 @@ export function useConversationDisplay({
   }, [nextQuestion]);
   
   // Key debug function to determine what question should be displayed
-  const determineCurrentQuestion = () => {
+  // Wrapped in useCallback to avoid unnecessary re-renders and dependency issues
+  const determineCurrentQuestion = useCallback(() => {
     const currentState = {
       isFirstQ: isFirstQuestion,
       promptText: starterPrompt,
@@ -105,7 +108,7 @@ export function useConversationDisplay({
     } else {
       return { text: "Loading next question...", source: 'loading' };
     }
-  };
+  }, [isFirstQuestion, starterPrompt, activeQuestionIndex, conversation, nextQuestion]);
   
   // Update displayed question when key dependencies change
   useEffect(() => {
@@ -154,7 +157,7 @@ export function useConversationDisplay({
       // Track when we're in a loading state
       setIsLoading(newQuestionData.source === 'loading');
     }
-  }, [starterPrompt, isFirstQuestion, activeQuestionIndex, conversation, nextQuestion, displayQuestion]);
+  }, [starterPrompt, isFirstQuestion, activeQuestionIndex, conversation, nextQuestion, displayQuestion, determineCurrentQuestion]);
   
   return {
     displayQuestion,
