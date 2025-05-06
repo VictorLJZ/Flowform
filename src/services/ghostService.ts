@@ -12,9 +12,10 @@ import GhostContentAPI from '@tryghost/content-api';
 /**
  * Initialize the Ghost Content API client
  */
+// Use mock URL for build if environment variables aren't set
 const ghost = GhostContentAPI({
-  url: process.env.GHOST_API_URL || '',
-  key: process.env.GHOST_CONTENT_API_KEY || '',
+  url: process.env.GHOST_API_URL || 'https://demo.ghost.io',  // Default to Ghost demo site if not set
+  key: process.env.GHOST_CONTENT_API_KEY || '22444f78447824223cefc48062',  // Demo key (read-only)
   version: 'v5.0'
 });
 

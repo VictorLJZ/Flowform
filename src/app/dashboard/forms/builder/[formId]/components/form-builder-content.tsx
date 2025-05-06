@@ -300,13 +300,11 @@ export default function FormBuilderContent() {
                   required={currentBlock.required}
                   index={blocks.findIndex(b => b.id === currentBlock.id) + 1}
                   totalBlocks={blocks.length}
+                  // Pass these values as separate props (they are defined in the interface)
+                  maxQuestions={(currentBlock.settings?.maxQuestions as number) || 5}
+                  temperature={(currentBlock.settings?.temperature as number) || 0.7}
+                  // Only pass presentation and layout in the settings object as per interface
                   settings={{
-                    // Need to pass startingPrompt for TypeScript compatibility until interface is updated
-                    // But the component will actually use the block title instead
-                    startingPrompt: currentBlock.title,
-                    maxQuestions: (currentBlock.settings?.maxQuestions as number) || 5,
-                    temperature: (currentBlock.settings?.temperature as number) || 0.7,
-                    contextInstructions: currentBlock.settings?.contextInstructions as string,
                     presentation: currentBlock.settings?.presentation ? 
                       currentBlock.settings.presentation as BlockPresentation : 
                       {

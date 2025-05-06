@@ -37,7 +37,9 @@ export function useConversationNavigation({
   activeQuestionIndex,
   setActiveQuestionIndex,
   questionInputs,
-  displayQuestion,
+  // displayQuestion parameter is received but not used in this hook
+  // Keeping it commented for potential future implementation
+  // displayQuestion,
   onNext,
 }: UseConversationNavigationProps): UseConversationNavigationReturn {
   // Calculate derived state for navigation logic
@@ -108,7 +110,8 @@ export function useConversationNavigation({
       !!conversation[activeQuestionIndex]?.answer;
     
     // Check if we have a pending input for this question
-    const hasPendingInput = !!questionInputs[activeQuestionIndex];
+    // Not currently used but kept for potential future implementation
+    // const hasPendingInput = !!questionInputs[activeQuestionIndex];
     
     // Check if we have a next question available
     const hasNextAvailable = activeQuestionIndex < conversation.length - 1 || 

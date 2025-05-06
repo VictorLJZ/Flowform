@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
-import { PaperPlaneIcon, ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons'
+// import { cn } from "@/lib/utils" - removed unused import
+import { PaperPlaneIcon } from '@radix-ui/react-icons'
 import { AnimatePresence, motion } from '@/lib/motion'
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
@@ -15,6 +15,17 @@ import { useAIConversation } from '@/hooks/useAIConversation'
 import { useConversationDisplay } from '@/hooks/useConversationDisplay'
 import { useConversationInteraction } from '@/hooks/useConversationInteraction'
 import { useConversationNavigation } from '@/hooks/useConversationNavigation'
+
+// Define the handle interface used by refs to interact with this component
+export interface AIConversationHandle {
+  // Methods that can be called by parent components using refs
+  reset: () => void;
+  submitCurrentAnswer: () => Promise<boolean>;
+  isComplete: () => boolean;
+  getConversation: () => QAPair[];
+  // Alternative method name used in some components
+  getMessages: () => QAPair[];
+}
 
 interface AIConversationBlockProps {
   id: string
@@ -56,7 +67,8 @@ export function AIConversationBlock({
   index,
   totalBlocks,
   maxQuestions = 0,
-  temperature = 0.7,
+  // Not directly using temperature in the component
+  // temperature = 0.7,
   settings = {},
   value = [],
   onChange,
@@ -68,7 +80,7 @@ export function AIConversationBlock({
 }: AIConversationBlockProps) {
   // Local state
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
-  const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({})
+  const [questionInputs] = useState<Record<number, string>>({})
 
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
@@ -105,15 +117,13 @@ export function AIConversationBlock({
   // Create an adapter for the onUpdate function to match what useConversationInteraction expects
   // The hook expects onUpdate?: () => void with no parameters
   const interactionUpdateAdapter = onUpdate ? () => {
-    // This adapter calls onUpdate with default/empty values if needed
     // This is just a simple callback that useConversationInteraction can call
     console.log('Interaction update triggered');
   } : undefined;
 
   // Use our interaction hook to manage user input and submissions
-  const {
+  const { 
     userInput,
-    setUserInput,
     isLocalSubmitting,
     isChangingEarlierAnswer,
     textareaRef,
@@ -134,13 +144,14 @@ export function AIConversationBlock({
   
   // Use our navigation hook to manage question navigation
   const {
-    isFirstQuestion,
-    isFinalQuestion,
-    isLastAnswered,
+    // Keep these as commented references for potential future use
+    // isFirstQuestion,
+    // isFinalQuestion,
+    // isLastAnswered,
     hasReachedMaxQuestions,
-    canMoveToNextQuestion,
-    handlePreviousQuestion,
-    handleNextQuestion,
+    // canMoveToNextQuestion,
+    // handlePreviousQuestion,
+    // handleNextQuestion,
     moveToSpecificQuestion,
     handleCompletingConversation
   } = useConversationNavigation({
@@ -158,8 +169,8 @@ export function AIConversationBlock({
   // Loading states
   const isLoading = isConversationLoading || isQuestionLoading || isLocalSubmitting
   
-  // Component state to track rendering updates
-  const [renderKey, setRenderKey] = useState(0);
+  // Component state to track rendering updates is not currently used
+  // const [renderKey, setRenderKey] = useState(0);
   
   // Force UI updates when key props change - enhanced for debugging and reliability
   useEffect(() => {
@@ -174,7 +185,8 @@ export function AIConversationBlock({
       // This is critical to ensure the UI updates with the new question
       if (nextQuestion !== displayQuestion) {
         console.log('Forcing complete UI re-render in AIConversationBlock');
-        setRenderKey(prev => prev + 1);
+        // Commented out as renderKey state is not being used
+        // setRenderKey(prev => prev + 1);
       }
     }
   }, [nextQuestion, effectiveConversation.length, displayQuestion])
@@ -297,7 +309,7 @@ export function AIConversationBlock({
     if (formBlockUpdates.settings) {
       mappedUpdates.settings = {
         ...settings, // Preserve existing settings
-        ...(formBlockUpdates.settings as any) // Apply new settings
+        ...(formBlockUpdates.settings as Record<string, unknown>) // Apply new settings
       };
     }
     
