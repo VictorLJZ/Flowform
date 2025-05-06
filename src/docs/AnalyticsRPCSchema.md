@@ -451,19 +451,21 @@ CREATE OR REPLACE FUNCTION track_block_submit(
   p_metadata JSONB DEFAULT NULL
 )
 RETURNS JSONB
-SECURITY DEFINER -- Run with the privileges of the function creator
-SET search_path = public -- Prevent search path injection
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
 AS $$
 DECLARE
   v_submit_id UUID;
   v_timestamp TIMESTAMPTZ := NOW();
 BEGIN
   -- Step 1: Insert the submit record in form_interactions
+  -- Using 'block_submit' to differentiate from form completions
   INSERT INTO form_interactions(
     block_id,
     form_id,
     response_id,
-    interaction_type, -- Still use 'submit' for compatibility
+    interaction_type,
     timestamp,
     duration_ms,
     metadata
@@ -472,25 +474,25 @@ BEGIN
     p_block_id,
     p_form_id,
     p_response_id,
-    'submit',
+    'block_submit',
     v_timestamp,
     p_duration_ms,
-    COALESCE(p_metadata, '{}'::jsonb) -- Not adding visitor_id to metadata
+    COALESCE(p_metadata, '{}'::jsonb)
   )
   RETURNING id INTO v_submit_id;
   
   -- Step 2: Update metrics in block_metrics
   -- This part handles:
   -- - Average time spent on the block
-  -- - Submission counts and success rates
+  -- - Submission counts
   INSERT INTO block_metrics (
     block_id,
     form_id,
     views,
     submissions,
-    success_rate,
     average_time_seconds,
-    completion_rate,
+    drop_off_count,
+    drop_off_rate,
     last_updated
   )
   VALUES (
@@ -498,9 +500,9 @@ BEGIN
     p_form_id,
     1, -- Default to 1 view
     1, -- This is a submission
-    1.0, -- Default success rate
     COALESCE(p_duration_ms / 1000.0, 0), -- Convert ms to seconds
-    1.0, -- Default completion rate
+    0, -- Default drop_off_count
+    0.0, -- Default drop_off_rate
     v_timestamp
   )
   ON CONFLICT (block_id)
@@ -508,26 +510,13 @@ BEGIN
     submissions = block_metrics.submissions + 1,
     -- Update time spent calculation
     average_time_seconds = CASE 
-                           WHEN block_metrics.views > 0 
-                           THEN ((block_metrics.average_time_seconds * block_metrics.views) + 
-                                COALESCE(p_duration_ms / 1000.0, 0)) / (block_metrics.views + 1)
-                           ELSE COALESCE(p_duration_ms / 1000.0, 0)
-                          END,
-    -- Update success rate
-    success_rate = CASE 
-                   WHEN block_metrics.submissions > 0 
-                   THEN (block_metrics.success_rate * block_metrics.submissions + 1.0) / 
-                        (block_metrics.submissions + 1)
-                   ELSE 1.0
-                  END,
-    -- Update completion rate (views to submissions ratio)
-    completion_rate = CASE 
-                     WHEN block_metrics.views > 0 
-                     THEN (block_metrics.submissions + 1)::FLOAT / block_metrics.views
-                     ELSE 1.0
-                    END,
+                            WHEN block_metrics.views > 0 
+                            THEN ((block_metrics.average_time_seconds * block_metrics.views) + 
+                                 COALESCE(p_duration_ms / 1000.0, 0)) / (block_metrics.views + 1)
+                            ELSE COALESCE(p_duration_ms / 1000.0, 0)
+                           END,
     last_updated = v_timestamp;
-
+  
   -- Return success information
   RETURN jsonb_build_object(
     'success', TRUE,
@@ -541,7 +530,7 @@ EXCEPTION WHEN OTHERS THEN
     'error', SQLERRM
   );
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION track_block_submit TO authenticated;

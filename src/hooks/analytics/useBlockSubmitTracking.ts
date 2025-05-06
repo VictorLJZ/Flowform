@@ -38,7 +38,7 @@ export function useBlockSubmitTracking(
     additionalMetadata: Record<string, unknown> = {}
   ) => {
     // Add detailed logging for debugging
-    console.log('[useBlockSubmitTracking] trackSubmit called with:', {
+    console.log('🔄 [useBlockSubmitTracking] trackSubmit called with:', {
       blockId,
       formId,
       responseId,
@@ -47,33 +47,66 @@ export function useBlockSubmitTracking(
       additionalMetadata
     });
 
-    if (disabled || !blockId || !formId || !responseId) {
-      console.log(`[useBlockSubmitTracking] Skipping block submit tracking:`, {
-        reason: disabled ? 'disabled' : 
-               !blockId ? 'missing blockId' : 
-               !formId ? 'missing formId' : 
-               !responseId ? 'missing responseId' : 'unknown'
-      });
+    // Even if some fields are missing, we'll try to track what we can
+    // This ensures we don't lose tracking data due to missing fields
+    const effectiveBlockId = blockId || additionalMetadata.block_id as string || 'unknown_block';
+    const effectiveFormId = formId || additionalMetadata.form_id as string || 'unknown_form';
+    const effectiveResponseId = responseId || additionalMetadata.response_id as string || 'unknown_session';
+    
+    // Skip only if explicitly disabled
+    if (disabled) {
+      console.log(`⛔ [useBlockSubmitTracking] Skipping block submit tracking because it's disabled`);
       return;
     }
     
+    console.log('✅ [useBlockSubmitTracking] Preparing to track block submission');
     const visitorId = getVisitorId();
+    console.log('👤 [useBlockSubmitTracking] Got visitor ID:', visitorId);
     
     try {
-      console.log('[DEBUG] Tracking block submit for block:', blockId);
+      console.log('🔍 [useBlockSubmitTracking] About to call trackBlockSubmitClient for block:', effectiveBlockId);
       
+      // Create a combined metadata object with all the information we have
+      const combinedMetadata = {
+        visitor_id: visitorId,
+        ...metadata,
+        ...additionalMetadata,
+        // Force these fields to ensure they're always present
+        block_id: effectiveBlockId,
+        form_id: effectiveFormId,
+        response_id: effectiveResponseId,
+        // Add timestamp for debugging
+        tracked_at: new Date().toISOString()
+      };
+      
+      // Log the full argument details
+      console.log('📝 [useBlockSubmitTracking] Calling with arguments:', {
+        blockId: effectiveBlockId, 
+        formId: effectiveFormId,
+        responseId: effectiveResponseId,
+        metadata: combinedMetadata
+      });
+      
+      // Extract duration_ms from metadata if present
+      const durationMs = additionalMetadata.duration_ms || metadata.duration_ms;
+      
+      console.log('⏱️ [useBlockSubmitTracking] Extracted durationMs:', durationMs);
+      
+      // Always call trackBlockSubmitClient, even if some fields are missing
       await trackBlockSubmitClient(
-        blockId, 
-        formId,
-        responseId,
-        {
-          visitor_id: visitorId,
-          ...metadata,
-          ...additionalMetadata
-        }
+        effectiveBlockId, 
+        effectiveFormId,
+        effectiveResponseId,
+        typeof durationMs === 'number' ? durationMs : undefined,
+        combinedMetadata
       );
+      
+      // Mark as tracked
+      hasTracked.current = true;
+      
+      console.log('🎉 [useBlockSubmitTracking] Successfully called trackBlockSubmitClient');
     } catch (error) {
-      console.error(`Error tracking block submit:`, error);
+      console.error(`❌ [useBlockSubmitTracking] Error tracking block submit:`, error);
     }
   }, [blockId, formId, responseId, disabled, metadata]);
   

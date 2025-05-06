@@ -17,6 +17,6 @@ export * from './trackFormViewClient';
 export * from './trackFormCompletionClient';
 export * from './trackBlockViewClient';
 export * from './trackBlockView';
-export * from './trackBlockInteraction';
 export * from './trackFormCompletion';
 export * from './trackDynamicBlockAnalytics';
+export * from './trackBlockSubmitClient'; // Block submission tracking

@@ -451,6 +451,7 @@ Performance metrics for individual question blocks.
 | block_id              | UUID                    | References form_blocks.id         |
 | form_id               | UUID                    | References forms.form_id          |
 | views                 | INTEGER                 | How many times block was viewed   |
+| submissions           | INTEGER                 | Number of times block was submitted | 
 | skips                 | INTEGER                 | Times optional questions skipped  |
 | average_time_seconds  | FLOAT                   | Average time spent on block       |
 | drop_off_count        | INTEGER                 | Number of users who dropped off   |
@@ -479,7 +480,7 @@ Granular tracking of user interactions with form elements.
 | response_id      | UUID                    | References form_responses.id      |
 | block_id         | UUID                    | References form_blocks.id         |
 | form_id          | UUID                    | References forms.form_id          |
-| interaction_type | TEXT                    | view, focus, blur, change, submit, error |
+| interaction_type | TEXT                    | view, focus, blur, change, submit, block_submit, error |
 | timestamp        | TIMESTAMP WITH TIME ZONE| When interaction occurred         |
 | duration_ms      | INTEGER                 | Duration of interaction (if applicable) |
 | metadata         | JSONB                   | Additional context data           |

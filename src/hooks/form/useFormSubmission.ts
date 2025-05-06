@@ -23,6 +23,7 @@ interface FormSubmissionState {
   submitError: string | null;
   completed: boolean;
   submitAnswer: (block: FormBlock, answer: string | number | string[] | QAPair[]) => Promise<void>;
+  trackBlockSubmission: (block: FormBlock) => Promise<void>;
 }
 
 export const useFormSubmission = ({
@@ -107,6 +108,36 @@ export const useFormSubmission = ({
     initializeFormResponse();
   }, [storageKey, formId]);
 
+  // Helper function to track block submission
+  const trackBlockSubmission = useCallback(async (block: FormBlock) => {
+    try {
+      if (!onSubmitSuccessRef.current) {
+        console.warn('⚠️ [useFormSubmission] onSubmitSuccessRef.current not available');
+        return;
+      }
+
+      // Create tracking metadata
+      const submitMetadata = {
+        block_id: block.id,
+        block_type: block.blockTypeId,
+        response_id: responseId,
+        form_id: formId,
+        event_type: 'block_submission',
+        is_last_block: isLastQuestion
+      };
+
+      console.log('🌟 [useFormSubmission] Tracking block submission:', submitMetadata);
+      
+      // Call the onSubmitSuccessRef directly with the metadata
+      // The page.tsx will handle passing this to the correct analytics function
+      onSubmitSuccessRef.current(submitMetadata);
+      
+    } catch (error) {
+      // Never fail the submission due to tracking failure
+      console.error('💥 [useFormSubmission] Error tracking block submission:', error);
+    }
+  }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
+
   const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | QAPair[]) => {
     if (!responseId) {
       console.error('No responseId available for submission');
@@ -121,6 +152,9 @@ export const useFormSubmission = ({
 
     setSubmitting(true);
     setSubmitError(null);
+    
+    // Track block submission before doing the actual submission
+    await trackBlockSubmission(block);
 
     try {
       // Determine the block type (static or dynamic) based on block properties
@@ -158,10 +192,11 @@ export const useFormSubmission = ({
       const data = await res.json();
       console.log('[useFormSubmission] Submission response:', data);
 
-      const submissionData = { block_id: block.id, block_type: block.type };
-
-      // Track successful submission
-      onSubmitSuccessRef.current(submissionData);
+      // No need to create a separate submissionData object here since we're using trackBlockSubmission
+      // which will create the proper metadata with all required fields
+      
+      // Track block submission before doing anything else
+      await trackBlockSubmission(block);
 
       // Save answer locally via the answers hook
       saveCurrentAnswerRef.current(block.id, answer);
@@ -207,12 +242,12 @@ export const useFormSubmission = ({
     responseId, 
     formId, 
     isLastQuestion, 
-    onSubmitSuccessRef, 
     onSubmitErrorRef, 
     onFormCompleteRef, 
     saveCurrentAnswerRef, 
     goToNext,
-    storageKey
+    storageKey,
+    trackBlockSubmission
   ]);
 
   return {
@@ -221,5 +256,6 @@ export const useFormSubmission = ({
     submitError,
     completed,
     submitAnswer,
+    trackBlockSubmission,
   };
 };
