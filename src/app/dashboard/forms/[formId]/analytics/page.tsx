@@ -174,42 +174,44 @@ export default function FormAnalyticsPage() {
         ) : !form ? (
           <div className="w-full p-12 text-center">Form not found</div>
         ) : (
-          <Card className="p-4">
-            <Tabs defaultValue="responses" className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="responses">Responses</TabsTrigger>
-                <TabsTrigger value="insights">Insights</TabsTrigger>
-                <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="responses" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="responses">Responses</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
+            </TabsList>
               
-              <TabsContent value="responses" className="mt-0">
+            <TabsContent value="responses" className="mt-0 bg-white border rounded-md">
+              <div className="p-4">
                 <ResponsesWithVersioningSupport formId={formId} />
-              </TabsContent>
-              
-              <TabsContent value="insights" className="space-y-8">
-                {/* New Form Insights Component */}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="insights" className="mt-0">
+              {/* New Form Insights Component */}
+              <div className="bg-white border rounded-md p-6 mb-6">
                 <FormInsights formId={formId} />
-                
-                {/* Legacy metrics cards */}
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium mb-4">Legacy Analytics</h3>
-                  <BasicMetricsCard formId={String(params.formId)} />
-                </div>
-                
-                {/* Additional dashboard components */}
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium mb-4">Detailed Analytics</h3>
-                  <FormAnalyticsDashboard formId={formId} />
-                </div>
-              </TabsContent>
+              </div>
               
-              <TabsContent value="summary">
-                <div className="text-center p-12 text-muted-foreground">
-                  Summary coming soon
-                </div>
-              </TabsContent>
-            </Tabs>
-          </Card>
+              {/* Legacy metrics cards */}
+              <div className="bg-white border rounded-md p-6 mb-6">
+                <h3 className="text-lg font-medium mb-4">Legacy Analytics</h3>
+                <BasicMetricsCard formId={String(params.formId)} />
+              </div>
+              
+              {/* Additional dashboard components */}
+              <div className="bg-white border rounded-md p-6">
+                <h3 className="text-lg font-medium mb-4">Detailed Analytics</h3>
+                <FormAnalyticsDashboard formId={formId} />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="summary" className="mt-0 bg-white border rounded-md p-6">
+              <div className="text-center p-12 text-muted-foreground">
+                Summary coming soon
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>
