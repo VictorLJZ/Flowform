@@ -118,6 +118,12 @@ export interface FormWorkflowSlice {
   updateConnection: (connectionId: string, updates: Partial<Connection>) => void;
   removeConnection: (connectionId: string) => void;
   
+  // Block observation methods
+  onBlockAdded: (blockId: string) => void; // Called when a block is added to notify workflow system
+  onBlockRemoved: (blockId: string) => void; // Called when a block is removed to clean up connections
+  onBlocksReordered: (movedBlockId: string) => void; // Called when blocks are reordered with ID of moved block
+  validateConnections: () => boolean; // Validates connections against blocks, returns true if all valid
+  
   // Sync actions
   syncBlockOrderWithConnections: () => void; // Synchronizes block order with workflow connections
 }

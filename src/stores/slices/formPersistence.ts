@@ -79,7 +79,7 @@ export const createFormPersistenceSlice: StateCreator<
     
     try {
       // We will submit to Supabase
-      console.log('Saving form and blocks to Supabase...')
+
       
       // Get authenticated user
       const supabase = createClient()
@@ -109,7 +109,7 @@ export const createFormPersistenceSlice: StateCreator<
         }
       }
       
-      console.log('DEBUG - Preparing blocks for saveFormWithBlocks...')
+
       
       // IMPORTANT: saveFormWithBlocks does its own type mapping internally
       // Instead of manually setting type/subtype, we need to ensure blockTypeId is correct
@@ -120,17 +120,17 @@ export const createFormPersistenceSlice: StateCreator<
         
         // For dynamic blocks, ensure blockTypeId is 'ai_conversation'
         if (block.type === 'dynamic' && block.blockTypeId !== 'ai_conversation') {
-          console.log(`DEBUG - Fixing blockTypeId for dynamic block ${block.id} from '${block.blockTypeId}' to 'ai_conversation'`)
+
           fixedBlockTypeId = 'ai_conversation'
         }
         // For multiple choice blocks, ensure correct blockTypeId
         else if (block.blockTypeId === 'multiple_choice' || 
                  (block.settings?.options && Array.isArray(block.settings.options))) {
-          console.log(`DEBUG - Ensuring multiple_choice block has correct blockTypeId`)
+
           fixedBlockTypeId = 'multiple_choice'
         }
         
-        console.log(`DEBUG - Prepared block ${index} (${block.title}): blockTypeId=${fixedBlockTypeId}`)
+
         
         // Return the minimal version that saveFormWithBlocks expects
         return {
@@ -145,7 +145,7 @@ export const createFormPersistenceSlice: StateCreator<
         }
       })
       
-      console.log(`Preparing to save ${backendBlocks.length} blocks to form ${isExistingForm ? 'update' : 'create'}`)
+
       
       // Create input for the saveFormWithBlocks service
       const formInput: SaveFormInput = {
@@ -160,12 +160,12 @@ export const createFormPersistenceSlice: StateCreator<
         settings: formSettings
       }
       
-      console.log('DEBUG - About to call saveFormWithBlocks with formInput:', JSON.stringify(formInput, null, 2))
-      console.log('DEBUG - backendBlocks to save:', JSON.stringify(backendBlocks, null, 2))
+
+
       
       // Save form with blocks
       const result = await saveFormWithBlocks(formInput, backendBlocks)
-      console.log('DEBUG - Form saved successfully, result:', JSON.stringify(result, null, 2))
+
       
       // Update the form ID in state if it's a new form
       if (!isExistingForm && result?.form?.form_id) {
@@ -190,7 +190,7 @@ export const createFormPersistenceSlice: StateCreator<
   saveWorkflowEdges: async (formId: string): Promise<boolean> => {
     const { connections } = get()
     
-    console.log(`Saving ${connections.length} connections to workflow_edges table for form ${formId}`)
+
     
     try {
       // Get Supabase client
@@ -204,32 +204,35 @@ export const createFormPersistenceSlice: StateCreator<
       
       // If there are no connections to save, we're done
       if (connections.length === 0) {
-        console.log('No workflow connections to save')
+
         return true
       }
       
-      console.log(`🔄 WORKFLOW DEBUG: Saving ${connections.length} connections to database`)
-      console.log(`🔄 WORKFLOW DEBUG: Original connections:`, JSON.stringify(connections, null, 2))
+
+
       
       // Prepare connection data for database format
       const workflowEdges = connections.map((conn, index) => {
+        // Map connection to database schema format
+        // Note: According to schema, there is no condition_type or condition_json column
+        // Instead we should use the available fields: condition_field, condition_operator, condition_value
         const edge = {
           form_id: formId,
           source_block_id: conn.sourceId,
           target_block_id: conn.targetId,
-          condition_type: conn.conditionType || 'always',
+          // Store the first condition's data in the individual fields
           condition_field: conn.conditions?.[0]?.field || null,
           condition_operator: conn.conditions?.[0]?.operator || null,
-          condition_value: conn.conditions?.[0]?.value || null,
-          condition_json: conn.conditions?.length > 0 ? JSON.stringify(conn.conditions) : null,
+          // condition_value is JSONB type in the database, so we send the raw value
+          condition_value: conn.conditions?.[0]?.value !== undefined ? conn.conditions[0].value : null,
           order_index: index
         }
         
-        console.log(`🔄 WORKFLOW DEBUG: Mapped edge ${index}:`, JSON.stringify(edge, null, 2))
+
         return edge
       })
       
-      console.log(`🔄 WORKFLOW DEBUG: Attempting to save ${workflowEdges.length} edges to database`)
+
       
       // Insert all connections in batch
       const { data, error } = await supabase
@@ -242,8 +245,8 @@ export const createFormPersistenceSlice: StateCreator<
         return false
       } 
       
-      console.log(`✅ WORKFLOW SUCCESS: Saved ${connections.length} workflow edges to database`)
-      console.log(`✅ WORKFLOW SUCCESS: Returned data:`, data)
+
+
       return true
     } catch (error) {
       console.error('Error managing workflow edges:', error)
@@ -253,17 +256,17 @@ export const createFormPersistenceSlice: StateCreator<
 
   saveDynamicBlockConfigs: async (result: any): Promise<void> => {
     if (!result?.blocks || result.blocks.length === 0) {
-      console.log('No blocks in result, skipping dynamic config save')
+
       return
     }
     
-    console.log('DEBUG - Checking for dynamic blocks...')
+
     
     // Identify blocks that are specifically dynamic type
     // Cast the result blocks to our DbFormBlock type for proper typing
     const savedBlocks = (result.blocks || []) as DbFormBlock[]
     
-    console.log('DEBUG - Checking saved blocks for dynamic types:')
+
     // Use our proper database block type interface
     const dynamicBlocks = savedBlocks.filter((block) => {
       // Check both by type (should be 'dynamic') and by block settings (might contain dynamic config)
@@ -276,20 +279,20 @@ export const createFormPersistenceSlice: StateCreator<
                        block.title === 'AI Conversation' || 
                        hasDynamicSettings)
                        
-      console.log(`DEBUG - Saved block ${block.id} (${block.title}): type=${block.type}, subtype=${block.subtype}, isDynamic=${isDynamic}`)
+
       return isDynamic
     })
     
     if (dynamicBlocks.length === 0) {
-      console.log('DEBUG - No dynamic blocks found, skipping dynamic config save.')
+
       return
     }
     
-    console.log(`DEBUG - Found ${dynamicBlocks.length} dynamic blocks to save config for:`, dynamicBlocks.map((b) => b.id).join(', '))
+
     
     // For each dynamic block, save its configuration
     for (const block of dynamicBlocks) {
-      console.log(`DEBUG - Processing dynamic block ${block.id}, settings:`, JSON.stringify(block.settings, null, 2))
+
       
       // Create a standardized dynamic config object from the saved settings
       // We need to extract the specific properties needed by the dynamic block API
@@ -304,7 +307,7 @@ export const createFormPersistenceSlice: StateCreator<
                         'You are a helpful assistant responding to form submissions.'
       }
       
-      console.log(`DEBUG - Created dynamic config for block ${block.id}:`, JSON.stringify(dynamicConfig, null, 2))
+
       
       try {
         // Save using the properly formatted config for the database
@@ -312,7 +315,7 @@ export const createFormPersistenceSlice: StateCreator<
           block.id,
           dynamicConfig as Record<string, unknown>
         )
-        console.log(`DEBUG - Successfully saved dynamic config for block ${block.id}`)
+
       } catch (error: Error | unknown) {
         console.error(`DEBUG - Error saving dynamic config for block ${block.id}:`, error)
       }
@@ -324,7 +327,7 @@ export const createFormPersistenceSlice: StateCreator<
     
     // Prevent multiple save operations from running simultaneously
     if (isSaving) {
-      console.log('Save already in progress, skipping...')
+
       return
     }
     
@@ -362,7 +365,7 @@ export const createFormPersistenceSlice: StateCreator<
     set({ isLoading: true, isVersioned: true })
     
     try {
-      console.log(`Loading versioned form ${formId}...`)
+
       
       // Fetch versioned form with blocks from API
       const result = await getVersionedFormWithBlocksClient(formId)
@@ -375,16 +378,16 @@ export const createFormPersistenceSlice: StateCreator<
       // Since CompleteForm extends Form, the form data is the result itself
       const formData = result
       
-      console.log(`Found versioned form: ${formData.title} with ${formData.blocks.length} blocks (version ${result.version_number || 'unknown'})`)
+
       
       // Use our helper function to transform the form data with proper typing
       const { blocks, connections, nodePositions } = transformVersionedFormData(formData)
       
-      console.log(`Transformed ${blocks.length} blocks and ${connections.length} connections with proper typing`)
+
       
       // Create default linear connections if no connections exist
       if (connections.length === 0 && blocks.length > 1) {
-        console.log('No existing connections found, creating default linear workflow');
+
         
         try {
           // Sort blocks by order to ensure proper sequence
@@ -405,7 +408,7 @@ export const createFormPersistenceSlice: StateCreator<
             });
           }
           
-          console.log(`Created ${connections.length} default linear connections`);
+
         } catch (error) {
           console.error('Error creating default connections:', error);
         }
@@ -447,7 +450,7 @@ export const createFormPersistenceSlice: StateCreator<
     set({ isLoading: true })
     
     try {
-      console.log(`Loading form ${formId}...`)
+
       
       // Fetch form with blocks from API
       // Get form with blocks from API - this returns a CompleteForm object
@@ -463,18 +466,18 @@ export const createFormPersistenceSlice: StateCreator<
       // Blocks are in the blocks property
       const backendBlocks = result.blocks
       
-      console.log(`Found form: ${formData.title} with ${backendBlocks.length} blocks`)
+
       
-      console.log('DEBUG - Converting backend blocks to frontend format...')
-      console.log('DEBUG - Backend blocks:', JSON.stringify(backendBlocks, null, 2))
+
+
       
       // Convert backend blocks to frontend format
       const blocks = backendBlocks.map((block, index) => {
-        console.log(`DEBUG - Processing backend block ${index}:`, block.id, block.title, block.type, block.subtype)
+
         
         // Map database type/subtype back to frontend blockTypeId (e.g., 'short_text', 'multiple_choice')
         const blockTypeId = mapFromDbBlockType(block.type, block.subtype)
-        console.log(`DEBUG - Mapped from DB: type=${block.type}, subtype=${block.subtype} => blockTypeId=${blockTypeId}`)
+
         
         // Most blocks are 'static' type, with dynamic blocks being 'dynamic' type
         // This matches our BlockType enum: 'static' | 'dynamic' | 'integration' | 'layout'
@@ -493,7 +496,7 @@ export const createFormPersistenceSlice: StateCreator<
           settings: block.settings || {}
         }
         
-        console.log(`DEBUG - Created frontend block:`, JSON.stringify(frontendBlock, null, 2))
+
         return frontendBlock
       })
       
@@ -522,7 +525,7 @@ export const createFormPersistenceSlice: StateCreator<
       }> = []
       
       try {
-        console.log(`🔍 WORKFLOW LOAD: Loading workflow connections from database for form ${formId}...`)
+
         const supabase = createClient()
         const { data: edges, error } = await supabase
           .from('workflow_edges')
@@ -535,10 +538,10 @@ export const createFormPersistenceSlice: StateCreator<
           throw error
         }
         
-        console.log(`🔍 WORKFLOW LOAD: Raw edges from database:`, JSON.stringify(edges, null, 2))
+
         
         if (edges && edges.length > 0) {
-          console.log(`🔍 WORKFLOW LOAD: Found ${edges.length} edges in database`)
+
           
           // Convert from database format to app format
           workflowConnections = edges.map((edge: {
@@ -546,32 +549,25 @@ export const createFormPersistenceSlice: StateCreator<
             source_block_id: string;
             target_block_id: string;
             order_index: number;
-            condition_type?: string;
             condition_field?: string;
             condition_operator?: string;
-            condition_value?: string | number | boolean | null;
-            condition_json?: string;
+            condition_value?: any; // JSONB type could be any valid JSON value
           }) => {
-            // Parse condition_json if available or fall back to the legacy single condition format
+            // Initialize with default values
             let conditions: WorkflowCondition[] = [];
             let conditionType: 'always' | 'conditional' | 'fallback' = 'always';
             
-            if (edge.condition_json) {
-              try {
-                conditions = JSON.parse(edge.condition_json);
-                conditionType = 'conditional';
-              } catch (e) {
-                console.error('Failed to parse condition_json:', e);
-                conditions = [];
-              }
-            } else if (edge.condition_field) {
-              // Support for legacy format
+            // If we have condition data, create a condition object
+            if (edge.condition_field) {
+              // Create a condition from the individual fields
               conditions = [{
-                id: `legacy-${edge.id}`, // Add required id property
-                field: edge.condition_field || '',
+                id: `condition-${edge.id}`, // Generate an ID for the condition
+                field: edge.condition_field,
                 operator: (edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than') || 'equals',
-                value: edge.condition_value || '' // Provide a default empty string if null/undefined
+                value: edge.condition_value ?? '' // Use nullish coalescing to handle null/undefined
               }];
+              
+              // If there's at least one condition, mark this as conditional
               conditionType = 'conditional';
             }
             
@@ -584,14 +580,14 @@ export const createFormPersistenceSlice: StateCreator<
               conditions
             };
             
-            console.log(`🔄 WORKFLOW LOAD: Converted edge ${edge.id}:`, JSON.stringify(appConnection, null, 2))
+
             return appConnection;
           })
           
-          console.log(`🔍 WORKFLOW LOAD: Before filtering - ${workflowConnections.length} connections`)
+
           
           // Check block IDs before filtering
-          console.log(`🧩 WORKFLOW LOAD: Block IDs in this form:`, blocks.map(b => b.id))
+
           
           // Filter out connections referencing blocks that no longer exist
           workflowConnections = workflowConnections.filter(conn => {
@@ -608,14 +604,14 @@ export const createFormPersistenceSlice: StateCreator<
               return false
             }
             
-            console.log(`✅ WORKFLOW LOAD: Valid connection found: ${conn.sourceId} -> ${conn.targetId}`)
+
             return true
           })
           
-          console.log(`📊 WORKFLOW LOAD: After filtering - ${workflowConnections.length} valid connections`)
-          console.log(`📊 WORKFLOW LOAD: Final connections:`, JSON.stringify(workflowConnections, null, 2))
+
+
         } else {
-          console.log(`⚠️ WORKFLOW LOAD: No workflow connections found for form ${formId}`)
+
         }
       } catch (error) {
         console.error('Error loading workflow connections:', error)
@@ -624,45 +620,12 @@ export const createFormPersistenceSlice: StateCreator<
       
       // Create default linear connections if no connections exist
       // and immediately save them to the database
+      // No longer automatically creating default linear connections
+      // This responsibility is now moved to the workflow editor UI
       if (workflowConnections.length === 0 && blocks.length > 1) {
-        console.log('No existing connections found, creating default linear workflow');
-        
-        try {
-          // Sort blocks by order to ensure proper sequence
-          const sortedBlocks = [...blocks].sort((a, b) => a.order_index - b.order_index);
-          
-          // Create connections from each block to the next one
-          workflowConnections = sortedBlocks.slice(0, -1).map((block, index) => {
-            const nextBlock = sortedBlocks[index + 1];
-            return {
-              id: uuidv4(),
-              sourceId: block.id,
-              targetId: nextBlock.id,
-              order_index: index,
-              conditionType: 'always', // Default connection type
-              conditions: [] // Empty conditions array for default connections
-            };
-          });
-          
-          console.log(`Created ${workflowConnections.length} default linear connections`);
-          
-          // Save these default connections to the database
-          if (formId && workflowConnections.length > 0) {
-            const dbEdges = workflowConnections.map((conn, index) => ({
-              form_id: formId,
-              source_block_id: conn.sourceId,
-              target_block_id: conn.targetId,
-              order_index: index
-            }));
-            
-            const supabase = createClient()
-            await supabase
-              .from('workflow_edges')
-              .insert(dbEdges);
-          }
-        } catch (error) {
-          console.error('Error creating default connections:', error);
-        }
+
+        // We'll leave the workflowConnections array empty
+        // The user will need to create connections manually in the workflow editor
       }
       
       // Update the store with form and blocks

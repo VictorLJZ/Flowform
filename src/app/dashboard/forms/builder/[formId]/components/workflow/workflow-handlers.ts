@@ -140,33 +140,39 @@ export const useEdgeClickHandler = (): EdgeMouseHandler => {
  */
 export const useEdgeDoubleClickHandler = (): EdgeMouseHandler => {
   const removeConnection = useFormBuilderStore(state => state.removeConnection);
-  const selectedElementId = useFormBuilderStore(state => state.selectedElementId);
   const selectElement = useFormBuilderStore(state => state.selectElement);
   
   return useCallback((event: React.MouseEvent, edge: Edge<WorkflowEdgeData>) => {
-    event.preventDefault();
-    event.stopPropagation();
+    // Extract the connection ID from the edge
+    const connectionId = edge.id;
     
-    // Remove the edge
-    removeConnection(edge.id);
+    // Confirm deletion
+    const confirmDelete = window.confirm('Are you sure you want to delete this connection?');
     
-    // Deselect it if it was selected
-    if (selectedElementId === edge.id) {
+    if (confirmDelete) {
+      // Remove the connection
+      removeConnection(connectionId);
+      
+      // Unselect the element
       selectElement(null);
-    }
-    
-    // Force explicit re-ordering of blocks based on the updated connection graph
-    setTimeout(() => {
-      try {
-        const store = useFormBuilderStore.getState();
-        if (typeof store.syncBlockOrderWithConnections === 'function') {
-          store.syncBlockOrderWithConnections();
+      
+      // In our decoupled architecture, we don't automatically reorder blocks
+      // when connections are removed. We do validate connections to ensure
+      // all connections point to valid blocks.
+      setTimeout(() => {
+        try {
+          const store = useFormBuilderStore.getState();
+          // Validate connections to ensure they point to valid blocks
+          if (typeof store.validateConnections === 'function') {
+            store.validateConnections();
+            console.log('Validated connections after removing a connection');
+          }
+        } catch (error) {
+          console.error('Failed to validate connections:', error);
         }
-      } catch (error) {
-        console.error('Failed to sync block order:', error);
-      }
-    }, 50);
-  }, [removeConnection, selectedElementId, selectElement]);
+      }, 50);
+    }
+  }, [removeConnection, selectElement]);
 };
 
 /**
@@ -209,16 +215,19 @@ export const useConnectionHandler = (): OnConnect => {
       setSourceNodeId(null);
       setTargetNodeId(null);
       
-      // Force explicit re-ordering of blocks based on the updated connection graph
-      // This is a direct immediate reordering to ensure UI updates properly
+      // In our decoupled architecture, we don't automatically reorder blocks when connections change
+      // Instead, we leave it as a manual operation that can be triggered from the UI
+      // However, we still validate connections to ensure they point to valid blocks
       setTimeout(() => {
         try {
           const store = useFormBuilderStore.getState();
-          if (typeof store.syncBlockOrderWithConnections === 'function') {
-            store.syncBlockOrderWithConnections();
+          // Validate connections to ensure they point to valid blocks
+          if (typeof store.validateConnections === 'function') {
+            store.validateConnections();
+            console.log('Validated connections after creating new connection');
           }
         } catch (error) {
-          console.error('Failed to sync block order:', error);
+          console.error('Failed to validate connections:', error);
         }
       }, 50);  // Small delay to ensure the store has been updated
     },

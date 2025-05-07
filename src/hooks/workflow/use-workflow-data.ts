@@ -68,14 +68,35 @@ export function useWorkflowData() {
 
   // Convert connections to edges
   useEffect(() => {
-    console.log(`🔄 REACTFLOW: Converting ${connections.length} connections to ReactFlow edges`);
+    console.log(`🔎🔎 [WorkflowData] Converting ${connections.length} connections to ReactFlow edges`);
     
     if (connections.length > 0) {
-      console.log(`🧩 REACTFLOW: Connections data:`, JSON.stringify(connections, null, 2));
+      console.log(`🔎🔎 [WorkflowData] Connections data sample:`, 
+        connections.slice(0, 3).map(c => `${c.sourceId} -> ${c.targetId} (${c.conditionType})`));
+      
+      if (connections.length > 3) {
+        console.log(`🔎… [WorkflowData] ...and ${connections.length - 3} more connections`);
+      }
+    }
+    
+    // Validate that both source and target blocks exist for each connection
+    const validConnections = connections.filter(connection => {
+      const sourceExists = blocks.some(block => block.id === connection.sourceId);
+      const targetExists = blocks.some(block => block.id === connection.targetId);
+      
+      if (!sourceExists || !targetExists) {
+        console.error(`🚨🚨 [WorkflowData] Skipping invalid connection ${connection.id}: ${connection.sourceId} -> ${connection.targetId}. Source exists: ${sourceExists}, Target exists: ${targetExists}`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (validConnections.length !== connections.length) {
+      console.warn(`⚠️⚠️ [WorkflowData] Filtered out ${connections.length - validConnections.length} invalid connections`);
     }
     
     // Create edges from connections
-    const newEdges = connections.map(connection => {
+    const newEdges = validConnections.map(connection => {
       const edge = {
         id: connection.id,
         source: connection.sourceId,
@@ -88,13 +109,25 @@ export function useWorkflowData() {
         style: { strokeWidth: selectedElementId === connection.id ? 3 : 2 }
       };
       
-      console.log(`🔄 REACTFLOW: Created edge ${connection.id}: ${connection.sourceId} -> ${connection.targetId}`);
+      console.log(`🔎✅ [WorkflowData] Created edge ${connection.id}: ${connection.sourceId} -> ${connection.targetId}`);
       return edge;
     });
     
-    console.log(`📊 REACTFLOW: Setting ${newEdges.length} edges in ReactFlow`);
+    console.log(`🔎📊 [WorkflowData] Setting ${newEdges.length} edges in ReactFlow`);
     setEdges(newEdges);
-  }, [connections, selectedElementId, setEdges]);
+    
+    // Look for nodes that have no incoming or outgoing connections
+    const orphanedNodes = blocks.filter(block => {
+      const hasOutgoing = connections.some(conn => conn.sourceId === block.id);
+      const hasIncoming = connections.some(conn => conn.targetId === block.id);
+      return !hasOutgoing && !hasIncoming;
+    });
+    
+    if (orphanedNodes.length > 0) {
+      console.warn(`🔎⚠️ [WorkflowData] Found ${orphanedNodes.length} orphaned blocks with no connections:`, 
+        orphanedNodes.map(n => `${n.title || 'Untitled'} (${n.id})`));
+    }
+  }, [blocks, connections, selectedElementId, setEdges]);
 
   // Handle node position updates (when dragging nodes)
   const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node<WorkflowNodeData>) => {
