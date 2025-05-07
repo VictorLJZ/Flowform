@@ -33,7 +33,7 @@ export function useWorkspaceInitialization() {
       keepPreviousData: true, 
       loadingTimeout: 3000,
       onSuccess: (data) => {
-        console.log(`[useWorkspaceInitialization] Workspaces loaded:`, data?.length ?? 0);
+
         
         // Update the workspace store with fetched workspaces
         if (data && Array.isArray(data)) {
@@ -54,13 +54,13 @@ export function useWorkspaceInitialization() {
     const handleWorkspaceInitialization = async () => {
       // If user has no workspaces, create a default one
       if (workspaces.length === 0 && !creatingWorkspace.current) {
-        console.log('[useWorkspaceInitialization] Creating default workspace for user:', user.id);
+
         creatingWorkspace.current = true;
         
         try {
           // Create default workspace
           const newWorkspace = await initializeDefaultWorkspace(user.id);
-          console.log('[useWorkspaceInitialization] Created default workspace:', newWorkspace?.id);
+
           
           if (newWorkspace) {
             // Update workspaces cache with the new workspace
@@ -99,7 +99,7 @@ export function useWorkspaceInitialization() {
       
       if (!hasValidWorkspace) {
         // If current selection is invalid or missing, select the first workspace
-        console.log('[useWorkspaceInitialization] Setting first workspace as current:', workspaces[0].id);
+
         workspaceStore.setCurrentWorkspaceId(workspaces[0].id);
       }
     }

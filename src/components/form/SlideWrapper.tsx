@@ -74,7 +74,7 @@ export function SlideWrapper({
   
   // Debug the mode and onNext props
   useEffect(() => {
-    console.log('[SlideWrapper] Mode:', mode, 'isBuilder:', isBuilder, 'onNext exists:', !!onNext)
+
   }, [mode, isBuilder, onNext])
   
   // Update title ref when title prop changes
@@ -189,18 +189,13 @@ export function SlideWrapper({
   // Log when the block ref is connected - do this at the component level, not inside wrappedContent 
   useEffect(() => {
     if (containerRef.current && isViewer) {
-      console.log(`[BlockTracking] Block ${id} ref attached to DOM`);
+
       
       // Check if the blockRef prop exists and if it's the same as containerRef
       if (blockRef) {
-        console.log(`📍 DEBUG SlideWrapper:`, {
-          id,
-          'containerRef === blockRef': containerRef === blockRef,
-          containerRefValue: containerRef.current,
-          blockRefValue: blockRef.current
-        });
+
       } else {
-        console.log(`📌 DEBUG: No blockRef provided for SlideWrapper ${id}`);
+
       }
     }
   }, [containerRef, blockRef, id, isViewer]); // Fixed dependency array to not include .current property

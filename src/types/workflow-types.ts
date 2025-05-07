@@ -4,11 +4,13 @@ export interface Connection {
   id: string;
   sourceId: string;
   targetId: string;
-  condition?: ConditionRule;
-  order: number;
+  conditionType: 'always' | 'conditional' | 'fallback';
+  conditions: ConditionRule[];
+  order_index: number;
 }
 
 export interface ConditionRule {
+  id: string; // To identify individual conditions
   field: string;
   operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
   value: string | number | boolean;

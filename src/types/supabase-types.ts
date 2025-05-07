@@ -111,6 +111,30 @@ export interface BlockOption {
   created_at: string; // ISO date string
 }
 
+/**
+ * Database Table - Workflow Edges
+ * Represents a connection between two blocks in a form workflow
+ */
+export interface WorkflowEdge {
+  id: string; // UUID
+  form_id: string; // UUID, references forms.form_id
+  source_block_id: string; // UUID, references form_blocks.id
+  target_block_id: string; // UUID, references form_blocks.id
+  
+  // New fields for enhanced condition system
+  condition_type: 'always' | 'conditional' | 'fallback'; // Type of condition
+  conditions: any | null; // Array of conditions (stored as JSONB)
+  
+  // Keep legacy fields for backward compatibility
+  condition_field: string | null; // Field to evaluate in the condition (legacy)
+  condition_operator: string | null; // Operator for the condition (legacy)
+  condition_value: any | null; // Value for the condition comparison (legacy, stored as JSONB)
+  
+  order_index: number; // Order of the edge in the workflow
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+}
+
 export interface FormResponse {
   id: string; // UUID
   form_id: string; // UUID, references forms.form_id
@@ -212,6 +236,8 @@ export interface CompleteForm extends Form {
     dynamic_config?: DynamicBlockConfig;
     options?: BlockOption[];
   })[];
+  // Workflow connections for the form
+  workflow_edges?: WorkflowEdge[];
   // For versioned forms, the ID of the form version
   version_id?: string;
 }

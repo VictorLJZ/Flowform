@@ -2,7 +2,7 @@
 
 import { StateCreator } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import type { FormPersistenceSlice } from '@/types/form-store-slices'
+import type { FormPersistenceSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
@@ -60,11 +60,12 @@ export const createFormPersistenceSlice: StateCreator<
         status: formData.status || 'draft'
       }
       
-      // Include workflow connections in settings
+      // Include node positions in settings but not connections
+      // Connections will be saved separately to workflow_edges table
       const formSettings = {
         ...updatedFormData.settings,
         workflow: {
-          connections: connections
+          nodePositions: get().nodePositions
         }
       }
       
@@ -126,6 +127,61 @@ export const createFormPersistenceSlice: StateCreator<
       try {
         result = await saveFormWithBlocks(formInput, backendBlocks as any)
         console.log('DEBUG - Form saved successfully, result:', JSON.stringify(result, null, 2))
+        
+        // Now save connections to the workflow_edges table
+        if (result?.form?.form_id) {
+          const formId = result.form.form_id;
+          console.log(`Saving ${connections.length} connections to workflow_edges table for form ${formId}`)
+          
+          try {
+            // First delete any existing connections
+            await supabase
+              .from('workflow_edges')
+              .delete()
+              .eq('form_id', formId);
+            
+            // If there are connections to save, insert them
+            if (connections.length > 0) {
+              console.log(`🔄 WORKFLOW DEBUG: Saving ${connections.length} connections to database`);
+              console.log(`🔄 WORKFLOW DEBUG: Original connections:`, JSON.stringify(connections, null, 2));
+              
+              // Prepare connection data for database format
+              const workflowEdges = connections.map((conn, index) => {
+                const edge = {
+                  form_id: formId,
+                  source_block_id: conn.sourceId,
+                  target_block_id: conn.targetId,
+                  condition_field: conn.condition?.field || null,
+                  condition_operator: conn.condition?.operator || null,
+                  condition_value: conn.condition?.value || null,
+                  order_index: index
+                };
+                
+                console.log(`🔄 WORKFLOW DEBUG: Mapped edge ${index}:`, JSON.stringify(edge, null, 2));
+                return edge;
+              });
+              
+              console.log(`🔄 WORKFLOW DEBUG: Attempting to save ${workflowEdges.length} edges to database`);
+              
+              // Insert all connections in batch
+              const { data, error } = await supabase
+                .from('workflow_edges')
+                .insert(workflowEdges)
+                .select();
+              
+              if (error) {
+                console.error('❌ WORKFLOW ERROR: Failed to save workflow edges:', error);
+                // Don't throw here to avoid failing the entire save operation
+              } else {
+                console.log(`✅ WORKFLOW SUCCESS: Saved ${connections.length} workflow edges to database`);
+                console.log(`✅ WORKFLOW SUCCESS: Returned data:`, data);
+              }
+            }
+          } catch (edgesError) {
+            console.error('Error managing workflow edges:', edgesError);
+            // Don't throw here to avoid failing the entire save operation
+          }
+        }
       } catch (saveError: any) {
         console.error('DEBUG - Error details in saveFormWithBlocks:', saveError)
         throw saveError
@@ -266,35 +322,107 @@ export const createFormPersistenceSlice: StateCreator<
         return frontendBlock
       })
       
-      // Extract workflow connections from form settings
-      let workflowConnections: Array<{id: string; sourceId: string; targetId: string; order: number}> = []
-      
+      // Extract node positions from form settings
+      let nodePositions: Record<string, {x: number, y: number}> = {}
       try {
-        // Check if we have workflow settings
-        if (formData.settings && typeof formData.settings === 'object') {
-          const workflow = formData.settings.workflow as { connections?: any[] }
-          
-          if (workflow && Array.isArray(workflow.connections)) {
-            // Filter out any connections that reference blocks which no longer exist
-            workflowConnections = workflow.connections.filter((conn: any) => {
-              const sourceExists = blocks.some(block => block.id === conn.sourceId);
-              const targetExists = blocks.some(block => block.id === conn.targetId);
-              
-              if (!sourceExists || !targetExists) {
-                console.warn(`[loadForm] Skipping invalid connection: source=${conn.sourceId}, target=${conn.targetId}`);
-                return false;
-              }
-              
-              return true;
-            });
+        if (formData.settings?.workflow && typeof formData.settings.workflow === 'object') {
+          const workflow = formData.settings.workflow as { nodePositions?: Record<string, {x: number, y: number}> }
+          if (workflow.nodePositions && typeof workflow.nodePositions === 'object') {
+            nodePositions = workflow.nodePositions
           }
         }
       } catch (error) {
-        console.error('Error extracting workflow connections:', error);
-        workflowConnections = [];
+        console.error('Error extracting node positions:', error)
+        nodePositions = {}
+      }
+      
+      // Load connections from workflow_edges table
+      let workflowConnections: Array<{id: string; sourceId: string; targetId: string; order: number; condition?: any}> = []
+      
+      try {
+        console.log(`🔍 WORKFLOW LOAD: Loading workflow connections from database for form ${formId}...`)
+        const supabase = createClient()
+        const { data: edges, error } = await supabase
+          .from('workflow_edges')
+          .select('*')
+          .eq('form_id', formId)
+          .order('order_index', { ascending: true })
+        
+        if (error) {
+          console.error(`❌ WORKFLOW LOAD ERROR: Failed to fetch workflow edges:`, error)
+          throw error
+        }
+        
+        console.log(`🔍 WORKFLOW LOAD: Raw edges from database:`, JSON.stringify(edges, null, 2))
+        
+        if (edges && edges.length > 0) {
+          console.log(`🔍 WORKFLOW LOAD: Found ${edges.length} edges in database`)
+          
+          // Convert from database format to app format
+          workflowConnections = edges.map((edge: {
+            id: string;
+            source_block_id: string;
+            target_block_id: string;
+            order_index: number;
+            condition_field?: string;
+            condition_operator?: string;
+            condition_value?: any;
+          }) => {
+            const appConnection = {
+              id: edge.id,
+              sourceId: edge.source_block_id,
+              targetId: edge.target_block_id,
+              order: edge.order_index,
+              // Add condition if present
+              ...((edge.condition_field) ? {
+                condition: {
+                  field: edge.condition_field,
+                  operator: edge.condition_operator as any,
+                  value: edge.condition_value
+                }
+              } : {})
+            };
+            
+            console.log(`🔄 WORKFLOW LOAD: Converted edge ${edge.id}:`, JSON.stringify(appConnection, null, 2))
+            return appConnection;
+          })
+          
+          console.log(`🔍 WORKFLOW LOAD: Before filtering - ${workflowConnections.length} connections`)
+          
+          // Check block IDs before filtering
+          console.log(`🧩 WORKFLOW LOAD: Block IDs in this form:`, blocks.map(b => b.id))
+          
+          // Filter out connections referencing blocks that no longer exist
+          workflowConnections = workflowConnections.filter(conn => {
+            const sourceExists = blocks.some(block => block.id === conn.sourceId)
+            const targetExists = blocks.some(block => block.id === conn.targetId)
+            
+            if (!sourceExists) {
+              console.warn(`⚠️ WORKFLOW LOAD: Source block not found for connection: source=${conn.sourceId}, target=${conn.targetId}`)
+              return false
+            }
+            
+            if (!targetExists) {
+              console.warn(`⚠️ WORKFLOW LOAD: Target block not found for connection: source=${conn.sourceId}, target=${conn.targetId}`)
+              return false
+            }
+            
+            console.log(`✅ WORKFLOW LOAD: Valid connection found: ${conn.sourceId} -> ${conn.targetId}`)
+            return true
+          })
+          
+          console.log(`📊 WORKFLOW LOAD: After filtering - ${workflowConnections.length} valid connections`)
+          console.log(`📊 WORKFLOW LOAD: Final connections:`, JSON.stringify(workflowConnections, null, 2))
+        } else {
+          console.log(`⚠️ WORKFLOW LOAD: No workflow connections found for form ${formId}`)
+        }
+      } catch (error) {
+        console.error('Error loading workflow connections:', error)
+        workflowConnections = []
       }
       
       // Create default linear connections if no connections exist
+      // and immediately save them to the database
       if (workflowConnections.length === 0 && blocks.length > 1) {
         console.log('No existing connections found, creating default linear workflow');
         
@@ -315,6 +443,21 @@ export const createFormPersistenceSlice: StateCreator<
           });
           
           console.log(`Created ${workflowConnections.length} default linear connections`);
+          
+          // Save these default connections to the database
+          if (formId && workflowConnections.length > 0) {
+            const dbEdges = workflowConnections.map((conn, index) => ({
+              form_id: formId,
+              source_block_id: conn.sourceId,
+              target_block_id: conn.targetId,
+              order_index: index
+            }));
+            
+            const supabase = createClient()
+            await supabase
+              .from('workflow_edges')
+              .insert(dbEdges);
+          }
         } catch (error) {
           console.error('Error creating default connections:', error);
         }
@@ -341,7 +484,8 @@ export const createFormPersistenceSlice: StateCreator<
         },
         blocks: blocks,
         currentBlockId: blocks.length > 0 ? blocks[0].id : null,
-        connections: workflowConnections
+        connections: workflowConnections,
+        nodePositions
       })
     } catch (error) {
       console.error('Error loading form:', error)

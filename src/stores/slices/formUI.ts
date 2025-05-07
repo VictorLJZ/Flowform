@@ -1,7 +1,7 @@
 "use client"
 
 import { StateCreator } from 'zustand'
-import type { FormUISlice } from '@/types/form-store-slices'
+import type { FormUISlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 
 export const createFormUISlice: StateCreator<

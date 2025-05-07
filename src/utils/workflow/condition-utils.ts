@@ -48,11 +48,57 @@ export const getConditionSummary = (
     return 'data' in data && data.data !== undefined;
   };
 
-  // Get condition based on the type with proper null checking
-  const condition = isEdge(connectionData) && connectionData.data?.connection?.condition
-    ? connectionData.data.connection.condition
-    : 'condition' in connectionData ? connectionData.condition : undefined;
+  // Get the connection from the data
+  const connection = isEdge(connectionData) 
+    ? connectionData.data?.connection 
+    : connectionData;
+    
+  // Extract the condition type with proper typing
+  const conditionType = connection?.conditionType || 'conditional';
 
+  // Check for condition type first
+  if (conditionType === 'always') {
+    return 'Always proceed to next block';
+  }
+
+  if (conditionType === 'fallback') {
+    return 'Proceed in all other cases';
+  }
+
+  // Try to use the conditions array first (new model)
+  if (connection?.conditions && connection.conditions.length > 0) {
+    // Display a summary of all conditions with AND logic
+    return connection.conditions
+      .map(cond => getSingleConditionSummary(cond, sourceBlock, sourceBlockType))
+      .join(' AND ');
+  }
+
+  // If we have no conditions to display, return a message based on the condition type
+  if (!connection?.conditions || connection.conditions.length === 0) {
+    if (connection?.conditionType === 'always') {
+      return 'Always proceed to next block';
+    } else if (connection?.conditionType === 'fallback') {
+      return 'Proceed in all other cases';
+    } else {
+      return 'No conditions set';
+    }
+  }
+  
+  // Use the first condition if we only have one
+  if (connection?.conditions.length === 1) {
+    return getSingleConditionSummary(connection.conditions[0], sourceBlock, sourceBlockType);
+  }
+  
+  // This shouldn't happen based on our logic above, but to satisfy TypeScript
+  return 'Multiple conditions';
+}
+
+// Helper function to get the text representation of a single condition
+export const getSingleConditionSummary = (
+  condition: any,
+  sourceBlock: FormBlock | null | undefined, 
+  sourceBlockType: string
+): string => {
   if (!condition) return 'No condition set';
   
   const { field, operator, value } = condition;
@@ -142,4 +188,4 @@ export const getConditionSummary = (
   
   // Default case
   return `When ${fieldName.toLowerCase()} ${operatorText} ${valueStr || '(empty)'}`;
-}; 
+}

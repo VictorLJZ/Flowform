@@ -19,6 +19,7 @@ import { Connection } from '@/types/workflow-types';
 interface ConditionValueProps extends ConditionComponentProps {
   sourceBlock: FormBlock | null | undefined;
   currentConnection: Connection | null;
+  conditionId?: string; // Optional ID to support multiple conditions
 }
 
 export function ConditionValue({ 
@@ -26,17 +27,24 @@ export function ConditionValue({
   sourceBlock, 
   sourceBlockType, 
   onConditionChange,
-  currentConnection
+  currentConnection,
+  conditionId
 }: ConditionValueProps) {
   // Local state to track input value before committing changes
   const [inputValue, setInputValue] = useState<string>('');
   
   // Use consistent connection and condition access pattern
   const connection = currentConnection || element?.data?.connection;
-  // Get current condition values with consistent optional chaining
-  const field = connection?.condition?.field || '';
-  const operator = connection?.condition?.operator || 'equals';
-  const currentValue = connection?.condition?.value;
+  
+  // Get the specific condition we're editing based on conditionId
+  const currentCondition = conditionId && connection?.conditions
+    ? connection.conditions.find(cond => cond.id === conditionId)
+    : connection?.conditions?.[0] || undefined;
+    
+  // Get current field, operator and value from the condition
+  const field = currentCondition?.field || '';
+  const operator = currentCondition?.operator || 'equals';
+  const currentValue = currentCondition?.value;
 
   // Skip rendering if no connection data
   if (!connection) return null;

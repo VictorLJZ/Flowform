@@ -11,6 +11,7 @@ export interface FieldOption {
   blockTypes: string[];
   operators: ConditionOperator[];
   valueOptions?: BlockChoiceOption[];
+  disabled?: boolean; // For header/separator options
 }
 
 // Operator option type

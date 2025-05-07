@@ -51,12 +51,18 @@ export async function saveWorkflowEdges(
         return true;
       })
       .map((connection, index) => {
-        // Extract condition data if it exists
-        const conditionField = connection.condition?.field || null;
-        const conditionOperator = connection.condition?.operator || null;
-        const conditionValue = connection.condition?.value !== undefined 
-          ? connection.condition.value 
-          : null;
+        // Extract condition data using the new model (conditions array + conditionType)
+        let conditionField = null;
+        let conditionOperator = null;
+        let conditionValue = null;
+        
+        // If connection is conditional and has at least one condition, use the first one for backward database compatibility
+        if (connection.conditionType === 'conditional' && connection.conditions && connection.conditions.length > 0) {
+          const primaryCondition = connection.conditions[0];
+          conditionField = primaryCondition.field || null;
+          conditionOperator = primaryCondition.operator || null;
+          conditionValue = primaryCondition.value !== undefined ? primaryCondition.value : null;
+        }
         
         return {
           id: connection.id, // Keep existing ID for upsert
@@ -66,6 +72,8 @@ export async function saveWorkflowEdges(
           condition_field: conditionField,
           condition_operator: conditionOperator,
           condition_value: conditionValue,
+          condition_type: connection.conditionType || 'always',
+          condition_json: connection.conditions && connection.conditions.length > 0 ? JSON.stringify(connection.conditions) : null,
           order_index: connection.order || index
         };
       });

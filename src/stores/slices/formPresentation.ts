@@ -1,7 +1,7 @@
 "use client"
 
 import { StateCreator } from 'zustand'
-import type { FormPresentationSlice } from '@/types/form-store-slices'
+import type { FormPresentationSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import type { SlideLayout } from '@/types/layout-types'
 import type { BlockPresentation, FormTheme } from '@/types/theme-types'

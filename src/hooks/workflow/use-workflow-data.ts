@@ -1,78 +1,42 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Node, Edge, useNodesState, useEdgesState } from 'reactflow';
 import { FormBlock } from '@/types/block-types';
-import { Connection, WorkflowNodeData, WorkflowEdgeData, NodePosition, WorkflowSettings } from '@/types/workflow-types';
+import { Connection, WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
-
-interface UseWorkflowDataProps {
-  blocks: FormBlock[];
-  connections: Connection[];
-  selectedElementId: string | null;
-  targetNodeId: string | null;
-}
 
 /**
  * Custom hook to convert form blocks and connections to ReactFlow nodes and edges
+ * This hook focuses solely on data transformation between app state and ReactFlow
  */
-export function useWorkflowData({
-  blocks,
-  connections,
-  selectedElementId,
-  targetNodeId
-}: UseWorkflowDataProps) {
+export function useWorkflowData() {
+  // Get data directly from the store instead of props
+  const blocks = useFormBuilderStore(state => state.blocks);
+  const connections = useFormBuilderStore(state => state.connections);
+  const selectedElementId = useFormBuilderStore(state => state.selectedElementId);
+  const nodePositions = useFormBuilderStore(state => state.nodePositions);
+  const updateNodePosition = useFormBuilderStore(state => state.updateNodePosition);
+  
+  // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdgeData>([]);
-  const initialNodesMapped = useRef(false);
 
-  // Convert blocks to nodes only once
+  // Convert blocks to nodes whenever blocks or node positions change
   useEffect(() => {
-    if (blocks.length > 0 && !initialNodesMapped.current) {
-      initialNodesMapped.current = true;
-      
-      // Get saved node positions from form settings if available
-      const formData = useFormBuilderStore.getState().formData;
-      const workflowSettings = formData.settings?.workflow as WorkflowSettings | undefined;
-      const savedPositions = workflowSettings?.nodePositions;
-      
+    if (blocks.length > 0) {
       // Sort blocks by order to ensure proper sequence
       const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
       
-      // Create a grid layout with a reasonable number of columns
+      // Default layout values
       const gridColumns = Math.min(4, Math.ceil(Math.sqrt(sortedBlocks.length)));
-      const horizontalGap = 300; // Consistent with auto-layout
-      const verticalGap = 180;   // Consistent with auto-layout
+      const horizontalGap = 300;
+      const verticalGap = 180;
       
       const newNodes = sortedBlocks.map((block, index) => {
-        // Check if we have a saved position for this node
-        if (savedPositions && savedPositions[block.id]) {
-          // Use saved position if available
-          return {
-            id: block.id,
-            type: 'formBlock',
-            position: savedPositions[block.id],
-            selected: selectedElementId === block.id,
-            data: { 
-              block, 
-              label: block.title || 'Untitled Block',
-              isConnectionTarget: targetNodeId === block.id
-            }
-          };
-        }
-        
-        // If no saved position, calculate grid position (left-to-right, then top-to-bottom)
-        const column = index % gridColumns;
-        const row = Math.floor(index / gridColumns);
-        
-        // If we have connections, try to optimize for linear flow
-        const hasLinearConnections = connections.some(conn => 
-          conn.sourceId === block.id || conn.targetId === block.id
-        );
-        
-        // For blocks with connections, prefer a simple left-to-right layout
-        // For blocks without connections, use the grid layout
-        const position = hasLinearConnections 
-          ? { x: index * horizontalGap, y: 100 }  // Linear horizontal layout
-          : { x: column * horizontalGap, y: row * verticalGap + 100 }; // Grid layout
+        // Use stored position from nodePositions or calculate a default position
+        const position = nodePositions[block.id] || {
+          x: (index % gridColumns) * horizontalGap,
+          y: Math.floor(index / gridColumns) * verticalGap + 100
+        };
         
         return {
           id: block.id,
@@ -81,91 +45,84 @@ export function useWorkflowData({
           selected: selectedElementId === block.id,
           data: { 
             block, 
-            label: block.title || 'Untitled Block',
-            isConnectionTarget: targetNodeId === block.id
+            label: block.title || 'Untitled Block'
           }
         };
       });
       
       setNodes(newNodes);
+    } else {
+      setNodes([]);
     }
-  }, [blocks, setNodes, connections, selectedElementId, targetNodeId]);
+  }, [blocks, nodePositions, selectedElementId, setNodes]);
 
-  // Update node selection and connection target flags without repositioning
+  // Update node selection status when selectedElementId changes 
   useEffect(() => {
     setNodes(nodes => 
       nodes.map(node => ({
         ...node,
-        selected: selectedElementId === node.id,
-        data: {
-          ...node.data,
-          isConnectionTarget: targetNodeId === node.id,
-        }
+        selected: selectedElementId === node.id
       }))
     );
-  }, [selectedElementId, targetNodeId, setNodes]);
+  }, [selectedElementId, setNodes]);
 
-  // Convert connections to edges - optimize to prevent unnecessary re-renders
+  // Convert connections to edges
   useEffect(() => {
+    console.log(`🔄 REACTFLOW: Converting ${connections.length} connections to ReactFlow edges`);
+    
     if (connections.length > 0) {
-      const newEdges = connections.map(connection => ({
+      console.log(`🧩 REACTFLOW: Connections data:`, JSON.stringify(connections, null, 2));
+    }
+    
+    // Create edges from connections
+    const newEdges = connections.map(connection => {
+      const edge = {
         id: connection.id,
         source: connection.sourceId,
         target: connection.targetId,
         type: 'workflow',
         selected: selectedElementId === connection.id,
         data: { connection },
-        zIndex: selectedElementId === connection.id ? 10 : 5, // Elevate selected edges
-        style: { strokeWidth: selectedElementId === connection.id ? 3 : 2 } // Make selected edges thicker
-      }));
+        // Visual styling based on selection
+        zIndex: selectedElementId === connection.id ? 10 : 5,
+        style: { strokeWidth: selectedElementId === connection.id ? 3 : 2 }
+      };
       
-      // Instead of complete replacement, update edges intelligently
-      setEdges(prevEdges => {
-        // If counts don't match, just replace all
-        if (prevEdges.length !== newEdges.length) {
-          return newEdges;
-        }
-        
-        // Check if any essential properties changed
-        const hasChanges = newEdges.some((edge, i) => {
-          const prevEdge = prevEdges[i];
-          return (
-            edge.id !== prevEdge.id ||
-            edge.source !== prevEdge.source ||
-            edge.target !== prevEdge.target ||
-            edge.selected !== prevEdge.selected ||
-            // Deep compare the condition only
-            JSON.stringify(edge.data?.connection?.condition) !== 
-            JSON.stringify(prevEdge.data?.connection?.condition)
-          );
-        });
-        
-        // Return new array only if there are changes
-        return hasChanges ? newEdges : prevEdges;
-      });
-    } else {
-      // If no connections, clear the edges
-      setEdges([]);
-    }
-  }, [connections, setEdges, selectedElementId]);
+      console.log(`🔄 REACTFLOW: Created edge ${connection.id}: ${connection.sourceId} -> ${connection.targetId}`);
+      return edge;
+    });
+    
+    console.log(`📊 REACTFLOW: Setting ${newEdges.length} edges in ReactFlow`);
+    setEdges(newEdges);
+  }, [connections, selectedElementId, setEdges]);
 
-  // Apply a new layout to the nodes
-  const applyNodePositions = useCallback((positions: { [id: string]: { x: number; y: number } }) => {
+  // Handle node position updates (when dragging nodes)
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node<WorkflowNodeData>) => {
+    // Save the new position to the store
+    if (node.positionAbsolute) {
+      updateNodePosition(node.id, {
+        x: node.positionAbsolute.x,
+        y: node.positionAbsolute.y
+      });
+    }
+  }, [updateNodePosition]);
+  
+  // Apply positions from the store when they change
+  const applyNodePositions = useCallback(() => {
     setNodes(nodes => 
       nodes.map(node => ({
         ...node,
-        position: positions[node.id] || node.position
+        position: nodePositions[node.id] || node.position
       }))
     );
-  }, [setNodes]);
+  }, [setNodes, nodePositions]);
 
   return {
     nodes,
     edges,
-    setNodes,
-    setEdges,
     onNodesChange,
     onEdgesChange,
+    handleNodeDragStop,
     applyNodePositions
   };
 } 

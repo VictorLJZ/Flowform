@@ -8,8 +8,11 @@
 import type { FormBlock } from './block-types';
 import type { SlideLayout } from './layout-types';
 import type { FormData } from './form-builder-types';
-import type { Connection } from './workflow-types';
+import type { Connection, ConditionRule } from './workflow-types';
 import type { BlockPresentation, FormTheme } from './theme-types';
+
+// Re-export types needed in other files
+export type { Connection };
 
 /**
  * Core Form Data Slice
@@ -74,16 +77,48 @@ export interface FormUISlice {
 
 /**
  * Workflow Slice
- * Manages connections between blocks
+ * Manages connections between blocks and workflow UI state
  */
 export interface FormWorkflowSlice {
+  // Core data
   connections: Connection[];
+  nodePositions: Record<string, { x: number; y: number }>;
   
-  // Actions
+  // UI state
+  selectedElementId: string | null;
+  isConnecting: boolean;
+  sourceNodeId: string | null;
+  targetNodeId: string | null;
+  
+  // ReactFlow state
+  nodes: any[];
+  edges: any[];
+  
+  // Selection actions
+  selectElement: (elementId: string | null) => void;
+  
+  // Connection mode actions
+  setConnectingMode: (isConnecting: boolean, sourceId?: string | null) => void;
+  setIsConnecting: (isConnecting: boolean) => void;
+  setSourceNodeId: (nodeId: string | null) => void;
+  setTargetNodeId: (nodeId: string | null) => void;
+  
+  // Node position actions
+  updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
+  updateNodePositions: (positions: Record<string, { x: number; y: number }>) => void;
+  
+  // ReactFlow actions
+  setNodes: (nodes: any[]) => void;
+  setEdges: (edges: any[]) => void;
+  
+  // Connection actions
   setConnections: (connections: Connection[]) => void;
-  addConnection: (connection: Connection) => void;
+  addConnection: (connection: Connection) => string; // Returns the new ID
   updateConnection: (connectionId: string, updates: Partial<Connection>) => void;
   removeConnection: (connectionId: string) => void;
+  
+  // Sync actions
+  syncBlockOrderWithConnections: () => void; // Synchronizes block order with workflow connections
 }
 
 /**

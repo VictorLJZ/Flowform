@@ -152,8 +152,10 @@ export function useWorkflowNavigation({
     console.log(`Found ${outgoingConnections.length} outgoing connections`, 
       outgoingConnections.map(c => ({ 
         targetId: c.targetId, 
-        hasCondition: !!c.condition,
-        condition: c.condition ? `${c.condition.field} ${c.condition.operator} ${c.condition.value}` : 'none'
+        conditionType: c.conditionType || 'always',
+        hasConditions: !!(c.conditions && c.conditions.length > 0),
+        conditionsSummary: c.conditions && c.conditions.length > 0 ? 
+          c.conditions.map(cond => `${cond.field} ${cond.operator} ${cond.value}`).join(' AND ') : 'none'
       }))
     );
     
@@ -168,49 +170,82 @@ export function useWorkflowNavigation({
     }
     
     // First check for connections with conditions
-    const conditionalConnections = outgoingConnections.filter(conn => conn.condition);
-    const unconditionalConnections = outgoingConnections.filter(conn => !conn.condition);
+    // Separate connections based on their conditionType
+    const conditionalConnections = outgoingConnections.filter(conn => conn.conditionType === 'conditional');
+    const unconditionalConnections = outgoingConnections.filter(conn => conn.conditionType === 'always');
+    const fallbackConnections = outgoingConnections.filter(conn => conn.conditionType === 'fallback');
     
-    console.log(`Found ${conditionalConnections.length} conditional and ${unconditionalConnections.length} unconditional connections`);
+    console.log(`Found ${conditionalConnections.length} conditional, ${unconditionalConnections.length} unconditional, and ${fallbackConnections.length} fallback connections`);
     
-    // First try to find a matching condition
+    // First try to find a connection with matching conditions
     for (const connection of conditionalConnections) {
-      if (connection.condition) {
-        try {
+      // Skip connections without conditions
+      if (!connection.conditions || connection.conditions.length === 0) continue;
+      
+      try {
+        // Check if ALL conditions are met (AND logic)
+        let allConditionsMet = true;
+        
+        for (const condition of connection.conditions) {
           const conditionMet = evaluateCondition(
-            connection.condition, 
-            currentAnswer, 
+            condition,
+            currentAnswer,
             currentBlock.blockTypeId || 'unknown'
           );
           
           console.log(`Evaluating condition for connection to ${connection.targetId}: ${conditionMet ? 'MATCH' : 'no match'}`);
           
-          if (conditionMet) {
-            const targetIndex = findBlockIndex(connection.targetId);
-            if (targetIndex >= 0) {
-              console.log(`Condition matched, navigating to block at index ${targetIndex}`);
-              
-              // Add this path to navigation history for debugging
-              setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${connection.targetId} (condition: ${connection.condition?.field} ${connection.condition?.operator} ${connection.condition?.value})`]);
-              
-              return targetIndex;
-            }
+          // If any condition fails, the whole connection fails (AND logic)
+          if (!conditionMet) {
+            allConditionsMet = false;
+            break;
           }
-        } catch (error) {
-          console.error(`Error evaluating condition for connection ${connection.id}:`, error);
         }
+        
+        // If all conditions are met, navigate to this target
+        if (allConditionsMet) {
+          const targetIndex = findBlockIndex(connection.targetId);
+          if (targetIndex >= 0) {
+            console.log(`Conditions matched, navigating to block at index ${targetIndex}`);
+            
+            // Add this path to navigation history for debugging
+            const conditionSummary = connection.conditions.map(c => 
+              `${c.field} ${c.operator} ${c.value}`
+            ).join(' AND ');
+            
+            setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${connection.targetId} (${conditionSummary})`]);
+            
+            return targetIndex;
+          }
+        }
+      } catch (error) {
+        console.error(`Error evaluating conditions for connection ${connection.id}:`, error);
       }
     }
     
-    // If no condition matched, look for a connection without a condition (the "always" path)
+    // If no conditional path matched, try an "always" path
     if (unconditionalConnections.length > 0) {
-      const defaultConnection = unconditionalConnections[0]; // Take the first unconditional connection
-      const targetIndex = findBlockIndex(defaultConnection.targetId);
+      const alwaysConnection = unconditionalConnections[0]; // Take the first 'always' connection
+      const targetIndex = findBlockIndex(alwaysConnection.targetId);
       if (targetIndex >= 0) {
-        console.log(`Using default connection to block at index ${targetIndex}`);
+        console.log(`Using 'always' connection to block at index ${targetIndex}`);
         
         // Add this path to navigation history for debugging
-        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${defaultConnection.targetId} (default)`]);
+        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${alwaysConnection.targetId} (always)`]);
+        
+        return targetIndex;
+      }
+    }
+    
+    // If no 'always' path exists, try a fallback path
+    if (fallbackConnections.length > 0) {
+      const fallbackConnection = fallbackConnections[0]; // Take the first fallback connection
+      const targetIndex = findBlockIndex(fallbackConnection.targetId);
+      if (targetIndex >= 0) {
+        console.log(`Using fallback connection to block at index ${targetIndex}`);
+        
+        // Add this path to navigation history for debugging
+        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${fallbackConnection.targetId} (fallback)`]);
         
         return targetIndex;
       }

@@ -52,6 +52,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   const setBlocks = useFormBuilderStore(state => state.setBlocks);
   const setCurrentBlockId = useFormBuilderStore(state => state.setCurrentBlockId);
   const connections = useFormBuilderStore(state => state.connections);
+  const setConnections = useFormBuilderStore(state => state.setConnections);
   
   const { form, isLoading, error, mutate } = useForm(formId)
   const { toast } = useToast()
@@ -85,6 +86,8 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Load form data from API
   useEffect(() => {
     if (form) {
+      console.log('🔄 FORM LOAD: Loading form data from API');
+      
       // Helper function to ensure we have a valid FormTheme
       const ensureValidTheme = (themeData: Record<string, unknown> | null): FormTheme => {
         if (!themeData) return defaultFormTheme;
@@ -129,7 +132,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
             title: block.title || blockDef?.defaultTitle || '',
             description: block.description || '',
             required: !!block.required,
-            order: block.order_index || index,
+            order_index: block.order_index || index,
             settings: block.settings || {}
           }
         })
@@ -141,8 +144,72 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
           setCurrentBlockId(transformedBlocks[0].id)
         }
       }
+      
+      // Process workflow connections from API response
+      if (form.workflow_edges && Array.isArray(form.workflow_edges)) {
+        console.log(`🔄 FORM LOAD: Processing ${form.workflow_edges.length} workflow connections from API`);
+        
+        // Transform workflow edges to our internal Connection format
+        const connections = form.workflow_edges.map(edge => {
+          // Determine condition type based on edge data
+          const hasCondition = !!edge.condition_field;
+          const conditionType = hasCondition ? 
+            (edge.condition_type || 'conditional') : 
+            (edge.condition_type || 'always');
+          
+          // Create the conditions array
+          const conditions = [];
+          
+          // If there's a condition field, add it to the conditions array
+          if (hasCondition) {
+            conditions.push({
+              id: edge.id + '-condition-1', // Generate a unique ID for the condition
+              field: edge.condition_field,
+              operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
+              value: edge.condition_value
+            });
+          }
+          
+          // Try to parse conditions JSON if it exists
+          if (edge.conditions) {
+            try {
+              const parsedConditions = typeof edge.conditions === 'string' ? 
+                JSON.parse(edge.conditions) : edge.conditions;
+              if (Array.isArray(parsedConditions)) {
+                // Use the parsed conditions instead
+                return {
+                  id: edge.id,
+                  sourceId: edge.source_block_id,
+                  targetId: edge.target_block_id,
+                  order_index: edge.order_index || 0,
+                  conditionType: conditionType as 'always' | 'conditional' | 'fallback',
+                  conditions: parsedConditions
+                };
+              }
+            } catch (e) {
+              console.warn('Failed to parse condition_json:', e);
+            }
+          }
+          
+          // Return the standardized connection format
+          return {
+            id: edge.id,
+            sourceId: edge.source_block_id,
+            targetId: edge.target_block_id,
+            order_index: edge.order_index || 0,
+            conditionType: conditionType as 'always' | 'conditional' | 'fallback',
+            conditions: conditions
+          };
+        });
+        
+        // Set connections in the store
+        setConnections(connections);
+        console.log(`🔄 FORM LOAD: Set ${connections.length} connections in store`);
+      } else {
+        console.log('🔄 FORM LOAD: No workflow connections found in API response');
+      }
     }
-  }, [form, setFormData, setBlocks, setCurrentBlockId])
+  }, [form, setFormData, setBlocks, setCurrentBlockId, setConnections])
   
   const handlePublish = async () => {
     if (isPublishing) return

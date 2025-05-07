@@ -20,7 +20,7 @@ export function useWorkspaces() {
 
   // Fetcher function defined with explicit typing
   const fetcher = async ([, uid]: [string, string]): Promise<Workspace[]> => {
-    console.log(`[useWorkspaces] Fetching workspaces for user: ${uid}`);
+
     return await getUserWorkspacesClient(uid);
   };
 
@@ -36,7 +36,7 @@ export function useWorkspaces() {
      dedupingInterval: 5000,
      // Standard error handling
      onError: (err) => {
-       console.error('[useWorkspaces] Error fetching workspaces:', err);
+       console.error('Error fetching workspaces:', err);
      }
   });
 

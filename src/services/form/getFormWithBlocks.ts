@@ -103,9 +103,31 @@ export async function getFormWithBlocks(formId: string): Promise<CompleteForm | 
     return blockWithDetails;
   });
 
-  // Return the complete form
+  // Fetch workflow connections for this form
+  let workflowEdges: any[] = [];
+  try {
+    const { data: edges, error: edgesError } = await supabase
+      .from('workflow_edges')
+      .select('*')
+      .eq('form_id', formId)
+      .order('order_index');
+
+    if (edgesError) {
+      console.error('Error fetching workflow edges:', edgesError);
+      // Don't throw here to allow form to load without connections
+    } else {
+      workflowEdges = edges || [];
+      console.log(`Fetched ${workflowEdges.length} workflow edges for form ${formId}`);
+    }
+  } catch (edgesError) {
+    console.error('Error fetching workflow edges:', edgesError);
+    // Don't throw here to allow form to load without connections
+  }
+
+  // Return the complete form with workflow edges
   return {
     ...form,
-    blocks: blocksWithDetails
+    blocks: blocksWithDetails,
+    workflow_edges: workflowEdges
   };
 }

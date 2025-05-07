@@ -64,20 +64,21 @@ const WorkflowEdge = ({
   // Determine edge style based on block type and condition
   const getEdgeStyles = () => {
     const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
-    const hasCondition = !!connection?.condition?.field
-    const conditionType = connection?.condition?.field || ''
-    const operatorType = connection?.condition?.operator || ''
+    const hasConditions = !!(connection?.conditions && connection?.conditions.length > 0)
+    const isConditional = connection?.conditionType === 'conditional'
+    const conditionField = hasConditions ? connection?.conditions[0]?.field || '' : ''
+    const operatorType = hasConditions ? connection?.conditions[0]?.operator || '' : ''
     
     // Edge colors - always use gold for selected state
     const baseColor = '#000000' // Black for normal edges
     const goldColor = '#f59e0b' // Amber-500 for selected/hovered edges
     
-    // Style settings - make edges more visible
+    // Style settings - make edges thinner and more subtle
     let dashArray = '0' // solid line by default
-    const edgeWidth = selected ? 3 : 2 // Increase thickness for better visibility
+    const edgeWidth = selected ? 1.5 : 1 // Thinner lines for better aesthetics
     
-    // Style based on condition presence/type
-    if (!hasCondition) {
+    // Style based on condition type and presence
+    if (!isConditional || !hasConditions) {
       dashArray = '0' // solid line = "always" connection
     } else if (operatorType === 'equals') {
       dashArray = '0' // solid line for "equals" conditions
@@ -94,8 +95,9 @@ const WorkflowEdge = ({
       strokeDasharray: dashArray,
       transition: 'stroke 0.2s, stroke-width 0.2s',
       sourceBlockType,
-      hasCondition,
-      conditionType,
+      hasConditions,
+      isConditional,
+      conditionField,
       operatorType
     }
   }
@@ -104,9 +106,14 @@ const WorkflowEdge = ({
   
   // Format condition text
   const formatCondition = () => {
-    if (!connection?.condition) return "Always proceed";
+    // Check if we have any conditions
+    if (!connection?.conditions || connection.conditions.length === 0 || connection.conditionType !== 'conditional') {
+      return connection?.conditionType === 'fallback' ? 'Fallback path' : 'Always proceed';
+    }
     
-    const { field, operator, value } = connection.condition;
+    // For multiple conditions, just show the first one for simplicity in the edge display
+    const primaryCondition = connection.conditions[0];
+    const { field, operator, value } = primaryCondition;
     
     // Format field name more clearly
     let fieldDisplay = field;
@@ -169,9 +176,19 @@ const WorkflowEdge = ({
   
   // Get the appropriate icon for the condition
   const getConditionIcon = () => {
-    if (!connection?.condition) return ArrowRight;
+    // Check condition type first
+    if (connection?.conditionType === 'always' || !connection?.conditions || connection.conditions.length === 0) {
+      return ArrowRight;
+    }
     
-    const { field, operator } = connection.condition;
+    // For fallback paths
+    if (connection?.conditionType === 'fallback') {
+      return ListFilter;
+    }
+    
+    // For conditional paths, use the first condition to determine the icon
+    const primaryCondition = connection.conditions[0];
+    const { field, operator } = primaryCondition;
     
     if (field.startsWith('choice:')) {
       return operator === 'equals' ? Check : X;
@@ -207,8 +224,8 @@ const WorkflowEdge = ({
           viewBox="0 0 10 10"
           refX="5"
           refY="5"
-          markerWidth="6"
-          markerHeight="6"
+          markerWidth="4" 
+          markerHeight="4"
           orient="auto"
         >
           <path 
@@ -241,18 +258,15 @@ const WorkflowEdge = ({
         <path
           id={id}
           d={edgePath}
-          className="workflow-edge-path"
-          stroke={selected || isHovered ? edgeStyles.goldColor : edgeStyles.stroke}
-          strokeWidth={selected || isHovered ? edgeStyles.strokeWidth + 1 : edgeStyles.strokeWidth}
-          strokeDasharray={edgeStyles.strokeDasharray}
           fill="none"
           markerEnd={`url(#arrow-${id})`}
+          strokeDasharray={edgeStyles.strokeDasharray}
+          className="pointer-events-stroke cursor-pointer transition-colors duration-200"
           style={{
-            pointerEvents: 'stroke',
-            cursor: 'pointer',
-            transition: 'stroke 0.2s',
-            // Force the stroke color via inline style to override any class styles
-            stroke: selected || isHovered ? '#f59e0b' : '#000000'
+            strokeWidth: selected || isHovered ? edgeStyles.strokeWidth + 1 : edgeStyles.strokeWidth,
+            stroke: selected || isHovered ? '#f59e0b' : '#000000',
+            strokeOpacity: 1,
+            visibility: 'visible'
           }}
         />
       </g>
@@ -260,22 +274,17 @@ const WorkflowEdge = ({
       {/* Enhanced label with clearer formatting - position ABOVE the edge */}
       <EdgeLabelRenderer>
         <div 
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY}px)`, // Position directly above the edge
-            pointerEvents: 'all',
-            color: selected || isHovered ? '#f59e0b' : edgeStyles.stroke,
-            backgroundColor: selected ? '#fff8e6' : 'white',
-            borderColor: selected ? '#f59e0b' : isHovered ? '#f59e0b80' : '#e2e8f0',
-            maxWidth: '280px',
-            zIndex: 1000, // Very high z-index to ensure it's always on top
-            opacity: 1, // Always visible
-          }}
           className={`
-            nodrag nopan px-3 py-2 rounded-md text-xs shadow-md border 
-            transition-colors flex gap-2 font-medium
-            ${selected ? 'shadow-md' : isHovered ? 'shadow-lg' : ''}
+            nodrag nopan px-3 py-2 rounded-md text-xs border flex gap-2 font-medium
+            absolute pointer-events-auto max-w-[280px] z-[9999] opacity-100 transition-colors
+            ${selected ? 'bg-amber-50 border-amber-500 text-amber-600 shadow-md' : 
+              isHovered ? 'bg-white border-amber-300 text-amber-700 shadow-lg' : 
+              'bg-white border-slate-200 text-slate-800 shadow-sm'}
           `}
+          style={{
+            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY}px)`,
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+          }}
           data-edge-id={id}
         >
           <div className="overflow-hidden flex flex-col">
@@ -291,16 +300,16 @@ const WorkflowEdge = ({
         <button
           type="button"
           onClick={handleDelete}
+          className={`
+            nodrag nopan w-7 h-7 flex items-center justify-center 
+            bg-red-100 hover:bg-red-200 text-red-600 rounded-full border border-red-300 
+            group edge-delete-button absolute pointer-events-auto z-20 
+            shadow-sm transition-all duration-200
+            ${selected || isHovered ? 'opacity-100' : 'opacity-0'}
+          `}
           style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 60}px)`,
-            pointerEvents: 'all',
-            zIndex: 20,
-            opacity: selected || isHovered ? 1 : 0,
-            transition: 'opacity 0.2s, background-color 0.2s',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 60}px)`
           }}
-          className="nodrag nopan w-7 h-7 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full border border-red-300 group edge-delete-button"
           aria-label="Delete connection"
           title="Delete connection"
           data-edge-id={id}
@@ -313,29 +322,3 @@ const WorkflowEdge = ({
 }
 
 export default memo(WorkflowEdge)
-
-// Add CSS globally to ensure workflow edge paths are always visible
-const globalStyles = `
-.workflow-edge-path {
-  stroke-opacity: 1 !important;
-  visibility: visible !important;
-  fill: none !important;
-}
-
-.edge-wrapper.selected .workflow-edge-path,
-.edge-wrapper:hover .workflow-edge-path {
-  stroke: #f59e0b !important;
-}
-
-.edge-wrapper.selected marker path,
-.edge-wrapper:hover marker path {
-  fill: #f59e0b !important;
-}
-`;
-
-// Insert styles into document head to ensure they are applied
-if (typeof document !== 'undefined') {
-  const styleElement = document.createElement('style');
-  styleElement.textContent = globalStyles;
-  document.head.appendChild(styleElement);
-}

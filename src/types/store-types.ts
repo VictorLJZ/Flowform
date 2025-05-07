@@ -9,7 +9,7 @@ import type {
   FormUISlice,
   FormWorkflowSlice,
   FormPersistenceSlice
-} from './form-store-slices';
+} from './form-store-slices-types';
 
 /**
  * Analytics store state and actions
