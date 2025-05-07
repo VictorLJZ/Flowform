@@ -59,7 +59,7 @@ export async function publishFormWithFormBuilderStore(
             title: dbBlock.title || '',
             description: dbBlock.description || '',
             required: !!dbBlock.required,
-            order: dbBlock.order_index || 0,
+            order_index: dbBlock.order_index || 0,
             settings: dbBlock.settings || {}
           };
         });

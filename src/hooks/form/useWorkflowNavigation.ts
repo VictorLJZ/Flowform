@@ -2,7 +2,10 @@ import { useState, useCallback, useMemo } from 'react';
 import { Connection, ConditionRule } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 
-type Answer = string | number | string[] | boolean | any[];
+// Using unknown[] is more type-safe than any[] but still allows for flexibility
+// We need this flexibility due to the variety of answer types in the system
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Answer = string | number | string[] | boolean | any;
 
 interface WorkflowNavigationProps {
   blocks: FormBlock[];
@@ -147,7 +150,7 @@ export function useWorkflowNavigation({
     // Find all connections where this block is the source
     const outgoingConnections = connections.filter(
       conn => conn.sourceId === currentBlock.id
-    ).sort((a, b) => a.order - b.order);
+    ).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     
     console.log(`Found ${outgoingConnections.length} outgoing connections`, 
       outgoingConnections.map(c => ({ 

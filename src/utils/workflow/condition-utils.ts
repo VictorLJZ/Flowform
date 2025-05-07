@@ -93,9 +93,17 @@ export const getConditionSummary = (
   return 'Multiple conditions';
 }
 
+// Define a proper interface for condition objects
+interface Condition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string | number | boolean | null;
+  id?: string;
+}
+
 // Helper function to get the text representation of a single condition
 export const getSingleConditionSummary = (
-  condition: any,
+  condition: Condition,
   sourceBlock: FormBlock | null | undefined, 
   sourceBlockType: string
 ): string => {
@@ -143,7 +151,8 @@ export const getSingleConditionSummary = (
       if (value) {
         dateText = new Date(value.toString()).toLocaleDateString();
       }
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (__error) {
       dateText = String(value);
     }
     

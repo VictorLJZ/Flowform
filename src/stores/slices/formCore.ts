@@ -26,7 +26,7 @@ export const createFormCoreSlice: StateCreator<
   [],
   [],
   FormCoreSlice
-> = (set, get) => ({
+> = (set) => ({
   // State
   formData: { ...defaultFormData },
   isLoading: false,

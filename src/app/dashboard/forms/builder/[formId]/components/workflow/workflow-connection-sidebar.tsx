@@ -12,6 +12,7 @@ import { Save } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 
 export default function WorkflowConnectionSidebar() {
+  // Place ALL hooks at the top level of the component to comply with React rules
   const blocks = useFormBuilderStore(state => state.blocks)
   const connections = useFormBuilderStore(state => state.connections)
   const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
@@ -21,26 +22,28 @@ export default function WorkflowConnectionSidebar() {
   // Track when we need to save to the database
   const [hasPendingSave, setHasPendingSave] = useState(false)
   
-  // Find the selected connection
+  // Find the selected connection - computed value, not a hook
   const connection = connections.find(conn => conn.id === selectedElementId)
-  if (!connection) return null
   
-  // Find the source and target blocks
-  const sourceBlock = blocks.find(b => b.id === connection.sourceId)
-  const targetBlock = blocks.find(b => b.id === connection.targetId)
+  // Find source and target blocks - computed values, not hooks
+  const sourceBlock = connection ? blocks.find(b => b.id === connection.sourceId) : null
+  const targetBlock = connection ? blocks.find(b => b.id === connection.targetId) : null
   const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
   
   // Create a pseudo-Edge object for compatibility with existing components
-  const element: Edge<WorkflowEdgeData> = {
+  const element = connection ? {
     id: connection.id,
     source: connection.sourceId,
     target: connection.targetId,
     data: { connection },
     type: 'workflow'
-  }
+  } as Edge<WorkflowEdgeData> : null
   
   // Handle condition type changes (always, conditional, fallback)
   const handleConditionTypeChange = useCallback((conditionType: 'always' | 'conditional' | 'fallback') => {
+    // Don't proceed if no connection is selected
+    if (!connection) return;
+    
     // Update the connection with the new condition type
     const connectionUpdate: Partial<Connection> = {
       conditionType
@@ -70,6 +73,9 @@ export default function WorkflowConnectionSidebar() {
   
   // Handle changes to a specific condition within a connection
   const handleConditionChange = useCallback((key: string, value: string | number | boolean, conditionId?: string) => {
+    // Don't proceed if no connection is selected
+    if (!connection) return;
+    
     if (!conditionId || !connection.conditions) {
       console.error('Missing conditionId or conditions array')
       return
@@ -81,7 +87,7 @@ export default function WorkflowConnectionSidebar() {
     
     if (conditionIndex >= 0) {
       // Create updated condition object
-      let updatedCondition = {
+      const updatedCondition = {
         ...conditions[conditionIndex],
         [key]: value
       }
@@ -117,6 +123,9 @@ export default function WorkflowConnectionSidebar() {
   
   // Add a new condition to the connection
   const handleAddCondition = useCallback(() => {
+    // Don't proceed if no connection is selected
+    if (!connection) return;
+    
     // Create a new default condition with a unique ID
     const newCondition: ConditionRule = {
       id: uuidv4(),
@@ -140,6 +149,9 @@ export default function WorkflowConnectionSidebar() {
   
   // Remove a condition from the connection
   const handleRemoveCondition = useCallback((conditionId: string) => {
+    // Don't proceed if no connection is selected
+    if (!connection) return;
+    
     // Get current conditions
     const currentConditions = [...(connection.conditions || [])]
     
@@ -160,25 +172,35 @@ export default function WorkflowConnectionSidebar() {
   
   // Save changes to the database
   const handleSaveChanges = useCallback(() => {
-    if (hasPendingSave) {
-      try {
-        console.log(`Saving connection ${connection.id} to database`)
-        
-        // Save the form to persist changes to database
-        saveForm()
-        
-        // Reset the pending save flag
-        setHasPendingSave(false)
-      } catch (error) {
-        console.error('Error saving connection:', error)
-      }
+    // Don't proceed if no connection is selected
+    if (!connection || !hasPendingSave) return;
+    
+    try {
+      console.log(`Saving connection ${connection.id} to database`)
+      
+      // Save the form to persist changes to database
+      saveForm()
+      
+      // Reset the pending save flag
+      setHasPendingSave(false)
+    } catch (error) {
+      console.error('Error saving connection:', error)
     }
-  }, [connection.id, hasPendingSave, saveForm])
+  }, [connection, hasPendingSave, saveForm])
   
   // Create a wrapper function to adapt our parameter order to what ConditionCard expects
   const adaptedConditionChangeHandler = useCallback((conditionId: string, key: string, value: string | number | boolean) => {
     handleConditionChange(key, value, conditionId)
   }, [handleConditionChange])
+  
+  // If no connection is selected, show a message
+  if (!connection || !element) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-4 text-muted-foreground">
+        No connection selected
+      </div>
+    )
+  }
   
   return (
     <div className="flex flex-col h-full overflow-hidden workflow-connection-sidebar">

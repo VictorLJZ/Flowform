@@ -66,10 +66,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setCurrentWorkspaceId: (workspaceId) => {
 
         set({ currentWorkspaceId: workspaceId });
-        // Log the state after setting for debugging
+        // Removed debugging code that was not being used
         setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const newState = get();
-
+          // State logging was previously here but removed
         }, 0);
       },
       setWorkspaces: (workspaces) => {

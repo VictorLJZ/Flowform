@@ -14,8 +14,7 @@ import {
   User,
   ArrowUpRight,
   Bookmark,
-  Sparkles,
-  ArrowRight
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkflowNodeData } from '@/types/workflow-types'
@@ -91,7 +90,6 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
   const Icon = iconMap[block.blockTypeId as keyof typeof iconMap] || FileText
   const [isHovered, setIsHovered] = useState(false)
   const [isOutputHandleHovered, setIsOutputHandleHovered] = useState(false)
-  const [isInputHandleHovered, setIsInputHandleHovered] = useState(false)
   
   // Get colors based on block type
   const blockColors = getBlockTypeColors(block.blockTypeId);

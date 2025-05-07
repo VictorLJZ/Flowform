@@ -17,6 +17,7 @@ export async function checkAuthStatus() {
 
     
     // Check session
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
 
@@ -26,6 +27,7 @@ export async function checkAuthStatus() {
     
     // Test workspace_members table
     if (session?.user?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { data: memberData, error: memberError, status: memberStatus } = await supabase
         .from('workspace_members')
         .select('workspace_id, role')
@@ -35,6 +37,7 @@ export async function checkAuthStatus() {
 
       
       // Test workspaces table
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { data: wsData, error: wsError, status: wsStatus } = await supabase
         .from('workspaces')
         .select('id, name, description')
@@ -43,6 +46,7 @@ export async function checkAuthStatus() {
 
       
       // Test forms table
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { data: formsData, error: formsError, status: formsStatus } = await supabase
         .from('forms')
         .select('form_id, title, status')

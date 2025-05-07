@@ -2,7 +2,7 @@
 "use client"
 
 import { Button } from '@/components/ui/button'
-import { Wand2, HelpCircle, Layout } from 'lucide-react'
+import { HelpCircle, Layout } from 'lucide-react'
 
 interface WorkflowControlsProps {
   onAutoLayout: () => void;

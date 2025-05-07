@@ -2,7 +2,7 @@
 
 import { StateCreator } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import type { FormBlocksSlice } from '@/types/form-store-slices'
+import type { FormBlocksSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormBlock } from '@/types/block-types'
 import { getBlockDefinition } from '@/registry/blockRegistry'
@@ -38,11 +38,11 @@ export const createFormBlocksSlice: StateCreator<
       title: blockDef.defaultTitle || '',
       description: blockDef.defaultDescription || '',
       required: false,
-      order: newOrder,
+      order_index: newOrder,
       settings: blockDef.getDefaultValues() || {}
     }
  
-    const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order - b.order)
+    const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order_index - b.order_index)
     
     // Create a new connection from the last block to this new block
     let updatedConnections = [...connections]
@@ -50,9 +50,9 @@ export const createFormBlocksSlice: StateCreator<
     // Only add linear connection if blocks exist
     if (blocks.length > 0) {
       try {
-        // Find the block with the highest order (the current last block)
+        // Find the block with the highest order_index (the current last block)
         const lastBlock = blocks.reduce((prev, current) => 
-          prev.order > current.order ? prev : current
+          prev.order_index > current.order_index ? prev : current
         );
         
         // Create a new connection from the last block to the new block
@@ -60,7 +60,9 @@ export const createFormBlocksSlice: StateCreator<
           id: uuidv4(),
           sourceId: lastBlock.id,
           targetId: newBlockId,
-          order: connections.length
+          order_index: connections.length,
+          conditionType: 'always' as 'always' | 'conditional' | 'fallback',
+          conditions: []
         };
         
         updatedConnections = [...connections, newConnection];
@@ -78,8 +80,6 @@ export const createFormBlocksSlice: StateCreator<
   },
   
   updateBlock: (blockId: string, updates: Partial<FormBlock>) => {
-    const blockDef = getBlockDefinition(updates.blockTypeId || get().blocks.find(b => b.id === blockId)?.blockTypeId || '')
-    
     set((state) => ({
       blocks: state.blocks.map(block => 
         block.id === blockId 
@@ -133,8 +133,9 @@ export const createFormBlocksSlice: StateCreator<
               id: uuidv4(),
               sourceId: incoming.sourceId,
               targetId: outgoing.targetId,
-              condition: incoming.condition || outgoing.condition, // Keep any conditions
-              order: connections.length
+              conditions: incoming.conditions || outgoing.conditions || [], // Keep any conditions
+              conditionType: incoming.conditionType || outgoing.conditionType || 'always',
+              order_index: connections.length
             })
           }
         }

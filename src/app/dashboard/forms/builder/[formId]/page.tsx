@@ -81,7 +81,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
     return () => {
       if (saveTimer) clearTimeout(saveTimer);
     };
-  }, [viewMode, saveForm]); // Only run when view mode changes, not on every connection change
+  }, [viewMode, saveForm, connections.length]); // Include connections.length since it's used in the effect
   
   // Load form data from API
   useEffect(() => {

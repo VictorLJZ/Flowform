@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
-import { Node, Edge, useNodesState, useEdgesState } from 'reactflow';
-import { FormBlock } from '@/types/block-types';
-import { Connection, WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types';
+import { useNodesState, useEdgesState, Node } from 'reactflow';
+// Only importing what's actually used in this file
+import { WorkflowNodeData } from '@/types/workflow-types';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
 
 /**
@@ -17,14 +17,14 @@ export function useWorkflowData() {
   const updateNodePosition = useFormBuilderStore(state => state.updateNodePosition);
   
   // ReactFlow state
-  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdgeData>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   // Convert blocks to nodes whenever blocks or node positions change
   useEffect(() => {
     if (blocks.length > 0) {
       // Sort blocks by order to ensure proper sequence
-      const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
+      const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
       
       // Default layout values
       const gridColumns = Math.min(4, Math.ceil(Math.sqrt(sortedBlocks.length)));

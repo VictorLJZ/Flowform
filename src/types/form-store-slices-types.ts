@@ -8,8 +8,9 @@
 import type { FormBlock } from './block-types';
 import type { SlideLayout } from './layout-types';
 import type { FormData } from './form-builder-types';
-import type { Connection, ConditionRule } from './workflow-types';
+import type { Connection } from './workflow-types';
 import type { BlockPresentation, FormTheme } from './theme-types';
+import type { Node, Edge } from 'reactflow';
 
 // Re-export types needed in other files
 export type { Connection };
@@ -91,8 +92,8 @@ export interface FormWorkflowSlice {
   targetNodeId: string | null;
   
   // ReactFlow state
-  nodes: any[];
-  edges: any[];
+  nodes: Node[];
+  edges: Edge[];
   
   // Selection actions
   selectElement: (elementId: string | null) => void;
@@ -108,8 +109,8 @@ export interface FormWorkflowSlice {
   updateNodePositions: (positions: Record<string, { x: number; y: number }>) => void;
   
   // ReactFlow actions
-  setNodes: (nodes: any[]) => void;
-  setEdges: (edges: any[]) => void;
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
   
   // Connection actions
   setConnections: (connections: Connection[]) => void;

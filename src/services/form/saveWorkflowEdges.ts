@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection, ConditionRule } from '@/types/workflow-types';
+import type { Connection } from '@/types/workflow-types';
 
 /**
  * Save workflow edges to the database
@@ -10,10 +10,20 @@ import type { Connection, ConditionRule } from '@/types/workflow-types';
  * @param connections - Array of workflow connections
  * @returns Object containing success status and saved edges
  */
+interface WorkflowEdge {
+  id: string;
+  form_id: string;
+  source_id: string;
+  target_id: string;
+  condition_type?: string;
+  conditions?: object[];
+  order_index: number;
+}
+
 export async function saveWorkflowEdges(
   formId: string,
   connections: Connection[]
-): Promise<{ success: boolean, edges: any[] }> {
+): Promise<{ success: boolean, edges: WorkflowEdge[] }> {
   const supabase = createClient();
   
   if (!formId) {
@@ -74,7 +84,7 @@ export async function saveWorkflowEdges(
           condition_value: conditionValue,
           condition_type: connection.conditionType || 'always',
           condition_json: connection.conditions && connection.conditions.length > 0 ? JSON.stringify(connection.conditions) : null,
-          order_index: connection.order || index
+          order_index: connection.order_index || index
         };
       });
     

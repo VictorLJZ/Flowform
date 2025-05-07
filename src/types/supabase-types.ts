@@ -123,12 +123,17 @@ export interface WorkflowEdge {
   
   // New fields for enhanced condition system
   condition_type: 'always' | 'conditional' | 'fallback'; // Type of condition
-  conditions: any | null; // Array of conditions (stored as JSONB)
+  conditions: Array<{
+    id?: string;
+    field: string;
+    operator: string;
+    value: string | number | boolean | null;
+  }> | null; // Array of conditions (stored as JSONB)
   
   // Keep legacy fields for backward compatibility
   condition_field: string | null; // Field to evaluate in the condition (legacy)
   condition_operator: string | null; // Operator for the condition (legacy)
-  condition_value: any | null; // Value for the condition comparison (legacy, stored as JSONB)
+  condition_value: string | number | boolean | null; // Value for the condition comparison (legacy, stored as JSONB)
   
   order_index: number; // Order of the edge in the workflow
   created_at: string; // ISO date string

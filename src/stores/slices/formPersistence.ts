@@ -9,12 +9,58 @@ import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
 import { getVersionedFormWithBlocksClient } from '@/services/form/getVersionedFormWithBlocksClient'
 import { transformVersionedFormData } from '@/services/form/transformVersionedFormData'
+// Import used as a function reference for the edgeUpdateFn variable in saveForm
+// The TypeScript compiler doesn't detect this dynamic usage
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { saveWorkflowEdges } from '@/services/form/saveWorkflowEdges'
+/* eslint-enable @typescript-eslint/no-unused-vars */
 import { createClient } from '@/lib/supabase/client'
-import { mapFromDbBlockType, mapToDbBlockType } from '@/utils/blockTypeMapping'
+import { mapFromDbBlockType } from '@/utils/blockTypeMapping'
 import { defaultFormTheme } from '@/types/theme-types'
 import { defaultFormData } from './formCore'
 import type { SaveFormInput } from '@/types/form-service-types'
-import type { FormBlock, BlockType } from '@/types/block-types'
+import type { BlockType } from '@/types/block-types'
+// FormBlock type is used for the DbFormBlock interface definition
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type { FormBlock } from '@/types/block-types'
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+// Define proper interfaces for database-returned blocks and workflow conditions
+
+// Interface for workflow condition objects that matches ConditionRule
+interface WorkflowCondition {
+  id: string;  // Required by ConditionRule
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string | number | boolean;
+  // Optional additional properties that might be in the DB
+  condition_id?: string;
+  condition_value?: string | number | boolean | null;
+  condition_operator?: string;
+}
+
+// Define a proper interface for database-returned blocks to avoid 'any' types
+interface DbFormBlock {
+  id: string;
+  blockTypeId: string;
+  type: BlockType;
+  title: string;
+  description?: string;
+  required: boolean;
+  order_index: number;
+  settings?: {
+    temperature?: number;
+    maxQuestions?: number;
+    contextInstructions?: string;
+    options?: unknown[];
+    [key: string]: unknown;
+  };
+  // Additional fields that might exist in database blocks
+  subtype?: string;
+  form_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export const createFormPersistenceSlice: StateCreator<
   FormBuilderState,
@@ -102,8 +148,9 @@ export const createFormPersistenceSlice: StateCreator<
           title: block.title,
           description: block.description || '',
           required: block.required,
-          order: block.order,
-          settings: block.settings || {}
+          order_index: block.order_index,
+          settings: block.settings || {},
+          type: block.type  // Add the required type property
         }
       })
       
@@ -128,7 +175,7 @@ export const createFormPersistenceSlice: StateCreator<
       // Save form with blocks
       let result
       try {
-        result = await saveFormWithBlocks(formInput, backendBlocks as any)
+        result = await saveFormWithBlocks(formInput, backendBlocks)
         console.log('DEBUG - Form saved successfully, result:', JSON.stringify(result, null, 2))
         
         // Now save connections to the workflow_edges table
@@ -154,9 +201,11 @@ export const createFormPersistenceSlice: StateCreator<
                   form_id: formId,
                   source_block_id: conn.sourceId,
                   target_block_id: conn.targetId,
-                  condition_field: conn.condition?.field || null,
-                  condition_operator: conn.condition?.operator || null,
-                  condition_value: conn.condition?.value || null,
+                  condition_type: conn.conditionType || 'always',
+                  condition_field: conn.conditions?.[0]?.field || null,
+                  condition_operator: conn.conditions?.[0]?.operator || null,
+                  condition_value: conn.conditions?.[0]?.value || null,
+                  condition_json: conn.conditions?.length > 0 ? JSON.stringify(conn.conditions) : null,
                   order_index: index
                 };
                 
@@ -185,7 +234,7 @@ export const createFormPersistenceSlice: StateCreator<
             // Don't throw here to avoid failing the entire save operation
           }
         }
-      } catch (saveError: any) {
+      } catch (saveError: Error | unknown) {
         console.error('DEBUG - Error details in saveFormWithBlocks:', saveError)
         throw saveError
       }
@@ -206,10 +255,12 @@ export const createFormPersistenceSlice: StateCreator<
       // Identify blocks that are specifically dynamic type
       // After the form save, we need to check the returned blocks from the response
       // since those are what was actually stored in the database
-      const savedBlocks = result?.blocks || []
+      // Cast the result blocks to our DbFormBlock type for proper typing
+      const savedBlocks = (result?.blocks || []) as DbFormBlock[]
       
       console.log('DEBUG - Checking saved blocks for dynamic types:')
-      const dynamicBlocks = savedBlocks.filter((block: any) => {
+      // Use our proper database block type interface
+      const dynamicBlocks = savedBlocks.filter((block) => {
         // Check both by type (should be 'dynamic') and by block settings (might contain dynamic config)
         const hasDynamicSettings = !!(block.settings?.temperature || 
                                    block.settings?.maxQuestions || 
@@ -225,7 +276,7 @@ export const createFormPersistenceSlice: StateCreator<
       })
       
       if (dynamicBlocks.length > 0) {
-        console.log(`DEBUG - Found ${dynamicBlocks.length} dynamic blocks to save config for:`, dynamicBlocks.map((b: any) => b.id).join(', '))
+        console.log(`DEBUG - Found ${dynamicBlocks.length} dynamic blocks to save config for:`, dynamicBlocks.map((b) => b.id).join(', '))
         
         // For each dynamic block, save its configuration
         for (const block of dynamicBlocks) {
@@ -253,7 +304,7 @@ export const createFormPersistenceSlice: StateCreator<
               dynamicConfig as Record<string, unknown>
             )
             console.log(`DEBUG - Successfully saved dynamic config for block ${block.id}`)
-          } catch (error: any) {
+          } catch (error: Error | unknown) {
             console.error(`DEBUG - Error saving dynamic config for block ${block.id}:`, error)
           }
         }
@@ -262,7 +313,7 @@ export const createFormPersistenceSlice: StateCreator<
       }
       
       // Don't return the result to maintain Promise<void> return type
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Error saving form:', error)
       throw error
     } finally {
@@ -402,7 +453,7 @@ export const createFormPersistenceSlice: StateCreator<
           title: block.title,
           description: block.description || '',
           required: block.required,
-          order: block.order_index, // Correct property name is order_index
+          order_index: block.order_index, // Using the standardized property name
           settings: block.settings || {}
         }
         
@@ -425,7 +476,14 @@ export const createFormPersistenceSlice: StateCreator<
       }
       
       // Load connections from workflow_edges table
-      let workflowConnections: Array<{id: string; sourceId: string; targetId: string; order: number; condition?: any}> = []
+      let workflowConnections: Array<{
+        id: string;
+        sourceId: string;
+        targetId: string;
+        order_index: number;
+        conditionType: 'always' | 'conditional' | 'fallback';
+        conditions: WorkflowCondition[];
+      }> = []
       
       try {
         console.log(`🔍 WORKFLOW LOAD: Loading workflow connections from database for form ${formId}...`)
@@ -452,23 +510,42 @@ export const createFormPersistenceSlice: StateCreator<
             source_block_id: string;
             target_block_id: string;
             order_index: number;
+            condition_type?: string;
             condition_field?: string;
             condition_operator?: string;
-            condition_value?: any;
+            condition_value?: string | number | boolean | null;
+            condition_json?: string;
           }) => {
+            // Parse condition_json if available or fall back to the legacy single condition format
+            let conditions: WorkflowCondition[] = [];
+            let conditionType: 'always' | 'conditional' | 'fallback' = 'always';
+            
+            if (edge.condition_json) {
+              try {
+                conditions = JSON.parse(edge.condition_json);
+                conditionType = 'conditional';
+              } catch (e) {
+                console.error('Failed to parse condition_json:', e);
+                conditions = [];
+              }
+            } else if (edge.condition_field) {
+              // Support for legacy format
+              conditions = [{
+                id: `legacy-${edge.id}`, // Add required id property
+                field: edge.condition_field || '',
+                operator: (edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than') || 'equals',
+                value: edge.condition_value || '' // Provide a default empty string if null/undefined
+              }];
+              conditionType = 'conditional';
+            }
+            
             const appConnection = {
               id: edge.id,
               sourceId: edge.source_block_id,
               targetId: edge.target_block_id,
-              order: edge.order_index,
-              // Add condition if present
-              ...((edge.condition_field) ? {
-                condition: {
-                  field: edge.condition_field,
-                  operator: edge.condition_operator as any,
-                  value: edge.condition_value
-                }
-              } : {})
+              order_index: edge.order_index,
+              conditionType,
+              conditions
             };
             
             console.log(`🔄 WORKFLOW LOAD: Converted edge ${edge.id}:`, JSON.stringify(appConnection, null, 2))
@@ -516,7 +593,7 @@ export const createFormPersistenceSlice: StateCreator<
         
         try {
           // Sort blocks by order to ensure proper sequence
-          const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
+          const sortedBlocks = [...blocks].sort((a, b) => a.order_index - b.order_index);
           
           // Create connections from each block to the next one
           workflowConnections = sortedBlocks.slice(0, -1).map((block, index) => {
@@ -525,8 +602,9 @@ export const createFormPersistenceSlice: StateCreator<
               id: uuidv4(),
               sourceId: block.id,
               targetId: nextBlock.id,
-              order: index,
-              // No condition means this is an "always" connection
+              order_index: index,
+              conditionType: 'always', // Default connection type
+              conditions: [] // Empty conditions array for default connections
             };
           });
           

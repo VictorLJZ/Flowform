@@ -13,7 +13,6 @@ import {
   NodeDragHandler,
   XYPosition,
   OnConnect,
-  OnConnectStart,
   OnConnectStartParams
 } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,7 +31,8 @@ export function calculateAutoLayout(nodes: Node<WorkflowNodeData>[], connectionM
   
   // Find root nodes (nodes with no incoming connections)
   const hasIncoming = new Set<string>();
-  Object.entries(connectionMap).forEach(([source, targets]) => {
+  // Add all target nodes to the hasIncoming set
+  Object.values(connectionMap).forEach(targets => {
     targets.forEach(target => hasIncoming.add(target));
   });
   
@@ -249,7 +249,7 @@ export const useConnectionStartEndHandlers = () => {
     }
   }, [setIsConnecting, setSourceNodeId]);
 
-  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+  const onConnectEnd = useCallback(() => {
     // Always clean up connecting state
     setIsConnecting(false);
     setSourceNodeId(null);

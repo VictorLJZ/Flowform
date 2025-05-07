@@ -50,7 +50,8 @@ export function transformVersionedFormData(formData: CompleteForm): {
           id: conditionId,
           field: edge.condition_field,
           operator: (edge.condition_operator || 'equals') as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
-          value: edge.condition_value
+          // Ensure value is never null by providing appropriate defaults based on operator type
+          value: edge.condition_value === null ? '' : edge.condition_value
         }] : [];
       
       // Create properly typed Connection object

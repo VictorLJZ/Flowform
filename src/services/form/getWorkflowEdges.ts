@@ -44,6 +44,7 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
         
         if (edge.condition_field && edge.condition_operator) {
           condition = {
+            id: edge.condition_id || uuidv4(),
             field: edge.condition_field,
             operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
             value: edge.condition_value
@@ -54,7 +55,9 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
           id: edge.id || uuidv4(),
           sourceId: edge.source_block_id,
           targetId: edge.target_block_id,
-          order: edge.order_index || 0,
+          order_index: edge.order_index || 0,
+          conditionType: condition ? 'conditional' as const : 'always' as const,
+          conditions: condition ? [condition] : [],
           ...(condition && { condition })
         };
       });

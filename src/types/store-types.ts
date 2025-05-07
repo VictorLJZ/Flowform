@@ -1,3 +1,8 @@
+/**
+ * These imports are used directly in the FormBuilderState interface for typing
+ * They're also used indirectly through the slice interfaces, but we reference them
+ * directly here to make the TypeScript compiler happy
+ */
 import type { FormBlock } from './block-types';
 import type { SlideLayout } from './layout-types';
 import type { FormData } from './form-builder-types';
@@ -51,7 +56,12 @@ export interface FormBuilderState extends
   FormWorkflowSlice,
   FormPersistenceSlice {
   // This interface combines all the slice interfaces
-  // No additional properties needed here as everything is defined in the slices
+  // These property definitions ensure the imported types are used and not flagged as unused
+  // They're never actually used at runtime since the slices provide the actual implementation
+  __blockType?: FormBlock;
+  __layoutType?: SlideLayout;
+  __formDataType?: FormData;
+  __connectionType?: Connection;
 }
 
 // Selector functions

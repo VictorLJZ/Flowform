@@ -1,12 +1,11 @@
 "use client"
 
 import { memo, useMemo, useCallback, useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow'
+import { EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow'
 import { WorkflowEdgeData } from '@/types/workflow-types'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { Check, ArrowRight, X, ChevronUp, ChevronDown, ListFilter, Trash2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { getConditionSummary } from '@/utils/workflow/condition-utils'
+import { Trash2 } from 'lucide-react'
+
 
 const WorkflowEdge = ({
   id,
@@ -17,12 +16,10 @@ const WorkflowEdge = ({
   sourcePosition,
   targetPosition,
   data,
-  style = {},
   selected,
 }: EdgeProps<WorkflowEdgeData>) => {
   const blocks = useFormBuilderStore(state => state.blocks)
   const removeConnection = useFormBuilderStore(state => state.removeConnection)
-  const saveForm = useFormBuilderStore(state => state.saveForm)
   
   // Get the connection data for consistent access
   const connection = data?.connection || null;
@@ -34,7 +31,7 @@ const WorkflowEdge = ({
   }, [blocks, connection?.sourceId])
   
   // Get the target block details for condition display
-  const targetBlock = useMemo(() => {
+  useMemo(() => {
     if (!connection?.targetId) return null
     return blocks.find(block => block.id === connection.targetId)
   }, [blocks, connection?.targetId])
@@ -174,43 +171,7 @@ const WorkflowEdge = ({
     return `${fieldDisplay.toLowerCase()} ${operatorDisplay} ${valueDisplay}`;
   }
   
-  // Get the appropriate icon for the condition
-  const getConditionIcon = () => {
-    // Check condition type first
-    if (connection?.conditionType === 'always' || !connection?.conditions || connection.conditions.length === 0) {
-      return ArrowRight;
-    }
-    
-    // For fallback paths
-    if (connection?.conditionType === 'fallback') {
-      return ListFilter;
-    }
-    
-    // For conditional paths, use the first condition to determine the icon
-    const primaryCondition = connection.conditions[0];
-    const { field, operator } = primaryCondition;
-    
-    if (field.startsWith('choice:')) {
-      return operator === 'equals' ? Check : X;
-    }
-    
-    if (field === 'selected') {
-      return operator === 'equals' ? Check : X;
-    }
-    
-    if (field === 'rating' || field === 'answer') {
-      if (operator === 'greater_than') return ChevronUp;
-      if (operator === 'less_than') return ChevronDown;
-      if (operator === 'equals') return Check;
-      if (operator === 'not_equals') return X;
-    }
-    
-    return ListFilter; // default icon
-  }
-  
-  const ConditionIcon = getConditionIcon();
   const condition = formatCondition();
-  const labelBgColor = selected ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200';
   
   // Track hover state for the edge
   const [isHovered, setIsHovered] = useState(false);

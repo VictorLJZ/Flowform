@@ -139,8 +139,24 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     return blockWithDetails;
   });
 
+  // Define proper interface for workflow edges
+  interface WorkflowEdge {
+    id: string;
+    form_id: string;
+    source_block_id: string;
+    target_block_id: string;
+    order_index: number;
+    condition_type?: string;
+    condition_field?: string;
+    condition_operator?: string;
+    condition_value?: string | number | boolean | null;
+    condition_json?: string;
+    created_at?: string;
+    updated_at?: string;
+  }
+  
   // Fetch workflow connections for this form
-  let workflowEdges: any[] = [];
+  let workflowEdges: WorkflowEdge[] = [];
   try {
     const { data: edges, error: edgesError } = await supabase
       .from('workflow_edges')

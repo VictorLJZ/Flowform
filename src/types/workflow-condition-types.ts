@@ -215,7 +215,8 @@ export function formatConditionValue(value: string | number | boolean | undefine
     case 'date':
       try {
         return new Date(value.toString()).toLocaleDateString();
-      } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (__error) {
         return String(value);
       }
     default:

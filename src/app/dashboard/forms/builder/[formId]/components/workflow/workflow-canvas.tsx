@@ -5,32 +5,24 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ReactFlow, {
   Background, 
   Controls,
-  Node,
-  Edge,
   Panel,
   useReactFlow,
   ConnectionLineType,
-  useStoreApi,
-  ConnectionMode,
-  Connection as ReactFlowConnection,
-  OnConnectStart,
-  OnConnectEnd
+  ConnectionMode
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { v4 as uuidv4 } from 'uuid'
+
 import { useToast } from '@/components/ui/use-toast'
 import { ArrowUpRight } from 'lucide-react'
 
 // Import our components and types
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { useWorkflowData } from '@/hooks/workflow/use-workflow-data'
-import type { Connection } from '@/types/form-store-slices-types'
 import { CustomConnectionLine } from './workflow-connection-line'
 import WorkflowNode from './workflow-node'
 import WorkflowEdge from './workflow-edge'
 import WorkflowSidebar from './workflow-sidebar'
 import WorkflowControls from './workflow-controls'
-import type { WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types'
 // Import workflow handlers
 import { 
   useEdgeClickHandler, 
@@ -48,19 +40,15 @@ const edgeTypes = { workflow: WorkflowEdge }
 
 export default function WorkflowCanvas() {
   // Get data and actions from form builder store
-  const blocks = useFormBuilderStore(state => state.blocks || [])
   const connections = useFormBuilderStore(state => state.connections || [])
-  const addConnection = useFormBuilderStore(state => state.addConnection)
   const removeConnection = useFormBuilderStore(state => state.removeConnection)
   const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
   const selectElement = useFormBuilderStore(state => state.selectElement)
   const isConnecting = useFormBuilderStore(state => state.isConnecting)
-  const sourceNodeId = useFormBuilderStore(state => state.sourceNodeId)
-  const setConnectingMode = useFormBuilderStore(state => state.setConnectingMode)
   const updateNodePositions = useFormBuilderStore(state => state.updateNodePositions)
   
   // Local UI state (only for things that don't affect other components)
-  const [forceRefreshKey, setForceRefreshKey] = useState(0) 
+  const [forceRefreshKey] = useState(0) 
   const [isLayouting, setIsLayouting] = useState(false)
   const [initialRenderComplete, setInitialRenderComplete] = useState(false)
   const { toast } = useToast()
@@ -69,7 +57,6 @@ export default function WorkflowCanvas() {
   
   // Flow utilities
   const reactFlowInstance = useReactFlow()
-  const store = useStoreApi()
   const flowWrapperRef = useRef<HTMLDivElement>(null)
   
   // Convert blocks/connections to nodes/edges

@@ -1,20 +1,20 @@
 "use client"
 
-import { useState } from 'react';
+// Removed unused imports
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData, Connection, ConditionRule } from '@/types/workflow-types';
+import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Info, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+// Removed unused import: Separator
 import { ConditionFields } from './condition-fields';
 import { ConditionOperators } from './condition-operators';
 import { ConditionValue } from './condition-value';
 import { ConditionTypeSelector } from './condition-type-selector';
-import { v4 as uuidv4 } from 'uuid';
+// Removed unused import: uuidv4
 
 interface ConditionCardProps {
   element: Edge<WorkflowEdgeData>;
@@ -109,7 +109,7 @@ export function ConditionCard({
             {/* Render multiple conditions with AND logic */}
             {allConditions.length > 0 ? (
               <div className="space-y-3">
-                {allConditions.map((condition, index) => (
+                {allConditions.map((condition) => (
                   <div key={condition.id} className="pl-3 border-l-2 border-slate-200">
                     <div className="bg-slate-50 rounded-md p-3 relative">
                       {/* Delete condition button */}

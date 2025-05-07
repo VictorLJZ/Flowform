@@ -100,11 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         mutate(AUTH_SWR_KEY, null, { revalidate: false });
       }
-    } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
 
       mutate(AUTH_SWR_KEY, null, { revalidate: false });
     }
-  }, [supabase, isDev]);
+  }, [supabase]);
 
   return <AuthContext.Provider value={{ supabase, signOut }}>{children}</AuthContext.Provider>;
 }

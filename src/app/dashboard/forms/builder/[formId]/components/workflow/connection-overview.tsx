@@ -33,8 +33,7 @@ export function ConnectionOverview({
   // Determine if the connection has conditions based on the new model
   const hasConditions = 
     connection?.conditionType === 'conditional' || 
-    (connection?.conditions && connection.conditions.length > 0) ||
-    !!connection?.condition?.field;
+    (connection?.conditions && connection.conditions.length > 0);
 
   return (
     <Card className="p-0 shadow-sm border rounded-md overflow-hidden gap-0">

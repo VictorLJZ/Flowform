@@ -7,14 +7,21 @@
 type LogCategory = 'TAB-FOCUS' | 'WORKSPACE' | 'STORAGE' | 'AUTH' | 'NETWORK' | 'STATE';
 
 // Disabled debug logging
-export const debugLog = (category: LogCategory, message: string, data?: unknown) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const debugLog = (_category: LogCategory, _message: string, _data?: unknown) => {
   // No-op: all logging functionality has been disabled
 };
 
 // No-op helper functions maintaining the original API signatures
-export const tabFocusLog = (message: string, data?: unknown) => {};
-export const workspaceLog = (message: string, data?: unknown) => {};
-export const storageLog = (message: string, data?: unknown) => {};
-export const authLog = (message: string, data?: unknown) => {};
-export const networkLog = (message: string, data?: unknown) => {};
-export const stateLog = (message: string, data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const tabFocusLog = (_message: string, _data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const workspaceLog = (_message: string, _data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const storageLog = (_message: string, _data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const authLog = (_message: string, _data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const networkLog = (_message: string, _data?: unknown) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const stateLog = (_message: string, _data?: unknown) => {};
