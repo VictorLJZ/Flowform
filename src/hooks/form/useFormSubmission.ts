@@ -150,6 +150,42 @@ export const useFormSubmission = ({
         return;
     }
 
+    // Helper function to check if the answer is empty
+    const isEmptyAnswer = (ans: any): boolean => {
+      if (ans === undefined || ans === null) return true;
+      if (typeof ans === 'string') return ans.trim() === '';
+      if (Array.isArray(ans)) return ans.length === 0;
+      return false;
+    };
+
+    // For non-required blocks with empty answers, just move to the next section
+    if (!block.required && isEmptyAnswer(answer)) {
+      console.log(`Non-required block ${block.id} has empty answer, skipping submission and moving to next section`);
+      
+      // Save empty answer locally via the answers hook
+      saveCurrentAnswerRef.current(block.id, answer);
+      
+      if (isLastQuestion) {
+        console.log("[SubmitAnswer] Last question (empty), marking form complete");
+        localStorage.setItem(`${storageKey}-completed`, 'true');
+        setCompleted(true);
+        
+        try {
+          await onFormCompleteRef.current({});
+          console.log('[TRACKING DEBUG] onFormCompleteRef.current completed successfully');
+        } catch (error) {
+          console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);
+        }
+      } else {
+        // Move to next section
+        console.log("[SubmitAnswer] Non-required empty answer, moving next");
+        goToNext();
+      }
+      
+      // Skip the actual submission to the server
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
     
@@ -201,6 +237,24 @@ export const useFormSubmission = ({
       // Save answer locally via the answers hook
       saveCurrentAnswerRef.current(block.id, answer);
 
+      // Check if this was an AI conversation that should auto-advance
+      // Only proceed to next slide if:
+      //   1. It's not an AI block (normal form fields always advance) OR 
+      //   2. It's an AI block AND dynamicComplete is true AND there's no next question
+      const isAIBlock = block.blockTypeId === 'ai_conversation';
+      const hasNextQuestion = !!data.nextQuestion;
+      const shouldAdvance = !isAIBlock || (data.dynamicComplete === true && !hasNextQuestion);
+      
+      console.log('[FormSubmission] Checking if we should advance:', {
+        isAIBlock,
+        hasNextQuestion,
+        dynamicComplete: data.dynamicComplete ? true : false,
+        shouldAdvance,
+        isLastQuestion,
+        blockId: block.id,
+        blockType: block.blockTypeId
+      });
+
       if (isLastQuestion) {
         console.log("[SubmitAnswer] Last question, marking form complete");
         // Mark form as complete in local storage or state
@@ -223,9 +277,13 @@ export const useFormSubmission = ({
         } catch (error) {
           console.error('[TRACKING DEBUG] Error in onFormCompleteRef.current:', error);
         }
-      } else {
+      } else if (shouldAdvance) {
+        // For AI blocks, only move to next form section when we get the dynamicComplete flag
         console.log("[SubmitAnswer] Not last question, moving next");
         goToNext();
+      } else {
+        // For AI blocks that need to continue conversation, do not advance
+        console.log("[SubmitAnswer] AI conversation continuing - not advancing to next section");
       }
 
     } catch (error: unknown) {

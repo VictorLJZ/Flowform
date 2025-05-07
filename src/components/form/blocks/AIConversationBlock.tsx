@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 // import { cn } from "@/lib/utils" - removed unused import
@@ -139,7 +139,8 @@ export function AIConversationBlock({
     submitAnswer,
     onNext,
     onChange,
-    onUpdate: interactionUpdateAdapter
+    onUpdate: interactionUpdateAdapter,
+    maxQuestions: effectiveMaxQuestions
   })
   
   // Use our navigation hook to manage question navigation
@@ -169,6 +170,9 @@ export function AIConversationBlock({
   // Loading states
   const isLoading = isConversationLoading || isQuestionLoading || isLocalSubmitting
   
+  // Store the last valid nextQuestion from the API
+  const lastValidQuestionRef = useRef<string>('');
+  
   // Add debugging console logs to track state changes
   useEffect(() => {
     console.log('AIConversationBlock state updated:', {
@@ -182,6 +186,9 @@ export function AIConversationBlock({
   // Force UI updates when key props change - enhanced for debugging and reliability
   useEffect(() => {
     if (nextQuestion) {
+      // Remember this valid question so we don't lose it if API calls reset it temporarily
+      lastValidQuestionRef.current = nextQuestion;
+      
       console.log('Next question changed in parent component, updating UI', {
         question: nextQuestion.substring(0, 30) + '...',
         displayedQuestion: displayQuestion?.substring(0, 30) + '...',
@@ -192,11 +199,13 @@ export function AIConversationBlock({
       // This is critical to ensure the UI updates with the new question
       if (nextQuestion !== displayQuestion) {
         console.log('Forcing complete UI re-render in AIConversationBlock');
-        // Commented out as renderKey state is not being used
-        // setRenderKey(prev => prev + 1);
       }
+    } else if (lastValidQuestionRef.current && displayQuestion !== lastValidQuestionRef.current) {
+      // If nextQuestion is empty but we have a stored valid question, use that
+      console.log('Using stored valid question instead of empty nextQuestion:', 
+        lastValidQuestionRef.current.substring(0, 30) + '...');
     }
-  }, [nextQuestion, effectiveConversation.length, displayQuestion])
+  }, [nextQuestion, effectiveConversation.length, displayQuestion]);
 
   // Create a direct question display element - separate from the SlideWrapper title
   // This is necessary to show the AI-generated follow-up questions

@@ -12,6 +12,7 @@ interface UseConversationInteractionProps {
   onNext?: () => void;
   onChange?: (value: QAPair[]) => void;
   onUpdate?: () => void;
+  maxQuestions?: number;
 }
 
 interface UseConversationInteractionReturn {
@@ -28,8 +29,8 @@ interface UseConversationInteractionReturn {
 }
 
 /**
- * Hook to manage user interactions with the AI conversation
- * Handles input changes, form submissions, and keyboard interactions
+ * Hook to manage user interaction with the conversation
+ * Handles input, submission, and keyboard events
  */
 export function useConversationInteraction({
   conversation,
@@ -38,30 +39,35 @@ export function useConversationInteraction({
   isFirstQuestion,
   starterPrompt,
   submitAnswer,
-  // Not using onNext in this hook but it's in the interface
-  // onNext,
+  onNext,
   onChange,
   onUpdate,
+  maxQuestions = 5,
 }: UseConversationInteractionProps): UseConversationInteractionReturn {
   // Local component state
-  const [userInput, setUserInput] = useState("");
+  const [userInput, setUserInput] = useState<string>('');
   const [questionInputs, setQuestionInputs] = useState<Record<number, string>>(initialQuestionInputs || {});
-  
-  // Initialize userInput from stored inputs if available
-  useEffect(() => {
-    if (initialQuestionInputs && initialQuestionInputs[activeQuestionIndex]) {
-      setUserInput(initialQuestionInputs[activeQuestionIndex]);
-    } else {
-      setUserInput("");
-    }
-  }, [activeQuestionIndex, initialQuestionInputs]);
-  // Add a local loading state to prevent UI changes during submission
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
-  // Track whether we're changing an earlier answer that will reset later questions
   const [isChangingEarlierAnswer, setIsChangingEarlierAnswer] = useState(false);
-  
-  // Ref for textarea
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  
+  // Reset input when active question changes
+  useEffect(() => {
+    // If there's stored input for this question, use it
+    if (questionInputs[activeQuestionIndex]) {
+      setUserInput(questionInputs[activeQuestionIndex]);
+    } else {
+      // Otherwise clear the input
+      setUserInput('');
+      
+      // Check if we're going back to an earlier question
+      if (activeQuestionIndex < conversation.length && activeQuestionIndex !== conversation.length - 1) {
+        setIsChangingEarlierAnswer(true);
+      } else {
+        setIsChangingEarlierAnswer(false);
+      }
+    }
+  }, [activeQuestionIndex, questionInputs, conversation.length]);
   
   // Handle input change and update stored inputs for this question
   const handleInputChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -83,27 +89,79 @@ export function useConversationInteraction({
     }));
   }, [conversation.length, activeQuestionIndex, isFirstQuestion]);
   
-  // Handle form submission
+  // Handle the form submission with error handling and loading states
   const handleSubmit = useCallback(async () => {
-    // Don't submit if input is empty or already submitting
+    // Don't submit if there's no input or we're already submitting
     if (!userInput.trim() || isLocalSubmitting) return;
     
     try {
-      // Set local loading state
+      // Set the loading state 
       setIsLocalSubmitting(true);
       
-      // Determine the current question text based on state
-      const currentQuestion = isFirstQuestion 
-        ? starterPrompt 
-        : activeQuestionIndex < conversation.length 
-          ? conversation[activeQuestionIndex].question 
-          : '';
+      // Get the current question
+      let currentQuestion = "";
       
-      // Submit the answer
-      if (isChangingEarlierAnswer) {
-        console.log('Submitting answer for question', activeQuestionIndex, 'will reset later questions');
+      if (isFirstQuestion) {
+        currentQuestion = starterPrompt;
+      } else if (activeQuestionIndex < conversation.length) {
+        currentQuestion = conversation[activeQuestionIndex].question;
+      } else {
+        console.error('No active question found for submission');
+        return;
       }
       
+      // Reset 'changing earlier answer' flag if active
+      if (isChangingEarlierAnswer) {
+        setIsChangingEarlierAnswer(false);
+      }
+      
+      // Log the submission details for debugging
+      console.log('Submitting answer:', {
+        question: currentQuestion,
+        answer: userInput,
+        isFirstQuestion,
+        activeIndex: activeQuestionIndex,
+        conversationLength: conversation.length
+      });
+      
+      // Update the UI appropriately
+      const updatedQuestionInputs = {
+        ...questionInputs,
+        [activeQuestionIndex]: userInput,
+      };
+      
+      // Save the answer in internal state
+      setQuestionInputs(updatedQuestionInputs);
+      
+      // Clear the input field
+      setUserInput('');
+      
+      // If we're using the onChange callback (for builder mode)
+      if (onChange) {
+        // Create updated conversation for onChange handler
+        const updatedConversation = [...conversation];
+        
+        if (activeQuestionIndex < updatedConversation.length) {
+          // Update existing question
+          updatedConversation[activeQuestionIndex] = {
+            ...updatedConversation[activeQuestionIndex],
+            answer: userInput
+          };
+        } else {
+          // Add a new QA pair
+          updatedConversation.push({
+            question: currentQuestion,
+            answer: userInput,
+            timestamp: new Date().toISOString(),
+            is_starter: isFirstQuestion
+          });
+        }
+        
+        // Call the onChange handler with updated conversation
+        onChange(updatedConversation);
+      }
+      
+      // Invoke API submission
       const result = await submitAnswer(
         currentQuestion,
         userInput,
@@ -111,66 +169,46 @@ export function useConversationInteraction({
         isFirstQuestion
       );
       
-      // Log the result for debugging if needed
-      if (result) {
-        // Use type-safe property access
-        const hasNextQuestion = typeof result === 'object' && result !== null && 'nextQuestion' in result;
-        const conversationProp = typeof result === 'object' && result !== null && 'conversation' in result 
-          ? (result as {conversation?: QAPair[]}).conversation : undefined;
-        
-        console.log('Answer submitted successfully:', {
-          hasNextQuestion,
-          conversationLength: conversationProp?.length
-        });
-      }
-      
-      // Clear input after submission
-      setUserInput("");
-      
-      // Call onUpdate callback if provided
+      // Call onUpdate if present to trigger any parent component updates
       if (onUpdate) {
         onUpdate();
       }
       
-      // Call onChange with updated conversation if provided
-      if (onChange) {
-        // Create a copy with the new answer
-        const updatedConversation = isFirstQuestion
-          ? [{ question: starterPrompt, answer: userInput, timestamp: new Date().toISOString(), is_starter: true }] 
-          : [...conversation];
-        
-        // If answering an existing question, update that entry
-        if (!isFirstQuestion && activeQuestionIndex < conversation.length) {
-          updatedConversation[activeQuestionIndex] = {
-            ...updatedConversation[activeQuestionIndex],
-            answer: userInput
-          };
-        }
-        
-        onChange(updatedConversation);
+      // Handle the submission result
+      console.log('Answer submitted successfully:', {
+        hasNextQuestion: result?.nextQuestion !== undefined && result?.nextQuestion !== '',
+        conversationLength: result?.conversation?.length || '(unknown)'
+      });
+      
+      // Check if we've reached max questions after this submission
+      // If so, automatically navigate to the next section
+      if (conversation.length + 1 >= maxQuestions && onNext) {
+        console.log(`Reached maximum questions (${maxQuestions}). Automatically navigating to next section.`);
+        // Use a slight delay to allow the UI to update first
+        setTimeout(() => {
+          onNext();
+        }, 500);
       }
       
-      // Auto focus for better UX
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
     } catch (error) {
       console.error('Error submitting answer:', error);
     } finally {
       setIsLocalSubmitting(false);
-      setIsChangingEarlierAnswer(false);
     }
   }, [
-    userInput, 
-    isLocalSubmitting, 
-    isFirstQuestion, 
-    starterPrompt, 
-    activeQuestionIndex, 
-    conversation, 
-    isChangingEarlierAnswer, 
-    submitAnswer, 
-    onUpdate, 
-    onChange
+    userInput,
+    isLocalSubmitting,
+    isFirstQuestion,
+    starterPrompt,
+    activeQuestionIndex,
+    conversation,
+    isChangingEarlierAnswer,
+    questionInputs,
+    onChange,
+    submitAnswer,
+    onUpdate,
+    maxQuestions,
+    onNext
   ]);
   
   // Handle keyboard interactions (Shift+Enter to submit)

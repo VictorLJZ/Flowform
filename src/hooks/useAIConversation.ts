@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { SaveDynamicResponseInput, DynamicResponseData } from '@/types/form-service-types'
 
@@ -32,7 +32,15 @@ export const fetchers = {
         throw new Error(errorData.error || `Failed to fetch conversation: ${response.status}`);
       }
       
-      return response.json()
+      const data = await response.json();
+      
+      // Override isComplete to ensure we always show the conversation first
+      if (data && (data.conversationJustStarted || !data.nextQuestion)) {
+        console.log('Overriding isComplete to false to prevent automatic form advancement');
+        data.isComplete = false;
+      }
+      
+      return data;
     } catch (error) {
       console.error('Error in getConversation:', error)
       throw error
@@ -75,6 +83,9 @@ export const fetchers = {
 export function useAIConversation(responseId: string, blockId: string, formId: string, isBuilder: boolean) {
   const { mutate } = useSWRConfig();
   const conversationKey = isBuilder ? null : `${CONVERSATION_KEY_PREFIX}:${responseId}:${blockId}`;
+  
+  // Track if we've already triggered a revalidation to prevent loops
+  const [hasRevalidated, setHasRevalidated] = useState(false);
   
   // Fetch conversation data (only in viewer mode)
   const { data, error, isLoading, isValidating } = useSWR(
@@ -191,20 +202,24 @@ export function useAIConversation(responseId: string, blockId: string, formId: s
         isComplete: data.isComplete
       });
       
-      // CRITICAL: Force a re-validation if we don't have a nextQuestion and conversation isn't complete
-      // This helps when the backend succeeds in generating a question but the frontend doesn't notice
-      if (!data.nextQuestion && !data.isComplete && data.conversation?.length > 0) {
-        console.log('No next question but conversation not complete - forcing refresh');
+      // CRITICAL: Only force a re-validation if we've never had a nextQuestion yet
+      // This prevents overriding a valid question that just appeared
+      if (!data.nextQuestion && !data.isComplete && data.conversation?.length > 0 && !hasRevalidated) {
+        console.log('Initial load with no next question - triggering one-time revalidation');
+        
         // Use a small delay to avoid infinite loops
         const refreshTimer = setTimeout(() => {
           // Trigger a refresh of the data without any optimistic update
-          mutate(undefined, { revalidate: true });
+          mutate(conversationKey, undefined, { revalidate: true });
+          
+          // Set a flag to prevent repeated revalidations that could override a good question
+          setHasRevalidated(true);
         }, 1500);
         
         return () => clearTimeout(refreshTimer);
       }
     }
-  }, [data, isBuilder, mutate]);
+  }, [data, isBuilder, mutate, conversationKey, hasRevalidated]);
   
   return {
     ...derivedState,

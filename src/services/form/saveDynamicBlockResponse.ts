@@ -149,48 +149,69 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
       isNew = true;
     }
     
-    // Determine if we've reached max questions or if completion is explicitly set
-    // When truncating an earlier question, always consider the conversation incomplete
-    // so that a new question will be generated
-    let shouldMarkComplete = conversation.length >= config.max_questions;
+    // Process the conversation to generate the next question
+    let nextQuestion = '';
+    let isComplete = false;
     
-    // If explicitly provided in input, use that value, unless we're truncating
-    if (input.isComplete !== undefined) {
-      shouldMarkComplete = input.isComplete;
+    // Force isComplete to false if explicitly requested by the frontend
+    if (input.isComplete === false) {
+      isComplete = false;
+    }
+    // Check if we've reached the maximum number of questions
+    // FIXED: Set isComplete before generating a next question to prevent unnecessary AI calls
+    else if (conversation.length >= config.max_questions) {
+      console.log(`Conversation has reached maximum questions (${config.max_questions}). Marking as complete.`);
+      isComplete = true;
+      // FIXED: Don't generate a new question when we're at max questions
+      nextQuestion = '';
+      return {
+        success: true,
+        data: {
+          conversation,
+          nextQuestion: '', // Explicitly set to empty
+          isComplete: true
+        }
+      };
     }
     
-    // If we're truncating an earlier answer, always mark as incomplete to force question regeneration
-    if (typeof input.questionIndex === 'number' && input.questionIndex < existingResponse?.conversation.length) {
-      shouldMarkComplete = false;
-      console.log('Conversation marked as incomplete to regenerate questions after truncation');
-    }
-    
-    const isComplete = shouldMarkComplete;
-    
-    let nextQuestion: string | undefined;
-    
-    // Generate next question unless we've reached the limit
+    // Only generate a next question if we haven't reached max questions
     if (!isComplete) {
-      // Extract previous questions and answers for AI processing
-      const prevQuestions = conversation.map(pair => pair.question);
-      const prevAnswers = conversation.map(pair => pair.answer);
+      // Generate next question if we're not yet complete
+      const context = await getFormContextClient(input.formId, input.blockId);
       
-      // Get form context to help AI avoid redundant questions
-      const formContext = await getFormContextClient(input.formId, input.blockId);
+      // Extract questions and answers for the API
+      const prevQuestions = conversation.map(qa => qa.question);
+      const prevAnswers = conversation.map(qa => qa.answer);
       
-      const result = await processConversation({
-        prevQuestions,
-        prevAnswers,
-        instructions: config.ai_instructions || 'You are an interviewer asking follow-up questions based on previous responses.',
-        temperature: config.temperature,
-        formContext // Pass form context to AI
-      });
+      try {
+        // Process the conversation to generate a next question
+        const result = await processConversation({
+          prevQuestions,
+          prevAnswers,
+          formContext: context,
+          instructions: config.ai_instructions || 'You are an interviewer asking follow-up questions based on previous responses.',
+          temperature: config.temperature
+        });
       
-      if (result.success) {
-        nextQuestion = result.data;
-      } else {
-        console.error('Error generating next question:', result.error);
-        return { success: false, error: 'Failed to generate next question' };
+        if (result.success && result.data) {
+          nextQuestion = result.data;
+          console.log('Generated next question:', nextQuestion);
+          
+          // Set isComplete based on having a next question - if we have a next question we're definitely not complete
+          isComplete = false;
+        } else {
+          console.log('Failed to generate next question or no next question returned');
+          // Only mark as complete if we're at the max questions
+          isComplete = conversation.length >= config.max_questions;
+          
+          // Log the complete state
+          console.log(`Setting isComplete to ${isComplete} based on conversation length ${conversation.length} vs max ${config.max_questions}`);
+        }
+      } catch (aiError) {
+        console.error('Error generating next question:', aiError);
+        // If we can't generate a question, consider this complete to allow moving forward
+        isComplete = true;
+        nextQuestion = '';
       }
     }
     

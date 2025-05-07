@@ -37,6 +37,16 @@ export function useConversationDisplay({
     nextQ: ""
   });
   
+  // Store the last valid nextQuestion to maintain it even if API resets it
+  const lastValidNextQuestionRef = useRef<string>("");
+  
+  // Update lastValidNextQuestionRef when we get a valid nextQuestion
+  useEffect(() => {
+    if (nextQuestion) {
+      lastValidNextQuestionRef.current = nextQuestion;
+    }
+  }, [nextQuestion]);
+  
   // Force component re-render when key data changes
   // Not using forceUpdate currently, but commented for reference
   // const [forceUpdate, setForceUpdate] = useState(0);
@@ -89,26 +99,42 @@ export function useConversationDisplay({
   // Wrapped in useCallback to avoid unnecessary re-renders and dependency issues
   const determineCurrentQuestion = useCallback(() => {
     const currentState = {
-      isFirstQ: isFirstQuestion,
+      isFirstQ: isFirstQuestion, 
       promptText: starterPrompt,
       activeIndex: activeQuestionIndex,
       convoLength: conversation.length,
-      hasQuestion: activeQuestionIndex < conversation.length, 
-      nextQuestion: nextQuestion || "[none]"
+      hasQuestion: activeQuestionIndex < conversation.length,
+      nextQuestion: nextQuestion || "[none]",
+      storedValidQuestion: lastValidNextQuestionRef.current || "[none]"
     };
     
     console.log('Question determination data:', currentState);
-    
-    if (isFirstQuestion) {
-      return { text: starterPrompt, source: 'starter' };
-    } else if (activeQuestionIndex < conversation.length && conversation[activeQuestionIndex]?.question) {
-      return { text: conversation[activeQuestionIndex].question, source: 'conversation' };
-    } else if (nextQuestion) {
-      return { text: nextQuestion, source: 'api' };
-    } else {
-      return { text: "Loading next question...", source: 'loading' };
+
+    // Check for stored valid question when current nextQuestion is empty
+    if (!nextQuestion && lastValidNextQuestionRef.current) {
+      console.log('Using stored valid question instead of empty nextQuestion');
+      return { text: lastValidNextQuestionRef.current, source: 'stored_api' };
     }
-  }, [isFirstQuestion, starterPrompt, activeQuestionIndex, conversation, nextQuestion]);
+    // Always prioritize nextQuestion from the API over anything else if available
+    else if (nextQuestion) {
+      console.log('Using AI-generated next question');
+      return { text: nextQuestion, source: 'api' };
+    } 
+    // If there's a question at the current index in the conversation, use that
+    else if (activeQuestionIndex < conversation.length) {
+      console.log('Using existing conversation question');
+      return { text: conversation[activeQuestionIndex].question, source: 'conversation' };
+    } 
+    // Otherwise fall back to the starter prompt
+    else if (isFirstQuestion) {
+      console.log('Using starter prompt');
+      return { text: starterPrompt, source: 'starter' };
+    }
+    
+    // Empty string if we can't find a suitable question (shouldn't happen)
+    console.warn('No question could be determined');
+    return { text: '', source: 'fallback' };
+  }, [nextQuestion, conversation, activeQuestionIndex, isFirstQuestion, starterPrompt, lastValidNextQuestionRef]);
   
   // Update displayed question when key dependencies change
   useEffect(() => {

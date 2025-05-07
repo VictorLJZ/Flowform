@@ -256,16 +256,76 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       // For dynamic blocks, process conversation
       // We need to handle both string answers (for first submissions) and QAPair[] for ongoing conversations
       
+      // Get the dynamic block configuration first to check if it's required
+      const supabase = createServiceClient();
+      const { data: blockConfig, error: blockConfigError } = await supabase
+        .from('form_blocks')
+        .select('required')
+        .eq('id', blockId)
+        .single();
+      
+      if (blockConfigError) {
+        console.error('Error fetching block configuration:', blockConfigError);
+        throw blockConfigError;
+      }
+      
+      // Check if the block is required
+      const isRequired = blockConfig?.required || false;
+      
       // Check if we have either a direct answer string or complete conversation data
       const hasValidAnswerData = answer !== undefined && (typeof answer === 'string' || Array.isArray(answer));
       
-      if (!currentQuestion || !hasValidAnswerData) {
+      // Allow empty answers for non-required blocks
+      if ((!currentQuestion || !hasValidAnswerData) && isRequired) {
         return NextResponse.json(
           { error: "Current question and answer are required for dynamic blocks" },
           { status: 400 }
         )
       }
       
+      // If the block is not required and we don't have an answer, proceed to the next block
+      if ((!hasValidAnswerData || 
+          (typeof answer === 'string' && answer.trim() === '') || 
+          (Array.isArray(answer) && answer.length === 0)) && 
+          !isRequired) {
+        // Get the next block in sequence using the service client
+        const supabase = createServiceClient();
+        const { data: currentBlock } = await supabase
+          .from('form_blocks')
+          .select('order_index')
+          .eq('id', blockId)
+          .single();
+        
+        if (!currentBlock) {
+          throw new Error('Block not found');
+        }
+        
+        // Get the next block in order
+        const { data: nextBlock } = await supabase
+          .from('form_blocks')
+          .select('*')
+          .eq('form_id', formId)
+          .gt('order_index', currentBlock.order_index)
+          .order('order_index', { ascending: true })
+          .limit(1);
+        
+        if (!nextBlock || nextBlock.length === 0) {
+          // No more blocks, complete the form
+          await completeResponse(responseId, 'viewer');
+          
+          return NextResponse.json({
+            completed: true,
+            message: "Form completed"
+          }, { status: 200 })
+        }
+        
+        return NextResponse.json({
+          completed: false,
+          nextBlock: nextBlock[0],
+          dynamicComplete: true
+        }, { status: 200 })
+      }
+
       const isFirstQuestion = body.isFirstQuestion === true;
       let answerText: string;
       
@@ -341,14 +401,72 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       const conversation = [...currentConversation, newQAPair];
       
       // Check if we've reached the maximum number of questions
-      const isComplete = conversation.length >= (config?.max_questions || 5);
+      let isComplete = conversation.length >= (config?.max_questions || 5);
       
       // Generate the next question if not complete
       let nextQuestion = null;
       
       if (!isComplete) {
-        // TODO: Generate next question with AI - for now return a placeholder
-        nextQuestion = "What else would you like to share?";
+        // First, check if there's an existing next question in the conversation
+        const { data: existingResponse, error: existingError } = await serviceSupabase
+          .from('dynamic_block_responses')
+          .select('next_question')
+          .eq('response_id', responseId)
+          .eq('block_id', blockId)
+          .single();
+          
+        if (!existingError && existingResponse?.next_question) {
+          // Use the existing next question if available
+          nextQuestion = existingResponse.next_question;
+          console.log('Using existing next question from database:', nextQuestion.substring(0, 30) + '...');
+        }
+        
+        // Only generate a new question if we don't have one already
+        if (!nextQuestion) {
+          try {
+            // Import the actual AI service to generate next questions instead of hardcoded placeholder
+            const { processConversation } = await import('@/services/ai/processConversation');
+            
+            // Get form context for better question generation
+            const { getFormContextClient } = await import('@/services/form/getFormContextClient');
+            const context = await getFormContextClient(formId, blockId);
+            
+            // Extract questions and answers for the AI service
+            const prevQuestions = conversation.map(qa => qa.question);
+            const prevAnswers = conversation.map(qa => qa.answer);
+            
+            console.log('Generating next AI question with:', {
+              conversationLength: conversation.length,
+              lastAnswer: answerText.substring(0, 30) + '...',
+              hasContext: !!context,
+              formId,
+              blockId
+            });
+            
+            // Process the conversation to generate a next question
+            const result = await processConversation({
+              prevQuestions,
+              prevAnswers,
+              formContext: context,
+              instructions: config?.ai_instructions || 'You are an interviewer asking follow-up questions based on previous responses.',
+              temperature: config?.temperature || 0.7
+            });
+            
+            if (result.success && result.data) {
+              nextQuestion = result.data;
+              console.log('Generated next question:', nextQuestion);
+              isComplete = false; // If we have a next question, we're definitely not complete
+            } else {
+              console.log('Failed to generate next question:', result.error || 'No data returned');
+              // Only mark as complete if we're at the max questions
+              isComplete = conversation.length >= (config?.max_questions || 1);
+            }
+          } catch (aiError) {
+            console.error('Error generating next question with AI:', aiError);
+            // Fallback to placeholder if AI fails, TODO: Adib believes we should keep this but check with victor
+            nextQuestion = "Anything else you would like to add?";
+          }
+        }
       }
       
       // Save or update the conversation
@@ -357,6 +475,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           .from('dynamic_block_responses')
           .update({
             conversation: conversation,
+            next_question: nextQuestion,
             completed_at: isComplete ? new Date().toISOString() : null
           })
           .eq('id', existingConversation.id);
@@ -372,6 +491,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
             response_id: responseId,
             block_id: blockId,
             conversation: conversation,
+            next_question: nextQuestion,
             completed_at: isComplete ? new Date().toISOString() : null
           });
         
@@ -434,10 +554,35 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           }, { status: 200 })
         }
         
+        // Only set dynamicComplete to true when the conversation has actually reached
+        // the maximum number of questions AND there's no next question
+        // This prevents automatic advancement until the conversation is actually finished
+        const hasReachedMaxQuestions = conversation.length >= (config?.max_questions || 1);
+        
+        // FIXED: We need to ensure we respect isComplete when it comes from the AI response service
+        // shouldAdvance should be true if:
+        // 1. We've reached max questions OR 
+        // 2. We're explicitly told we're complete OR
+        // 3. The block is not required and we want to skip it
+        const isNotRequired = !isRequired;
+        const shouldAdvance = hasReachedMaxQuestions || isComplete || (isNotRequired && answer === '');
+        
+        console.log('AI conversation status:', {
+          conversationLength: conversation.length,
+          maxQuestions: config?.max_questions || 1,
+          hasNextQuestion: !!nextQuestion,
+          hasReachedMaxQuestions,
+          isComplete,
+          isRequired,
+          isNotRequired,
+          answerIsEmpty: answer === '',
+          shouldAdvance
+        });
+        
         return NextResponse.json({
           completed: false,
           nextBlock: nextBlock[0],
-          dynamicComplete: true
+          dynamicComplete: shouldAdvance
         }, { status: 200 })
       }
       
@@ -446,7 +591,8 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         completed: false,
         conversation: result.conversation,
         nextQuestion: result.nextQuestion,
-        isComplete: result.isComplete
+        isComplete: result.isComplete,
+        dynamicComplete: false
       }, { status: 200 })
     }
     else {
