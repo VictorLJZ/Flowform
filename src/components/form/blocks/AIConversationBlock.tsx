@@ -169,8 +169,15 @@ export function AIConversationBlock({
   // Loading states
   const isLoading = isConversationLoading || isQuestionLoading || isLocalSubmitting
   
-  // Component state to track rendering updates is not currently used
-  // const [renderKey, setRenderKey] = useState(0);
+  // Add debugging console logs to track state changes
+  useEffect(() => {
+    console.log('AIConversationBlock state updated:', {
+      isComplete,
+      hasReachedMaxQuestions,
+      conversationLength: effectiveConversation.length,
+      displayQuestion
+    });
+  }, [isComplete, hasReachedMaxQuestions, effectiveConversation.length, displayQuestion]);
   
   // Force UI updates when key props change - enhanced for debugging and reliability
   useEffect(() => {
@@ -213,7 +220,7 @@ export function AIConversationBlock({
       )}
       
       {/* Input area - only shown when appropriate and never in builder mode */}
-      {!isBuilder && (!isComplete && !hasReachedMaxQuestions) && (
+      {!isBuilder && (
         <div className="relative">
           <Textarea
             ref={textareaRef}
@@ -273,18 +280,6 @@ export function AIConversationBlock({
           ))}
         </AnimatePresence>
       </div>
-      
-      {/* Complete button shown when all questions are answered */}
-      {isComplete && onNext && (
-        <Button
-          type="button"
-          onClick={handleCompletingConversation}
-          disabled={isNextDisabled}
-          className="mt-2"
-        >
-          Complete
-        </Button>
-      )}
     </div>
   )
 

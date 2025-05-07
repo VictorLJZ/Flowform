@@ -39,7 +39,7 @@ export function useFormAnswers({
   const initializeAnswers = useCallback(() => {
     try {
       // Try to load existing answers from localStorage
-      let parsedData = {};
+      let parsedData: Record<string, string | number | string[] | QAPair[]> = {};
       try {
         const savedData = localStorage.getItem(storageKey);
         if (savedData) {
