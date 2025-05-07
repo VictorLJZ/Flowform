@@ -131,7 +131,15 @@ export interface FormPersistenceSlice {
   isVersioned: boolean;
   
   // Actions
+  // Main orchestration function that saves everything
   saveForm: () => Promise<void>;
+  
+  // Individual save functions for different concerns
+  saveFormAndBlocks: () => Promise<{ result: any, isExistingForm: boolean } | null>;
+  saveWorkflowEdges: (formId: string) => Promise<boolean>;
+  saveDynamicBlockConfigs: (result: any) => Promise<void>;
+  
+  // Load functions
   loadForm: (formId: string) => Promise<void>;
   loadVersionedForm: (formId: string) => Promise<void>;
 }

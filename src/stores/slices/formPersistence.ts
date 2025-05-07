@@ -74,21 +74,12 @@ export const createFormPersistenceSlice: StateCreator<
   isVersioned: false,
   
   // Actions
-  saveForm: async (): Promise<void> => {
-    const { formData, blocks, connections, isSaving } = get()
-    
-    // Prevent multiple save operations from running simultaneously
-    if (isSaving) {
-      console.log('Save already in progress, skipping...')
-      return
-    }
+  saveFormAndBlocks: async (): Promise<{ result: any, isExistingForm: boolean } | null> => {
+    const { formData, blocks } = get()
     
     try {
-      // Set saving state
-      set({ isSaving: true })
-      
       // We will submit to Supabase
-      console.log('Saving form to Supabase...')
+      console.log('Saving form and blocks to Supabase...')
       
       // Get authenticated user
       const supabase = createClient()
@@ -173,71 +164,8 @@ export const createFormPersistenceSlice: StateCreator<
       console.log('DEBUG - backendBlocks to save:', JSON.stringify(backendBlocks, null, 2))
       
       // Save form with blocks
-      let result
-      try {
-        result = await saveFormWithBlocks(formInput, backendBlocks)
-        console.log('DEBUG - Form saved successfully, result:', JSON.stringify(result, null, 2))
-        
-        // Now save connections to the workflow_edges table
-        if (result?.form?.form_id) {
-          const formId = result.form.form_id;
-          console.log(`Saving ${connections.length} connections to workflow_edges table for form ${formId}`)
-          
-          try {
-            // First delete any existing connections
-            await supabase
-              .from('workflow_edges')
-              .delete()
-              .eq('form_id', formId);
-            
-            // If there are connections to save, insert them
-            if (connections.length > 0) {
-              console.log(`🔄 WORKFLOW DEBUG: Saving ${connections.length} connections to database`);
-              console.log(`🔄 WORKFLOW DEBUG: Original connections:`, JSON.stringify(connections, null, 2));
-              
-              // Prepare connection data for database format
-              const workflowEdges = connections.map((conn, index) => {
-                const edge = {
-                  form_id: formId,
-                  source_block_id: conn.sourceId,
-                  target_block_id: conn.targetId,
-                  condition_type: conn.conditionType || 'always',
-                  condition_field: conn.conditions?.[0]?.field || null,
-                  condition_operator: conn.conditions?.[0]?.operator || null,
-                  condition_value: conn.conditions?.[0]?.value || null,
-                  condition_json: conn.conditions?.length > 0 ? JSON.stringify(conn.conditions) : null,
-                  order_index: index
-                };
-                
-                console.log(`🔄 WORKFLOW DEBUG: Mapped edge ${index}:`, JSON.stringify(edge, null, 2));
-                return edge;
-              });
-              
-              console.log(`🔄 WORKFLOW DEBUG: Attempting to save ${workflowEdges.length} edges to database`);
-              
-              // Insert all connections in batch
-              const { data, error } = await supabase
-                .from('workflow_edges')
-                .insert(workflowEdges)
-                .select();
-              
-              if (error) {
-                console.error('❌ WORKFLOW ERROR: Failed to save workflow edges:', error);
-                // Don't throw here to avoid failing the entire save operation
-              } else {
-                console.log(`✅ WORKFLOW SUCCESS: Saved ${connections.length} workflow edges to database`);
-                console.log(`✅ WORKFLOW SUCCESS: Returned data:`, data);
-              }
-            }
-          } catch (edgesError) {
-            console.error('Error managing workflow edges:', edgesError);
-            // Don't throw here to avoid failing the entire save operation
-          }
-        }
-      } catch (saveError: Error | unknown) {
-        console.error('DEBUG - Error details in saveFormWithBlocks:', saveError)
-        throw saveError
-      }
+      const result = await saveFormWithBlocks(formInput, backendBlocks)
+      console.log('DEBUG - Form saved successfully, result:', JSON.stringify(result, null, 2))
       
       // Update the form ID in state if it's a new form
       if (!isExistingForm && result?.form?.form_id) {
@@ -249,72 +177,180 @@ export const createFormPersistenceSlice: StateCreator<
         }))
       }
       
-      // If we have any dynamic blocks, we need to save their config separately
-      console.log('DEBUG - Checking for dynamic blocks...')
-      
-      // Identify blocks that are specifically dynamic type
-      // After the form save, we need to check the returned blocks from the response
-      // since those are what was actually stored in the database
-      // Cast the result blocks to our DbFormBlock type for proper typing
-      const savedBlocks = (result?.blocks || []) as DbFormBlock[]
-      
-      console.log('DEBUG - Checking saved blocks for dynamic types:')
-      // Use our proper database block type interface
-      const dynamicBlocks = savedBlocks.filter((block) => {
-        // Check both by type (should be 'dynamic') and by block settings (might contain dynamic config)
-        const hasDynamicSettings = !!(block.settings?.temperature || 
-                                   block.settings?.maxQuestions || 
-                                   block.settings?.contextInstructions)
-                                   
-        const isDynamic = (block.type === 'dynamic' || 
-                         block.subtype === 'dynamic' || 
-                         block.title === 'AI Conversation' || 
-                         hasDynamicSettings)
-                         
-        console.log(`DEBUG - Saved block ${block.id} (${block.title}): type=${block.type}, subtype=${block.subtype}, isDynamic=${isDynamic}`)
-        return isDynamic
-      })
-      
-      if (dynamicBlocks.length > 0) {
-        console.log(`DEBUG - Found ${dynamicBlocks.length} dynamic blocks to save config for:`, dynamicBlocks.map((b) => b.id).join(', '))
+      // Save dynamic block configs
+      await get().saveDynamicBlockConfigs(result);
         
-        // For each dynamic block, save its configuration
-        for (const block of dynamicBlocks) {
-          console.log(`DEBUG - Processing dynamic block ${block.id}, settings:`, JSON.stringify(block.settings, null, 2))
-          
-          // Create a standardized dynamic config object from the saved settings
-          // We need to extract the specific properties needed by the dynamic block API
-          const dynamicConfig = {
-            starter_question: block.settings?.starterQuestion || 
-                             block.settings?.contextInstructions || 
-                             'How can I help you today?',
-            temperature: block.settings?.temperature || 0.7,
-            max_questions: block.settings?.maxQuestions || 5,
-            ai_instructions: block.settings?.aiInstructions || 
-                           block.settings?.contextInstructions || 
-                           'You are a helpful assistant responding to form submissions.'
-          }
-          
-          console.log(`DEBUG - Created dynamic config for block ${block.id}:`, JSON.stringify(dynamicConfig, null, 2))
-          
-          try {
-            // Save using the properly formatted config for the database
-            await saveDynamicBlockConfig(
-              block.id,
-              dynamicConfig as Record<string, unknown>
-            )
-            console.log(`DEBUG - Successfully saved dynamic config for block ${block.id}`)
-          } catch (error: Error | unknown) {
-            console.error(`DEBUG - Error saving dynamic config for block ${block.id}:`, error)
-          }
-        }
-      } else {
-        console.log('DEBUG - No dynamic blocks found, skipping dynamic config save.')
+      return { result, isExistingForm }
+    } catch (error: Error | unknown) {
+      console.error('Error saving form and blocks:', error)
+      throw error
+    }
+  },
+
+  saveWorkflowEdges: async (formId: string): Promise<boolean> => {
+    const { connections } = get()
+    
+    console.log(`Saving ${connections.length} connections to workflow_edges table for form ${formId}`)
+    
+    try {
+      // Get Supabase client
+      const supabase = createClient()
+      
+      // First delete any existing connections
+      await supabase
+        .from('workflow_edges')
+        .delete()
+        .eq('form_id', formId)
+      
+      // If there are no connections to save, we're done
+      if (connections.length === 0) {
+        console.log('No workflow connections to save')
+        return true
       }
       
-      // Don't return the result to maintain Promise<void> return type
+      console.log(`🔄 WORKFLOW DEBUG: Saving ${connections.length} connections to database`)
+      console.log(`🔄 WORKFLOW DEBUG: Original connections:`, JSON.stringify(connections, null, 2))
+      
+      // Prepare connection data for database format
+      const workflowEdges = connections.map((conn, index) => {
+        const edge = {
+          form_id: formId,
+          source_block_id: conn.sourceId,
+          target_block_id: conn.targetId,
+          condition_type: conn.conditionType || 'always',
+          condition_field: conn.conditions?.[0]?.field || null,
+          condition_operator: conn.conditions?.[0]?.operator || null,
+          condition_value: conn.conditions?.[0]?.value || null,
+          condition_json: conn.conditions?.length > 0 ? JSON.stringify(conn.conditions) : null,
+          order_index: index
+        }
+        
+        console.log(`🔄 WORKFLOW DEBUG: Mapped edge ${index}:`, JSON.stringify(edge, null, 2))
+        return edge
+      })
+      
+      console.log(`🔄 WORKFLOW DEBUG: Attempting to save ${workflowEdges.length} edges to database`)
+      
+      // Insert all connections in batch
+      const { data, error } = await supabase
+        .from('workflow_edges')
+        .insert(workflowEdges)
+        .select()
+      
+      if (error) {
+        console.error('❌ WORKFLOW ERROR: Failed to save workflow edges:', error)
+        return false
+      } 
+      
+      console.log(`✅ WORKFLOW SUCCESS: Saved ${connections.length} workflow edges to database`)
+      console.log(`✅ WORKFLOW SUCCESS: Returned data:`, data)
+      return true
+    } catch (error) {
+      console.error('Error managing workflow edges:', error)
+      return false
+    }
+  },
+
+  saveDynamicBlockConfigs: async (result: any): Promise<void> => {
+    if (!result?.blocks || result.blocks.length === 0) {
+      console.log('No blocks in result, skipping dynamic config save')
+      return
+    }
+    
+    console.log('DEBUG - Checking for dynamic blocks...')
+    
+    // Identify blocks that are specifically dynamic type
+    // Cast the result blocks to our DbFormBlock type for proper typing
+    const savedBlocks = (result.blocks || []) as DbFormBlock[]
+    
+    console.log('DEBUG - Checking saved blocks for dynamic types:')
+    // Use our proper database block type interface
+    const dynamicBlocks = savedBlocks.filter((block) => {
+      // Check both by type (should be 'dynamic') and by block settings (might contain dynamic config)
+      const hasDynamicSettings = !!(block.settings?.temperature || 
+                               block.settings?.maxQuestions || 
+                               block.settings?.contextInstructions)
+                               
+      const isDynamic = (block.type === 'dynamic' || 
+                       block.subtype === 'dynamic' || 
+                       block.title === 'AI Conversation' || 
+                       hasDynamicSettings)
+                       
+      console.log(`DEBUG - Saved block ${block.id} (${block.title}): type=${block.type}, subtype=${block.subtype}, isDynamic=${isDynamic}`)
+      return isDynamic
+    })
+    
+    if (dynamicBlocks.length === 0) {
+      console.log('DEBUG - No dynamic blocks found, skipping dynamic config save.')
+      return
+    }
+    
+    console.log(`DEBUG - Found ${dynamicBlocks.length} dynamic blocks to save config for:`, dynamicBlocks.map((b) => b.id).join(', '))
+    
+    // For each dynamic block, save its configuration
+    for (const block of dynamicBlocks) {
+      console.log(`DEBUG - Processing dynamic block ${block.id}, settings:`, JSON.stringify(block.settings, null, 2))
+      
+      // Create a standardized dynamic config object from the saved settings
+      // We need to extract the specific properties needed by the dynamic block API
+      const dynamicConfig = {
+        starter_question: block.settings?.starterQuestion || 
+                          block.settings?.contextInstructions || 
+                          'How can I help you today?',
+        temperature: block.settings?.temperature || 0.7,
+        max_questions: block.settings?.maxQuestions || 5,
+        ai_instructions: block.settings?.aiInstructions || 
+                        block.settings?.contextInstructions || 
+                        'You are a helpful assistant responding to form submissions.'
+      }
+      
+      console.log(`DEBUG - Created dynamic config for block ${block.id}:`, JSON.stringify(dynamicConfig, null, 2))
+      
+      try {
+        // Save using the properly formatted config for the database
+        await saveDynamicBlockConfig(
+          block.id,
+          dynamicConfig as Record<string, unknown>
+        )
+        console.log(`DEBUG - Successfully saved dynamic config for block ${block.id}`)
+      } catch (error: Error | unknown) {
+        console.error(`DEBUG - Error saving dynamic config for block ${block.id}:`, error)
+      }
+    }
+  },
+
+  saveForm: async (): Promise<void> => {
+    const { isSaving } = get()
+    
+    // Prevent multiple save operations from running simultaneously
+    if (isSaving) {
+      console.log('Save already in progress, skipping...')
+      return
+    }
+    
+    try {
+      // Set saving state
+      set({ isSaving: true })
+      
+      // Step 1: Save form and blocks first
+      const state = get();
+      const saveResult = await state.saveFormAndBlocks()
+      
+      // If form save failed or no result, exit early
+      if (!saveResult || !saveResult.result?.form?.form_id) {
+        console.error('Form save failed or returned no form ID')
+        return
+      }
+      
+      // Step 2: Save workflow edges separately
+      const formId = saveResult.result.form.form_id
+      const edgesSaveResult = await state.saveWorkflowEdges(formId)
+      
+      if (!edgesSaveResult) {
+        console.warn('Workflow edges save failed but form was saved successfully')
+      }
     } catch (error: Error | unknown) {
-      console.error('Error saving form:', error)
+      console.error('Error in orchestrated form save:', error)
       throw error
     } finally {
       set({ isSaving: false })
