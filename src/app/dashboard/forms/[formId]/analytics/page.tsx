@@ -11,16 +11,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { useForm } from "@/hooks/useForm"
 
 import { VersionedResponsesTable } from "@/components/analytics/versioned-responses-table"
 import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
-import { FormAnalyticsDashboard } from "@/components/analytics/form-analytics-dashboard"
-import { BasicMetricsCard } from "@/components/analytics/basic-metrics-card"
 import { FormInsights } from "@/components/analytics/form-insights"
+import { QuestionMetrics } from "@/components/analytics/question-metrics"
 
 // Component to display responses with versioning support
 function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
@@ -188,21 +186,14 @@ export default function FormAnalyticsPage() {
             </TabsContent>
             
             <TabsContent value="insights" className="mt-0">
-              {/* New Form Insights Component */}
+              {/* Form Insights Component */}
               <div className="bg-white border rounded-md p-6 mb-6">
                 <FormInsights formId={formId} />
               </div>
               
-              {/* Legacy metrics cards */}
-              <div className="bg-white border rounded-md p-6 mb-6">
-                <h3 className="text-lg font-medium mb-4">Legacy Analytics</h3>
-                <BasicMetricsCard formId={String(params.formId)} />
-              </div>
-              
-              {/* Additional dashboard components */}
+              {/* Question by Question metrics */}
               <div className="bg-white border rounded-md p-6">
-                <h3 className="text-lg font-medium mb-4">Detailed Analytics</h3>
-                <FormAnalyticsDashboard formId={formId} />
+                <QuestionMetrics formId={formId} />
               </div>
             </TabsContent>
             
