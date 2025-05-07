@@ -20,6 +20,7 @@ import { VersionedResponsesTable } from "@/components/analytics/versioned-respon
 import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
 import { FormAnalyticsDashboard } from "@/components/analytics/form-analytics-dashboard"
 import { BasicMetricsCard } from "@/components/analytics/basic-metrics-card"
+import { FormInsights } from "@/components/analytics/form-insights"
 
 // Component to display responses with versioning support
 function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
@@ -177,32 +178,34 @@ export default function FormAnalyticsPage() {
             <Tabs defaultValue="responses" className="w-full">
               <TabsList className="mb-6">
                 <TabsTrigger value="responses">Responses</TabsTrigger>
-                <TabsTrigger value="summary" disabled>
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger value="insights">
-                  Insights
-                </TabsTrigger>
+                <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
               </TabsList>
               
               <TabsContent value="responses" className="mt-0">
                 <ResponsesWithVersioningSupport formId={formId} />
               </TabsContent>
               
-              <TabsContent value="insights" className="space-y-4">
-                {/* Ensure formId is always a string */}
-                <BasicMetricsCard formId={String(params.formId)} />
+              <TabsContent value="insights" className="space-y-8">
+                {/* New Form Insights Component */}
+                <FormInsights formId={formId} />
+                
+                {/* Legacy metrics cards */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Legacy Analytics</h3>
+                  <BasicMetricsCard formId={String(params.formId)} />
+                </div>
+                
+                {/* Additional dashboard components */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Detailed Analytics</h3>
+                  <FormAnalyticsDashboard formId={formId} />
+                </div>
               </TabsContent>
               
               <TabsContent value="summary">
                 <div className="text-center p-12 text-muted-foreground">
                   Summary coming soon
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="insights">
-                <div className="p-4">
-                  <FormAnalyticsDashboard formId={formId} />
                 </div>
               </TabsContent>
             </Tabs>
