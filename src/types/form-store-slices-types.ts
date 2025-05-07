@@ -126,7 +126,11 @@ export interface FormWorkflowSlice {
  * Handles saving and loading forms
  */
 export interface FormPersistenceSlice {
+  // State
+  isVersioned: boolean;
+  
   // Actions
   saveForm: () => Promise<void>;
   loadForm: (formId: string) => Promise<void>;
+  loadVersionedForm: (formId: string) => Promise<void>;
 }

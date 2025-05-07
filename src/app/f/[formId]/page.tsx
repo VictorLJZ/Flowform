@@ -36,7 +36,7 @@ export default function FormViewerPage() {
   // Use individual selectors for better memoization and to avoid unnecessary re-renders
   const blocks = useFormBuilderStore(state => state.blocks);
   const isLoading = useFormBuilderStore(state => state.isLoading);
-  const loadForm = useFormBuilderStore(state => state.loadForm);
+  const loadVersionedForm = useFormBuilderStore(state => state.loadVersionedForm);
   const setMode = useFormBuilderStore(state => state.setMode);
   
   const { 
@@ -79,7 +79,7 @@ export default function FormViewerPage() {
     isLastQuestion: isLastQuestion 
   });
 
-  // 3. Answers Hook (Needs storageKey, responseId from submission hook, index)
+  // 3. Answers Hook (Needs storageKey, responseId from submission hook, blockId)
   const { 
     currentAnswer, 
     setCurrentAnswer, 
@@ -87,7 +87,12 @@ export default function FormViewerPage() {
     answersInitialized,
     saveCurrentAnswer,
     loadAnswerForBlock,
-  } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
+  } = useFormAnswers({ 
+    storageKey, 
+    responseId, 
+    blockId: block?.id || null,
+    formId
+  });
 
   // 4. Analytics Hooks - split into view tracking and other analytics
   // View tracking doesn't require responseId - we want to track all views
@@ -224,18 +229,19 @@ export default function FormViewerPage() {
     // as we're depending on the stable memoized functions
   }, [trackSubmitFn, trackErrorFn, trackCompletionFn, saveAnswerFn]);
 
-  // Load the form data and blocks when the component mounts or formId changes
+  // Load the versioned form data and blocks when the component mounts or formId changes
   useEffect(() => {
     if (formId && typeof formId === 'string') {
-      console.log(`Attempting to load form with ID: ${formId}`);
-      // Explicitly set the mode to 'viewer' before loading the form
+      console.log(`Attempting to load versioned form with ID: ${formId}`);
+      // Set the mode to 'viewer' before loading the form
       setMode('viewer');
       console.log('Set formBuilderStore mode to viewer'); 
-      loadForm(formId); // Load form data and blocks associated with this formId
+      // Use loadVersionedForm to ensure we're using the published version
+      loadVersionedForm(formId);
     } else {
       console.error("Form ID is missing or invalid in FormViewerPage");
     }
-  }, [formId, loadForm, setMode]);
+  }, [formId, loadVersionedForm, setMode]);
 
   // Initialize answers effect
   useEffect(() => {
@@ -243,7 +249,7 @@ export default function FormViewerPage() {
     if (responseId && !answersInitialized) { 
       initializeAnswers();
     }
-  }, [responseId, initializeAnswers, answersInitialized]); 
+  }, [responseId, initializeAnswers, answersInitialized]);
 
   // Memoized calculation for disabling next button
   const isNextDisabled = useMemo(() => {

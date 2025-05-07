@@ -240,6 +240,8 @@ export interface CompleteForm extends Form {
   workflow_edges?: WorkflowEdge[];
   // For versioned forms, the ID of the form version
   version_id?: string;
+  // For versioned forms, the version number
+  version_number?: number;
 }
 
 // Type for joining tables and getting complete response data

@@ -7,6 +7,8 @@ import type { FormBuilderState } from '@/types/store-types'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
+import { getVersionedFormWithBlocksClient } from '@/services/form/getVersionedFormWithBlocksClient'
+import { transformVersionedFormData } from '@/services/form/transformVersionedFormData'
 import { createClient } from '@/lib/supabase/client'
 import { mapFromDbBlockType, mapToDbBlockType } from '@/utils/blockTypeMapping'
 import { defaultFormTheme } from '@/types/theme-types'
@@ -23,6 +25,7 @@ export const createFormPersistenceSlice: StateCreator<
   // Initial state
   isSaving: false,
   isLoading: false,
+  isVersioned: false,
   
   // Actions
   saveForm: async (): Promise<void> => {
@@ -264,6 +267,91 @@ export const createFormPersistenceSlice: StateCreator<
       throw error
     } finally {
       set({ isSaving: false })
+    }
+  },
+  
+  loadVersionedForm: async (formId: string) => {
+    // Set loading state
+    set({ isLoading: true, isVersioned: true })
+    
+    try {
+      console.log(`Loading versioned form ${formId}...`)
+      
+      // Fetch versioned form with blocks from API
+      const result = await getVersionedFormWithBlocksClient(formId)
+      
+      // Check if we got a result
+      if (!result) {
+        throw new Error(`Published version of form with ID ${formId} not found`)
+      }
+      
+      // Since CompleteForm extends Form, the form data is the result itself
+      const formData = result
+      
+      console.log(`Found versioned form: ${formData.title} with ${formData.blocks.length} blocks (version ${result.version_number || 'unknown'})`)
+      
+      // Use our helper function to transform the form data with proper typing
+      const { blocks, connections, nodePositions } = transformVersionedFormData(formData)
+      
+      console.log(`Transformed ${blocks.length} blocks and ${connections.length} connections with proper typing`)
+      
+      // Create default linear connections if no connections exist
+      if (connections.length === 0 && blocks.length > 1) {
+        console.log('No existing connections found, creating default linear workflow');
+        
+        try {
+          // Sort blocks by order to ensure proper sequence
+          const sortedBlocks = [...blocks].sort((a, b) => a.order_index - b.order_index);
+          
+          // Create a linear workflow with properly typed connections
+          for (let i = 0; i < sortedBlocks.length - 1; i++) {
+            const block = sortedBlocks[i];
+            const nextBlock = sortedBlocks[i + 1];
+            
+            connections.push({
+              id: uuidv4(),
+              sourceId: block.id,
+              targetId: nextBlock.id,
+              conditionType: 'always',
+              conditions: [],
+              order_index: i
+            });
+          }
+          
+          console.log(`Created ${connections.length} default linear connections`);
+        } catch (error) {
+          console.error('Error creating default connections:', error);
+        }
+      }
+      
+      // Update the store with form and blocks
+      set({
+        formData: {
+          form_id: formData.form_id,
+          title: formData.title || 'Untitled Form',
+          description: formData.description || '',
+          workspace_id: formData.workspace_id,
+          created_by: formData.created_by,
+          status: formData.status || 'published',  // Versioned forms should be published
+          // Always use defaultFormTheme as the base and merge with any available theme properties
+          theme: formData.theme ? { 
+            ...defaultFormTheme, 
+            ...(typeof formData.theme === 'object' ? formData.theme : {}) 
+          } : defaultFormTheme,
+          settings: formData.settings ? {
+            ...defaultFormData.settings,
+            ...(typeof formData.settings === 'object' ? formData.settings : {})
+          } : { ...defaultFormData.settings }
+        },
+        blocks: blocks,
+        currentBlockId: blocks.length > 0 ? blocks[0].id : null,
+        connections: connections,  // Use our properly typed connections
+        nodePositions
+      })
+    } catch (error) {
+      console.error('Error loading versioned form:', error)
+    } finally {
+      set({ isLoading: false })
     }
   },
   
