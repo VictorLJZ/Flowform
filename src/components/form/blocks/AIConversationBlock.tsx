@@ -202,8 +202,8 @@ export function AIConversationBlock({
   // The actual conversation interface that will be wrapped by SlideWrapper
   const conversationInterface = (
     <div className="flex flex-col gap-4 w-full">
-      {/* Question display - critical for showing new questions */}
-      {questionDisplay}
+      {/* Question display - don't show when it duplicates the SlideWrapper title */}
+      {!(displayQuestion === title) && questionDisplay}
       
       {/* Warning when changing earlier answers */}
       {isChangingEarlierAnswer && (
@@ -212,8 +212,8 @@ export function AIConversationBlock({
         </div>
       )}
       
-      {/* Input area - only shown when appropriate */}
-      {(!isComplete && !hasReachedMaxQuestions) && (
+      {/* Input area - only shown when appropriate and never in builder mode */}
+      {!isBuilder && (!isComplete && !hasReachedMaxQuestions) && (
         <div className="relative">
           <Textarea
             ref={textareaRef}
