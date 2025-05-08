@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 /**
  * GET handler for the /api/analytics/insights/[formId] endpoint
  * 
- * Retrieves comprehensive analytics insights for a form
+ * Retrieves comprehensive analytics insights for a form directly from form_metrics table
+ * instead of calculating metrics.
  */
 export async function GET(
   request: Request,
@@ -42,70 +43,39 @@ export async function GET(
       );
     }
     
-    // Note: Using the service client approach means we're bypassing the auth check
-    // since this is a secure server-side endpoint. If user-level authorization
-    // is required, a different approach would be needed.
-    
-    // Get form metrics if they exist
+    // Get form metrics directly from the form_metrics table
+    // This table contains pre-calculated metrics maintained by RPC functions
     const { data: formMetrics, error: metricsError } = await supabase
       .from('form_metrics')
       .select('*')
       .eq('form_id', formId)
       .single();
     
-    // Get total submissions count from form_responses
-    const { count: submissionsCount, error: submissionsError } = await supabase
-      .from('form_responses')
-      .select('*', { count: 'exact', head: true })
-      .eq('form_id', formId)
-      .eq('status', 'completed');
-    
-    // Get total starts count from form_responses (any status)
-    const { count: startsCount, error: startsError } = await supabase
-      .from('form_responses')
-      .select('*', { count: 'exact', head: true })
-      .eq('form_id', formId);
-    
-    // Calculate average completion time from responses
-    const { data: completionTimes, error: timingError } = await supabase
-      .from('form_responses')
-      .select('started_at, completed_at')
-      .eq('form_id', formId)
-      .eq('status', 'completed')
-      .not('completed_at', 'is', null);
-    
-    // Calculate average time to complete in seconds
-    let avgTimeToComplete = 0;
-    if (completionTimes && completionTimes.length > 0) {
-      const totalSeconds = completionTimes.reduce((acc: number, response: { started_at: string | null; completed_at: string | null }) => {
-        if (!response.started_at || !response.completed_at) return acc;
-        const startTime = new Date(response.started_at).getTime();
-        const endTime = new Date(response.completed_at).getTime();
-        const durationSec = (endTime - startTime) / 1000;
-        // Filter out unreasonably long times (e.g., over 1 hour)
-        return durationSec > 0 && durationSec < 3600 ? acc + durationSec : acc;
-      }, 0);
-      
-      avgTimeToComplete = totalSeconds / completionTimes.length;
+    if (metricsError) {
+      console.warn('Error fetching form metrics:', metricsError);
+      // If metrics don't exist yet, return defaults
+      return NextResponse.json({ 
+        success: true, 
+        data: {
+          totalViews: 0,
+          totalStarts: 0,
+          totalSubmissions: 0,
+          completionRate: 0,
+          averageTimeToComplete: 0,
+          lastUpdated: new Date().toISOString()
+        } as FormInsights
+      });
     }
     
-    // Build insights response
-    const totalViews = formMetrics?.total_views || 0;
-    const totalSubmissions = submissionsCount || 0;
-    const totalStarts = startsCount || 0;
-    
-    // Calculate completion rate safely
-    const completionRate = totalStarts > 0 
-      ? (totalSubmissions / totalStarts) * 100 
-      : 0;
-    
+    // Build insights response directly from the metrics table
+    // with proper field name transformation to match our expected FormInsights type
     const insights: FormInsights = {
-      totalViews,
-      totalStarts,
-      totalSubmissions,
-      completionRate,
-      averageTimeToComplete: avgTimeToComplete,
-      lastUpdated: formMetrics?.last_updated || new Date().toISOString()
+      totalViews: formMetrics.total_views || 0,
+      totalStarts: formMetrics.total_starts || 0,
+      totalSubmissions: formMetrics.total_completions || 0,
+      completionRate: formMetrics.completion_rate ? formMetrics.completion_rate * 100 : 0, // Convert from decimal to percentage
+      averageTimeToComplete: formMetrics.average_completion_time_seconds || 0,
+      lastUpdated: formMetrics.last_updated || new Date().toISOString()
     };
     
     return NextResponse.json({ 
