@@ -364,11 +364,14 @@ export function AIConversationBlock({
   // Get the mapped conversation for display
   const displayConversation = getMappedConversation();
   
+  // For dynamic title, we'll pass the current question as title when not in builder mode
+  const effectiveTitle = !isBuilder && !isFirstQuestion && nextQuestion ? nextQuestion : title;
+  
   // Render
   return (
     <SlideWrapper
       id={id}
-      title={title}
+      title={effectiveTitle}
       description={description}
       required={required}
       index={index}
@@ -414,23 +417,25 @@ export function AIConversationBlock({
                 </div>
               )}
               
-              {/* Current Question */}
-              <div className="bg-gray-50 p-4 rounded-md">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4" />
-                      <path d="M12 8h.01" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p>{currentQuestion}</p>
+              {/* Current Question - Only show if there's actually a question to display and we're in builder mode */}
+              {currentQuestion && isBuilder && (
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p>{currentQuestion}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
               
-              {/* Previous conversation history (if any) */}
+              {/* Previous conversation history (if any) - Only include questions after the first one */}
               {displayConversation.length > 0 && (
                 <div className="border border-gray-200 rounded-md overflow-hidden">
                   <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
@@ -443,6 +448,7 @@ export function AIConversationBlock({
                   >
                     {displayConversation.map((item, idx) => (
                       <div key={idx} className="space-y-2">
+                        {/* Always show the question in history */}
                         <div className="bg-blue-50 p-3 rounded-md">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm font-medium text-blue-800">Question {idx + 1}:</p>
