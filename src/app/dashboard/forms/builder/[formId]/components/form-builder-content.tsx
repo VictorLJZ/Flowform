@@ -81,6 +81,7 @@ export default function FormBuilderContent() {
   return (
     <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
       <div className="p-2 flex justify-between items-center flex-shrink-0 sticky top-0 z-10 bg-slate-50">
+        {/* Left: Pagination controls */}
         <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center space-x-1 shadow-sm">
           <Button 
             variant="ghost" 
@@ -97,28 +98,6 @@ export default function FormBuilderContent() {
             <span className="text-muted-foreground">/{blocks.length}</span>
           </div>
           
-          {/* Viewport mode toggle */}
-          <div className="mx-2 border rounded-full flex items-center overflow-hidden h-7">
-            <Button
-              variant={viewportMode === 'desktop' ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 w-7 rounded-full p-0"
-              onClick={() => setViewportMode('desktop')}
-              title="Desktop view"
-            >
-              <Monitor size={14} />
-            </Button>
-            <Button
-              variant={viewportMode === 'mobile' ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 w-7 rounded-full p-0"
-              onClick={() => setViewportMode('mobile')}
-              title="Mobile view"
-            >
-              <Smartphone size={14} />
-            </Button>
-          </div>
-          
           <Button 
             variant="ghost" 
             size="sm"
@@ -130,6 +109,33 @@ export default function FormBuilderContent() {
           </Button>
         </div>
         
+        {/* Center: Viewport mode toggle */}
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <div className="bg-background/80 rounded-full px-1.5 py-1 flex items-center shadow-sm">
+            <div className="border rounded-full flex items-center overflow-hidden h-7">
+              <Button
+                variant={viewportMode === 'desktop' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 rounded-full p-0"
+                onClick={() => setViewportMode('desktop')}
+                title="Desktop view"
+              >
+                <Monitor size={14} />
+              </Button>
+              <Button
+                variant={viewportMode === 'mobile' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 rounded-full p-0"
+                onClick={() => setViewportMode('mobile')}
+                title="Mobile view"
+              >
+                <Smartphone size={14} />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Right: Block name */}
         <div className="bg-background/80 rounded-full px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
           {blockDefinition.name}
         </div>
