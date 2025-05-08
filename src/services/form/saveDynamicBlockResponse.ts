@@ -99,10 +99,11 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
       // When editing a previous answer, we need to truncate the conversation and regenerate
       conversation = conversation.slice(0, questionIndex);
       
-      // Force isComplete to false when editing a previous answer to ensure regeneration
-      if (questionIndex < conversation.length - 1) {
-        isComplete = false;
-      }
+      // Force isComplete to false when editing ANY previous answer to ensure regeneration
+      isComplete = false;
+      
+      // Log the truncation
+      console.log(`[${requestId}] Conversation truncated to length ${conversation.length}, isComplete set to ${isComplete}`);
     }
 
     // Add the new answer to the conversation
@@ -214,7 +215,12 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     }
 
     // Update the database with the new conversation
-    console.log(`[${requestId}] Updating database with updated conversation`);
+    console.log(`[${requestId}] Updating database with updated conversation`, {
+      conversationLength: conversation.length,
+      isComplete,
+      hasNextQuestion: !!nextQuestion,
+      nextQuestionLength: nextQuestion?.length || 0
+    });
     const { error: updateError } = await supabase
       .from('dynamic_block_responses')
       .upsert({

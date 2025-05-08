@@ -263,6 +263,10 @@ export function AIConversationBlock({
       if (isEditingPreviousQuestion) {
         // Move to the next question after the one we just edited
         setActiveQuestionIndex(activeQuestionIndex + 1);
+        // Explicitly set hasReturnedToBlock to prevent auto-navigation
+        setHasReturnedToBlock(true);
+        // Reset the navigated forward flag when editing to prevent auto-navigation
+        setHasNavigatedForward(false);
       } else {
         // For new questions, clear input and advance to the next question
         setUserInput('');
@@ -406,15 +410,18 @@ export function AIConversationBlock({
     // 1. We have reached max questions
     // 2. We haven't already navigated for this block session
     // 3. This isn't a return visit to the block (OR we explicitly want to navigate on returns as well)
+    // 4. We're not in the middle of editing a previous question
     if (hasReachedMaxQuestions && !isComplete && onNext && 
-        (!hasNavigatedForward || (effectiveIsComplete && !hasNavigatedForward))) {
+        (!hasNavigatedForward || (effectiveIsComplete && !hasNavigatedForward)) && 
+        !hasReturnedToBlock && 
+        activeQuestionIndex >= conversation.length) {
       console.log('Max questions reached, triggering completion');
       setHasNavigatedForward(true);
       
       // Add a short delay to allow rendering to complete
       timeoutId = setTimeout(() => {
         try {
-          onNext();
+        onNext();
         } catch (error) {
           console.error('Error in auto-navigation:', error);
         }
@@ -425,7 +432,8 @@ export function AIConversationBlock({
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isComplete, hasReachedMaxQuestions, conversation.length, onNext, settingsMaxQuestions, hasNavigatedForward, hasReturnedToBlock, effectiveIsComplete]);
+  }, [isComplete, hasReachedMaxQuestions, conversation.length, onNext, settingsMaxQuestions, 
+      hasNavigatedForward, hasReturnedToBlock, effectiveIsComplete, activeQuestionIndex]);
   
   // Update effect for detecting return to previous block to properly handle navigating to start
   useEffect(() => {
@@ -459,8 +467,9 @@ export function AIConversationBlock({
         }
       }
       
-      // If we're just returning, we should focus on the latest question
-      if (activeQuestionIndex === 0 && conversation.length > 0) {
+      // If we're just returning and no specific question index is selected,
+      // focus on the latest question
+      if (activeQuestionIndex === 0 && conversation.length > 0 && !isLikelyReturnFromOtherBlock) {
         // On initial render, set to the latest answer or conversation length (for current)
         const newIndex = Math.min(conversation.length, settingsMaxQuestions);
         console.log(`Setting active question index to ${newIndex} based on return visit detection`);
@@ -596,7 +605,14 @@ export function AIConversationBlock({
       currentIndex: activeQuestionIndex,
       conversationLength: conversation.length
     });
+    
+    // Prevent the automatic adjustment from the return detection logic
     setActiveQuestionIndex(index);
+    
+    // Explicitly set hasReturnedToBlock to prevent auto-navigation
+    if (!hasReturnedToBlock) {
+      setHasReturnedToBlock(true);
+    }
   };
   
   // Render
@@ -723,8 +739,8 @@ export function AIConversationBlock({
                 </div>
               )}
               
-              {/* Only show answer field if not complete */}
-              {!effectiveIsComplete && (
+              {/* Only show answer field if not complete OR when editing a previous question */}
+              {(!effectiveIsComplete || activeQuestionIndex < conversation.length) && (
                 <div>
                   <Textarea
                     placeholder="Type your answer here..."
@@ -738,7 +754,7 @@ export function AIConversationBlock({
                     }}
                     rows={4}
                     className="w-full"
-                    disabled={isSubmitting || isLoading || effectiveIsComplete}
+                    disabled={isSubmitting || isLoading}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Press Shift+Enter to submit your answer

@@ -220,6 +220,7 @@ export function useAIConversation(
       // Prepare the optimistic data
       let optimisticConversation;
       let optimisticNextQuestion = data?.nextQuestion;
+      let optimisticIsComplete = data?.isComplete;
       
       if (data && questionIndex !== undefined && questionIndex < data.conversation.length) {
         // If we're answering a question that's not the last one,
@@ -233,6 +234,7 @@ export function useAIConversation(
           
           // Always set isComplete to false when truncating to force regeneration
           input.isComplete = false;
+          optimisticIsComplete = false;
           
           // Make sure questionIndex is explicitly set to trigger truncation logic
           input.questionIndex = questionIndex;
@@ -242,9 +244,16 @@ export function useAIConversation(
             ...data.conversation.slice(0, questionIndex),
             { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
           ];
+          
+          // When truncating, we should clear the nextQuestion since it will be regenerated
+          optimisticNextQuestion = '';
+        } else {
+          // Editing the last question
+          optimisticConversation = [
+            ...data.conversation.slice(0, questionIndex),
+            { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+          ];
         }
-        // When truncating, we should clear the nextQuestion since it will be regenerated
-        optimisticNextQuestion = undefined;
       } else if (data) {
         // Normal case - append to the conversation
         optimisticConversation = [
@@ -261,7 +270,8 @@ export function useAIConversation(
           optimisticData: data && optimisticConversation ? {
             ...data,
             conversation: optimisticConversation,
-            nextQuestion: optimisticNextQuestion
+            nextQuestion: optimisticNextQuestion,
+            isComplete: optimisticIsComplete
           } : undefined,
           rollbackOnError: true,
           populateCache: true,
