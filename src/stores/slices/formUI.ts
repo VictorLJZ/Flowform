@@ -13,9 +13,12 @@ export const createFormUISlice: StateCreator<
   // State
   sidebarOpen: true,
   blockSelectorOpen: false,
+  viewportMode: 'desktop', // Default to desktop mode
   
   // Actions
   setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
   
-  setBlockSelectorOpen: (open: boolean) => set({ blockSelectorOpen: open })
+  setBlockSelectorOpen: (open: boolean) => set({ blockSelectorOpen: open }),
+  
+  setViewportMode: (mode: 'desktop' | 'mobile') => set({ viewportMode: mode })
 })

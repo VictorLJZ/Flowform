@@ -70,10 +70,12 @@ export interface FormPresentationSlice {
 export interface FormUISlice {
   sidebarOpen: boolean;
   blockSelectorOpen: boolean;
+  viewportMode: 'desktop' | 'mobile';
   
   // Actions
   setSidebarOpen: (open: boolean) => void;
   setBlockSelectorOpen: (open: boolean) => void;
+  setViewportMode: (mode: 'desktop' | 'mobile') => void;
 }
 
 /**

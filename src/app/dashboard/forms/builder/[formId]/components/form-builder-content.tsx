@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
-import { PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { PlusCircle, ChevronLeft, ChevronRight, Smartphone, Monitor } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
 import type { FormBlock } from '@/types/block-types'
 import type { BlockPresentation } from '@/types/theme-types'
@@ -27,7 +27,9 @@ export default function FormBuilderContent() {
     setCurrentBlockId,
     updateBlock,
     updateBlockSettings,
-    setBlockSelectorOpen
+    setBlockSelectorOpen,
+    viewportMode,
+    setViewportMode
   } = useFormBuilderStore()
   
   const currentBlock = getCurrentBlock()
@@ -93,6 +95,28 @@ export default function FormBuilderContent() {
           <div className="text-sm px-1">
             <span className="font-medium">{currentIndex + 1}</span>
             <span className="text-muted-foreground">/{blocks.length}</span>
+          </div>
+          
+          {/* Viewport mode toggle */}
+          <div className="mx-2 border rounded-full flex items-center overflow-hidden h-7">
+            <Button
+              variant={viewportMode === 'desktop' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 w-7 rounded-full p-0"
+              onClick={() => setViewportMode('desktop')}
+              title="Desktop view"
+            >
+              <Monitor size={14} />
+            </Button>
+            <Button
+              variant={viewportMode === 'mobile' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 w-7 rounded-full p-0"
+              onClick={() => setViewportMode('mobile')}
+              title="Mobile view"
+            >
+              <Smartphone size={14} />
+            </Button>
           </div>
           
           <Button 

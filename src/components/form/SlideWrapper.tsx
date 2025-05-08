@@ -58,6 +58,8 @@ export function SlideWrapper({
   blockRef,
   className
 }: SlideWrapperProps) {
+  // Get viewport mode from store
+  const viewportMode = useFormBuilderStore(state => state.viewportMode);
   const titleRef = useRef<HTMLDivElement>(null)
   const internalRef = useRef<HTMLDivElement>(null)
   const { mode } = useFormBuilderStore()
@@ -202,7 +204,7 @@ export function SlideWrapper({
   
   // Render the appropriate layout based on the slide layout type
   // Wrap all slide layouts in the aspect ratio container when in builder mode
-  // Use the existing isViewer variable
+  // Use the existing isViewer variable and pass viewport mode
   const wrappedContent = (layoutComponent: React.ReactNode) => {
     
     return (
@@ -211,7 +213,11 @@ export function SlideWrapper({
         data-block-id={id} 
         className={isViewer ? "w-full h-full flex-1" : ""}
       >
-        <SlideAspectRatioContainer isBuilder={isBuilder} aspectRatio="16:9">
+        <SlideAspectRatioContainer 
+          isBuilder={isBuilder} 
+          aspectRatio="16:9"
+          viewportMode={viewportMode}
+        >
           {layoutComponent}
         </SlideAspectRatioContainer>
       </div>
