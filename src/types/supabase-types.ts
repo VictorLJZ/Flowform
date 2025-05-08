@@ -2,6 +2,7 @@
 // Defines TypeScript interfaces for all database tables
 
 import type { BlockType } from './block-types';
+import type { SaveDynamicResponseInput } from './form-service-types';
 
 /**
  * Database Tables - Workspace Management
@@ -141,8 +142,10 @@ export interface DynamicBlockResponse {
   response_id: string; // UUID, references form_responses.id
   block_id: string; // UUID, references form_blocks.id
   conversation: QAPair[]; // JSONB array
+  next_question?: string; // Added field for the next question
   started_at: string; // ISO date string
   completed_at: string | null; // ISO date string
+  updated_at?: string; // ISO date string
 }
 
 /**
@@ -228,3 +231,9 @@ export type StaticAnswerRecord = Pick<StaticBlockAnswer, 'block_id' | 'answer'>
 export type DynamicResponseRecord = Pick<DynamicBlockResponse, 'block_id' | 'conversation'>
 
 // FormRecord has been removed - use Form + DynamicBlockConfig combination instead
+
+export interface ExtendedSaveDynamicResponseInput extends SaveDynamicResponseInput {
+  isComplete?: boolean;
+  questionIndex?: number; // Added to support truncating the conversation at a specific index
+  maxQuestions?: number; // Added to support custom max questions limit
+}

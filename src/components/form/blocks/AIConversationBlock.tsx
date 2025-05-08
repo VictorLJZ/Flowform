@@ -1,31 +1,19 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 // import { cn } from "@/lib/utils" - removed unused import
-import { PaperPlaneIcon } from '@radix-ui/react-icons'
-import { AnimatePresence, motion } from '@/lib/motion'
+// Removed unused imports
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { SlideWrapper } from "@/components/form/SlideWrapper"
-import { BlockPresentation } from "@/types/theme-types"
-import { SlideLayout } from "@/types/layout-types"
-import { QAPair, FormBlock } from '@/types/supabase-types'
+import { BlockPresentation, SlideLayout } from "@/types/form-presentation-types"
+import { QAPair } from '@/types/supabase-types'
 import { useAIConversation } from '@/hooks/useAIConversation'
 import { useConversationDisplay } from '@/hooks/useConversationDisplay'
 import { useConversationInteraction } from '@/hooks/useConversationInteraction'
 import { useConversationNavigation } from '@/hooks/useConversationNavigation'
-
-// Define the handle interface used by refs to interact with this component
-export interface AIConversationHandle {
-  // Methods that can be called by parent components using refs
-  reset: () => void;
-  submitCurrentAnswer: () => Promise<boolean>;
-  isComplete: () => boolean;
-  getConversation: () => QAPair[];
-  // Alternative method name used in some components
-  getMessages: () => QAPair[];
-}
+import { AIConversationHandle } from '@/types/form-types'
 
 interface AIConversationBlockProps {
   id: string
@@ -39,24 +27,19 @@ interface AIConversationBlockProps {
   settings?: {
     presentation?: BlockPresentation
     layout?: SlideLayout
+    starterPrompt?: string
+    startingPrompt?: string // Added this to handle both naming conventions
+    maxQuestions?: number
   }
   value?: QAPair[]
   onChange?: (value: QAPair[]) => void
-  onUpdate?: (updates: Partial<{
-    title: string;
-    description: string | null;
-    settings: {
-      maxQuestions?: number,
-      temperature?: number,
-      presentation?: BlockPresentation,
-      layout?: SlideLayout
-    } | null;
-  }>) => void
+  onUpdate?: (updates: any) => void
   // Navigation props
   onNext?: () => void
   isNextDisabled?: boolean
   responseId: string
   formId: string
+  blockRef?: React.RefObject<HTMLDivElement>
 }
 
 export function AIConversationBlock({
@@ -76,251 +59,312 @@ export function AIConversationBlock({
   onNext,
   isNextDisabled,
   responseId,
-  formId
+  formId,
+  blockRef
 }: AIConversationBlockProps) {
   // Local state
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
-  const [questionInputs] = useState<Record<number, string>>({})
-
+  const [userInput, setUserInput] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isNavigating, setIsNavigating] = useState<boolean>(false)
+  const [navigationAttempted, setNavigationAttempted] = useState<boolean>(false)
+  
+  // Ref for auto-scrolling the conversation history
+  const historyContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Create a local ref if no blockRef is provided
+  const localRef = useRef<HTMLDivElement>(null)
+  
+  // Use the provided blockRef or fall back to local ref
+  const effectiveRef = blockRef || localRef
+  
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
-
-  // Use our AIConversation hook for managing the conversation state
-  const {
-    conversation, 
-    nextQuestion, 
-    maxQuestions: configuredMaxQuestions, 
-    isComplete,
-    isLoading: isConversationLoading,
-    submitAnswer
-  } = useAIConversation(responseId, id, formId, isBuilder)
-
-  // Effective max questions (from config or prop)
-  const effectiveMaxQuestions = configuredMaxQuestions || maxQuestions
   
-  // Effective conversation (from hook or prop)
-  const effectiveConversation = isBuilder ? value || [] : conversation
-
-  // Use our conversation display hook to manage what question is shown
-  const { 
-    displayQuestion, 
-    isLoading: isQuestionLoading 
-  } = useConversationDisplay({
-    conversation: effectiveConversation,
-    nextQuestion,
-    activeQuestionIndex,
-    isFirstQuestion: activeQuestionIndex === 0 && effectiveConversation.length === 0,
-    starterPrompt: title || ''
-  })
-
-  // Create an adapter for the onUpdate function to match what useConversationInteraction expects
-  // The hook expects onUpdate?: () => void with no parameters
-  const interactionUpdateAdapter = onUpdate ? () => {
-    // This is just a simple callback that useConversationInteraction can call
-    console.log('Interaction update triggered');
-  } : undefined;
-
-  // Use our interaction hook to manage user input and submissions
-  const { 
-    userInput,
-    isLocalSubmitting,
-    isChangingEarlierAnswer,
-    textareaRef,
-    handleInputChange,
-    handleSubmit,
-    handleKeyDown
-  } = useConversationInteraction({
-    conversation: effectiveConversation,
-    activeQuestionIndex,
-    questionInputs,
-    isFirstQuestion: activeQuestionIndex === 0 && effectiveConversation.length === 0,
-    starterPrompt: title || '',
-    submitAnswer,
-    onNext,
-    onChange,
-    onUpdate: interactionUpdateAdapter,
-    maxQuestions: effectiveMaxQuestions
-  })
+  // Get starter prompt from settings, supporting both naming conventions
+  const starterPrompt = settings.startingPrompt || settings.starterPrompt || ''
   
-  // Use our navigation hook to manage question navigation
-  const {
-    // Keep these as commented references for potential future use
-    // isFirstQuestion,
-    // isFinalQuestion,
-    // isLastAnswered,
-    hasReachedMaxQuestions,
-    // canMoveToNextQuestion,
-    // handlePreviousQuestion,
-    // handleNextQuestion,
-    moveToSpecificQuestion,
-    handleCompletingConversation
-  } = useConversationNavigation({
-    conversation: effectiveConversation,
-    nextQuestion,
-    isComplete,
-    maxQuestions: effectiveMaxQuestions,
-    activeQuestionIndex,
-    setActiveQuestionIndex,
-    questionInputs,
-    displayQuestion,
-    onNext
-  })
-
-  // Loading states
-  const isLoading = isConversationLoading || isQuestionLoading || isLocalSubmitting
-  
-  // Store the last valid nextQuestion from the API
-  const lastValidQuestionRef = useRef<string>('');
-  
-  // Add debugging console logs to track state changes
+  // Extract maxQuestions from settings if available, otherwise use prop value
+  const settingsMaxQuestions = settings.maxQuestions !== undefined ? 
+    Number(settings.maxQuestions) : maxQuestions;
+    
+  // Log maxQuestions data
   useEffect(() => {
-    console.log('AIConversationBlock state updated:', {
-      isComplete,
-      hasReachedMaxQuestions,
-      conversationLength: effectiveConversation.length,
-      displayQuestion
-    });
-  }, [isComplete, hasReachedMaxQuestions, effectiveConversation.length, displayQuestion]);
-  
-  // Force UI updates when key props change - enhanced for debugging and reliability
-  useEffect(() => {
-    if (nextQuestion) {
-      // Remember this valid question so we don't lose it if API calls reset it temporarily
-      lastValidQuestionRef.current = nextQuestion;
-      
-      console.log('Next question changed in parent component, updating UI', {
-        question: nextQuestion.substring(0, 30) + '...',
-        displayedQuestion: displayQuestion?.substring(0, 30) + '...',
-        conversation: effectiveConversation.length
+    if (process.env.NODE_ENV === 'development') {
+      console.log('AIConversationBlock maxQuestions:', {
+        propValue: maxQuestions,
+        settingsValue: settings.maxQuestions,
+        effectiveValue: settingsMaxQuestions
       });
-      
-      // Force a component re-render when the question changes
-      // This is critical to ensure the UI updates with the new question
-      if (nextQuestion !== displayQuestion) {
-        console.log('Forcing complete UI re-render in AIConversationBlock');
-      }
-    } else if (lastValidQuestionRef.current && displayQuestion !== lastValidQuestionRef.current) {
-      // If nextQuestion is empty but we have a stored valid question, use that
-      console.log('Using stored valid question instead of empty nextQuestion:', 
-        lastValidQuestionRef.current.substring(0, 30) + '...');
     }
-  }, [nextQuestion, effectiveConversation.length, displayQuestion]);
-
-  // Create a direct question display element - separate from the SlideWrapper title
-  // This is necessary to show the AI-generated follow-up questions
-  const questionDisplay = displayQuestion ? (
-    <h3 className="text-lg font-medium mb-4">{displayQuestion}</h3>
-  ) : (
-    <div className="h-8 bg-slate-100 animate-pulse rounded mb-4" />
-  );
+  }, [maxQuestions, settings.maxQuestions, settingsMaxQuestions]);
   
-  // The actual conversation interface that will be wrapped by SlideWrapper
-  const conversationInterface = (
-    <div className="flex flex-col gap-4 w-full">
-      {/* Question display - don't show when it duplicates the SlideWrapper title */}
-      {!(displayQuestion === title) && questionDisplay}
-      
-      {/* Warning when changing earlier answers */}
-      {isChangingEarlierAnswer && (
-        <div className="bg-yellow-50 border border-yellow-200 p-2 rounded-md text-sm text-yellow-700">
-          Changing this answer will reset later questions in the conversation.
-        </div>
-      )}
-      
-      {/* Input area - only shown when appropriate and never in builder mode */}
-      {!isBuilder && (
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            value={userInput}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={isLoading ? "Processing..." : "Type your response..."}
-            disabled={isLoading}
-            className="pr-12 min-h-[100px] resize-none"
-            data-testid="ai-conversation-input"
-          />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={handleSubmit}
-            disabled={!userInput.trim() || isLoading}
-            className="absolute right-2 bottom-2 rounded-full w-8 h-8"
-            aria-label="Submit response"
-          >
-            <PaperPlaneIcon className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
-      
-      {/* History of previous questions and answers */}
-      <div className="space-y-3">
-        <AnimatePresence mode="wait">
-          {effectiveConversation.map((item, index) => (
-            // Only show items that come before the current active index
-            index < activeQuestionIndex && (
-              <motion.div
-                key={`qa-${index}`}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="border rounded-lg p-3"
-              >
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{item.question}</h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => moveToSpecificQuestion(index)}
-                      disabled={isLoading}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                  <p className="text-muted-foreground">{item.answer}</p>
-                </div>
-              </motion.div>
-            )
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
+  // Use AI conversation hook with maxQuestions passed through
+  const {
+    conversation = [], 
+    nextQuestion = '', 
+    isComplete = false,
+    submitAnswer,
+    isLoading,
+    error
+  } = useAIConversation(
+    responseId || '', 
+    id, 
+    formId || '', 
+    isBuilder,
+    settingsMaxQuestions // Use the value from settings
   )
-
-  // Create a wrapper for onUpdate to match the SlideWrapper's expected function signature
-  // The SlideWrapper expects onUpdate: (updates: Partial<FormBlock>) => void
-  const handleSlideUpdate = onUpdate ? (formBlockUpdates: Partial<FormBlock>) => {
-    // Convert the FormBlock updates to our component's expected update format
-    const mappedUpdates: Partial<{
-      title: string;
-      description: string | null;
-      settings: {
-        maxQuestions?: number,
-        temperature?: number,
-        presentation?: BlockPresentation,
-        layout?: SlideLayout
-      } | null;
-    }> = {};
+  
+  // Track if this is the first question - it's only true if conversation is empty
+  const isFirstQuestion = useMemo(() => conversation.length === 0, [conversation])
+  
+  // Calculate progress information
+  const questionCount = conversation.length
+  const showMaxQuestions = settingsMaxQuestions > 0
+  const progressText = showMaxQuestions 
+    ? `Question ${questionCount + (isFirstQuestion ? 0 : 1)} of ${settingsMaxQuestions}` 
+    : `Question ${questionCount + (isFirstQuestion ? 0 : 1)}`
+  
+  // Check if we've reached max questions
+  const hasReachedMaxQuestions = settingsMaxQuestions > 0 && conversation.length >= settingsMaxQuestions;
+  
+  // Add derived state for more accurate tracking
+  const effectiveIsComplete = useMemo(() => {
+    return isComplete || hasReachedMaxQuestions
+  }, [isComplete, hasReachedMaxQuestions])
+  
+  // Handle submit
+  const handleSubmit = async () => {
+    if (!userInput.trim() || isSubmitting) return
     
-    // Map the properties correctly
-    if (formBlockUpdates.title !== undefined) mappedUpdates.title = formBlockUpdates.title;
-    if (formBlockUpdates.description !== undefined) mappedUpdates.description = formBlockUpdates.description as string | null;
-    if (formBlockUpdates.settings) {
-      mappedUpdates.settings = {
-        ...settings, // Preserve existing settings
-        ...(formBlockUpdates.settings as Record<string, unknown>) // Apply new settings
-      };
+    try {
+      setIsSubmitting(true)
+      
+      // Get the appropriate question for submission
+      const questionToSubmit = isFirstQuestion 
+        ? starterPrompt 
+        : nextQuestion;
+      
+      await submitAnswer(
+        questionToSubmit,
+        userInput,
+        isFirstQuestion ? 0 : conversation.length,
+        isFirstQuestion
+      )
+      
+      // Clear input after submission
+      setUserInput('')
+      
+    } catch (error) {
+      console.error('Error submitting answer:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  // Handle navigation to next section with error resilience
+  const handleNext = () => {
+    if (!onNext || isNavigating) return
+    
+    // Track that navigation was attempted (for error resilience)
+    setNavigationAttempted(true)
+    setIsNavigating(true)
+    
+    try {
+      // Set a max timeout to ensure navigation happens even if there's an error
+      const timeoutId = setTimeout(() => {
+        if (isNavigating && navigationAttempted) {
+          console.log('Navigation timeout reached - forcing navigation')
+          onNext()
+          setIsNavigating(false)
+        }
+      }, 1500)
+      
+      // Add a small delay to prevent double clicks
+      setTimeout(() => {
+        try {
+          onNext()
+        } catch (error) {
+          console.error('Error during navigation:', error)
+          // Continue anyway after a short delay
+          setTimeout(() => onNext(), 100)
+        } finally {
+          clearTimeout(timeoutId)
+          setIsNavigating(false)
+        }
+      }, 100)
+    } catch (error) {
+      console.error('Error setting up navigation:', error)
+      // Last resort - direct call
+      onNext()
+      setIsNavigating(false)
+    }
+  }
+  
+  // Force navigation if stuck for too long with navigation attempted
+  useEffect(() => {
+    if (!navigationAttempted || !isNavigating || !onNext) return
+    
+    const timeoutId = setTimeout(() => {
+      if (isNavigating && navigationAttempted) {
+        console.log('Navigation appears stuck - forcing navigation')
+        try {
+          onNext()
+        } catch (error) {
+          console.error('Forced navigation error:', error)
+        }
+        setIsNavigating(false)
+        setNavigationAttempted(false)
+      }
+    }, 2500)
+    
+    return () => clearTimeout(timeoutId)
+  }, [navigationAttempted, isNavigating, onNext])
+  
+  // Implement ref methods for external components to interact with this component
+  const conversationHandleRef = useRef<AIConversationHandle>({
+    reset: () => {
+      setUserInput('');
+    },
+    submitCurrentAnswer: async () => {
+      await handleSubmit();
+      return true;
+    },
+    isComplete: () => effectiveIsComplete,
+    getConversation: () => conversation,
+    getMessages: () => conversation
+  });
+  
+  // Update handle methods when dependencies change
+  useEffect(() => {
+    conversationHandleRef.current.isComplete = () => effectiveIsComplete;
+    conversationHandleRef.current.getConversation = () => conversation;
+    conversationHandleRef.current.getMessages = () => conversation;
+  }, [conversation, effectiveIsComplete]);
+  
+  // Handle form value changes
+  useEffect(() => {
+    if (onChange && !isBuilder) {
+      onChange(conversation)
+    }
+  }, [conversation, onChange, isBuilder])
+  
+  // Auto-scroll to the bottom of the conversation history when it updates
+  useEffect(() => {
+    if (historyContainerRef.current) {
+      const container = historyContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [conversation]);
+  
+  // Log component state updates
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('AIConversationBlock state updated:', {
+        isComplete: effectiveIsComplete,
+        hasReachedMaxQuestions,
+        conversationLength: conversation.length,
+        maxQuestions: settingsMaxQuestions,
+        nextQuestion: nextQuestion ? nextQuestion.substring(0, 20) + '...' : 'missing'
+      });
+    }
+  }, [effectiveIsComplete, hasReachedMaxQuestions, conversation.length, settingsMaxQuestions, nextQuestion]);
+  
+  // Auto-trigger isComplete when max questions is reached
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | undefined;
+    
+    // Debug logging to help track the issue
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Checking max questions condition:', {
+        conversationLength: conversation.length,
+        settingsMaxQuestions,
+        hasReachedMaxQuestions,
+        isComplete,
+        shouldAutoNavigate: hasReachedMaxQuestions && !isComplete && onNext
+      });
     }
     
-    // Call the original onUpdate with our mapped updates
-    onUpdate(mappedUpdates);
-  } : undefined;
-
+    if (hasReachedMaxQuestions && !isComplete && onNext) {
+      console.log('Max questions reached, triggering completion');
+      // Add a short delay to allow rendering to complete
+      timeoutId = setTimeout(() => {
+        try {
+          onNext();
+        } catch (error) {
+          console.error('Error in auto-navigation:', error);
+        }
+      }, 300);
+    }
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isComplete, hasReachedMaxQuestions, conversation.length, onNext, settingsMaxQuestions]);
+  
+  // Create a standard layout for SlideWrapper
+  const standardLayout: SlideLayout = {
+    type: 'standard',
+    alignment: 'left',
+    spacing: 'normal'
+  };
+  
+  // Prepare presentation settings
+  const presentation = settings.presentation || {
+    layout: 'left',
+    spacing: 'normal',
+    titleSize: 'medium'
+  };
+  
+  // Determine which question to show to the user
+  const currentQuestion = useMemo(() => {
+    // If we're at the first question, show starter prompt
+    if (isFirstQuestion) {
+      return starterPrompt;
+    }
+    
+    // Otherwise show the next AI-generated question if we have one
+    if (nextQuestion) {
+      return nextQuestion;
+    }
+    
+    // Fallback to the last question in conversation if no next question exists
+    const lastQuestion = conversation.length > 0 ? conversation[conversation.length - 1]?.question : '';
+    if (lastQuestion) {
+      return lastQuestion;
+    }
+    
+    // Final fallback
+    return starterPrompt;
+  }, [isFirstQuestion, starterPrompt, conversation, nextQuestion]);
+  
+  // Determine if this is the initial unanswered state
+  const isInitialState = isFirstQuestion && !isComplete;
+  
+  // Determine if block can be skipped based on required flag
+  const canSkip = !required;
+  
+  // Helper function to get mapped conversation with first question always showing the starter prompt
+  const getMappedConversation = () => {
+    if (conversation.length === 0) return [];
+    
+    return conversation.map((item, idx) => {
+      // Make sure the first question always shows the starter prompt
+      if (idx === 0 && item.question !== starterPrompt) {
+        return {
+          ...item,
+          question: starterPrompt
+        };
+      }
+      return item;
+    });
+  };
+  
+  // Get the mapped conversation for display
+  const displayConversation = getMappedConversation();
+  
+  // Render
   return (
     <SlideWrapper
       id={id}
@@ -330,15 +374,183 @@ export function AIConversationBlock({
       index={index}
       totalBlocks={totalBlocks}
       settings={{
-        presentation: settings.presentation,
-        layout: settings.layout || { type: 'standard' }
+        presentation: presentation,
+        layout: settings.layout || standardLayout
       }}
-      onUpdate={handleSlideUpdate}
+      onUpdate={onUpdate}
       onNext={onNext}
       isNextDisabled={isNextDisabled}
-      className="w-full"
+      blockRef={effectiveRef}
     >
-      {conversationInterface}
+      {isBuilder && !starterPrompt ? (
+        <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-md">
+          <h3 className="font-medium mb-2">AI Conversation Configuration</h3>
+          <p className="text-sm mb-4">Please configure a starting prompt/question in the block settings.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Loading indicator */}
+          {(isLoading || isSubmitting) && (
+            <div className="text-center py-4">
+              <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full inline-block mr-2" />
+              <span>Loading conversation...</span>
+            </div>
+          )}
+          
+          {/* Display errors if any */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
+              <p className="text-sm">Error: {typeof error === 'string' ? error : (error as any)?.message || 'Failed to load conversation'}</p>
+            </div>
+          )}
+          
+          {!isLoading && (
+            <>
+              {/* Progress indicator */}
+              {settingsMaxQuestions > 0 && (
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                  <span>{progressText}</span>
+                  <span>{Math.min(conversation.length, settingsMaxQuestions)} of {settingsMaxQuestions} completed</span>
+                </div>
+              )}
+              
+              {/* Current Question */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p>{currentQuestion}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Previous conversation history (if any) */}
+              {displayConversation.length > 0 && (
+                <div className="border border-gray-200 rounded-md overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Conversation History</h3>
+                    <span className="text-xs text-gray-500">{displayConversation.length} {displayConversation.length === 1 ? 'response' : 'responses'}</span>
+                  </div>
+                  <div 
+                    ref={historyContainerRef}
+                    className="p-4 space-y-4 max-h-64 overflow-y-auto"
+                  >
+                    {displayConversation.map((item, idx) => (
+                      <div key={idx} className="space-y-2">
+                        <div className="bg-blue-50 p-3 rounded-md">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-medium text-blue-800">Question {idx + 1}:</p>
+                            {idx === 0 && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Starter</span>
+                            )}
+                          </div>
+                          <p className="text-sm">{item.question}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-md ml-4">
+                          <p className="text-sm font-medium text-gray-800">Your answer:</p>
+                          <p className="text-sm">{item.answer}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Only show answer field if not complete */}
+              {!effectiveIsComplete && (
+                <div>
+                  <Textarea
+                    placeholder="Type your answer here..."
+                    value={userInput}
+                    onChange={e => setUserInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.shiftKey && !isSubmitting && userInput.trim()) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
+                    rows={4}
+                    className="w-full"
+                    disabled={isSubmitting || isLoading || effectiveIsComplete}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Press Shift+Enter to submit your answer
+                  </p>
+                </div>
+              )}
+              
+              {/* Navigation Buttons */}
+              <div className="flex justify-between">
+                <div>
+                  {/* Empty div for flex alignment */}
+                </div>
+                
+                {effectiveIsComplete ? (
+                  // Show Continue button when all questions are answered
+                  <Button 
+                    onClick={handleNext}
+                    disabled={isNextDisabled || isNavigating}
+                  >
+                    {isNavigating ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full inline-block mr-2" />
+                        Continuing...
+                      </>
+                    ) : (
+                      'Continue'
+                    )}
+                  </Button>
+                ) : isInitialState && canSkip ? (
+                  // Show both Submit and Skip buttons for initial question when skippable
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleNext}
+                      disabled={isNavigating}
+                    >
+                      {isNavigating ? 'Skipping...' : 'Skip'}
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting || isLoading || !userInput}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full inline-block mr-2" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Answer'
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  // Regular Submit Answer button
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || isLoading || !userInput}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full inline-block mr-2" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Answer'
+                    )}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </SlideWrapper>
   )
 }

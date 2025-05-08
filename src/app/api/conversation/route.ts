@@ -46,19 +46,37 @@ export async function GET(request: Request) {
     }
     
     const conversation = data?.conversation || []
-    const isComplete = conversation.length >= (config?.max_questions || 5)
+    
+    // IMPROVED: More reliable maxQuestions handling
+    const maxQuestions = config?.max_questions || 5
+    const hasReachedMaxQuestions = maxQuestions > 0 && conversation.length >= maxQuestions
+    
+    // ADDED: Detect if this is a new conversation that's just starting
+    const conversationJustStarted = conversation.length === 0
+    
+    // Get the next question, but clear it if max questions reached
+    let nextQuestion = data?.next_question || null
+    if (hasReachedMaxQuestions && nextQuestion) {
+      console.log(`Conversation has reached max questions (${maxQuestions}), clearing next question`)
+      nextQuestion = null
+    }
+    
+    // MODIFIED: Mark as complete if max questions reached, regardless of nextQuestion
+    const isComplete = hasReachedMaxQuestions
     
     return NextResponse.json({
       conversation,
-      nextQuestion: data?.next_question || null,
+      nextQuestion: hasReachedMaxQuestions ? '' : nextQuestion,
       isComplete,
-      maxQuestions: config?.max_questions || 5
+      maxQuestions,
+      // ADDED: Flag to indicate a new conversation
+      conversationJustStarted
     })
   } catch (error) {
-    console.error('Unexpected error in conversation API:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 })
+    console.error('Error in conversation API:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { status: 500 }
+    )
   }
 }
