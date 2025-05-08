@@ -108,13 +108,14 @@ export async function getFormWithBlocks(formId: string): Promise<CompleteForm | 
     id: string;
     form_id: string;
     source_block_id: string;
-    target_block_id: string;
+    default_target_id: string; // Updated from target_block_id to default_target_id
     order_index: number;
     condition_type?: string;
     condition_field?: string;
     condition_operator?: string;
     condition_value?: string | number | boolean | null;
     condition_json?: string;
+    rules?: string; // New field for storing complex rules as JSON string
     created_at?: string;
     updated_at?: string;
   }
@@ -134,6 +135,12 @@ export async function getFormWithBlocks(formId: string): Promise<CompleteForm | 
     } else {
       workflowEdges = edges || [];
       console.log(`Fetched ${workflowEdges.length} workflow edges for form ${formId}`);
+      if (workflowEdges.length > 0) {
+        console.log(`🔎 [getFormWithBlocks] Inspecting default_target_id for fetched edges (form: ${formId}):`);
+        workflowEdges.forEach(edge => {
+          console.log(`  Edge ID: ${edge.id}, default_target_id: ${edge.default_target_id} (type: ${typeof edge.default_target_id})`);
+        });
+      }
     }
   } catch (edgesError) {
     console.error('Error fetching workflow edges:', edgesError);

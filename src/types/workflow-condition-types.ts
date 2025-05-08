@@ -1,5 +1,5 @@
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData } from '@/types/workflow-types';
+import { WorkflowEdgeData, Rule } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { ConditionRule } from '@/types/workflow-types';
 
@@ -39,6 +39,14 @@ export type ConditionOperator =
   | 'greater_than' 
   | 'less_than';
 
+export type LogicalOperator = 'AND' | 'OR';
+
+// Display labels for logical operators
+export const logicalOperatorLabels: Record<LogicalOperator, string> = {
+  'AND': 'AND (all conditions must match)',
+  'OR': 'OR (any condition can match)'
+};
+
 // Define condition display labels for better readability
 export const operatorLabels: Record<ConditionOperator, string> = {
   'equals': 'equals',
@@ -53,6 +61,21 @@ export interface ConditionComponentProps {
   element: Edge<WorkflowEdgeData>;
   sourceBlockType: string;
   onConditionChange: (key: string, value: string | number | boolean) => void;
+}
+
+// Props for rule components
+export interface RuleComponentProps {
+  rule: Rule;
+  element: Edge<WorkflowEdgeData>;
+  sourceBlockType: string;
+  onRuleChange: (ruleId: string, updates: Partial<Rule>) => void;
+  onRuleDelete: (ruleId: string) => void;
+}
+
+// Dropdown option type for selecting target blocks
+export interface TargetBlockOption {
+  value: string; // Block ID
+  label: string; // Block title or description
 }
 
 // Standard field types available for all blocks

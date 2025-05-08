@@ -29,6 +29,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         { status: 404 }
       )
     }
+
+    if (form.workflow_edges && form.workflow_edges.length > 0) {
+      console.log(`🔎 [API Route /api/forms/${formId}] Workflow edges BEFORE JSON serialization:`);
+      form.workflow_edges.forEach(edge => {
+        console.log(`  Edge ID: ${edge.id}, default_target_id: ${edge.default_target_id}, type: ${typeof edge.default_target_id}, property_exists: ${Object.prototype.hasOwnProperty.call(edge, 'default_target_id')}`);
+      });
+    } else {
+      console.log(`🔎 [API Route /api/forms/${formId}] No workflow edges on form object BEFORE JSON serialization.`);
+    }
     
     // For unauthenticated users, only return published forms
     if (!isAuthenticated && form.status !== 'published') {

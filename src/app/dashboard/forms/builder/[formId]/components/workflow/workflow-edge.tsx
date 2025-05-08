@@ -1,11 +1,11 @@
 "use client"
 
-import { memo, useMemo, useCallback, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow'
-import { WorkflowEdgeData } from '@/types/workflow-types'
+import { WorkflowEdgeData, Connection, Rule } from '@/types/workflow-types' 
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { Trash2 } from 'lucide-react'
-
+import { getConditionSummary } from '@/utils/workflow/condition-utils';
+import { FormBlock } from '@/types/block-types'; 
 
 const WorkflowEdge = ({
   id,
@@ -19,24 +19,20 @@ const WorkflowEdge = ({
   selected,
 }: EdgeProps<WorkflowEdgeData>) => {
   const blocks = useFormBuilderStore(state => state.blocks)
-  const removeConnection = useFormBuilderStore(state => state.removeConnection)
+  const selectElement = useFormBuilderStore(state => state.selectElement)
   
-  // Get the connection data for consistent access
   const connection = data?.connection || null;
   
-  // Get the source block details to determine edge style
   const sourceBlock = useMemo(() => {
     if (!connection?.sourceId) return null
     return blocks.find(block => block.id === connection.sourceId)
   }, [blocks, connection?.sourceId])
   
-  // Get the target block details for condition display
-  useMemo(() => {
-    if (!connection?.targetId) return null
-    return blocks.find(block => block.id === connection.targetId)
-  }, [blocks, connection?.targetId])
+  const targetBlock = useMemo(() => {
+    if (!connection?.defaultTargetId) return null
+    return blocks.find(block => block.id === connection.defaultTargetId)
+  }, [blocks, connection?.defaultTargetId])
   
-  // Use straighter lines between nodes
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -44,136 +40,61 @@ const WorkflowEdge = ({
     targetX,
     targetY,
     targetPosition,
-    curvature: 0.15 // Slight curve for better visibility
+    curvature: 0.15
   })
 
-  // Handle edge deletion
-  const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (id) {
-      console.log(`Deleting connection with id: ${id}`);
-      removeConnection(id);
-    }
-  }, [id, removeConnection]);
-
-  // Determine edge style based on block type and condition
   const getEdgeStyles = () => {
     const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
-    const hasConditions = !!(connection?.conditions && connection?.conditions.length > 0)
-    const isConditional = connection?.conditionType === 'conditional'
-    const conditionField = hasConditions ? connection?.conditions[0]?.field || '' : ''
-    const operatorType = hasConditions ? connection?.conditions[0]?.operator || '' : ''
     
-    // Edge colors - always use gold for selected state
-    const baseColor = '#000000' // Black for normal edges
-    const goldColor = '#f59e0b' // Amber-500 for selected/hovered edges
+    const isConditional = !!(connection?.rules && connection.rules.length > 0);
+    const hasActualConditions = isConditional && connection!.rules!.some(rule => 
+      rule.condition_group && rule.condition_group.conditions && rule.condition_group.conditions.length > 0
+    );
+
+    const firstRuleWithConditions = connection?.rules?.find(rule => rule.condition_group && rule.condition_group.conditions && rule.condition_group.conditions.length > 0);
+    const operatorType = firstRuleWithConditions?.condition_group.conditions[0]?.operator || '';
+
+    const baseColor = '#000000'
+    const goldColor = '#f59e0b'
     
-    // Style settings - make edges thinner and more subtle
-    let dashArray = '0' // solid line by default
-    const edgeWidth = selected ? 1.5 : 1 // Thinner lines for better aesthetics
+    let dashArray = '0'
+    const edgeWidth = selected ? 1.5 : 1
     
-    // Style based on condition type and presence
-    if (!isConditional || !hasConditions) {
-      dashArray = '0' // solid line = "always" connection
+    if (!isConditional || !hasActualConditions) { 
+      dashArray = '0' 
     } else if (operatorType === 'equals') {
-      dashArray = '0' // solid line for "equals" conditions
+      dashArray = '0'
     } else if (operatorType === 'not_equals') {
-      dashArray = '5,3' // dotted for "not equals"
+      dashArray = '5,3'
     } else if (operatorType.includes('greater') || operatorType.includes('less')) {
-      dashArray = '10,3' // dashed for comparison
+      dashArray = '10,3'
+    } else if (isConditional) { 
+      dashArray = '3,3';
     }
 
     return {
-      stroke: baseColor, // Always use base color for normal state
-      goldColor, // Store gold color for selected/hover states
+      stroke: baseColor,
+      goldColor,
       strokeWidth: edgeWidth,
       strokeDasharray: dashArray,
       transition: 'stroke 0.2s, stroke-width 0.2s',
       sourceBlockType,
-      hasConditions,
+      hasConditions: hasActualConditions,
       isConditional,
-      conditionField,
+      conditionField: firstRuleWithConditions?.condition_group.conditions[0]?.field || '', 
       operatorType
     }
   }
   
   const edgeStyles = getEdgeStyles()
   
-  // Format condition text
-  const formatCondition = () => {
-    // Check if we have any conditions
-    if (!connection?.conditions || connection.conditions.length === 0 || connection.conditionType !== 'conditional') {
-      return connection?.conditionType === 'fallback' ? 'Fallback path' : 'Always proceed';
-    }
-    
-    // For multiple conditions, just show the first one for simplicity in the edge display
-    const primaryCondition = connection.conditions[0];
-    const { field, operator, value } = primaryCondition;
-    
-    // Format field name more clearly
-    let fieldDisplay = field;
-    let choiceValue = '';
-    
-    if (field === 'answer') {
-      fieldDisplay = 'Answer';
-    } else if (field === 'selected') {
-      fieldDisplay = 'Selected';
-    } else if (field === 'rating') {
-      fieldDisplay = 'Rating';
-    } else if (field.startsWith('choice:')) {
-      // For choice fields, extract the display part, removing the index suffix
-      // The format is now choice:value_index
-      const choiceWithIndex = field.split(':')[1];
-      // Extract just the choice value without the index
-      choiceValue = choiceWithIndex.split('_')[0];
-      fieldDisplay = `Option "${choiceValue}"`;
-    }
-    
-    // Format operator with more clarity
-    let operatorDisplay;
-    switch (operator) {
-      case 'equals': operatorDisplay = 'is'; break;
-      case 'not_equals': operatorDisplay = 'is not'; break;
-      case 'contains': operatorDisplay = 'contains'; break;
-      case 'greater_than': operatorDisplay = 'is greater than'; break;
-      case 'less_than': operatorDisplay = 'is less than'; break;
-      default: operatorDisplay = operator;
-    }
-    
-    // Format value more clearly
-    let valueDisplay = `${value}`;
-    if (typeof value === 'boolean') {
-      valueDisplay = value ? 'Yes' : 'No';
-    }
-    
-    // Handle special cases for clearer messaging
-    if (field.startsWith('choice:')) {
-      return operator === 'equals' 
-        ? `"${choiceValue}" is selected`
-        : `"${choiceValue}" is not selected`;
-    }
-    
-    // Special case for checkboxes
-    if (field === 'selected' && operator === 'equals') {
-      return value 
-        ? `Checked` 
-        : `Not checked`;
-    }
-    
-    // Special case for ratings
-    if (field === 'rating') {
-      return `Rating ${operatorDisplay} ${valueDisplay}`;
-    }
-    
-    // Default formatting without arrow and target name
-    return `${fieldDisplay.toLowerCase()} ${operatorDisplay} ${valueDisplay}`;
-  }
-  
-  const condition = formatCondition();
-  
-  // Track hover state for the edge
+  const conditionText = useMemo(() => {
+    if (!connection || !sourceBlock) return 'Connecting...'; 
+    return getConditionSummary(connection, sourceBlock, sourceBlock.blockTypeId);
+  }, [connection, sourceBlock]);
+
+  if (!connection) return null; 
+
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -201,6 +122,7 @@ const WorkflowEdge = ({
         className={`edge-wrapper ${selected ? 'selected' : ''}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onClick={() => selectElement(id)}
         style={{ cursor: 'pointer' }}
       >
         {/* Enhanced background path for easier interaction */}
@@ -250,33 +172,10 @@ const WorkflowEdge = ({
         >
           <div className="overflow-hidden flex flex-col">
             <span className="whitespace-normal hyphens-auto break-words leading-tight">
-              {condition}
+              {conditionText}
             </span>
           </div>
         </div>
-      </EdgeLabelRenderer>
-      
-      {/* Delete button - shown on hover/selection */}
-      <EdgeLabelRenderer>
-        <button
-          type="button"
-          onClick={handleDelete}
-          className={`
-            nodrag nopan w-7 h-7 flex items-center justify-center 
-            bg-red-100 hover:bg-red-200 text-red-600 rounded-full border border-red-300 
-            group edge-delete-button absolute pointer-events-auto z-20 
-            shadow-sm transition-all duration-200
-            ${selected || isHovered ? 'opacity-100' : 'opacity-0'}
-          `}
-          style={{
-            transform: `translate(-50%, -50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2 - 60}px)`
-          }}
-          aria-label="Delete connection"
-          title="Delete connection"
-          data-edge-id={id}
-        >
-          <Trash2 size={14} className="group-hover:text-red-700" />
-        </button>
       </EdgeLabelRenderer>
     </>
   )

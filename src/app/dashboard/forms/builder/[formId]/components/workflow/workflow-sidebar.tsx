@@ -19,21 +19,36 @@ export default function WorkflowSidebar() {
   const selectElement = useFormBuilderStore(state => state.selectElement)
   
   // Find the selected element from either blocks or connections
+  const foundConnection = selectedElementId ? connections.find(conn => conn.id === selectedElementId) : null;
+  const foundBlock = selectedElementId ? blocks.find(block => block.id === selectedElementId) : null;
+
+  if (selectedElementId) {
+    console.log(`[WorkflowSidebar] For ID ${selectedElementId}:`);
+    console.log(`[WorkflowSidebar] Found Connection:`, foundConnection);
+    console.log(`[WorkflowSidebar] Found Block:`, foundBlock);
+  }
+
   const element = selectedElementId
-    ? connections.find(conn => conn.id === selectedElementId) ||
-      (blocks.find(block => block.id === selectedElementId) 
+    ? foundConnection ||
+      (foundBlock
         ? {
             id: selectedElementId,
             type: 'formBlock',
-            data: { block: blocks.find(block => block.id === selectedElementId) },
+            data: { block: foundBlock },
             position: { x: 0, y: 0 }
           } as Node<WorkflowNodeData>
         : null)
     : null
+
+  if (selectedElementId) {
+    console.log(`[WorkflowSidebar] Resolved Element:`, element);
+  }
   
   // Determine if the element is an edge (connection) or a node (block)
   // Connections in the store have sourceId/targetId properties (not source/target as in ReactFlow)
-  const isEdge = element && ('sourceId' in element || 'source' in element) && ('targetId' in element || 'target' in element)
+  const isEdge = element && 
+                 ('sourceId' in element || 'source' in element) && 
+                 ('defaultTargetId' in element || 'targetId' in element || 'target' in element);
   const isNode = element && !isEdge
   
   // Log selection status for debugging

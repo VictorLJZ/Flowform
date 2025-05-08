@@ -31,6 +31,7 @@ import FormBuilderBlockSelector from "./components/form-builder-block-selector"
 import WorkflowContent from "./components/workflow-content"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import ConnectContent from "./components/connect-content"
+import { Rule } from '@/types/workflow-types';
 
 // Wrapper that provides an isolated store per formId
 export default function FormBuilderPage() {
@@ -151,56 +152,41 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         
         // Transform workflow edges to our internal Connection format
         const connections = form.workflow_edges.map(edge => {
-          // Determine condition type based on edge data
-          const hasCondition = !!edge.condition_field;
-          const conditionType = hasCondition ? 
-            (edge.condition_type || 'conditional') : 
-            (edge.condition_type || 'always');
-          
-          // Create the conditions array
-          const conditions = [];
-          
-          // If there's a condition field, add it to the conditions array
-          if (hasCondition) {
-            conditions.push({
-              id: edge.id + '-condition-1', // Generate a unique ID for the condition
-              field: edge.condition_field,
-              operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
-              value: edge.condition_value
-            });
-          }
-          
-          // Try to parse conditions JSON if it exists
-          if (edge.conditions) {
+          let parsedRules: Rule[] = [];
+          if (edge.rules) { // edge.rules is the JSON string from the DB
             try {
-              const parsedConditions = typeof edge.conditions === 'string' ? 
-                JSON.parse(edge.conditions) : edge.conditions;
-              if (Array.isArray(parsedConditions)) {
-                // Use the parsed conditions instead
-                return {
-                  id: edge.id,
-                  sourceId: edge.source_block_id,
-                  targetId: edge.target_block_id,
-                  order_index: edge.order_index || 0,
-                  conditionType: conditionType as 'always' | 'conditional' | 'fallback',
-                  conditions: parsedConditions
-                };
+              const rulesFromEdge = JSON.parse(edge.rules);
+              if (Array.isArray(rulesFromEdge)) {
+                // Basic validation: check if objects have essential Rule properties
+                parsedRules = rulesFromEdge.filter(
+                  (r: any) => r.id && r.target_block_id && r.condition_group
+                ) as Rule[];
+              } else {
+                console.warn(`Parsed edge.rules for edge ${edge.id} is not an array:`, rulesFromEdge);
               }
             } catch (e) {
-              console.warn('Failed to parse condition_json:', e);
+              console.warn(`Failed to parse edge.rules JSON for edge ${edge.id}:`, e, "Raw edge.rules:", edge.rules);
             }
           }
-          
-          // Return the standardized connection format
+
+          // Return the standardized connection format adhering to the Connection interface
           return {
             id: edge.id,
             sourceId: edge.source_block_id,
-            targetId: edge.target_block_id,
-            order_index: edge.order_index || 0,
-            conditionType: conditionType as 'always' | 'conditional' | 'fallback',
-            conditions: conditions
+            defaultTargetId: edge.default_target_id,
+            rules: parsedRules, 
+            order_index: edge.order_index || 0
           };
         });
+        
+        // === ADDED LOGGING START (After Mapping in page.tsx) ===
+        if (connections.length > 0) {
+          console.log(`🔎 [page.tsx - AFTER MAPPING] Mapped appConnections for form ${formId}:`);
+          connections.forEach(conn => {
+            console.log(`  Connection ID: ${conn.id}, mapped defaultTargetId: ${conn.defaultTargetId}, type: ${typeof conn.defaultTargetId}, rules_count: ${conn.rules?.length}`);
+          });
+        }
+        // === ADDED LOGGING END (After Mapping in page.tsx) ===
         
         // Set connections in the store
         setConnections(connections);

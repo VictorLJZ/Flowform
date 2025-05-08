@@ -2,13 +2,20 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { QAPair } from '@/types/supabase-types';
 import type { ChangeEvent, KeyboardEvent, MutableRefObject } from 'react';
 
+// Define the expected result structure for submitAnswer
+interface SubmitAnswerResult {
+  nextQuestion?: string;
+  conversation?: QAPair[];
+  error?: string; // Added error as it's a common return property
+}
+
 interface UseConversationInteractionProps {
   conversation: QAPair[];
   activeQuestionIndex: number;
   questionInputs: Record<number, string>;
   isFirstQuestion: boolean;
   starterPrompt: string;
-  submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<unknown>;
+  submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<SubmitAnswerResult>;
   onNext?: () => void;
   onChange?: (value: QAPair[]) => void;
   onUpdate?: () => void;

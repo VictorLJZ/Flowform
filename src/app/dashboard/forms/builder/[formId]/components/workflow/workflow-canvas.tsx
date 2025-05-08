@@ -198,14 +198,16 @@ export default function WorkflowCanvas() {
   // Handle keyboard shortcuts for deleting connections
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if an edge is selected and Delete or Backspace is pressed
+      // Edges cannot be deleted via keyboard to prevent orphaned nodes
+      // Even if an edge is selected and Delete or Backspace is pressed, we do nothing
       if (
         selectedElementId && 
         (e.key === 'Delete' || e.key === 'Backspace') && 
         connections.some(conn => conn.id === selectedElementId)
       ) {
         e.preventDefault()
-        removeConnection(selectedElementId)
+        // Connection deletion disabled to prevent orphaned nodes
+        // Just unselect the element
         selectElement(null)
       }
     }

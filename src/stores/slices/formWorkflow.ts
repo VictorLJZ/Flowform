@@ -3,9 +3,9 @@
 import { StateCreator } from 'zustand'
 import type { FormWorkflowSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
-import type { Connection } from '@/types/workflow-types'
+import type { Connection, Rule } from '@/types/workflow-types'
 import type { Node, Edge } from 'reactflow'
-import { createDefaultConnections } from '@/utils/workflow/autoConnectBlocks'
+import { v4 as uuidv4 } from 'uuid'
 
 export const createFormWorkflowSlice: StateCreator<
   FormBuilderState,
@@ -63,10 +63,16 @@ export const createFormWorkflowSlice: StateCreator<
   setConnections: (connections: Connection[]) => set({ connections }),
   
   addConnection: (connection: Connection) => {
+    // Ensure connection has required fields
+    const validConnection = {
+      ...connection,
+      rules: connection.rules || [] // Ensure rules array exists
+    };
+    
     set((state) => ({
-      connections: [...state.connections, connection]
+      connections: [...state.connections, validConnection]
     }))
-    return connection.id; // Return the connection ID as required by the interface
+    return validConnection.id;
   },
   
   updateConnection: (connectionId: string, updates: Partial<Connection>) => set((state) => ({
@@ -79,115 +85,168 @@ export const createFormWorkflowSlice: StateCreator<
     connections: state.connections.filter(conn => conn.id !== connectionId)
   })),
   
-  // Block observation methods - these are called when blocks change
-  onBlockAdded: (blockId: string) => {
-    // Called when a new block is added
-    console.log(`🔍🔄 [WorkflowSlice] onBlockAdded called for blockId: ${blockId}`);
+  updateConnectionTarget: (connectionId: string, newTargetId: string) => {
+    // Get current state
+    const state = get();
+    const { connections, blocks } = state;
     
-    // Create default connections based on the block's position
-    const { blocks, connections } = get();
-    
-    console.log(`🔍🔄 [WorkflowSlice] Current state: ${blocks.length} blocks, ${connections.length} connections`);
-    
-    // Find the block that was just added
-    const addedBlock = blocks.find(block => block.id === blockId);
-    if (!addedBlock) {
-      console.error(`🚨🚨 [WorkflowSlice] Block with id ${blockId} not found in blocks array!`);
-      return;
+    // Find the connection to update
+    const connectionToUpdate = connections.find(conn => conn.id === connectionId);
+    if (!connectionToUpdate) {
+      console.error(`Connection with ID ${connectionId} not found`);
+      return false;
     }
     
-    console.log(`🔍🔄 [WorkflowSlice] Found block: ${addedBlock.title || 'Untitled'} (${addedBlock.id}) at order_index ${addedBlock.order_index}`);
+    // Get the current source and target
+    const sourceId = connectionToUpdate.sourceId;
+    const oldTargetId = connectionToUpdate.defaultTargetId;
     
-    // Create default connections for the new block
-    const newConnections = createDefaultConnections({
-      blocks,
-      connections,
-      targetBlockId: blockId
+    // Create a preview of the new connections state after the update
+    const updatedConnections = connections.map(conn => 
+      conn.id === connectionId ? { ...conn, defaultTargetId: newTargetId } : conn
+    );
+    
+    // Check if this change would orphan the old target
+    const oldTargetIncoming = updatedConnections.filter(conn => conn.defaultTargetId === oldTargetId).length;
+    const oldTargetOutgoing = updatedConnections.filter(conn => conn.sourceId === oldTargetId).length;
+    let oldTargetInRules = false;
+    
+    // Also check rules targets
+    updatedConnections.forEach(conn => {
+      if (conn.rules && conn.rules.length > 0) {
+        if (conn.rules.some(rule => rule.target_block_id === oldTargetId)) {
+          oldTargetInRules = true;
+        }
+      }
     });
     
-    // Add all new connections
-    if (newConnections.length > 0) {
-      console.log(`✅✅ [WorkflowSlice] Creating ${newConnections.length} default connections for block ${blockId}:`);
-      newConnections.forEach((conn, idx) => {
-        console.log(`  📌📌 [${idx + 1}] ${conn.sourceId} --> ${conn.targetId} (${conn.conditionType})`);
-      });
-      
-      set(state => ({
-        connections: [...state.connections, ...newConnections]
-      }));
-      
-      // Verify connections were added
-      setTimeout(() => {
-        const updatedConnections = get().connections;
-        console.log(`🔍🔄 [WorkflowSlice] After update: ${updatedConnections.length} total connections`);
-      }, 0);
-    } else {
-      console.log(`⚠️⚠️ [WorkflowSlice] No default connections needed for block ${blockId}`);
+    // If the old target would be orphaned by this change, prevent it
+    if (oldTargetIncoming === 0 && oldTargetOutgoing === 0 && !oldTargetInRules) {
+      console.error('Cannot update connection target: would create an orphaned node');
+      return false;
     }
+    
+    // Apply the change
+    console.log(`Updating connection ${connectionId} default target from ${oldTargetId} to ${newTargetId}`);
+    set({ 
+      connections: updatedConnections 
+    });
+    
+    return true;
   },
   
-  onBlockRemoved: (blockId: string) => {
-    // Called when a block is removed
-    // Clean up any connections involving this block
-    const { connections } = get()
-    
-    // Filter out connections involving the removed block
-    const validConnections = connections.filter(conn => 
-      conn.sourceId !== blockId && conn.targetId !== blockId
-    )
-    
-    // Only update if connections changed
-    if (validConnections.length !== connections.length) {
-      console.log(`Cleaning up ${connections.length - validConnections.length} connections for removed block ${blockId}`)
-      set({ connections: validConnections })
+  // Block observation methods - these are called when blocks change
+  onBlockAdded: (blockId: string) => {
+    const { connections, blocks, addConnection } = get();
+    const newBlock = blocks.find(b => b.id === blockId);
+
+    if (!newBlock) {
+      console.error(`[onBlockAdded] New block with ID ${blockId} not found in state.`);
+      return;
     }
+
+    const isFirstBlock = blocks.length === 1 && blocks[0].id === blockId;
+    const hasIncomingConnections = connections.some(conn => 
+        conn.defaultTargetId === blockId || 
+        (conn.rules && conn.rules.some(rule => rule.target_block_id === blockId))
+    );
+
+    if (!isFirstBlock && !hasIncomingConnections) {
+      const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      const newBlockIndex = sortedBlocks.findIndex(b => b.id === blockId);
+      
+      if (newBlockIndex > 0) {
+        const prevBlock = sortedBlocks[newBlockIndex - 1];
+        if (prevBlock && prevBlock.id !== blockId) {
+          const existingConnection = connections.find(conn => 
+            conn.sourceId === prevBlock.id && conn.defaultTargetId === blockId
+          );
+
+          if (!existingConnection) {
+            console.log(`[onBlockAdded] Auto-connecting previous block ${prevBlock.id} to new block ${blockId}`);
+            const newConnection: Connection = {
+              id: uuidv4(),
+              sourceId: prevBlock.id,
+              defaultTargetId: blockId,
+              rules: [],
+              order_index: connections.length
+            };
+            addConnection(newConnection);
+          }
+        }
+      }
+    }
+    get().validateConnections(); // Validate after potential changes
+  },
+
+  onBlockRemoved: (blockId: string) => {
+    const { connections, nodePositions } = get();
+    const validConnections = connections.filter(conn => 
+      conn.sourceId !== blockId && conn.defaultTargetId !== blockId && 
+      (conn.rules ? conn.rules.every(rule => rule.target_block_id !== blockId) : true)
+    );
+
+    const newNodePositions = { ...nodePositions };
+    delete newNodePositions[blockId];
+
+    if (validConnections.length !== connections.length || !(blockId in nodePositions)) {
+      console.log(`[onBlockRemoved] Cleaned up for block ${blockId}. Connections: ${validConnections.length}, Node Positions: ${Object.keys(newNodePositions).length}`);
+      set({ connections: validConnections, nodePositions: newNodePositions });
+    }
+    get().validateConnections(); // Validate after potential changes
   },
   
   onBlocksReordered: (movedBlockId: string) => {
-    // Called when blocks are reordered
-    console.log(`🔍🔄 [WorkflowSlice] onBlocksReordered called for blockId: ${movedBlockId}`);
-    
-    // Create default connections for the moved block based on its new position
-    const { blocks, connections } = get();
-    
-    console.log(`🔍🔄 [WorkflowSlice] Current state: ${blocks.length} blocks, ${connections.length} connections`);
-    
-    // Find the moved block
+    console.log(`[onBlocksReordered] Reordered block ${movedBlockId}`);
+    const { connections, blocks, addConnection } = get();
     const movedBlock = blocks.find(block => block.id === movedBlockId);
+
     if (!movedBlock) {
-      console.error(`🚨🚨 [WorkflowSlice] Block with id ${movedBlockId} not found in blocks array!`);
+      console.error(`[onBlocksReordered] Block with id ${movedBlockId} not found!`);
       return;
     }
-    
-    console.log(`🔍🔄 [WorkflowSlice] Found moved block: ${movedBlock.title || 'Untitled'} (${movedBlock.id}) at new order_index ${movedBlock.order_index}`);
-    
-    // Create default connections for the moved block
-    const newConnections = createDefaultConnections({
-      blocks,
-      connections,
-      targetBlockId: movedBlockId
-    });
-    
-    if (newConnections.length > 0) {
-      console.log(`✅✅ [WorkflowSlice] Creating ${newConnections.length} default connections for moved block ${movedBlockId}:`);
-      newConnections.forEach((conn, idx) => {
-        console.log(`  📌📌 [${idx + 1}] ${conn.sourceId} --> ${conn.targetId} (${conn.conditionType})`);
-      });
-      
-      set(state => ({
-        connections: [...state.connections, ...newConnections]
-      }));
-      
-      // Verify connections were added
-      setTimeout(() => {
-        const updatedConnections = get().connections;
-        console.log(`🔍🔄 [WorkflowSlice] After reorder update: ${updatedConnections.length} total connections`);
-      }, 0);
-    } else {
-      console.log(`⚠️⚠️ [WorkflowSlice] No changes needed for connections after reordering block ${movedBlockId}`);
+
+    const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const movedBlockIndex = sortedBlocks.findIndex(b => b.id === movedBlockId);
+
+    // 1. Connect from PREVIOUS block to MOVED block
+    if (movedBlockIndex > 0) {
+      const prevBlockInOrder = sortedBlocks[movedBlockIndex - 1];
+      if (prevBlockInOrder && prevBlockInOrder.id !== movedBlock.id) {
+        const existingConnection = connections.find(conn => conn.sourceId === prevBlockInOrder.id && conn.defaultTargetId === movedBlock.id);
+        if (!existingConnection) {
+          console.log(`[onBlocksReordered] Auto-connecting ${prevBlockInOrder.id} to ${movedBlock.id}`);
+          addConnection({
+            id: uuidv4(),
+            sourceId: prevBlockInOrder.id,
+            defaultTargetId: movedBlock.id,
+            rules: [],
+            order_index: connections.length
+          });
+        }
+      }
     }
+
+    // 2. Connect from MOVED block to NEXT block
+    if (movedBlockIndex < sortedBlocks.length - 1) {
+      const nextBlockInOrder = sortedBlocks[movedBlockIndex + 1];
+      if (nextBlockInOrder && nextBlockInOrder.id !== movedBlock.id) {
+        const existingConnection = connections.find(conn => conn.sourceId === movedBlock.id && conn.defaultTargetId === nextBlockInOrder.id);
+        if (!existingConnection) {
+          console.log(`[onBlocksReordered] Auto-connecting ${movedBlock.id} to ${nextBlockInOrder.id}`);
+          addConnection({
+            id: uuidv4(),
+            sourceId: movedBlock.id,
+            defaultTargetId: nextBlockInOrder.id,
+            rules: [],
+            order_index: connections.length
+          });
+        }
+      }
+    }
+    get().validateConnections(); // Validate after potential changes
   },
-  
+
   // Utility method to validate all connections
   validateConnections: () => {
     const { connections } = get()
@@ -195,10 +254,24 @@ export const createFormWorkflowSlice: StateCreator<
     
     // Check for connections with missing blocks
     const validConnections = connections.filter(conn => {
-      const sourceExists = blocks.some(block => block.id === conn.sourceId)
-      const targetExists = blocks.some(block => block.id === conn.targetId)
-      return sourceExists && targetExists
-    })
+      const sourceExists = blocks.some(block => block.id === conn.sourceId);
+      const defaultTargetExists = blocks.some(block => block.id === conn.defaultTargetId);
+      
+      // If source or default target doesn't exist, the connection is invalid
+      if (!sourceExists || !defaultTargetExists) {
+        return false;
+      }
+      
+      // Validate rule targets if there are any rules
+      if (conn.rules && conn.rules.length > 0) {
+        // Filter rules with valid targets
+        conn.rules = conn.rules.filter(rule => 
+          blocks.some(block => block.id === rule.target_block_id)
+        );
+      }
+      
+      return true;
+    });
     
     // Only update if connections changed
     if (validConnections.length !== connections.length) {
@@ -230,10 +303,22 @@ export const createFormWorkflowSlice: StateCreator<
         graph[block.id] = []
       })
       
-      // Add edges to the graph
+      // Add edges to the graph from both default targets and rule targets
       connections.forEach(conn => {
         if (graph[conn.sourceId]) {
-          graph[conn.sourceId].push(conn.targetId)
+          // Add default target
+          if (conn.defaultTargetId !== null) { 
+            graph[conn.sourceId].push(conn.defaultTargetId);
+          }
+          
+          // Add rule targets
+          if (conn.rules && conn.rules.length > 0) {
+            conn.rules.forEach(rule => {
+              if (rule.target_block_id) {
+                graph[conn.sourceId].push(rule.target_block_id);
+              }
+            });
+          }
         }
       })
       

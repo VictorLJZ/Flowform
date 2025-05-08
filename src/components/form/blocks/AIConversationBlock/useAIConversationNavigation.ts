@@ -15,9 +15,9 @@ export function useAIConversationNavigation(
   effectiveIsComplete: boolean,
   isNavigating: boolean,
   navigationAttempted: boolean,
-  onNext?: () => void,
   settingsMaxQuestions: number,
-  mountTimeRef: React.RefObject<number>
+  mountTimeRef: React.RefObject<number>,
+  onNext?: () => void
 ) {
   // Update effect for detecting return to previous block
   useEffect(() => {

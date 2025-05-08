@@ -66,7 +66,7 @@ export function createDefaultConnections({
       
       // Check if this connection already exists
       const hasIncomingConnection = connections.some(
-        conn => conn.sourceId === prevBlock.id && conn.targetId === targetBlock.id
+        conn => conn.sourceId === prevBlock.id && conn.defaultTargetId === targetBlock.id
       );
       
       // Does the previous block already have outgoing connections?
@@ -81,10 +81,9 @@ export function createDefaultConnections({
         const newConnection: Connection = {
           id: uuidv4(),
           sourceId: prevBlock.id,
-          targetId: targetBlock.id,
+          defaultTargetId: targetBlock.id,
           order_index: connections.length + newConnections.length,
-          conditionType: 'always',
-          conditions: []
+          rules: []
         };
         
         newConnections.push(newConnection);
@@ -101,7 +100,7 @@ export function createDefaultConnections({
       
       // Check if this connection already exists
       const hasOutgoingConnection = connections.some(
-        conn => conn.sourceId === targetBlock.id && conn.targetId === nextBlock.id
+        conn => conn.sourceId === targetBlock.id && conn.defaultTargetId === nextBlock.id
       );
       
       // Does the target block already have any outgoing connections?
@@ -116,10 +115,9 @@ export function createDefaultConnections({
         const newConnection: Connection = {
           id: uuidv4(),
           sourceId: targetBlock.id,
-          targetId: nextBlock.id,
+          defaultTargetId: nextBlock.id,
           order_index: connections.length + newConnections.length,
-          conditionType: 'always',
-          conditions: []
+          rules: []
         };
         
         newConnections.push(newConnection);
@@ -151,7 +149,7 @@ export function createDefaultConnections({
     
     // Check if a connection already exists from current block to next block
     const hasConnection = connections.some(
-      conn => conn.sourceId === currentBlock.id && conn.targetId === nextBlock.id
+      conn => conn.sourceId === currentBlock.id && conn.defaultTargetId === nextBlock.id
     );
     
     // Check if current block already has any outgoing connections
@@ -167,10 +165,9 @@ export function createDefaultConnections({
       const newConnection: Connection = {
         id: uuidv4(),
         sourceId: currentBlock.id,
-        targetId: nextBlock.id,
+        defaultTargetId: nextBlock.id,
         order_index: connections.length + newConnections.length,
-        conditionType: 'always', // Type-safe: 'always' | 'conditional' | 'fallback'
-        conditions: []
+        rules: []
       };
       
       newConnections.push(newConnection);
@@ -192,7 +189,7 @@ export function createDefaultConnections({
       if (!prevHasOutgoing) {
         // Check if a connection already exists from previous block to current block
         const hasIncomingFromPrev = connections.some(
-          conn => conn.sourceId === prevBlock.id && conn.targetId === currentBlock.id
+          conn => conn.sourceId === prevBlock.id && conn.defaultTargetId === currentBlock.id
         );
         
         if (!hasIncomingFromPrev) {
@@ -201,10 +198,9 @@ export function createDefaultConnections({
           const incomingConnection: Connection = {
             id: uuidv4(),
             sourceId: prevBlock.id,
-            targetId: currentBlock.id,
+            defaultTargetId: currentBlock.id,
             order_index: connections.length + newConnections.length,
-            conditionType: 'always',
-            conditions: []
+            rules: []
           };
           
           newConnections.push(incomingConnection);

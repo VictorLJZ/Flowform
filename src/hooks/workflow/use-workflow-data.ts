@@ -71,36 +71,44 @@ export function useWorkflowData() {
     console.log(`🔎🔎 [WorkflowData] Converting ${connections.length} connections to ReactFlow edges`);
     
     if (connections.length > 0) {
-      console.log(`🔎🔎 [WorkflowData] Connections data sample:`, 
-        connections.slice(0, 3).map(c => `${c.sourceId} -> ${c.targetId} (${c.conditionType})`));
+      console.log(`🔎🔎 [WorkflowData] Connections data sample (showing default targets):`,
+        connections.slice(0, 3).map(c => `${c.sourceId} -> ${c.defaultTargetId || 'N/A (no default)'} (Rules: ${c.rules?.length || 0})`));
       
       if (connections.length > 3) {
         console.log(`🔎… [WorkflowData] ...and ${connections.length - 3} more connections`);
       }
     }
     
-    // Validate that both source and target blocks exist for each connection
+    // Validate that both source and target blocks exist for each connection's default path
     const validConnections = connections.filter(connection => {
       const sourceExists = blocks.some(block => block.id === connection.sourceId);
-      const targetExists = blocks.some(block => block.id === connection.targetId);
+      const defaultTargetBlockId = connection.defaultTargetId;
+      // A connection is considered valid for default path rendering if its defaultTargetId is set and the target block exists.
+      // Connections that only have rules (and no defaultTargetId) will be filtered out here for now,
+      // as this part of the code currently only renders default paths.
+      const targetExists = defaultTargetBlockId ? blocks.some(block => block.id === defaultTargetBlockId) : false;
       
       if (!sourceExists || !targetExists) {
-        console.error(`🚨🚨 [WorkflowData] Skipping invalid connection ${connection.id}: ${connection.sourceId} -> ${connection.targetId}. Source exists: ${sourceExists}, Target exists: ${targetExists}`);
+        // Updated error message to be more specific about defaultTargetId
+        console.error(`🚨🚨 [WorkflowData] Skipping invalid default connection ${connection.id}: ${connection.sourceId} -> ${defaultTargetBlockId || 'undefined (no defaultTargetId)'}. Source exists: ${sourceExists}, Target exists: ${targetExists}`);
         return false;
       }
-      return true;
+      // Ensure defaultTargetId is present for the edge to be created in the next step.
+      return !!defaultTargetBlockId;
     });
     
     if (validConnections.length !== connections.length) {
-      console.warn(`⚠️⚠️ [WorkflowData] Filtered out ${connections.length - validConnections.length} invalid connections`);
+      const skippedCount = connections.length - validConnections.length;
+      console.warn(`⚠️⚠️ [WorkflowData] Filtered out ${skippedCount} connections. This may include connections that only have rules and no default target, or connections with invalid default targets.`);
     }
     
-    // Create edges from connections
+    // Create edges from connections that have a valid defaultTargetId
     const newEdges = validConnections.map(connection => {
+      // At this point, connection.defaultTargetId is guaranteed to be set due to the filter above.
       const edge = {
-        id: connection.id,
+        id: connection.id, // For now, one connection object maps to one edge. This might change if rules are visualized.
         source: connection.sourceId,
-        target: connection.targetId,
+        target: connection.defaultTargetId!, // Non-null assertion due to the filter
         type: 'workflow',
         selected: selectedElementId === connection.id,
         data: { connection },
@@ -109,17 +117,18 @@ export function useWorkflowData() {
         style: { strokeWidth: selectedElementId === connection.id ? 3 : 2 }
       };
       
-      console.log(`🔎✅ [WorkflowData] Created edge ${connection.id}: ${connection.sourceId} -> ${connection.targetId}`);
+      console.log(`🔎✅ [WorkflowData] Created edge for default path ${connection.id}: ${connection.sourceId} -> ${connection.defaultTargetId}`);
       return edge;
     });
     
     console.log(`🔎📊 [WorkflowData] Setting ${newEdges.length} edges in ReactFlow`);
     setEdges(newEdges);
     
-    // Look for nodes that have no incoming or outgoing connections
+    // Look for nodes that have no incoming or outgoing connections (based on defaultTargetId for incoming)
     const orphanedNodes = blocks.filter(block => {
-      const hasOutgoing = connections.some(conn => conn.sourceId === block.id);
-      const hasIncoming = connections.some(conn => conn.targetId === block.id);
+      const hasOutgoing = connections.some(conn => conn.sourceId === block.id && conn.defaultTargetId); // Consider outgoing only if it has a default target
+      const hasIncoming = connections.some(conn => conn.defaultTargetId === block.id);
+      // Also consider rules for outgoing/incoming if visualizing rule-based edges in the future
       return !hasOutgoing && !hasIncoming;
     });
     

@@ -120,23 +120,13 @@ export interface WorkflowEdge {
   id: string; // UUID
   form_id: string; // UUID, references forms.form_id
   source_block_id: string; // UUID, references form_blocks.id
-  target_block_id: string; // UUID, references form_blocks.id
+  default_target_id: string | null; // UUID, references form_blocks.id
   
   // New fields for enhanced condition system
   condition_type: 'always' | 'conditional' | 'fallback'; // Type of condition
-  conditions: Array<{
-    id?: string;
-    field: string;
-    operator: string;
-    value: string | number | boolean | null;
-  }> | null; // Array of conditions (stored as JSONB)
   
-  // Keep legacy fields for backward compatibility
-  condition_field: string | null; // Field to evaluate in the condition (legacy)
-  condition_operator: string | null; // Operator for the condition (legacy)
-  condition_value: string | number | boolean | null; // Value for the condition comparison (legacy, stored as JSONB)
-  
-  order_index: number; // Order of the edge in the workflow
+  rules?: string; // New field for storing complex rules as JSON string
+  order_index: number;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }

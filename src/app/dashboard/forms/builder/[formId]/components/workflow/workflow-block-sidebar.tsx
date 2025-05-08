@@ -11,15 +11,24 @@ import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Save, Edit2, X } from 'lucide-react'
+import { Save, Edit2, X, Plus, ArrowRightCircle } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
+import { v4 as uuidv4 } from 'uuid'
+import { Connection, LogicalOperator } from '@/types/workflow-types'
 
 export default function WorkflowBlockSidebar() {
   // Place ALL hooks at the top level of the component to comply with React rules
   const blocks = useFormBuilderStore(state => state.blocks)
+  const connections = useFormBuilderStore(state => state.connections)
   const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
   const updateBlock = useFormBuilderStore(state => state.updateBlock)
   const saveForm = useFormBuilderStore(state => state.saveForm)
+  const addConnection = useFormBuilderStore(state => state.addConnection)
   const edges = useEdges()
+  
+  // State for creating new connections
+  const [creatingConnection, setCreatingConnection] = useState(false)
+  const [targetBlockId, setTargetBlockId] = useState('')
   
   // All state hooks must be declared before any conditional returns
   const [editMode, setEditMode] = useState(false)
@@ -188,7 +197,107 @@ export default function WorkflowBlockSidebar() {
             </div>
             
             <div>
-              <Label className="mb-2 block text-xs font-medium">Outgoing Connections</Label>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="block text-xs font-medium">Outgoing Connections</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-6 text-xs py-0 px-2 text-blue-600"
+                  onClick={() => setCreatingConnection(true)}
+                >
+                  <Plus size={12} className="mr-1" /> New
+                </Button>
+              </div>
+              
+              {/* Connection creation UI */}
+              {creatingConnection && (
+                <div className="mb-3 p-2 border rounded-md bg-blue-50 border-blue-100">
+                  <Label className="text-xs mb-1 block">Create New Connection</Label>
+                  <div className="space-y-2">
+                    <select 
+                      className="w-full text-xs p-1 border rounded"
+                      value={targetBlockId}
+                      onChange={e => setTargetBlockId(e.target.value)}
+                    >
+                      <option value="">Select target block</option>
+                      {blocks
+                        .filter(b => b.id !== block.id) // Filter out current block
+                        .map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.title || `Block #${b.order_index + 1}`}
+                          </option>
+                        ))
+                      }
+                    </select>
+                    
+                    <div className="flex justify-end space-x-2 mt-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 text-xs"
+                        onClick={() => {
+                          setCreatingConnection(false);
+                          setTargetBlockId('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="h-6 text-xs"
+                        disabled={!targetBlockId}
+                        onClick={() => {
+                          // Create a new connection
+                          if (targetBlockId && block) {
+                            const newRuleId = uuidv4();
+                            const newConditionId = uuidv4();
+
+                            const newConnection: Connection = {
+                              id: uuidv4(),
+                              sourceId: block.id,
+                              defaultTargetId: null, // Default target if no rules match
+                              rules: [
+                                {
+                                  id: newRuleId,
+                                  target_block_id: targetBlockId, // Target for this specific rule
+                                  condition_group: {
+                                    logical_operator: 'AND' as LogicalOperator, // Changed to uppercase 'AND' and cast to LogicalOperator
+                                    conditions: [
+                                      {
+                                        id: newConditionId,
+                                        field: '', // Initialize with an empty field
+                                        operator: 'equals', // Default operator
+                                        value: '' // Initialize with an empty value
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                              // Removed: targetId, conditionType, conditions (top-level), order_index
+                            };
+                            
+                            addConnection(newConnection);
+                            saveForm();
+                            
+                            toast({
+                              title: "Connection created",
+                              description: "New conditional connection has been added",
+                              duration: 2000
+                            });
+                            
+                            setCreatingConnection(false);
+                            setTargetBlockId('');
+                          }
+                        }}
+                      >
+                        Connect
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2 max-h-24 overflow-auto">
                 {getOutgoingConnections().length > 0 ? (
                   getOutgoingConnections().map((e: Edge) => (

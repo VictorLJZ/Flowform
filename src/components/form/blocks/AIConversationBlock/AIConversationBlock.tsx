@@ -139,9 +139,9 @@ export function AIConversationBlock({
     effectiveIsComplete,
     isNavigating,
     navigationAttempted,
-    onNext,
     settingsMaxQuestions,
-    mountTimeRef
+    mountTimeRef,
+    onNext
   );
 
   // Calculate progress information

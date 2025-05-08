@@ -15,7 +15,7 @@ import { EmailBlock } from '@/components/form/blocks/EmailBlock';
 import { NumberBlock } from '@/components/form/blocks/NumberBlock';
 import { DateBlock } from '@/components/form/blocks/DateBlock';
 import { AIConversationBlock } from '@/components/form/blocks/AIConversationBlock';
-import type { AIConversationHandle } from '@/components/form/blocks/AIConversationBlock';
+import type { AIConversationHandle } from '@/types/form-types';
 import { FormBlock } from '@/types/block-types';
 import type { QAPair } from '@/types/supabase-types';
 import { useAnalytics } from '@/hooks/useAnalytics';

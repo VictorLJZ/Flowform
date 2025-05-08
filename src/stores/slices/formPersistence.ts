@@ -20,6 +20,7 @@ import { defaultFormTheme } from '@/types/theme-types'
 import { defaultFormData } from './formCore'
 import type { SaveFormInput } from '@/types/form-service-types'
 import type { BlockType } from '@/types/block-types'
+import type { Rule, Connection } from '@/types/workflow-types'
 // FormBlock type is used for the DbFormBlock interface definition
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { FormBlock } from '@/types/block-types'
@@ -188,70 +189,68 @@ export const createFormPersistenceSlice: StateCreator<
   },
 
   saveWorkflowEdges: async (formId: string): Promise<boolean> => {
-    const { connections } = get()
-    
+    const { connections } = get();
+    const supabase = createClient();
 
-    
-    try {
-      // Get Supabase client
-      const supabase = createClient()
-      
-      // First delete any existing connections
-      await supabase
+    console.log("💾 [PersistenceSlice] Attempting to save workflow edges for form:", formId);
+    console.log("💾 [PersistenceSlice] Connections to save:", connections);
+
+    if (!connections || connections.length === 0) {
+      console.log("💾 [PersistenceSlice] No connections to save, or connections array is undefined.");
+      // If there are no connections, we might need to delete existing ones for this form.
+      // This is a common scenario if the user removes all connections.
+      const { error: deleteError } = await supabase
         .from('workflow_edges')
         .delete()
-        .eq('form_id', formId)
-      
-      // If there are no connections to save, we're done
-      if (connections.length === 0) {
+        .match({ form_id: formId });
 
-        return true
-      }
-      
-
-
-      
-      // Prepare connection data for database format
-      const workflowEdges = connections.map((conn, index) => {
-        // Map connection to database schema format
-        // Note: According to schema, there is no condition_type or condition_json column
-        // Instead we should use the available fields: condition_field, condition_operator, condition_value
-        const edge = {
-          form_id: formId,
-          source_block_id: conn.sourceId,
-          target_block_id: conn.targetId,
-          // Store the first condition's data in the individual fields
-          condition_field: conn.conditions?.[0]?.field || null,
-          condition_operator: conn.conditions?.[0]?.operator || null,
-          // condition_value is JSONB type in the database, so we send the raw value
-          condition_value: conn.conditions?.[0]?.value !== undefined ? conn.conditions[0].value : null,
-          order_index: index
-        }
-        
-
-        return edge
-      })
-      
-
-      
-      // Insert all connections in batch
-      const { data, error } = await supabase
-        .from('workflow_edges')
-        .insert(workflowEdges)
-        .select()
-      
-      if (error) {
-        console.error('❌ WORKFLOW ERROR: Failed to save workflow edges:', error)
-        return false
+      if (deleteError) {
+        console.error('Error deleting existing edges:', deleteError);
+        return false; // Indicate failure
       } 
-      
-
-
-      return true
-    } catch (error) {
-      console.error('Error managing workflow edges:', error)
-      return false
+      console.log('Successfully deleted all existing edges as there are no new connections.');
+      return true; // Indicate success (no connections to save, old ones deleted)
     }
+
+    // Map app connections to DB format
+    const dbEdges = connections.map((connection, index) => {
+      let rulesJson: any = '[]'; // Default to empty JSON array string
+      try {
+        // Ensure rules is always an array, even if undefined or null in the store state
+        rulesJson = JSON.stringify(connection.rules || []); 
+      } catch (error) {
+        console.error('Error stringifying rules for connection:', connection.id, error);
+        // Keep rulesJson as '[]' to avoid inserting invalid JSON
+      }
+
+      return {
+        id: connection.id, // Ensure this is the UUID of the edge
+        form_id: formId,
+        source_block_id: connection.sourceId,
+        default_target_id: connection.defaultTargetId, 
+        rules: rulesJson, // This will be a JSONB string in the DB
+        order_index: connection.order_index || index
+      };
+    });
+
+    console.log("💾 [PersistenceSlice] Mapped DB Edges:", dbEdges);
+
+    // Upsert into Supabase
+    const { data, error } = await supabase
+      .from('workflow_edges')
+      .upsert(dbEdges, {
+        onConflict: 'id', // Use 'id' as the conflict target for upserting
+        defaultToNull: false // Ensure server-side defaults are applied if a field is missing
+      })
+      .select(); // Select the upserted rows to confirm
+
+    if (error) {
+      console.error('Error saving workflow edges:', error);
+      return false;
+    }
+
+    console.log('Successfully saved workflow edges:', data);
+    return true;
   },
 
   saveDynamicBlockConfigs: async (result: any): Promise<void> => {
@@ -383,10 +382,62 @@ export const createFormPersistenceSlice: StateCreator<
       // Use our helper function to transform the form data with proper typing
       const { blocks, connections, nodePositions } = transformVersionedFormData(formData)
       
+      let workflowConnections: Connection[] = [];
+      if (connections && Array.isArray(connections)) {
+        workflowConnections = connections.map((edge: any) => {
+          let rules: Rule[] = [];
+          if (edge.rules) {
+            try {
+              if (typeof edge.rules === 'string') {
+                rules = JSON.parse(edge.rules);
+              } else if (Array.isArray(edge.rules)) {
+                rules = edge.rules;
+              }
+            } catch (error) {
+              console.error('Error parsing rules JSON from versioned edge:', edge.id, error);
+              rules = [];
+            }
+          }
+          const appConnection: Connection = {
+            id: edge.id,
+            sourceId: edge.source_block_id,
+            defaultTargetId: edge.default_target_id,
+            order_index: edge.order_index,
+            rules
+          };
+          return appConnection;
+        });
 
-      
+        // Filter out connections referencing blocks that no longer exist
+        workflowConnections = workflowConnections.filter((conn: Connection) => {
+          const sourceExists = blocks.some(block => block.id === conn.sourceId);
+          const defaultTargetExists = blocks.some(block => block.id === conn.defaultTargetId);
+          
+          if (!sourceExists) {
+            console.warn(`⚠️ Versioned WORKFLOW LOAD: Source block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`);
+            return false;
+          }
+          
+          if (!defaultTargetExists) {
+            console.warn(`⚠️ Versioned WORKFLOW LOAD: Default target block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`);
+            return false;
+          }
+          
+          if (conn.rules && conn.rules.length > 0) {
+            conn.rules = conn.rules.filter((rule: Rule) => { 
+              const ruleTargetExists = blocks.some(block => block.id === rule.target_block_id);
+              if (!ruleTargetExists) {
+                console.warn(`⚠️ Versioned WORKFLOW LOAD: Rule target block not found, removing rule: ${rule.id}, target=${rule.target_block_id}`);
+              }
+              return ruleTargetExists;
+            });
+          }
+          return true;
+        });
+      }
+
       // Create default linear connections if no connections exist
-      if (connections.length === 0 && blocks.length > 1) {
+      if (workflowConnections.length === 0 && blocks.length > 1) {
 
         
         try {
@@ -398,16 +449,49 @@ export const createFormPersistenceSlice: StateCreator<
             const block = sortedBlocks[i];
             const nextBlock = sortedBlocks[i + 1];
             
-            connections.push({
+            workflowConnections.push({
               id: uuidv4(),
               sourceId: block.id,
-              targetId: nextBlock.id,
-              conditionType: 'always',
-              conditions: [],
+              defaultTargetId: nextBlock.id,
+              rules: [], // Add empty rules array to satisfy the Connection type
               order_index: i
             });
           }
           
+
+          
+          // Check block IDs before filtering
+
+          
+          // Filter out connections referencing blocks that no longer exist
+          workflowConnections = workflowConnections.filter((conn: Connection) => {
+            const sourceExists = blocks.some(block => block.id === conn.sourceId)
+            const defaultTargetExists = blocks.some(block => block.id === conn.defaultTargetId)
+            
+            if (!sourceExists) {
+              console.warn(`⚠️ Versioned WORKFLOW LOAD: Source block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`)
+              return false
+            }
+            
+            if (!defaultTargetExists) {
+              console.warn(`⚠️ Versioned WORKFLOW LOAD: Default target block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`)
+              return false
+            }
+            
+            // Also validate rule target blocks if they exist
+            if (conn.rules && conn.rules.length > 0) {
+              conn.rules = conn.rules.filter((rule: Rule) => {
+                const ruleTargetExists = blocks.some(block => block.id === rule.target_block_id);
+                if (!ruleTargetExists) {
+                  console.warn(`⚠️ Versioned WORKFLOW LOAD: Rule target block not found, removing rule: ${rule.id}, target=${rule.target_block_id}`);
+                }
+                return ruleTargetExists;
+              });
+            }
+            return true;
+          })
+          
+
 
         } catch (error) {
           console.error('Error creating default connections:', error);
@@ -435,7 +519,7 @@ export const createFormPersistenceSlice: StateCreator<
         },
         blocks: blocks,
         currentBlockId: blocks.length > 0 ? blocks[0].id : null,
-        connections: connections,  // Use our properly typed connections
+        connections: workflowConnections,  // Use our properly typed connections
         nodePositions
       })
     } catch (error) {
@@ -515,17 +599,9 @@ export const createFormPersistenceSlice: StateCreator<
       }
       
       // Load connections from workflow_edges table
-      let workflowConnections: Array<{
-        id: string;
-        sourceId: string;
-        targetId: string;
-        order_index: number;
-        conditionType: 'always' | 'conditional' | 'fallback';
-        conditions: WorkflowCondition[];
-      }> = []
+      let workflowConnections: Connection[] = []; // Changed type here
       
       try {
-
         const supabase = createClient()
         const { data: edges, error } = await supabase
           .from('workflow_edges')
@@ -543,70 +619,95 @@ export const createFormPersistenceSlice: StateCreator<
         if (edges && edges.length > 0) {
 
           
+          // === ADDED LOGGING START (Before Mapping) ===
+          if (edges && edges.length > 0) {
+            console.log(`🔎 [loadForm - BEFORE MAPPING] Raw workflow_edges for form ${formId}:`);
+            edges.forEach(edge => {
+              console.log(`  Edge ID: ${edge.id}, raw default_target_id: ${edge.default_target_id}, type: ${typeof edge.default_target_id}, property_exists: ${Object.prototype.hasOwnProperty.call(edge, 'default_target_id')}`);
+            });
+          }
+          // === ADDED LOGGING END (Before Mapping) ===
+
           // Convert from database format to app format
           workflowConnections = edges.map((edge: {
             id: string;
             source_block_id: string;
-            target_block_id: string;
-            order_index: number;
-            condition_field?: string;
-            condition_operator?: string;
-            condition_value?: any; // JSONB type could be any valid JSON value
-          }) => {
-            // Initialize with default values
-            let conditions: WorkflowCondition[] = [];
-            let conditionType: 'always' | 'conditional' | 'fallback' = 'always';
-            
-            // If we have condition data, create a condition object
-            if (edge.condition_field) {
-              // Create a condition from the individual fields
-              conditions = [{
-                id: `condition-${edge.id}`, // Generate an ID for the condition
-                field: edge.condition_field,
-                operator: (edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than') || 'equals',
-                value: edge.condition_value ?? '' // Use nullish coalescing to handle null/undefined
-              }];
-              
-              // If there's at least one condition, mark this as conditional
-              conditionType = 'conditional';
+            default_target_id: string | null;
+            order_index: number | null; // Allow null from DB
+            rules: string; // Assuming rules come as JSON string from DB
+          }, index) => { // Added index for potential default order_index
+            let rules: Rule[] = [];
+            // Always attempt to parse rules from edge.rules, which should be JSONB from DB
+            if (edge.rules) {
+              try {
+                // The 'rules' column from the DB should already be an array of Rule objects if parsed by Supabase client,
+                // or a string if fetched raw that needs JSON.parse.
+                // Assuming Supabase client handles JSONB parsing to JS objects/arrays automatically.
+                if (typeof edge.rules === 'string') {
+                  rules = JSON.parse(edge.rules);
+                } else if (Array.isArray(edge.rules)) {
+                  rules = edge.rules; // Already parsed
+                }
+                // Ensure parsed rules conform to the Rule interface structure if necessary (deep validation not shown here)
+              } catch (error) {
+                console.error('Error parsing rules JSON from DB for edge:', edge.id, error);
+                rules = []; // Default to empty array on error
+              }
             }
             
-            const appConnection = {
+            const appConnection: Connection = {
               id: edge.id,
               sourceId: edge.source_block_id,
-              targetId: edge.target_block_id,
-              order_index: edge.order_index,
-              conditionType,
-              conditions
+              defaultTargetId: edge.default_target_id,
+              order_index: edge.order_index ?? index, // Default to map index if order_index is null/undefined
+              rules // Assign the parsed or default empty rules array
             };
             
-
+            // console.log(`[WorkflowLoad] Mapped connection ${appConnection.id}: S: ${appConnection.sourceId} -> DT: ${appConnection.defaultTargetId}, Rules: ${appConnection.rules.length}`);
             return appConnection;
           })
           
+
+          // === ADDED LOGGING START (After Mapping) ===
+          if (workflowConnections.length > 0) {
+            console.log(`🔎 [loadForm - AFTER MAPPING] Mapped appConnections for form ${formId}:`);
+            workflowConnections.forEach(conn => {
+              console.log(`  Connection ID: ${conn.id}, mapped defaultTargetId: ${conn.defaultTargetId}, type: ${typeof conn.defaultTargetId}, property_exists: ${Object.prototype.hasOwnProperty.call(conn, 'defaultTargetId')}`);
+            });
+          }
+          // === ADDED LOGGING END (After Mapping) ===
 
           
           // Check block IDs before filtering
 
           
           // Filter out connections referencing blocks that no longer exist
-          workflowConnections = workflowConnections.filter(conn => {
-            const sourceExists = blocks.some(block => block.id === conn.sourceId)
-            const targetExists = blocks.some(block => block.id === conn.targetId)
+          workflowConnections = workflowConnections.filter((conn: Connection) => {
+            const sourceExists = blocks.some(block => block.id === conn.sourceId);
+            const defaultTargetExists = blocks.some(block => block.id === conn.defaultTargetId);
             
             if (!sourceExists) {
-              console.warn(`⚠️ WORKFLOW LOAD: Source block not found for connection: source=${conn.sourceId}, target=${conn.targetId}`)
-              return false
+              console.warn(`⚠️ WORKFLOW LOAD: Source block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`);
+              return false;
             }
             
-            if (!targetExists) {
-              console.warn(`⚠️ WORKFLOW LOAD: Target block not found for connection: source=${conn.sourceId}, target=${conn.targetId}`)
-              return false
+            if (!defaultTargetExists) {
+              console.warn(`⚠️ WORKFLOW LOAD: Default target block not found for connection: source=${conn.sourceId}, defaultTarget=${conn.defaultTargetId}`);
+              return false;
             }
             
-
-            return true
-          })
+            // Also validate rule target blocks if they exist
+            if (conn.rules && conn.rules.length > 0) {
+              conn.rules = conn.rules.filter((rule: Rule) => {
+                const ruleTargetExists = blocks.some(block => block.id === rule.target_block_id);
+                if (!ruleTargetExists) {
+                  console.warn(`⚠️ WORKFLOW LOAD: Rule target block not found, removing rule: ${rule.id}, target=${rule.target_block_id}`);
+                }
+                return ruleTargetExists;
+              });
+            }
+            return true;
+          });
           
 
 

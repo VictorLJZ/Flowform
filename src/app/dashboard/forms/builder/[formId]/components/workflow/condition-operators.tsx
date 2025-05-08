@@ -14,30 +14,26 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Connection } from '@/types/workflow-types';
+import { Connection, ConditionRule } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 
 interface ConditionOperatorsProps extends ConditionComponentProps {
   currentConnection: Connection | null;
   sourceBlock: FormBlock | null | undefined;
-  conditionId?: string; // Optional ID to support multiple conditions
+  conditionId: string;
 }
 
-// Helper function to get user-friendly label based on field and operator
 function getUserFriendlyOperatorLabel(
   field: string, 
   operator: ConditionOperator, 
   sourceBlockType: string
 ): string {
-  // Special case for choice fields
   if (field.startsWith('choice:')) {
     return operator === 'equals' ? 'Is Selected' : 'Is Not Selected';
   } 
-  // For checkbox group 'selected' field
   else if (field === 'selected') {
     return operator === 'equals' ? 'Is Checked' : 'Is Not Checked';
   }
-  // For length field
   else if (field === 'length') {
     switch (operator) {
       case 'equals': return 'Is Exactly';
@@ -47,7 +43,6 @@ function getUserFriendlyOperatorLabel(
       default: return operatorLabels[operator];
     }
   }
-  // For numbers and ratings
   else if ((field === 'rating' || field === 'answer') && 
            (sourceBlockType === 'number' || sourceBlockType === 'rating')) {
     switch (operator) {
@@ -58,7 +53,6 @@ function getUserFriendlyOperatorLabel(
       default: return operatorLabels[operator];
     }
   }
-  // For dates
   else if (field === 'answer' && sourceBlockType === 'date') {
     switch (operator) {
       case 'equals': return 'Is On';
@@ -69,40 +63,32 @@ function getUserFriendlyOperatorLabel(
     }
   }
   
-  // Default to standard labels
   return operatorLabels[operator];
 }
 
 export function ConditionOperators({ 
-  element, 
   sourceBlock, 
   sourceBlockType, 
   onConditionChange,
   currentConnection,
   conditionId
 }: ConditionOperatorsProps) {
-  // Use currentConnection if available for more accurate UI state
-  const connection = currentConnection || element?.data?.connection;
+  const connection = currentConnection;
+  if (!connection) return null; 
   
-  // Get the specific condition we're editing based on conditionId
-  const currentCondition = conditionId && connection?.conditions
-    ? connection.conditions.find(cond => cond.id === conditionId)
-    : connection?.conditions?.[0] || undefined;
+  const conditionsInFirstRule = connection.rules?.[0]?.condition_group?.conditions;
+  const currentCondition: ConditionRule | undefined = conditionsInFirstRule?.find((cond: ConditionRule) => cond.id === conditionId);
     
-  // Get current field and operator from the condition
   const currentField = currentCondition?.field || '';
-  const currentOperator = currentCondition?.operator || 'equals';
+  const currentOperator = currentCondition?.operator || 'equals'; 
 
-  // Get operator options based on field and source block
   const availableOperators = getOperatorsForField(currentField, sourceBlock);
   
-  // Create operator options with friendly labels
   const operatorOptions = availableOperators.map(operator => ({
     value: operator,
     label: getUserFriendlyOperatorLabel(currentField, operator, sourceBlockType)
   }));
 
-  // If this is a choice field and there's only one operator option, hide the selector
   if (currentField.startsWith('choice:') && operatorOptions.length <= 1) {
     return null;
   }
@@ -112,7 +98,7 @@ export function ConditionOperators({
       <Label className="mb-1.5 block text-xs text-muted-foreground">CONDITION</Label>
       <Select 
         value={currentOperator}
-        onValueChange={(value) => onConditionChange('operator', value)}
+        onValueChange={(value) => onConditionChange('operator', value as ConditionOperator)} 
       >
         <SelectTrigger className="h-9">
           <SelectValue placeholder="Select condition" />
@@ -127,4 +113,4 @@ export function ConditionOperators({
       </Select>
     </div>
   );
-} 
+}

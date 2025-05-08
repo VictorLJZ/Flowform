@@ -93,7 +93,18 @@ export function useAutoLayout() {
       if (!connectionMap[conn.sourceId]) {
         connectionMap[conn.sourceId] = [];
       }
-      connectionMap[conn.sourceId].push(conn.targetId);
+      const targets = new Set<string>();
+      // Add target_block_id from each rule
+      conn.rules.forEach(rule => {
+        if (rule.target_block_id) {
+          targets.add(rule.target_block_id);
+        }
+      });
+      // Add defaultTargetId if it exists
+      if (conn.defaultTargetId) {
+        targets.add(conn.defaultTargetId);
+      }
+      connectionMap[conn.sourceId].push(...Array.from(targets));
     });
     
     // Convert blocks to nodes for the layout algorithm
@@ -136,43 +147,19 @@ export const useEdgeClickHandler = (): EdgeMouseHandler => {
 };
 
 /**
- * Edge double-click handler for deletion
+ * Edge double-click handler - no longer supports deletion
+ * Connection deletion has been disabled to prevent orphaned nodes
  */
 export const useEdgeDoubleClickHandler = (): EdgeMouseHandler => {
-  const removeConnection = useFormBuilderStore(state => state.removeConnection);
   const selectElement = useFormBuilderStore(state => state.selectElement);
   
   return useCallback((event: React.MouseEvent, edge: Edge<WorkflowEdgeData>) => {
-    // Extract the connection ID from the edge
-    const connectionId = edge.id;
+    // Simply select the edge - no deletion functionality
+    selectElement(edge.id);
     
-    // Confirm deletion
-    const confirmDelete = window.confirm('Are you sure you want to delete this connection?');
-    
-    if (confirmDelete) {
-      // Remove the connection
-      removeConnection(connectionId);
-      
-      // Unselect the element
-      selectElement(null);
-      
-      // In our decoupled architecture, we don't automatically reorder blocks
-      // when connections are removed. We do validate connections to ensure
-      // all connections point to valid blocks.
-      setTimeout(() => {
-        try {
-          const store = useFormBuilderStore.getState();
-          // Validate connections to ensure they point to valid blocks
-          if (typeof store.validateConnections === 'function') {
-            store.validateConnections();
-            console.log('Validated connections after removing a connection');
-          }
-        } catch (error) {
-          console.error('Failed to validate connections:', error);
-        }
-      }, 50);
-    }
-  }, [removeConnection, selectElement]);
+    // Connections cannot be deleted to prevent orphaned nodes
+    // No alert is shown, deletion is simply disabled
+  }, [selectElement]);
 };
 
 /**
@@ -189,47 +176,24 @@ export const useConnectionHandler = (): OnConnect => {
   return useCallback(
     (params: ReactFlowConnection) => {
       if (!params.source || !params.target) {
-        return;
+        console.warn('Connection attempt with missing source or target:', params);
+        return; // Invalid connection parameters
       }
-      
-      // Create a new connection
-      const newConnection: Connection = {
-        id: uuidv4(),
-        sourceId: params.source,
-        targetId: params.target,
-        order_index: connections.length,
-        conditionType: 'always', // Default to always proceed
-        conditions: [] // Empty array for always proceed
-      };
-      
-      // Add it to the store
-      const id = addConnection(newConnection);
-      
-      // Select it
-      if (id) {
-        selectElement(id);
-      }
-      
-      // Clean up the connecting UI state
+
       setIsConnecting(false);
       setSourceNodeId(null);
       setTargetNodeId(null);
-      
-      // In our decoupled architecture, we don't automatically reorder blocks when connections change
-      // Instead, we leave it as a manual operation that can be triggered from the UI
-      // However, we still validate connections to ensure they point to valid blocks
-      setTimeout(() => {
-        try {
-          const store = useFormBuilderStore.getState();
-          // Validate connections to ensure they point to valid blocks
-          if (typeof store.validateConnections === 'function') {
-            store.validateConnections();
-            console.log('Validated connections after creating new connection');
-          }
-        } catch (error) {
-          console.error('Failed to validate connections:', error);
-        }
-      }, 50);  // Small delay to ensure the store has been updated
+
+      // Create a new Connection object based on the new structure for an "always" connection
+      const newConnection: Connection = {
+        id: uuidv4(),
+        sourceId: params.source,
+        defaultTargetId: params.target, // For an "always" connection, this is the main target
+        rules: [], // No specific rules for an "always" connection
+      };
+
+      addConnection(newConnection);
+      selectElement(newConnection.id); // Select the new connection
     },
     [addConnection, connections.length, selectElement, setIsConnecting, setSourceNodeId, setTargetNodeId]
   );

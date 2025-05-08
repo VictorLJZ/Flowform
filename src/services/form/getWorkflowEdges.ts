@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection, ConditionRule } from '@/types/workflow-types';
+import type { Connection, ConditionRule, Rule } from '@/types/workflow-types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -36,29 +36,43 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
     }
     
     // Map database records to frontend Connection objects
-    const connections = edges
-      .filter(edge => edge.source_block_id && edge.target_block_id)
+    const connections: Connection[] = edges
+      .filter(edge => edge.source_block_id && edge.target_block_id) // Ensure essential IDs are present
       .map(edge => {
-        // Create condition if all required fields are present
-        let condition: ConditionRule | undefined = undefined;
-        
+        let defaultTargetId: string | null = null;
+        const rules: Rule[] = [];
+
         if (edge.condition_field && edge.condition_operator) {
-          condition = {
-            id: edge.condition_id || uuidv4(),
-            field: edge.condition_field,
-            operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
-            value: edge.condition_value
-          };
+          // This edge represents a conditional path, forming a rule
+          rules.push({
+            id: uuidv4(), // Rule gets its own ID
+            target_block_id: edge.target_block_id,
+            condition_group: {
+              logical_operator: 'AND', // Assuming AND for single condition, adjust if DB supports OR
+              conditions: [
+                {
+                  id: edge.condition_id || uuidv4(), // Condition gets its own ID
+                  field: edge.condition_field,
+                  operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
+                  value: edge.condition_value
+                }
+              ]
+            }
+          });
+          // For a conditional rule, defaultTargetId is typically null unless a specific fallback is defined elsewhere
+          // Assuming no separate fallback mechanism in the current DB structure for this edge row.
+          defaultTargetId = null; 
+        } else {
+          // This edge represents an "always" path or a fallback
+          defaultTargetId = edge.target_block_id;
         }
         
         return {
           id: edge.id || uuidv4(),
           sourceId: edge.source_block_id,
-          targetId: edge.target_block_id,
-          order_index: edge.order_index || 0,
-          conditionType: condition ? 'conditional' as const : 'always' as const,
-          conditions: condition ? [condition] : [],
-          ...(condition && { condition })
+          defaultTargetId: defaultTargetId,
+          rules: rules,
+          order_index: edge.order_index === null || edge.order_index === undefined ? undefined : edge.order_index,
         };
       });
     

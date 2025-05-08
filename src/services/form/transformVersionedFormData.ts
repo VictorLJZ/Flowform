@@ -1,6 +1,6 @@
 import { CompleteForm } from '@/types/supabase-types';
 import { FormBlock, BlockType } from '@/types/block-types';
-import { Connection, ConditionRule } from '@/types/workflow-types';
+import { Connection, Rule, ConditionRule } from '@/types/workflow-types';
 import { v4 as uuidv4 } from 'uuid';
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
 
@@ -41,29 +41,31 @@ export function transformVersionedFormData(formData: CompleteForm): {
   // 2. Transform workflow connections
   const connections: Connection[] = formData.workflow_edges ? 
     formData.workflow_edges.map((edge) => {
-      // Create a unique ID for the condition if needed
-      const conditionId = uuidv4();
-      
-      // Create condition rules if conditions exist
-      const conditions: ConditionRule[] = edge.condition_field ? 
-        [{
-          id: conditionId,
-          field: edge.condition_field,
-          operator: (edge.condition_operator || 'equals') as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
-          // Ensure value is never null by providing appropriate defaults based on operator type
-          value: edge.condition_value === null ? '' : edge.condition_value
-        }] : [];
-      
-      // Create properly typed Connection object
+      let parsedRules: Rule[] = [];
+      if (edge.rules) { 
+        try {
+          const rulesFromEdge = JSON.parse(edge.rules);
+          if (Array.isArray(rulesFromEdge)) {
+            parsedRules = rulesFromEdge.filter(
+              (r: any) => r.id && r.target_block_id && r.condition_group
+            ) as Rule[]; 
+          } else {
+            console.warn(`Parsed edge.rules for edge ${edge.id} is not an array:`, rulesFromEdge);
+          }
+        } catch (e) {
+          console.warn(`Failed to parse edge.rules JSON for edge ${edge.id}:`, e, "Raw edge.rules:", edge.rules);
+        }
+      }
+
       return {
         id: edge.id,
         sourceId: edge.source_block_id,
-        targetId: edge.target_block_id,
-        conditionType: edge.condition_field ? 'conditional' : 'always',
-        conditions,
-        order_index: edge.order_index
+        defaultTargetId: edge.default_target_id, 
+        rules: parsedRules, 
+        order_index: edge.order_index || 0,
       };
-    }) : [];
+    })
+    : [];
 
   // 3. Extract node positions from form settings
   let nodePositions: Record<string, { x: number; y: number }> = {};

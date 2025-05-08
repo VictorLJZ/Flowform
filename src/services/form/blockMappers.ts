@@ -1,6 +1,6 @@
 import { FormBlock } from '@/types/block-types';
 import type { QAPair } from '@/types/supabase-types';
-import type { AIConversationHandle } from '@/components/form/blocks/AIConversationBlock';
+import type { AIConversationHandle } from '@/types/form-types';
 import type { useAnalytics } from '@/hooks/useAnalytics';
 import { BlockPresentation } from '@/types/theme-types';
 

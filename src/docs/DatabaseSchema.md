@@ -39,7 +39,7 @@ The following foreign key relationships are configured with ON DELETE CASCADE, m
 - `subscriptions.user_id` → `auth.users.id`: When a user is deleted, their subscription records are automatically deleted
 - `workflow_edges.form_id` → `forms.form_id`: When a form is deleted, all related workflow edges are automatically deleted
 - `workflow_edges.source_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges originating from it are automatically deleted
-- `workflow_edges.target_block_id` → `form_blocks.id`: When a block is deleted, all workflow edges pointing to it are automatically deleted
+- `workflow_edges.default_target_id` → `form_blocks.id`: When a block is deleted, all workflow edges pointing to it are automatically deleted
 
 ## Workspace Management Tables
 
@@ -231,15 +231,13 @@ Stores options for multiple choice and similar blocks.
 
 Stores the connections between form blocks in the workflow, including any conditional logic for form navigation.
 
-| Column            | Type                    | Description                       |
-|-------------------|-------------------------|-----------------------------------|
-| id                | UUID                    | Primary key                       |
-| form_id           | UUID                    | References forms.form_id (CASCADE) |
-| source_block_id   | UUID                    | References form_blocks.id (CASCADE) |
-| target_block_id   | UUID                    | References form_blocks.id (CASCADE) |
-| condition_field   | TEXT                    | Field name for the condition (nullable) |
-| condition_operator| TEXT                    | Operator (equals, not_equals, etc.) |
-| condition_value   | JSONB                   | Value for the condition comparison |
+| Column           | Type                    | Description                       |
+|------------------|-------------------------|-----------------------------------|
+| id               | UUID                    | Primary key                       |
+| form_id          | UUID                    | References forms.form_id          |
+| source_block_id  | UUID                    | ID of the source block            |
+| default_target_id| UUID                    | Default target when no rules match|
+| rules            | JSONB                   | Array of complex conditional rules|
 | order_index       | INTEGER                 | Order of the edge in the workflow |
 | created_at        | TIMESTAMP WITH TIME ZONE| When edge was created             |
 | updated_at        | TIMESTAMP WITH TIME ZONE| When edge was last updated        |
@@ -736,6 +734,7 @@ $$;
 
 **Example Usage:**
 ```typescript
+// Direct object passing (preferred method)
 const { data, error } = await supabase.rpc('save_form_with_blocks_typed', {
   p_form_id: formData.id,
   p_title: formData.title,
@@ -745,195 +744,6 @@ const { data, error } = await supabase.rpc('save_form_with_blocks_typed', {
   p_status: formData.status,
   p_theme: formData.theme,
   p_settings: formData.settings,
-  p_blocks_data: blocksData
-});
-```
-
-### save_form_with_blocks_empty_safe
-
-**Purpose:** Robust form saving function that properly handles empty blocks arrays, prevents array dimension parsing errors, and correctly casts block IDs to UUID type.
-
-**Problem it Solves:** 
-1. Eliminates the PostgreSQL array dimension parsing error with empty JSONB arrays
-2. Resolves UUID type casting issues between frontend and database
-3. Provides safe fallback for invalid UUID formats by auto-generating valid ones
-
-**Parameters:**
-- `p_form_data` (JSONB): Form metadata including id, title, description, workspace_id, etc.
-- `p_blocks_data` (JSONB): Array of form blocks with their configurations
-
-**Returns:** JSONB object containing:
-- `form`: The saved form data
-- `blocks`: Array of saved blocks
-- `success`: Boolean indicating operation success
-
-**Implementation:**
-```sql
-CREATE OR REPLACE FUNCTION public.save_form_with_blocks_empty_safe(
-  p_form_data jsonb,
-  p_blocks_data jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_form_id uuid;
-  v_form_record record;
-  v_block_record record;
-  v_block_id uuid; -- Changed from text to uuid for proper type handling
-  v_block_index integer;
-  v_block jsonb;
-  v_form jsonb;
-  v_blocks jsonb[];
-  v_result jsonb;
-  v_form_created boolean := false;
-BEGIN
-  -- Extract form_id from form data (use id from input but form_id in database)
-  v_form_id := (p_form_data->>'id')::uuid;
-  
-  -- FORM HANDLING
-  -- Check if the form exists
-  SELECT * INTO v_form_record FROM forms WHERE form_id = v_form_id;
-  
-  IF NOT FOUND THEN
-    -- Create new form
-    INSERT INTO forms (
-      form_id, title, description, workspace_id, created_by, status, theme, settings
-    ) VALUES (
-      (p_form_data->>'id')::uuid,
-      p_form_data->>'title',
-      p_form_data->>'description',
-      (p_form_data->>'workspace_id')::uuid,
-      (p_form_data->>'created_by')::uuid,
-      p_form_data->>'status',
-      p_form_data->'theme',
-      p_form_data->'settings'
-    )
-    RETURNING * INTO v_form_record;
-    
-    v_form_created := true;
-  ELSE
-    -- Update existing form
-    UPDATE forms SET
-      title = p_form_data->>'title',
-      description = p_form_data->>'description',
-      workspace_id = (p_form_data->>'workspace_id')::uuid,
-      status = p_form_data->>'status',
-      theme = p_form_data->'theme',
-      settings = p_form_data->'settings',
-      updated_at = NOW()
-    WHERE form_id = v_form_id
-    RETURNING * INTO v_form_record;
-  END IF;
-  
-  -- Build the form JSON for response
-  v_form := jsonb_build_object(
-    'form_id', v_form_record.form_id,  -- Use form_id, not id
-    'title', v_form_record.title,
-    'description', v_form_record.description,
-    'workspace_id', v_form_record.workspace_id,
-    'created_by', v_form_record.created_by,
-    'status', v_form_record.status,
-    'theme', v_form_record.theme,
-    'settings', v_form_record.settings,
-    'created_at', v_form_record.created_at,
-    'updated_at', v_form_record.updated_at
-  );
-  
-  -- BLOCKS HANDLING
-  -- Delete existing blocks if this is an update
-  IF NOT v_form_created THEN
-    DELETE FROM form_blocks WHERE form_id = v_form_id;
-  END IF;
-  
-  -- Initialize blocks array for response
-  v_blocks := ARRAY[]::jsonb[];
-  
-  -- CRITICAL IMPROVEMENT: Properly handle empty blocks array
-  -- Only process blocks if there are any
-  IF p_blocks_data IS NOT NULL AND jsonb_array_length(p_blocks_data) > 0 THEN
-    -- Process each block
-    FOR v_block_index IN 0..jsonb_array_length(p_blocks_data) - 1 LOOP
-      v_block := p_blocks_data->v_block_index;
-      
-      BEGIN
-        -- CRITICAL FIX: Attempt to cast the ID directly to UUID with error handling
-        v_block_id := (v_block->>'id')::uuid;
-      EXCEPTION WHEN OTHERS THEN
-        -- If casting fails, generate a new UUID
-        v_block_id := uuid_generate_v4();
-        RAISE NOTICE 'Failed to cast block ID to UUID, generated new ID: %', v_block_id;
-      END;
-      
-      -- Insert block with properly typed UUID
-      INSERT INTO form_blocks (
-        id, form_id, type, subtype, title, description, required, order_index, settings
-      ) VALUES (
-        v_block_id, -- Now a properly typed UUID
-        v_form_id,
-        v_block->>'type',
-        v_block->>'subtype',
-        v_block->>'title',
-        v_block->>'description',
-        (v_block->>'required')::boolean,
-        (v_block->>'order_index')::integer,
-        v_block->'settings'
-      )
-      RETURNING * INTO v_block_record;
-      
-      -- Add block to response array
-      v_blocks := v_blocks || jsonb_build_object(
-        'id', v_block_record.id,
-        'form_id', v_block_record.form_id,
-        'type', v_block_record.type,
-        'subtype', v_block_record.subtype,
-        'title', v_block_record.title,
-        'description', v_block_record.description,
-        'required', v_block_record.required,
-        'order_index', v_block_record.order_index,
-        'settings', v_block_record.settings,
-        'created_at', v_block_record.created_at,
-        'updated_at', v_block_record.updated_at
-      );
-    END LOOP;
-  END IF;
-  
-  -- Build the final result
-  v_result := jsonb_build_object(
-    'form', v_form,
-    'blocks', to_jsonb(v_blocks),
-    'success', true
-  );
-  
-  RETURN v_result;
-EXCEPTION WHEN OTHERS THEN
-  -- Handle errors
-  RAISE NOTICE 'Error in save_form_with_blocks_empty_safe: %', SQLERRM;
-  
-  -- Return error result
-  RETURN jsonb_build_object(
-    'success', false,
-    'error', SQLERRM,
-    'error_detail', SQLSTATE
-  );
-END;
-$$;
-```
-
-**Example Usage:**
-```typescript
-// Direct object passing (preferred method)
-const { data, error } = await supabase.rpc('save_form_with_blocks_empty_safe', {
-  p_form_data: {
-    id: formData.id,
-    title: formData.title,
-    description: formData.description,
-    workspace_id: formData.workspace_id,
-    created_by: formData.created_by,
-    status: formData.status,
-    theme: formData.theme,
-    settings: formData.settings
-  },
   p_blocks_data: blocks.map(block => ({
     // Blocks will have their IDs properly converted to UUIDs in PostgreSQL
     id: block.id, // Can be any format, function handles conversion
@@ -942,7 +752,7 @@ const { data, error } = await supabase.rpc('save_form_with_blocks_empty_safe', {
     title: block.title || '',
     description: block.description || null,
     required: !!block.required,
-    order_index: block.order || 0,
+    order: block.order || 0,
     settings: block.settings || {}
   }))
 });

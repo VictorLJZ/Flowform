@@ -116,6 +116,7 @@ export interface FormWorkflowSlice {
   setConnections: (connections: Connection[]) => void;
   addConnection: (connection: Connection) => string; // Returns the new ID
   updateConnection: (connectionId: string, updates: Partial<Connection>) => void;
+  updateConnectionTarget: (connectionId: string, newTargetId: string) => boolean; // Returns success status
   removeConnection: (connectionId: string) => void;
   
   // Block observation methods

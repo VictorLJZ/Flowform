@@ -12,7 +12,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useViewTracking } from "@/hooks/analytics/useViewTracking";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
-import type { AIConversationHandle } from "@/components/form/blocks/AIConversationBlock"; 
+import type { AIConversationHandle } from '@/types/form-types'; 
 import type { QAPair } from '@/types/supabase-types'; 
 import { BlockRenderer } from "@/components/form/viewer/BlockRenderer";
 import { CompletionScreen } from "@/components/form/viewer/CompletionScreen";

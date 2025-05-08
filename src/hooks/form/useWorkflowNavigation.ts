@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Connection, ConditionRule } from '@/types/workflow-types';
+import { Connection, ConditionRule, ConditionGroup } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 
 // Using unknown[] is more type-safe than any[] but still allows for flexibility
@@ -141,129 +141,130 @@ export function useWorkflowNavigation({
     return true;
   }, []);
 
+  // Helper to evaluate a ConditionGroup
+  const evaluateRuleConditionGroup = useCallback((
+    conditionGroup: ConditionGroup | undefined,
+    answer: Answer,
+    blockTypeId: string
+  ): boolean => {
+    if (!conditionGroup || !conditionGroup.conditions || conditionGroup.conditions.length === 0) {
+      // An empty condition group or no conditions can be considered as 'true' 
+      // if the rule itself is meant to be an unconditional jump within a ruleset, 
+      // or 'false' if conditions are strictly required. 
+      // For now, let's assume if a condition_group exists but is empty, its conditions are met (vacuously true).
+      // If the rule *shouldn't* run without conditions, the condition_group shouldn't be empty.
+      // This might need refinement based on how empty groups are intended to behave.
+      // Let's default to true: an empty set of AND conditions is true, an empty set of OR conditions is false.
+      // For simplicity now, if group is present but empty conditions, let's say true for this rule part.
+      return true; // Or based on logical_operator: AND -> true, OR -> false if empty
+    }
+
+    const results: boolean[] = [];
+    for (const condition of conditionGroup.conditions) {
+      results.push(evaluateCondition(condition, answer, blockTypeId));
+    }
+
+    if (conditionGroup.logical_operator === 'AND') {
+      return results.every(res => res);
+    } else if (conditionGroup.logical_operator === 'OR') {
+      return results.some(res => res);
+    }
+    return true; // Default if operator is somehow not AND/OR
+  }, [evaluateCondition]);
+
   // Find the next block based on current answer and conditions
   const findNextBlockIndex = useCallback((currentAnswer: Answer): number => {
     if (!currentBlock) return -1;
     
-    console.log(`Finding next block from ${currentBlock.id} with answer:`, currentAnswer);
+    console.log(`[useWorkflowNavigation] Finding next block from ${currentBlock.id} (${currentBlock.blockTypeId}) with answer:`, currentAnswer);
     
-    // Find all connections where this block is the source
     const outgoingConnections = connections.filter(
       conn => conn.sourceId === currentBlock.id
     ).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     
-    console.log(`Found ${outgoingConnections.length} outgoing connections`, 
+    console.log(`[useWorkflowNavigation] Found ${outgoingConnections.length} outgoing connections:`, 
       outgoingConnections.map(c => ({ 
-        targetId: c.targetId, 
-        conditionType: c.conditionType || 'always',
-        hasConditions: !!(c.conditions && c.conditions.length > 0),
-        conditionsSummary: c.conditions && c.conditions.length > 0 ? 
-          c.conditions.map(cond => `${cond.field} ${cond.operator} ${cond.value}`).join(' AND ') : 'none'
+        id: c.id,
+        sourceId: c.sourceId,
+        defaultTargetId: c.defaultTargetId,
+        rulesCount: c.rules?.length || 0,
+        rulesSummary: c.rules?.map(r => 
+          `to: ${r.target_block_id}, conditions: ${r.condition_group?.conditions.length || 0} (${r.condition_group?.logical_operator || 'N/A'})`
+        ).join('; ') || 'none',
+        order_index: c.order_index
       }))
     );
     
     if (outgoingConnections.length === 0) {
-      // No connections, try to go to the next block in sequence
       if (currentIndex < blocks.length - 1) {
-        console.log(`No connections found, defaulting to next sequential block at index ${currentIndex + 1}`);
+        console.log(`[useWorkflowNavigation] No connections. Defaulting to next sequential block: ${blocks[currentIndex + 1]?.id}`);
+        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${blocks[currentIndex + 1]?.id} (sequential)`]);
         return currentIndex + 1;
       }
-      console.log('No next block found (at end of form)');
-      return -1; // No next block
+      console.log('[useWorkflowNavigation] No next block found (at end of form, no outgoing connections).');
+      return -1;
     }
     
-    // First check for connections with conditions
-    // Separate connections based on their conditionType
-    const conditionalConnections = outgoingConnections.filter(conn => conn.conditionType === 'conditional');
-    const unconditionalConnections = outgoingConnections.filter(conn => conn.conditionType === 'always');
-    const fallbackConnections = outgoingConnections.filter(conn => conn.conditionType === 'fallback');
-    
-    console.log(`Found ${conditionalConnections.length} conditional, ${unconditionalConnections.length} unconditional, and ${fallbackConnections.length} fallback connections`);
-    
-    // First try to find a connection with matching conditions
-    for (const connection of conditionalConnections) {
-      // Skip connections without conditions
-      if (!connection.conditions || connection.conditions.length === 0) continue;
-      
-      try {
-        // Check if ALL conditions are met (AND logic)
-        let allConditionsMet = true;
-        
-        for (const condition of connection.conditions) {
-          const conditionMet = evaluateCondition(
-            condition,
+    for (const connection of outgoingConnections) {
+      console.log(`[useWorkflowNavigation] Evaluating connection: ${connection.id}, default target: ${connection.defaultTargetId}`);
+      if (connection.rules && connection.rules.length > 0) {
+        for (const rule of connection.rules) { // Assuming rules are ordered if necessary by their position in the array
+          console.log(`[useWorkflowNavigation]   Evaluating rule: ${rule.id}, target: ${rule.target_block_id}`);
+          const ruleConditionsMet = evaluateRuleConditionGroup(
+            rule.condition_group,
             currentAnswer,
             currentBlock.blockTypeId || 'unknown'
           );
           
-          console.log(`Evaluating condition for connection to ${connection.targetId}: ${conditionMet ? 'MATCH' : 'no match'}`);
-          
-          // If any condition fails, the whole connection fails (AND logic)
-          if (!conditionMet) {
-            allConditionsMet = false;
-            break;
+          if (ruleConditionsMet) {
+            console.log(`[useWorkflowNavigation]   Rule MATCHED. Navigating to rule target: ${rule.target_block_id}`);
+            const targetIndex = findBlockIndex(rule.target_block_id);
+            if (targetIndex !== -1) {
+              const conditionSummary = rule.condition_group.conditions
+                .map(c => `${c.field} ${c.operator} ${c.value}`)
+                .join(` ${rule.condition_group.logical_operator} `);
+              setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${rule.target_block_id} (rule: ${conditionSummary})`]);
+              return targetIndex;
+            } else {
+              console.warn(`[useWorkflowNavigation]   Rule matched but target block ${rule.target_block_id} not found.`);
+            }
           }
         }
-        
-        // If all conditions are met, navigate to this target
-        if (allConditionsMet) {
-          const targetIndex = findBlockIndex(connection.targetId);
-          if (targetIndex >= 0) {
-            console.log(`Conditions matched, navigating to block at index ${targetIndex}`);
-            
-            // Add this path to navigation history for debugging
-            const conditionSummary = connection.conditions.map(c => 
-              `${c.field} ${c.operator} ${c.value}`
-            ).join(' AND ');
-            
-            setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${connection.targetId} (${conditionSummary})`]);
-            
-            return targetIndex;
-          }
+        // If all rules on this connection were evaluated and none matched, 
+        // we consider this connection's path via rules as not taken.
+        // We will then check its defaultTargetId (if any) AFTER checking rules of OTHER connections if this defaultTargetId is not set.
+        // The loop continues to the next connection unless this one has a defaultTargetId that gets picked up.
+        console.log(`[useWorkflowNavigation]   No rules matched for connection ${connection.id}.`);
+      }
+
+      // If we are here, either the connection had no rules, or its rules didn't match.
+      // Try its defaultTargetId *if it exists*. The overall loop will continue to next connection if this one doesn't lead anywhere.
+      if (connection.defaultTargetId) {
+        console.log(`[useWorkflowNavigation]   Connection ${connection.id} has no matching rules (or no rules). Trying default target: ${connection.defaultTargetId}`);
+        const targetIndex = findBlockIndex(connection.defaultTargetId);
+        if (targetIndex !== -1) {
+          console.log(`[useWorkflowNavigation]   Default target ${connection.defaultTargetId} found. Navigating.`);
+          setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${connection.defaultTargetId} (default for connection ${connection.id})`]);
+          return targetIndex;
         }
-      } catch (error) {
-        console.error(`Error evaluating conditions for connection ${connection.id}:`, error);
       }
     }
     
-    // If no conditional path matched, try an "always" path
-    if (unconditionalConnections.length > 0) {
-      const alwaysConnection = unconditionalConnections[0]; // Take the first 'always' connection
-      const targetIndex = findBlockIndex(alwaysConnection.targetId);
-      if (targetIndex >= 0) {
-        console.log(`Using 'always' connection to block at index ${targetIndex}`);
-        
-        // Add this path to navigation history for debugging
-        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${alwaysConnection.targetId} (always)`]);
-        
-        return targetIndex;
-      }
-    }
-    
-    // If no 'always' path exists, try a fallback path
-    if (fallbackConnections.length > 0) {
-      const fallbackConnection = fallbackConnections[0]; // Take the first fallback connection
-      const targetIndex = findBlockIndex(fallbackConnection.targetId);
-      if (targetIndex >= 0) {
-        console.log(`Using fallback connection to block at index ${targetIndex}`);
-        
-        // Add this path to navigation history for debugging
-        setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${fallbackConnection.targetId} (fallback)`]);
-        
-        return targetIndex;
-      }
-    }
-    
-    // If nothing matched, try going to next sequential block
+    // If the loop completes, no rules matched and no default targets on any connection led to a valid block.
+    // This means no explicit navigation path was found through connections.
+    // Try sequential as a last resort if not already handled (original lines 165-171)
+    // This part is a bit redundant now as the no-connections case handles sequential.
+    // If connections exist but none lead anywhere, it's an explicit stop or misconfiguration.
+    console.log('[useWorkflowNavigation] All connections evaluated, no path found.');
     if (currentIndex < blocks.length - 1) {
-      console.log(`No matching connections, defaulting to next sequential block at index ${currentIndex + 1}`);
+      console.log(`[useWorkflowNavigation] No connections led to a block. Defaulting to next sequential block: ${blocks[currentIndex + 1]?.id}`);
+      setNavigationPath(prev => [...prev, `${currentBlock.id} -> ${blocks[currentIndex + 1]?.id} (sequential fallback after connections)`]);
       return currentIndex + 1;
     }
-    
-    // No next block found
-    console.log('No next block found (reached end of form)');
-    return -1;
-  }, [blocks, connections, currentBlock, currentIndex, evaluateCondition, findBlockIndex]);
+
+    console.log('[useWorkflowNavigation] No next block found after evaluating all connections and sequential options.');
+    return -1; // No next block found
+  }, [currentBlock, connections, blocks, currentIndex, findBlockIndex, evaluateCondition, evaluateRuleConditionGroup, setNavigationPath]);
 
   // Navigate to the next block based on the current answer and conditions
   const goToNext = useCallback((currentAnswer: Answer) => {

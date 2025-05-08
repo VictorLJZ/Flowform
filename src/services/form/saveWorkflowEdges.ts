@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection } from '@/types/workflow-types';
+import type { Connection, Rule } from '@/types/workflow-types';
+import type { WorkflowEdge } from '@/types/supabase-types';
 
 /**
  * Save workflow edges to the database
@@ -10,16 +11,6 @@ import type { Connection } from '@/types/workflow-types';
  * @param connections - Array of workflow connections
  * @returns Object containing success status and saved edges
  */
-interface WorkflowEdge {
-  id: string;
-  form_id: string;
-  source_id: string;
-  target_id: string;
-  condition_type?: string;
-  conditions?: object[];
-  order_index: number;
-}
-
 export async function saveWorkflowEdges(
   formId: string,
   connections: Connection[]
@@ -48,58 +39,49 @@ export async function saveWorkflowEdges(
       
     if (fetchError) {
       console.error('[saveWorkflowEdges] Error fetching existing edges:', fetchError);
+      // Continue, but deletions might not be accurate
     }
     
     // Map connections to database schema and validate
-    const edgesToSave = connections
+    const edgesToSave: Partial<WorkflowEdge>[] = connections
       .filter(connection => {
-        // Validate connection has required fields
-        if (!connection?.sourceId || !connection?.targetId) {
-          console.warn('[saveWorkflowEdges] Skipping invalid connection:', connection);
+        // Filter out connections missing essential IDs. defaultTargetId can be null.
+        if (!connection?.id || !connection?.sourceId) {
+          console.warn('[saveWorkflowEdges] Skipping invalid connection (missing id or sourceId):', connection);
           return false;
         }
         return true;
       })
       .map((connection, index) => {
-        // Extract condition data using the new model (conditions array + conditionType)
-        let conditionField = null;
-        let conditionOperator = null;
-        let conditionValue = null;
+        const rulesArray: Rule[] = connection.rules && Array.isArray(connection.rules) ? connection.rules : [];
+        const rulesJson = JSON.stringify(rulesArray);
         
-        // If connection is conditional and has at least one condition, use the first one for backward database compatibility
-        if (connection.conditionType === 'conditional' && connection.conditions && connection.conditions.length > 0) {
-          const primaryCondition = connection.conditions[0];
-          conditionField = primaryCondition.field || null;
-          conditionOperator = primaryCondition.operator || null;
-          conditionValue = primaryCondition.value !== undefined ? primaryCondition.value : null;
-        }
-        
+        // Determine condition_type based on rules presence
+        const condition_type: 'always' | 'conditional' | 'fallback' = 
+          rulesArray.length > 0 ? 'conditional' : 'always';
+
         return {
-          id: connection.id, // Keep existing ID for upsert
+          id: connection.id,
           form_id: formId,
           source_block_id: connection.sourceId,
-          target_block_id: connection.targetId,
-          condition_field: conditionField,
-          condition_operator: conditionOperator,
-          condition_value: conditionValue,
-          condition_type: connection.conditionType || 'always',
-          condition_json: connection.conditions && connection.conditions.length > 0 ? JSON.stringify(connection.conditions) : null,
-          order_index: connection.order_index || index
+          default_target_id: connection.defaultTargetId, // This is now string | null, matching the global type
+          rules: rulesJson,
+          order_index: connection.order_index || index,
+          condition_type: condition_type // ADDED condition_type
+          // created_at and updated_at will be handled by Supabase
         };
       });
     
     // If we have existing edges, identify which ones need to be deleted
-    // (those that exist in DB but not in the current connections array)
     if (existingEdges && existingEdges.length > 0) {
-      const currentEdgeIds = new Set(connections.map(c => c.id));
+      const currentEdgeIds = new Set(edgesToSave.map(c => c.id)); // Use edgesToSave which are validated
       const edgesToDelete = existingEdges
         .filter(edge => !currentEdgeIds.has(edge.id))
         .map(edge => edge.id);
       
       if (edgesToDelete.length > 0) {
-        console.log(`[saveWorkflowEdges] Removing ${edgesToDelete.length} obsolete edges`);
+        console.log(`[saveWorkflowEdges] Removing ${edgesToDelete.length} obsolete edges:`, edgesToDelete);
         
-        // Delete edges that are no longer needed
         const { error: deleteError } = await supabase
           .from('workflow_edges')
           .delete()
@@ -107,40 +89,52 @@ export async function saveWorkflowEdges(
           
         if (deleteError) {
           console.error('[saveWorkflowEdges] Error deleting edges:', deleteError);
+          // Potentially return failure or log and continue
         }
       }
     }
     
-    // If no edges to save, we're done
+    // If no edges to save (e.g., all connections were invalid or array was empty after filtering),
+    // and no deletions were made, we can consider it a success but with no operations.
+    // If deletions happened, they were logged. If edgesToSave is empty now, no upsert needed.
     if (edgesToSave.length === 0) {
+      console.log('[saveWorkflowEdges] No valid edges to save.');
       return { success: true, edges: [] };
     }
     
-    // Use upsert to update existing edges or insert new ones
     const { data: savedEdges, error: upsertError } = await supabase
       .from('workflow_edges')
       .upsert(edgesToSave, { 
         onConflict: 'id',
-        ignoreDuplicates: false
+        ignoreDuplicates: false // This is the default, but explicit for clarity
       })
-      .select('*');
+      .select('*'); // Select all columns to match WorkflowEdge interface
     
     if (upsertError) {
       console.error('[saveWorkflowEdges] Error upserting edges:', upsertError);
       
-      // Despite the error, try to fetch the current state to return
-      const { data: currentEdges } = await supabase
+      const { data: currentEdgesAfterError } = await supabase
         .from('workflow_edges')
         .select('*')
         .eq('form_id', formId);
         
-      return { success: false, edges: currentEdges || [] };
+      return { success: false, edges: currentEdgesAfterError || [] };
     }
     
-    console.log(`[saveWorkflowEdges] Successfully saved ${edgesToSave.length} edges`);
+    console.log(`[saveWorkflowEdges] Successfully saved/updated ${savedEdges?.length || 0} edges`);
     return { success: true, edges: savedEdges || [] };
   } catch (error) {
     console.error('[saveWorkflowEdges] Unhandled error:', error);
-    return { success: false, edges: [] };
+    // Attempt to fetch current state even on unhandled error, though likely to fail if DB issue
+    try {
+      const { data: currentEdgesOnFail } = await supabase
+        .from('workflow_edges')
+        .select('*')
+        .eq('form_id', formId);
+      return { success: false, edges: currentEdgesOnFail || [] };
+    } catch (finalError) {
+      console.error('[saveWorkflowEdges] Error fetching edges after unhandled error:', finalError);
+      return { success: false, edges: [] };
+    }
   }
-} 
+}
