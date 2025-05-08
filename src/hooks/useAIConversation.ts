@@ -308,7 +308,9 @@ export function useAIConversation(
         conversationLength,
         effectiveMaxQuestions,
         hadNextQuestion: !!data?.nextQuestion,
-        nextQuestionLength: data?.nextQuestion?.length || 0
+        nextQuestionLength: data?.nextQuestion?.length || 0,
+        // Add explicit loggging to help debug the extra question issue
+        isAtMaxQuestions: conversationLength === effectiveMaxQuestions
       });
     }
     

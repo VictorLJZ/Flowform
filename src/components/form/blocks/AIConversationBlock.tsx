@@ -180,7 +180,7 @@ export function AIConversationBlock({
   const questionCount = conversation.length
   const showMaxQuestions = settingsMaxQuestions > 0
   const progressText = showMaxQuestions 
-    ? `Question ${questionCount + (isFirstQuestion ? 0 : 1)} of ${settingsMaxQuestions}` 
+    ? `Question ${Math.min(questionCount + (isFirstQuestion ? 0 : 1), settingsMaxQuestions)} of ${settingsMaxQuestions}` 
     : `Question ${questionCount + (isFirstQuestion ? 0 : 1)}`
   
   // Check if we've reached max questions
@@ -218,7 +218,7 @@ export function AIConversationBlock({
   useEffect(() => {
     // If we have data but active index is beyond valid range, adjust it
     if (conversation.length > 0) {
-      const maxValidIndex = Math.min(conversation.length, settingsMaxQuestions || 5);
+      const maxValidIndex = conversation.length;
       
       // If activeQuestionIndex is beyond max valid index, adjust it
       // But skip auto-adjustment for index 0 (Start) to allow editing the first question
@@ -227,7 +227,7 @@ export function AIConversationBlock({
         setActiveQuestionIndex(maxValidIndex);
       }
     }
-  }, [conversation.length, settingsMaxQuestions, activeQuestionIndex]);
+  }, [conversation.length, activeQuestionIndex]);
   
   // Handle submit
   const handleSubmit = async () => {
@@ -711,10 +711,11 @@ export function AIConversationBlock({
                         {idx === 0 ? 'Start' : `Q${idx + 1}`}
                       </button>
                     ))}
-                    {!effectiveIsComplete && (
+                    {/* Always show Current button when not complete, even when already on it */}
+                    {!effectiveIsComplete && nextQuestion && (
                       <button
                         type="button"
-                        className={`px-3 py-1.5 text-sm rounded-md ${
+                        className={`px-3 py-1.5 text-sm rounded-md nav-question-btn ${
                           activeQuestionIndex === conversation.length 
                             ? 'bg-primary text-primary-foreground font-medium' 
                             : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-800'

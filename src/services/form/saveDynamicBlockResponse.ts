@@ -163,7 +163,8 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
       hasReachedMaxQuestions,
       isComplete,
       isCompleteBefore: input.isComplete,
-      shouldSkipGeneration: hasReachedMaxQuestions || isComplete
+      shouldSkipGeneration: hasReachedMaxQuestions || isComplete,
+      isExactlyAtMax: conversation.length === maxQuestions
     });
     
     if (hasReachedMaxQuestions) {
