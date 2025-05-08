@@ -12,6 +12,7 @@ The AI Conversation Block is a dynamic form component that enables AI-powered co
 - Conversation persistence and resumption
 - Builder and viewer modes for editing and responding
 - Optimistic UI updates for seamless user experience
+- Intuitive question navigation with ability to edit previous answers
 
 ## Component Architecture
 
@@ -27,31 +28,58 @@ The AI Conversation Block follows a modular architecture with clear separation o
 ┌─────────────────────────────┐     │                 │
 │        Custom Hooks         │     │                 │
 │  ┌───────────────────────┐  │     └────────┬────────┘
-│  │   useAIConversation   │◄─────────────►  │
+│  │ useAIConversationState│◄─────────────►  │
 │  └───────────────────────┘  │              │
 │  ┌───────────────────────┐  │              │
-│  │useConversationDisplay │  │              │
+│  │useAIConversationNavig │  │              │
 │  └───────────────────────┘  │     ┌────────▼────────┐
-│  ┌───────────────────────┐  │     │                 │
-│  │useConversationInteract│  │     │   API Routes    │
-│  └───────────────────────┘  │     │   & Services    │
-│  ┌───────────────────────┐  │     │                 │
-│  │useConversationNavigate│  │     └────────┬────────┘
+└───────────┬─────────────────┘     │                 │
+            │                        │   API Routes    │
+            ▼                        │   & Services    │
+┌─────────────────────────────┐     │                 │
+│     UI Components           │     └────────┬────────┘
+│  ┌───────────────────────┐  │              │
+│  │AIConversationHistory  │  │              │
 │  └───────────────────────┘  │              │
-└─────────────────────────────┘              │
-                                             │
-                                   ┌─────────▼────────┐
-                                   │                  │
-                                   │   OpenAI API     │
-                                   │                  │
-                                   └──────────────────┘
+│  ┌───────────────────────┐  │              │
+│  │AIConversationInput    │  │     ┌────────▼────────┐
+│  └───────────────────────┘  │     │                 │
+│  ┌───────────────────────┐  │     │   OpenAI API    │
+│  │AIConversationButtons  │  │     │                 │
+│  └───────────────────────┘  │     └──────────────────┘
+│  ┌───────────────────────┐  │
+│  │AIConversationNavigat  │  │
+│  └───────────────────────┘  │
+└─────────────────────────────┘
 ```
 
 ## Bug Fixes and Updates
 
-### Recent Fixes (2023-2024)
+### Recent Fixes (2023-2025)
 
-1. **Fixed Starter Question Display and Saving**
+1. **Complete Component Refactoring**
+   - Problem: Monolithic 800+ line component was difficult to maintain
+   - Solution:
+     - Split into smaller, focused components (AIConversationBlock, AIConversationButtons, AIConversationHistory, etc.)
+     - Extracted state logic into custom hooks (useAIConversationState, useAIConversationNavigation)
+     - Created proper TypeScript interfaces in a dedicated types file
+     - Improved maintainability and enhanced code organization
+
+2. **Improved Question Navigation**
+   - Problem: Navigation between questions was inconsistent and the UI didn't provide clear guidance
+   - Solution:
+     - Added a dedicated AIConversationNavigation component with clear, labeled navigation buttons
+     - Enhanced the Back button to navigate to previous questions rather than just exiting the form block
+     - Intelligently hides the Back button on the first question for cleaner UI
+     - Fixed issues with question indices and editing previous answers
+
+3. **Fixed Conversation Truncation**
+   - Problem: Editing a previous answer would not properly update the conversation flow
+   - Solution:
+     - Fixed the logic to properly truncate the conversation when editing a previous answer
+     - Enhanced the conversation state management to handle editing at any point
+
+4. **Fixed Starter Question Display and Saving**
    - Problem: The root question (starter question) wasn't showing properly in conversation history and was being saved as "What's your answer" in the database
    - Solution:
      - Enhanced the `handleSubmit` function to ensure the question is never empty
@@ -59,27 +87,27 @@ The AI Conversation Block follows a modular architecture with clear separation o
      - Improved the question saving logic in `saveDynamicBlockResponse.ts`
      - Fixed first question display in conversation history
 
-2. **Fixed Duplicate Question Display**
+5. **Fixed Duplicate Question Display**
    - Problem: Both the root question and follow-up question were showing simultaneously
    - Solution:
      - Updated the display logic to only show one question at a time
      - Made the SlideWrapper title dynamic to display the current question
      - Hid the info icon version of the question when not in builder mode
 
-3. **Fixed maxQuestions Enforcement**
+6. **Fixed maxQuestions Enforcement**
    - Problem: The conversation would continue past the configured maxQuestions setting
    - Solution:
      - Consistently used settingsMaxQuestions throughout the component
      - Fixed the auto-navigation when max questions are reached
      - Added debug logging to track maxQuestions conditions
 
-4. **Fixed Empty Placeholder Issue**
+7. **Fixed Empty Placeholder Issue**
    - Problem: An empty placeholder with info icon was showing on initial load
    - Solution:
      - Only show the current question in builder mode
      - Use conditional rendering to avoid displaying empty questions
 
-5. **Fixed API URL Construction**
+8. **Fixed API URL Construction**
    - Problem: Double protocol in API URLs (https://http://)
    - Solution:
      - Fixed the baseUrl function to properly handle URL construction
@@ -136,16 +164,21 @@ The AI Conversation Block follows a modular architecture with clear separation o
 
 | File | Purpose |
 |------|---------|
-| `src/components/form/blocks/AIConversationBlock.tsx` | Main React component that renders the conversation UI |
+| `src/components/form/blocks/AIConversationBlock/index.tsx` | Export file for the main component |
+| `src/components/form/blocks/AIConversationBlock/AIConversationBlock.tsx` | Main React component that orchestrates the conversation UI |
+| `src/components/form/blocks/AIConversationBlock/AIConversationButtons.tsx` | Manages action buttons (Back, Submit, Continue) based on conversation state |
+| `src/components/form/blocks/AIConversationBlock/AIConversationHistory.tsx` | Displays the conversation history |
+| `src/components/form/blocks/AIConversationBlock/AIConversationInput.tsx` | Handles user input for answering questions |
+| `src/components/form/blocks/AIConversationBlock/AIConversationNavigation.tsx` | Provides UI for navigating between questions |
+| `src/components/form/blocks/AIConversationBlock/types.ts` | Contains TypeScript interfaces for all components |
 
 ### Custom Hooks
 
 | Hook | Purpose |
 |------|---------|
-| `src/hooks/useAIConversation.ts` | Manages conversation state, API fetching, and optimistic updates |
-| `src/hooks/useConversationDisplay.ts` | Determines which question to display based on current state |
-| `src/hooks/useConversationInteraction.ts` | Handles user input, submissions, and keyboard events |
-| `src/hooks/useConversationNavigation.ts` | Manages navigation between questions in a conversation |
+| `src/components/form/blocks/AIConversationBlock/useAIConversationState.ts` | Manages conversation state, answers, and user inputs |
+| `src/components/form/blocks/AIConversationBlock/useAIConversationNavigation.ts` | Handles navigation logic between questions |
+| `src/hooks/useAIConversation.ts` | Manages API fetching and optimistic updates |
 | `src/hooks/form/useFormSubmission.ts` | Handles form-level submission logic and navigation |
 
 ### Backend Services
@@ -239,58 +272,6 @@ const requestOptions = {
 
 const response = await openai.responses.create(requestOptions);
 ```
-
-## Refactoring Recommendations
-
-### Improvements to Code Structure
-
-1. **Simplify Hook Architecture**
-   - Consider consolidating the four hooks into fewer, more focused hooks
-   - Potential new structure:
-     - `useAIConversation` - Core API and state management
-     - `useConversationUI` - Combined display and interaction logic
-
-2. **Simplify State Management**
-   - Consolidate derived state with useMemo
-   - Reduce state variables by combining related state
-   - Use React Context for shared state
-
-3. **Improve Error Handling UI**
-   - Add consistent error display component
-   - Implement error boundaries for better fault isolation
-   - Enhance error logging and reporting
-
-### Dead Code Removal Recommendations
-
-1. **Remove Unused Imports**
-   - `PaperPlaneIcon`, `motion`, `AnimatePresence`, etc.
-   - Remove or conditionalize debug console logs
-
-2. **Code Cleanup**
-   - Replace direct state management with custom hooks
-   - Remove duplicate code
-   - Replace magic numbers with named constants
-
-## Implementation and Testing Recommendations
-
-### Implementation Best Practices
-
-1. **Optimistic Updates**: Always implement optimistic UI updates for better UX
-2. **Error Handling**: Provide graceful fallbacks when AI services fail
-3. **Context Awareness**: Use form context to improve question relevance
-4. **Caching**: Cache responses to reduce API calls and improve performance
-5. **Conversation Persistence**: Ensure conversations can be resumed if interrupted
-6. **Mobile Optimization**: Ensure the UI works well on mobile devices
-
-### Testing Recommendations
-
-When testing these changes, pay special attention to:
-
-1. **Edge Cases**: Test with empty responses, long responses, and special characters.
-2. **Error Recovery**: Intentionally cause errors (e.g., disconnect from network) to verify the UI handles failures gracefully.
-3. **Performance**: Monitor for unnecessary re-renders or API calls during normal operation.
-4. **Accessibility**: Ensure error states are properly conveyed to all users.
-5. **Conversation flow**: Test that questions progress properly and max questions limit is enforced.
 
 ## Future Improvements
 

@@ -62,7 +62,7 @@ export interface AIConversationNavigationProps {
 
 export interface AIConversationHistoryProps {
   displayConversation: QAPair[];
-  historyContainerRef: React.RefObject<HTMLDivElement>;
+  historyContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export interface AIConversationInputProps {
