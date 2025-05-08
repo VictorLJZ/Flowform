@@ -92,9 +92,20 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     // Add the new answer to the conversation
     // Note: When answering the starter question, there's no existing question to respond to
     if (input.isStarterQuestion) {
-      console.log(`[${requestId}] Processing starter question answer`);
+      const originalQuestion = question;
+      console.log(`[${requestId}] Processing starter question answer:`, { 
+        originalQuestion, 
+        questionLength: question?.length || 0,
+        isEmpty: !question || question.length === 0,
+        isStarterQuestion: input.isStarterQuestion,
+        fallbackUsed: !question
+      });
+      
+      // Only use the fallback if question is completely missing, not just empty
+      const finalQuestion = question !== undefined ? question : "What's your starter question?";
+      
       conversation.push({
-        question: question || "What's your answer?", // Default question text
+        question: finalQuestion,
         answer: answer,
         timestamp: new Date().toISOString(),
         is_starter: true
@@ -102,7 +113,7 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     } else {
       // For regular questions, there should be an existing question to respond to
       // This is typically the previous "nextQuestion" that was presented to the user
-      console.log(`[${requestId}] Adding answer to existing conversation`);
+      console.log(`[${requestId}] Adding answer to existing conversation:`, { question });
       conversation.push({
         question: question || (conversation.length > 0 ? 'Follow-up question' : 'Initial question'),
         answer: answer,

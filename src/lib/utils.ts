@@ -22,7 +22,8 @@ export function getBaseUrl(): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
   
   if (siteUrl) {
-    return `https://${siteUrl}`
+    // Make sure we don't add the protocol if it's already included
+    return siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`
   }
   
   // Fallback for local development

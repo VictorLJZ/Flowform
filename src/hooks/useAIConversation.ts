@@ -189,6 +189,17 @@ export function useAIConversation(
     }
     
     try {
+      // Log the input values for debugging
+      console.log('Submit answer with:', { 
+        responseId, 
+        blockId,
+        questionLength: question?.length || 0,
+        answerLength: answer?.length || 0,
+        questionIndex,
+        isStarterQuestion,
+        starterQuestionSample: isStarterQuestion ? question?.substring(0, 30) + '...' : ''
+      });
+      
       // Create the input data for the answer submission
       const input: ExtendedSaveDynamicResponseInput = {
         responseId,

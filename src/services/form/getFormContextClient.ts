@@ -36,7 +36,22 @@ export async function getFormContextClient(
       url = `/api/forms/context?${params.toString()}`;
     } else {
       // In server context, use absolute URL but avoid double slashes
-      url = `${baseUrl}/api/forms/context?${params.toString()}`;
+      // Make sure we don't create double protocol issues (https://https://)
+      const apiPath = `/api/forms/context?${params.toString()}`;
+      
+      // If baseUrl already ends with slash, remove slash from apiPath
+      const path = apiPath.startsWith('/') && baseUrl.endsWith('/') 
+        ? apiPath.substring(1) 
+        : apiPath;
+        
+      url = `${baseUrl}${path}`;
+      
+      // Log the constructed URL for debugging
+      console.log('Constructed URL:', {
+        baseUrl,
+        apiPath,
+        finalUrl: url
+      });
     }
     
     console.log('Fetching form context from:', url);

@@ -84,6 +84,19 @@ export function AIConversationBlock({
   // Get starter prompt from settings, supporting both naming conventions
   const starterPrompt = settings.startingPrompt || settings.starterPrompt || ''
   
+  // Log starter prompt for debugging
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('AIConversationBlock starterPrompt:', {
+        fromStartingPrompt: settings.startingPrompt,
+        fromStarterPrompt: settings.starterPrompt,
+        effectiveValue: starterPrompt,
+        isEmpty: !starterPrompt,
+        length: starterPrompt?.length
+      });
+    }
+  }, [settings.startingPrompt, settings.starterPrompt, starterPrompt]);
+  
   // Extract maxQuestions from settings if available, otherwise use prop value
   const settingsMaxQuestions = settings.maxQuestions !== undefined ? 
     Number(settings.maxQuestions) : maxQuestions;
@@ -145,8 +158,21 @@ export function AIConversationBlock({
         ? starterPrompt 
         : nextQuestion;
       
-      await submitAnswer(
+      // Log what we're about to submit
+      console.log('Submitting answer with:', {
+        isFirstQuestion,
         questionToSubmit,
+        questionLength: questionToSubmit?.length || 0,
+        userInput: userInput.length > 20 ? userInput.substring(0, 20) + '...' : userInput,
+        conversationLength: conversation.length
+      });
+      
+      // Add fallback for empty question to prevent saving "What's your starter question?"
+      const finalQuestion = questionToSubmit || 
+        (isFirstQuestion ? title || 'Initial question' : 'Follow-up question');
+      
+      await submitAnswer(
+        finalQuestion,
         userInput,
         isFirstQuestion ? 0 : conversation.length,
         isFirstQuestion
@@ -351,10 +377,17 @@ export function AIConversationBlock({
     
     return conversation.map((item, idx) => {
       // Make sure the first question always shows the starter prompt
-      if (idx === 0 && item.question !== starterPrompt) {
+      if (idx === 0) {
+        // If this is the first item, always ensure it shows the proper starter prompt
+        // regardless of what's actually saved in the database
+        // Use multiple fallbacks to ensure we show something meaningful:
+        // 1. Original starterPrompt from settings
+        // 2. The title of the block
+        // 3. The saved question from the database
+        // 4. A generic "Initial question" default
         return {
           ...item,
-          question: starterPrompt
+          question: starterPrompt || title || item.question || "Initial question"
         };
       }
       return item;
