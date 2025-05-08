@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     
     // Check if there's an existing answer to update
     console.log('Checking for existing answer');
-    const { data: existingAnswer, error: existingError } = await supabase
+    const { error: existingError } = await supabase
       .from('static_block_answers')
       .select('id')
       .eq('response_id', response_id)

@@ -1,7 +1,7 @@
 "use client"
 
 import { StateCreator } from 'zustand'
-import type { FormCoreSlice } from '@/types/form-store-slices'
+import type { FormCoreSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormData } from '@/types/form-builder-types'
 import { defaultFormTheme } from '@/types/theme-types'
@@ -26,7 +26,7 @@ export const createFormCoreSlice: StateCreator<
   [],
   [],
   FormCoreSlice
-> = (set, get) => ({
+> = (set) => ({
   // State
   formData: { ...defaultFormData },
   isLoading: false,

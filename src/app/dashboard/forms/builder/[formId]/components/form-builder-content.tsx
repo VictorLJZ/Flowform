@@ -281,16 +281,7 @@ export default function FormBuilderContent() {
                 />
               )}
               
-              {/* Debug logging for AI conversation blocks */}
-              <>{(() => {
-                console.log('Current Block:', { 
-                  id: currentBlock.id,
-                  blockTypeId: currentBlock.blockTypeId,
-                  type: currentBlock.type,
-                  shouldRenderAIBlock: currentBlock.blockTypeId === 'ai_conversation'
-                });
-                return null;
-              })()}</>
+
               
               {currentBlock.blockTypeId === 'ai_conversation' && (
                 <AIConversationBlock
@@ -329,7 +320,7 @@ export default function FormBuilderContent() {
                     // This is just a preview in the builder, no real changes needed
                   }}
                   onUpdate={(updates) => {
-                    console.log('AIConversationBlock onUpdate called with:', updates);
+
                     if (updates.title || updates.description) {
                       updateBlock(currentBlock.id, updates as Partial<FormBlock>);
                     }
@@ -339,7 +330,7 @@ export default function FormBuilderContent() {
                     autosave.scheduleAutosave();
                   }}
                   onNext={() => {
-                    console.log('AIConversationBlock onNext called');
+
                     // This is just a preview, so no actual navigation is needed
                   }}
                   isNextDisabled={false}

@@ -14,8 +14,7 @@ import {
   User,
   ArrowUpRight,
   Bookmark,
-  Sparkles,
-  ArrowRight
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkflowNodeData } from '@/types/workflow-types'
@@ -91,7 +90,6 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
   const Icon = iconMap[block.blockTypeId as keyof typeof iconMap] || FileText
   const [isHovered, setIsHovered] = useState(false)
   const [isOutputHandleHovered, setIsOutputHandleHovered] = useState(false)
-  const [isInputHandleHovered, setIsInputHandleHovered] = useState(false)
   
   // Get colors based on block type
   const blockColors = getBlockTypeColors(block.blockTypeId);
@@ -113,84 +111,76 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Source handle (output) - right side - Arrow pointing right */}
+      {/* Source handle (output) - right side - Small grey dot */}
       <div 
         className={cn(
-          "absolute right-[-14px] top-1/2 transform -translate-y-1/2 z-10",
+          "absolute right-[-10px] top-1/2 transform -translate-y-1/2 z-10",
           isHovered || isOutputHandleHovered ? "opacity-100" : "opacity-70"
         )}
         onMouseEnter={() => setIsOutputHandleHovered(true)}
         onMouseLeave={() => setIsOutputHandleHovered(false)}
       >
-        {/* Handle container with arrow icon */}
+        {/* Handle container with grey dot */}
         <div 
           className={cn(
             "relative flex items-center justify-center",
-            "w-8 h-8 rounded-full", // Increased size for better touch target
-            isOutputHandleHovered ? "bg-black/10" : "bg-black/5",
+            "w-5 h-5 rounded-full shadow-sm", // Smaller size with drop shadow
+            isOutputHandleHovered ? "bg-gray-200" : "bg-gray-100",
             selected && "bg-amber-100"
           )}
+          style={{
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)'
+          }}
         >
-          <ArrowRight 
-            size={16} 
+          {/* Grey dot */}
+          <div 
             className={cn(
-              selected ? "text-amber-500" : "text-black"
-            )} 
+              "w-2 h-2 rounded-full",
+              selected ? "bg-amber-500" : "bg-gray-400"
+            )}
           />
           {/* Actual ReactFlow handle - invisible but functional */}
           <Handle 
             type="source" 
             position={Position.Right} 
-            className="!opacity-0 !border-0 !bg-transparent !w-8 !h-8"
+            className="!opacity-0 !border-0 !bg-transparent !w-5 !h-5"
             style={{ right: 0, zIndex: 20 }}
           />
         </div>
       </div>
       
-      {/* Target handle (input) - left side */}
-      <div 
-        className={cn(
-          "absolute left-[-14px] top-1/2 transform -translate-y-1/2 z-10",
-          isHovered || isInputHandleHovered ? "opacity-100" : "opacity-70"
-        )}
-        onMouseEnter={() => setIsInputHandleHovered(true)}
-        onMouseLeave={() => setIsInputHandleHovered(false)}
-      >
-        {/* Handle container with arrow icon */}
-        <div 
-          className={cn(
-            "relative flex items-center justify-center",
-            "w-8 h-8 rounded-full", // Increased size
-            isInputHandleHovered ? "bg-black/10" : "bg-black/5",
-            selected && "bg-amber-100"
-          )}
-        >
-          <ArrowRight 
-            size={16}
-            className={cn(
-              selected ? "text-amber-500" : "text-black"
-            )} 
-          />
-          {/* Actual ReactFlow handle - invisible but functional */}
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            className="!opacity-0 !border-0 !bg-transparent !w-8 !h-8"
-            style={{ left: 0, zIndex: 20 }}
-          />
-        </div>
+      {/* Target handle (input) - completely disabled for cursor effects but still functional */}
+      <div className="absolute left-0 top-1/2 transform -translate-y-1/2" style={{ pointerEvents: 'none' }}>
+        {/* Only the functional handle, no visual element and no hover effects */}
+        <Handle 
+          type="target" 
+          position={Position.Left} 
+          className="!opacity-0 !border-0 !bg-transparent !w-8 !h-8"
+          style={{ 
+            left: -5, 
+            zIndex: 20,
+            cursor: 'default',
+            pointerEvents: 'none'
+          }}
+          isConnectable={true} /* Enable connecting TO this handle */
+        />
       </div>
       
       {/* Block content */}
       <div className="flex gap-3 items-center w-full">
-        <div 
-          className={cn(
-            "h-10 w-10 rounded-md flex items-center justify-center flex-shrink-0", // Larger icon
-            selected && "bg-amber-100 text-amber-700"
-          )}
-          style={selected ? {} : { backgroundColor: blockColors.bg, color: blockColors.text }}
-        >
-          <Icon size={18} />
+        <div className="flex-shrink-0 flex items-center">
+          <div
+            className={cn(
+              "rounded-full flex items-center justify-between h-6 px-2 w-11"
+            )}
+            style={selected ? 
+              { backgroundColor: "#fef3c7", color: "#b45309" } : 
+              { backgroundColor: `${blockColors.bg}`, color: blockColors.text }
+            }
+          >
+            <span className="font-medium text-xs">{block.order_index + 1}</span>
+            <Icon size={16} />
+          </div>
         </div>
         <div className="flex-1 overflow-hidden">
           <h4 className={cn(

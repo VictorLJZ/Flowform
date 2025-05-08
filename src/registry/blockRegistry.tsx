@@ -258,7 +258,7 @@ export const createNewBlock = (blockTypeId: string, order: number): FormBlock =>
     title: blockDef?.defaultTitle || "",
     description: blockDef?.defaultDescription || "",
     required: false,
-    order,
+    order_index: order,
     settings: blockDef?.getDefaultValues() || {}
   }
 }

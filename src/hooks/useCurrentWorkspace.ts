@@ -18,7 +18,7 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
   // Create a workspace-specific fetcher that doesn't use the generic workspace pattern
   // This hook is unique because it fetches the workspace itself rather than resources within a workspace
   const workspaceFetcher = createWorkspaceFetcher(async (wsId: string) => {
-    console.log(`[useCurrentWorkspace] Fetching details for workspace: ${wsId}`);
+
     return await getWorkspaceClient(wsId);
   });
 

@@ -15,6 +15,7 @@ import { Connection } from '@/types/workflow-types';
 interface ConditionFieldsProps extends ConditionComponentProps {
   sourceBlock: FormBlock | null | undefined;
   currentConnection: Connection | null;
+  conditionId?: string; // Optional ID to support multiple conditions
 }
 
 export function ConditionFields({ 
@@ -22,12 +23,19 @@ export function ConditionFields({
   sourceBlock, 
   sourceBlockType, 
   onConditionChange,
-  currentConnection
+  currentConnection,
+  conditionId
 }: ConditionFieldsProps) {
   // Use currentConnection if available for more accurate UI state
   const connection = currentConnection || element?.data?.connection;
-  // Use consistent condition checking pattern
-  const currentField = connection?.condition?.field || '';
+  
+  // Get the specific condition we're editing based on conditionId
+  const currentCondition = conditionId && connection?.conditions
+    ? connection.conditions.find(cond => cond.id === conditionId)
+    : connection?.conditions?.[0] || undefined;
+    
+  // Get the current field from the condition
+  const currentField = currentCondition?.field || '';
 
   // Get field options using standardized function
   const getFieldOptions = (): FieldOption[] => {

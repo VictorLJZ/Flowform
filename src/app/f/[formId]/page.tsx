@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { useFormNavigation } from '@/hooks/form/useFormNavigation';
+// Using our new workflow-based navigation hook instead of the simple index-based navigation
+import { useFormWorkflowNavigation } from '@/hooks/form/useFormWorkflowNavigation';
 import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers'; 
 import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
 import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
@@ -35,25 +36,35 @@ export default function FormViewerPage() {
   // Select state and actions from the form builder store
   // Use individual selectors for better memoization and to avoid unnecessary re-renders
   const blocks = useFormBuilderStore(state => state.blocks);
+  const connections = useFormBuilderStore(state => state.connections);
   const isLoading = useFormBuilderStore(state => state.isLoading);
-  const loadForm = useFormBuilderStore(state => state.loadForm);
+  const loadVersionedForm = useFormBuilderStore(state => state.loadVersionedForm);
   const setMode = useFormBuilderStore(state => state.setMode);
   
+  // Use workflow-based navigation instead of simple index navigation
   const { 
     currentIndex, 
     direction, 
     goToNext, 
-    goToPrevious
-  } = useFormNavigation(0, blocks.length);
-  // Safely access the current block with proper guards to prevent invalid access
-  const isLastQuestion = blocks.length > 0 && currentIndex === blocks.length - 1;
-  const block = useMemo(() => {
-    // Only access blocks if they exist and index is valid
-    if (blocks.length === 0 || currentIndex < 0 || currentIndex >= blocks.length) {
-      return null;
-    }
-    return blocks[currentIndex];
-  }, [blocks, currentIndex]);
+    goToPrevious,
+    submitAnswer: workflowSubmitAnswer,
+    currentBlock: block,
+    setCurrentAnswer: workflowSetCurrentAnswer,
+    isComplete: workflowIsComplete
+  } = useFormWorkflowNavigation({
+    blocks,
+    connections,
+    initialBlockIndex: 0
+  });
+  
+  // Determine if this is the last question based on workflow logic
+  // A question is the last one if it has no outgoing connections
+  const isLastQuestion = useMemo(() => {
+    if (!block) return false;
+    
+    // Check if there are any outgoing connections from this block
+    return !connections.some(conn => conn.sourceId === block.id);
+  }, [block, connections]);
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`
@@ -66,8 +77,8 @@ export default function FormViewerPage() {
     responseId, 
     submitting, 
     submitError, 
-    completed, 
-    submitAnswer
+    completed: apiCompleted, 
+    submitAnswer: submitAnswerToAPI
   } = useFormSubmission({
     formId,
     storageKey,
@@ -78,8 +89,11 @@ export default function FormViewerPage() {
     goToNext: goToNext, 
     isLastQuestion: isLastQuestion 
   });
+  
+  // Combine API completion status with workflow completion status
+  const completed = apiCompleted || workflowIsComplete;
 
-  // 3. Answers Hook (Needs storageKey, responseId from submission hook, index)
+  // 3. Answers Hook (Needs storageKey, responseId from submission hook, blockId)
   const { 
     currentAnswer, 
     setCurrentAnswer, 
@@ -87,7 +101,12 @@ export default function FormViewerPage() {
     answersInitialized,
     saveCurrentAnswer,
     loadAnswerForBlock,
-  } = useFormAnswers({ storageKey, sessionId: responseId, currentIndex });
+  } = useFormAnswers({ 
+    storageKey, 
+    responseId, 
+    blockId: block?.id || null,
+    formId
+  });
 
   // 4. Analytics Hooks - split into view tracking and other analytics
   // View tracking doesn't require responseId - we want to track all views
@@ -224,18 +243,19 @@ export default function FormViewerPage() {
     // as we're depending on the stable memoized functions
   }, [trackSubmitFn, trackErrorFn, trackCompletionFn, saveAnswerFn]);
 
-  // Load the form data and blocks when the component mounts or formId changes
+  // Load the versioned form data and blocks when the component mounts or formId changes
   useEffect(() => {
     if (formId && typeof formId === 'string') {
-      console.log(`Attempting to load form with ID: ${formId}`);
-      // Explicitly set the mode to 'viewer' before loading the form
+      console.log(`Attempting to load versioned form with ID: ${formId}`);
+      // Set the mode to 'viewer' before loading the form
       setMode('viewer');
       console.log('Set formBuilderStore mode to viewer'); 
-      loadForm(formId); // Load form data and blocks associated with this formId
+      // Use loadVersionedForm to ensure we're using the published version
+      loadVersionedForm(formId);
     } else {
       console.error("Form ID is missing or invalid in FormViewerPage");
     }
-  }, [formId, loadForm, setMode]);
+  }, [formId, loadVersionedForm, setMode]);
 
   // Initialize answers effect
   useEffect(() => {
@@ -243,7 +263,7 @@ export default function FormViewerPage() {
     if (responseId && !answersInitialized) { 
       initializeAnswers();
     }
-  }, [responseId, initializeAnswers, answersInitialized]); 
+  }, [responseId, initializeAnswers, answersInitialized]);
 
   // Memoized calculation for disabling next button
   const isNextDisabled = useMemo(() => {
@@ -301,12 +321,18 @@ export default function FormViewerPage() {
   }, [block, currentAnswer, isNextDisabled, aiConversationRef]);
   
   // Simplified handler for submitting an answer
+  // Handle form submission by combining the workflow navigation with API submission
   const handleSubmit = useCallback(async () => {
     const answerToSubmit = prepareAnswer();
     if (answerToSubmit !== null && block) {
-      await submitAnswer(block, answerToSubmit);
+      // First submit to the API
+      await submitAnswerToAPI(block, answerToSubmit);
+      
+      // Then use workflow navigation to determine the next block
+      // Type casting the answer to ensure compatibility with the workflow navigation
+      workflowSubmitAnswer(answerToSubmit as any);
     }
-  }, [block, prepareAnswer, submitAnswer]);
+  }, [block, prepareAnswer, submitAnswerToAPI, workflowSubmitAnswer]);
 
   // Callback to handle going to the previous block
   const handlePrevious = useCallback(() => { 
@@ -348,7 +374,14 @@ export default function FormViewerPage() {
                 block={block}
                 currentAnswer={currentAnswer}
                 setCurrentAnswer={setCurrentAnswer}
-                submitAnswer={submitAnswer}
+                submitAnswer={async (block, answer) => {
+                  // Adapter function to bridge between the expected interfaces
+                  // BlockRenderer expects a function that takes (block, answer) and returns Promise<void>
+                  // But workflowSubmitAnswer takes just (answer) and returns boolean
+                  workflowSubmitAnswer(answer as any);
+                  // Return a resolved promise to match the expected interface
+                  return Promise.resolve();
+                }}
                 submitting={submitting}
                 responseId={responseId}
                 formId={formId}

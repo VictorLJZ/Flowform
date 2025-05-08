@@ -22,7 +22,7 @@ export function ProtectedRoute({
   useEffect(() => {
     // Redirect if not authenticated and not loading
     if (!isLoading && isLoggedOut) {
-      console.log("[AUTH] Protected route accessed while logged out, redirecting to", redirectTo);
+
       router.replace(redirectTo);
       
       // Broadcast the session expired/missing event

@@ -11,15 +11,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Card } from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { useForm } from "@/hooks/useForm"
 
 import { VersionedResponsesTable } from "@/components/analytics/versioned-responses-table"
 import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
-import { FormAnalyticsDashboard } from "@/components/analytics/form-analytics-dashboard"
-import { BasicMetricsCard } from "@/components/analytics/basic-metrics-card"
+import { FormInsights } from "@/components/analytics/form-insights"
+import { QuestionMetrics } from "@/components/analytics/question-metrics"
 
 // Component to display responses with versioning support
 function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
@@ -173,40 +172,37 @@ export default function FormAnalyticsPage() {
         ) : !form ? (
           <div className="w-full p-12 text-center">Form not found</div>
         ) : (
-          <Card className="p-4">
-            <Tabs defaultValue="responses" className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="responses">Responses</TabsTrigger>
-                <TabsTrigger value="summary" disabled>
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger value="insights">
-                  Insights
-                </TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="responses" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="responses">Responses</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
+            </TabsList>
               
-              <TabsContent value="responses" className="mt-0">
+            <TabsContent value="responses" className="mt-0 bg-white border rounded-md">
+              <div className="p-4">
                 <ResponsesWithVersioningSupport formId={formId} />
-              </TabsContent>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="insights" className="mt-0">
+              {/* Form Insights Component */}
+              <div className="bg-white border rounded-md p-6 mb-6">
+                <FormInsights formId={formId} />
+              </div>
               
-              <TabsContent value="insights" className="space-y-4">
-                {/* Ensure formId is always a string */}
-                <BasicMetricsCard formId={String(params.formId)} />
-              </TabsContent>
-              
-              <TabsContent value="summary">
-                <div className="text-center p-12 text-muted-foreground">
-                  Summary coming soon
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="insights">
-                <div className="p-4">
-                  <FormAnalyticsDashboard formId={formId} />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </Card>
+              {/* Question by Question metrics */}
+              <div className="bg-white border rounded-md p-6">
+                <QuestionMetrics formId={formId} />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="summary" className="mt-0 bg-white border rounded-md p-6">
+              <div className="text-center p-12 text-muted-foreground">
+                Summary coming soon
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

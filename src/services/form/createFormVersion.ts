@@ -72,7 +72,7 @@ export async function createFormVersion(
         type,
         subtype,
         required: !!block.required,
-        order_index: block.order || 0,
+        order_index: block.order_index || 0,
         settings: block.settings || {},
         is_deleted: false
       };

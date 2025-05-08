@@ -1,340 +1,218 @@
 // src/app/dashboard/forms/builder/[formId]/components/workflow/workflow-canvas.tsx
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ReactFlow, {
   Background, 
   Controls,
-  Node,
-  Edge,
   Panel,
   useReactFlow,
   ConnectionLineType,
-  useStoreApi,
   ConnectionMode
 } from 'reactflow'
-import 'reactflow/dist/style.css' // Ensure the default styles are loaded
-import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types'
-import { ArrowUpRight } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import 'reactflow/dist/style.css'
 
-// Import our extracted components and utilities
+import { useToast } from '@/components/ui/use-toast'
+import { ArrowUpRight } from 'lucide-react'
+
+// Import our components and types
+import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useWorkflowData } from '@/hooks/workflow/use-workflow-data'
 import { CustomConnectionLine } from './workflow-connection-line'
 import WorkflowNode from './workflow-node'
 import WorkflowEdge from './workflow-edge'
 import WorkflowSidebar from './workflow-sidebar'
 import WorkflowControls from './workflow-controls'
-import { useWorkflowData } from '@/hooks/workflow'
-import { calculateLayout } from './workflow-layout'
-import { flowAnimationStyles } from './workflow-styles'
+// Import workflow handlers
 import { 
-  useNodeClickHandler,
-  useEdgeClickHandler,
+  useEdgeClickHandler, 
   useEdgeDoubleClickHandler,
+  useNodeClickHandler,
   useConnectionHandler,
-  useConnectionStartEndHandlers,
-  useNodeChangeHandler
+  useConnectionStartEndHandlers
 } from './workflow-handlers'
 
 // Register the node and edge types
 const nodeTypes = { formBlock: WorkflowNode }
 const edgeTypes = { workflow: WorkflowEdge }
 
-// Global styles to ensure edges are always visible
-const globalStyles = `
-  .react-flow__edge {
-    pointer-events: all !important;
-    z-index: 5 !important;
-  }
-  
-  .react-flow__edge path {
-    stroke-width: 2px !important;
-  }
-  
-  .react-flow__edge.selected {
-    z-index: 10 !important;
-  }
-  
-  .react-flow__edge.selected path {
-    stroke-width: 3px !important;
-  }
-`;
+// Use Tailwind CSS instead of global styles
 
 export default function WorkflowCanvas() {
-  // Get data from form builder store
-  const blocks = useFormBuilderStore(state => state.blocks || [])
+  // Get data and actions from form builder store
   const connections = useFormBuilderStore(state => state.connections || [])
-  const addConnection = useFormBuilderStore(state => state.addConnection)
   const removeConnection = useFormBuilderStore(state => state.removeConnection)
+  const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
+  const selectElement = useFormBuilderStore(state => state.selectElement)
+  const isConnecting = useFormBuilderStore(state => state.isConnecting)
+  const updateNodePositions = useFormBuilderStore(state => state.updateNodePositions)
   
-  // UI state
-  const [selectedElement, setSelectedElement] = useState<Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [targetNode, setTargetNode] = useState<string | null>(null)
-  const [sourceNodeId, setSourceNodeId] = useState<string | null>(null)
+  // Local UI state (only for things that don't affect other components)
+  const [forceRefreshKey] = useState(0) 
+  const [isLayouting, setIsLayouting] = useState(false)
   const [initialRenderComplete, setInitialRenderComplete] = useState(false)
-  const [forceRefreshKey, setForceRefreshKey] = useState(0) // Key for forcing complete re-render
-  const [isLayouting, setIsLayouting] = useState(false) // State to prevent multiple layout operations
   const { toast } = useToast()
   
-  // Add the global styles on component mount
-  useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.textContent = globalStyles;
-    document.head.appendChild(styleElement);
-    
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
+  // We'll use Tailwind classes instead of global styles
   
   // Flow utilities
   const reactFlowInstance = useReactFlow()
-  const store = useStoreApi()
   const flowWrapperRef = useRef<HTMLDivElement>(null)
   
   // Convert blocks/connections to nodes/edges
   const {
     nodes,
     edges,
-    setNodes,
-    setEdges,
     onNodesChange,
     onEdgesChange,
+    handleNodeDragStop,
     applyNodePositions
-  } = useWorkflowData({
-    blocks,
-    connections,
-    selectedElementId: selectedElement?.id || null,
-    targetNodeId: targetNode
-  })
+  } = useWorkflowData()
   
-  // Define event handlers
-  const onNodeClick = useNodeClickHandler(setSelectedElement)
-  const onEdgeClick = useEdgeClickHandler(setSelectedElement)
-  const handleEdgeDoubleClick = useEdgeDoubleClickHandler(
-    removeConnection, 
-    selectedElement, 
-    setSelectedElement
-  )
+  // Use the handlers from workflow-handlers.ts
+  // Node click handler
+  const onNodeClick = useNodeClickHandler()
   
-  const onConnect = useConnectionHandler(
-    addConnection,
-    connections,
-    setEdges,
-    setSelectedElement,
-    setTargetNode,
-    setSourceNodeId,
-    setIsConnecting
-  )
+  // Edge click handler
+  const onEdgeClick = useEdgeClickHandler()
   
-  const { onConnectStart, onConnectEnd } = useConnectionStartEndHandlers(
-    setIsConnecting,
-    setSourceNodeId,
-    setTargetNode
-  )
+  // Edge double click handler (delete connection)
+  const handleEdgeDoubleClick = useEdgeDoubleClickHandler()
   
-  const handleNodesChange = useNodeChangeHandler(
-    onNodesChange,
-    isConnecting,
-    store,
-    sourceNodeId,
-    targetNode,
-    setTargetNode,
-    setNodes
-  )
+  // Connection handler
+  const onConnect = useConnectionHandler()
   
-  // Auto-layout function - Only applied when button is clicked
+  // Connection start/end handlers
+  const { onConnectStart, onConnectEnd } = useConnectionStartEndHandlers()
+  
+  // Handle pane click (deselect everything)
+  const handlePaneClick = useCallback(() => {
+    selectElement(null)
+  }, [selectElement])
+  
+  // Handle auto-layout
   const applyAutoLayout = useCallback(() => {
-    if (!nodes || nodes.length === 0 || isLayouting) return;
+    if (!reactFlowInstance || isLayouting || nodes.length < 2) return
+    
+    setIsLayouting(true)
     
     try {
-      // Prevent multiple layout operations
-      setIsLayouting(true);
+      // Simple auto-layout algorithm - position nodes in a horizontal line with vertical spacing for branches
+      const positions: { [nodeId: string]: { x: number; y: number } } = {}
+      const horizontalSpacing = 300
+      const verticalSpacing = 100
       
-      // Calculate positions using our extracted layout algorithm
-      const positions = calculateLayout(nodes, edges);
-      
-      // Apply positions to nodes
-      applyNodePositions(positions);
-      
-      // Single timeout for all post-layout operations
-      setTimeout(() => {
-        if (reactFlowInstance) {
-          // Fit view to show all nodes with consistent zoom
-          reactFlowInstance.fitView({ 
-            padding: 0.2, 
-            includeHiddenNodes: true,
-            minZoom: 0.5,
-            maxZoom: 1.0
-          });
-          
-          // Force a single redraw after layout
-          setForceRefreshKey(prev => prev + 1);
+      // First, create a map of source nodes to their target nodes
+      const nodeConnections: { [sourceId: string]: string[] } = {}
+      edges.forEach(edge => {
+        if (!nodeConnections[edge.source]) {
+          nodeConnections[edge.source] = []
         }
-        
-        // Allow layout operations again
-        setIsLayouting(false);
-      }, 300);
-    } catch (error) {
-      console.error('Error applying auto layout:', error);
-      setIsLayouting(false);
-    }
-  }, [nodes, edges, applyNodePositions, reactFlowInstance, isLayouting]);
-  
-  // Handle global click handler for edge delete buttons
-  useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
+        nodeConnections[edge.source].push(edge.target)
+      })
       
-      // Handle clicks on delete buttons
-      if (target.closest('.edge-delete-button')) {
-        const deleteButton = target.closest('.edge-delete-button') as HTMLElement
-        const edgeId = deleteButton.getAttribute('data-edge-id')
-        
-        if (edgeId) {
-          e.preventDefault()
-          e.stopPropagation()
-          
-          console.log(`Global handler deleting connection with id: ${edgeId}`)
-          
-          // Use setTimeout to ensure the event completes before we modify state
-          setTimeout(() => {
-            try {
-              // Clear selection first if this was the selected edge
-              if (selectedElement?.id === edgeId) {
-                setSelectedElement(null)
-              }
-              
-              // Directly remove connection 
-              removeConnection(edgeId)
-              
-              // Force refresh after deletion to ensure UI updates correctly
-              setTimeout(() => {
-                setForceRefreshKey(prev => prev + 1);
-              }, 100);
-            } catch (error) {
-              console.error('Error handling edge deletion:', error);
-            }
-          }, 0)
+      // Find root nodes (nodes with no incoming connections)
+      const hasIncoming = new Set<string>()
+      edges.forEach(edge => hasIncoming.add(edge.target))
+      
+      const rootNodeIds = nodes
+        .map(node => node.id)
+        .filter(id => !hasIncoming.has(id))
+      
+      // If no root nodes found, use the first node or return
+      if (rootNodeIds.length === 0) {
+        if (nodes.length > 0) {
+          rootNodeIds.push(nodes[0].id)
+        } else {
+          setIsLayouting(false)
+          return
         }
       }
+      
+      // Process nodes level by level (breadth-first)
+      const processedNodes = new Set<string>()
+      const queue: { id: string; x: number; y: number }[] = rootNodeIds.map((id, index) => ({
+        id,
+        x: 100,
+        y: index * (verticalSpacing * 1.5) + 100
+      }))
+      
+      while (queue.length > 0) {
+        const { id, x, y } = queue.shift()!
+        
+        if (processedNodes.has(id)) continue
+        
+        positions[id] = { x, y }
+        processedNodes.add(id)
+        
+        // Process children
+        const targets = nodeConnections[id] || []
+        targets.forEach((targetId, index) => {
+          if (!processedNodes.has(targetId)) {
+            queue.push({
+              id: targetId,
+              x: x + horizontalSpacing,
+              y: y + (index - (targets.length - 1) / 2) * verticalSpacing
+            })
+          }
+        })
+      }
+      
+      // Update positions for all nodes
+      updateNodePositions(positions)
+      applyNodePositions()
+      
+      // Center the viewport on the layout
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2 })
+        setIsLayouting(false)
+      }, 500)
+      
+    } catch (error) {
+      console.error('Error during auto layout:', error)
+      setIsLayouting(false)
     }
-    
-    // Add event listener
-    document.addEventListener('click', handleGlobalClick)
-    
-    // Cleanup
-    return () => {
-      document.removeEventListener('click', handleGlobalClick)
-    }
-  }, [removeConnection, selectedElement])
+  }, [nodes, edges, reactFlowInstance, isLayouting, updateNodePositions, applyNodePositions])
   
-  // Handle keyboard shortcuts - Escape to clear selection
+  // Apply initial layout on first render
+  useEffect(() => {
+    if (!initialRenderComplete && nodes.length > 0 && !isLayouting) {
+      setInitialRenderComplete(true)
+      
+      // Check if we already have node positions
+      const hasPositions = nodes.every(node => 
+        node.position && 
+        typeof node.position.x === 'number' && 
+        typeof node.position.y === 'number'
+      )
+      
+      // Only apply auto layout if we don't have positions
+      if (!hasPositions) {
+        setTimeout(() => {
+          applyAutoLayout()
+        }, 300)
+      }
+    }
+  }, [nodes, applyAutoLayout, initialRenderComplete, isLayouting])
+  
+  // Handle keyboard shortcuts for deleting connections
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedElement) {
-        setSelectedElement(null)
+      // Check if an edge is selected and Delete or Backspace is pressed
+      if (
+        selectedElementId && 
+        (e.key === 'Delete' || e.key === 'Backspace') && 
+        connections.some(conn => conn.id === selectedElementId)
+      ) {
+        e.preventDefault()
+        removeConnection(selectedElementId)
+        selectElement(null)
       }
     }
     
-    document.addEventListener('keydown', handleKeyDown)
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [selectedElement])
-  
-  // Handle clicking on the empty canvas area
-  const handlePaneClick = useCallback(() => {
-    // Clear the selected element
-    setSelectedElement(null)
-    
-    // Reset any other UI state related to selection
-    setTargetNode(null)
-    
-    // Ensure ReactFlow knows we're not in connecting mode
-    setIsConnecting(false)
-    
-    // Set the current viewport without changing it (refreshes the view)
-    if (reactFlowInstance) {
-      try {
-        const currentViewport = reactFlowInstance.getViewport();
-        reactFlowInstance.setViewport(currentViewport);
-      } catch (error) {
-        console.error('Error refreshing viewport on pane click:', error);
-      }
-    }
-  }, [reactFlowInstance, setSelectedElement, setTargetNode, setIsConnecting]);
-  
-  // Enhanced edge refresh - monitor both connections length and the actual edges array
-  useEffect(() => {
-    // Only trigger a refresh after a reasonable delay
-    const refreshTimer = setTimeout(() => {
-      // Just trigger a refresh without changing the view position
-      if (reactFlowInstance) {
-        try {
-          const currentViewport = reactFlowInstance.getViewport();
-          reactFlowInstance.setViewport({
-            x: currentViewport.x,
-            y: currentViewport.y, 
-            zoom: currentViewport.zoom
-          });
-        } catch (error) {
-          console.error('Error refreshing viewport:', error);
-        }
-      }
-    }, 300);
-    
-    return () => clearTimeout(refreshTimer);
-  }, [connections.length, edges.length, reactFlowInstance, forceRefreshKey]);
-  
-  // FIX: Zoom to fit content ONLY on initial load, not on selection changes
-  useEffect(() => {
-    if (!initialRenderComplete && nodes.length > 1 && !nodes.some(n => !n.position) && !isLayouting) {
-      // Prevent multiple layout operations during initial load
-      setIsLayouting(true);
-      
-      // Only fit the view on initial load
-      try {
-        // First try to use stored positions
-        let hasStoredPositions = nodes.some(n => n.position.x !== 0 && n.position.y !== 0);
-        
-        if (!hasStoredPositions) {
-          // If no stored positions, apply auto-layout to organize nodes
-          console.log('Applying initial auto layout');
-          const positions = calculateLayout(nodes, edges);
-          applyNodePositions(positions);
-        }
-        
-        // Single timeout for all post-layout operations
-        setTimeout(() => {
-          if (reactFlowInstance) {
-            reactFlowInstance.fitView({
-              padding: 0.2,
-              includeHiddenNodes: true,
-              minZoom: 0.5,
-              maxZoom: 1.0
-            });
-            
-            // Force a single redraw after layout and mark as complete
-            setForceRefreshKey(prev => prev + 1);
-            setInitialRenderComplete(true);
-            console.log('Initial layout complete');
-          }
-          
-          // Allow layout operations again
-          setIsLayouting(false);
-        }, 300);
-      } catch (error) {
-        console.error('Error during initial layout:', error);
-        // Set initialRenderComplete anyway to avoid retries
-        setInitialRenderComplete(true);
-        setIsLayouting(false);
-      }
-    }
-  }, [nodes.length, reactFlowInstance, initialRenderComplete, edges, applyNodePositions, isLayouting, nodes]);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedElementId, connections, removeConnection, selectElement])
   
   // Help dialog handler
   const handleHelp = useCallback(() => {
@@ -349,21 +227,19 @@ export default function WorkflowCanvas() {
         </div>
       ),
       duration: 7000,
-    });
-  }, [toast]);
-
+    })
+  }, [toast])
+  
   return (
     <div className="flex-1 flex h-full">
-      {/* Custom styles for workflow edges and nodes */}
-      <style>{flowAnimationStyles}</style>
-      
       <div className="flex-1 h-full relative overflow-hidden" ref={flowWrapperRef}>
         <ReactFlow
-          key={`flow-${forceRefreshKey}`} // Force full re-render when key changes
+          key={`flow-${forceRefreshKey}`}
           nodes={nodes}
           edges={edges}
-          onNodesChange={handleNodesChange}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStop={handleNodeDragStop}
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
@@ -373,7 +249,7 @@ export default function WorkflowCanvas() {
           onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }} // Increased default zoom
+          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
           fitViewOptions={{ 
             padding: 0.2, 
             includeHiddenNodes: true,
@@ -382,26 +258,28 @@ export default function WorkflowCanvas() {
           }}
           connectionLineType={ConnectionLineType.Bezier}
           connectionLineComponent={CustomConnectionLine}
-          connectionMode={ConnectionMode.Loose}
-          elementsSelectable={!isConnecting}
-          snapToGrid={false} // Disable snap to grid for smoother dragging
+          connectionMode={ConnectionMode.Strict}
+          elementsSelectable={true}
+          snapToGrid={false}
           deleteKeyCode={['Backspace', 'Delete']}
           className="workflow-canvas"
-          proOptions={{ 
-            hideAttribution: true,
-            account: 'paid' // This enables better performance optimizations
-          }}
-          attributionPosition="bottom-right"
           minZoom={0.1}
           maxZoom={2}
           edgesUpdatable={true}
           edgesFocusable={true}
-          elevateEdgesOnSelect={true} // Changed to true to improve edge visibility
+          elevateEdgesOnSelect={true}
           selectNodesOnDrag={false}
-          panOnScroll={false} // Disable pan on scroll to make zoom the default
-          zoomOnScroll={true} // Make zoom the default scroll behavior
+          nodesDraggable={true}
+          nodesConnectable={true}
+          panOnScroll={false}
+          zoomOnScroll={true}
+          style={{
+            // Apply styles that were previously in workflow-styles.ts as CSS vars
+            '--edge-stroke-width': '1px',
+            '--edge-path-stroke': '#000000',
+            '--edge-curvature': '0.05'
+          } as React.CSSProperties}
         >
-          {/* Use absolute positioning for controls to avoid ReactFlow Panel issues */}
           <WorkflowControls 
             onAutoLayout={applyAutoLayout}
             onHelp={handleHelp}
@@ -424,11 +302,8 @@ export default function WorkflowCanvas() {
         </ReactFlow>
       </div>
       
-      {/* Moved sidebar outside of ReactFlow to be always visible */}
-      <WorkflowSidebar
-        element={selectedElement}
-        onClose={() => setSelectedElement(null)}
-      />
+      {/* Sidebar for editing selected elements */}
+      <WorkflowSidebar />
     </div>
   )
 }

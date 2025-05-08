@@ -1,294 +1,329 @@
+/**
+ * FlowForm Workflow Handlers
+ * Clean implementation of React Flow event handlers
+ * Using Zustand store as the single source of truth
+ */
+
 import { 
   NodeMouseHandler, 
   EdgeMouseHandler,
   Node,
   Edge,
   Connection as ReactFlowConnection,
-  NodeChange,
-  useStoreApi
+  NodeDragHandler,
+  XYPosition,
+  OnConnect,
+  OnConnectStartParams
 } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
-import { Dispatch, SetStateAction, useCallback } from 'react';
-import { Connection } from '@/types/workflow-types';
-import { WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types';
+import { useCallback } from 'react';
+import { Connection, WorkflowNodeData, WorkflowEdgeData } from '@/types/workflow-types';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
 
-interface NodeWithPosition {
-  id: string;
-  positionAbsolute?: {
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-  };
+/**
+ * Utility function to auto-layout a workflow based on connections
+ * This is a simplified version that arranges nodes in a horizontal flow
+ */
+export function calculateAutoLayout(nodes: Node<WorkflowNodeData>[], connectionMap: Record<string, string[]>): Record<string, { x: number; y: number }> {
+  const positions: Record<string, { x: number; y: number }> = {};
+  const horizontalSpacing = 300;
+  const verticalSpacing = 100;
+  
+  // Find root nodes (nodes with no incoming connections)
+  const hasIncoming = new Set<string>();
+  // Add all target nodes to the hasIncoming set
+  Object.values(connectionMap).forEach(targets => {
+    targets.forEach(target => hasIncoming.add(target));
+  });
+  
+  const rootNodeIds = nodes
+    .map(node => node.id)
+    .filter(id => !hasIncoming.has(id));
+  
+  // If no root nodes found, use the first node
+  if (rootNodeIds.length === 0 && nodes.length > 0) {
+    rootNodeIds.push(nodes[0].id);
+  }
+  
+  // Process nodes level by level (breadth-first)
+  const processedNodes = new Set<string>();
+  const queue: { id: string; x: number; y: number }[] = rootNodeIds.map((id, index) => ({
+    id,
+    x: 100,
+    y: index * (verticalSpacing * 1.5) + 100
+  }));
+  
+  while (queue.length > 0) {
+    const { id, x, y } = queue.shift()!;
+    
+    if (processedNodes.has(id)) continue;
+    
+    positions[id] = { x, y };
+    processedNodes.add(id);
+    
+    // Process children
+    const targets = connectionMap[id] || [];
+    targets.forEach((targetId, index) => {
+      if (!processedNodes.has(targetId)) {
+        queue.push({
+          id: targetId,
+          x: x + horizontalSpacing,
+          y: y + (index - (targets.length - 1) / 2) * verticalSpacing
+        });
+      }
+    });
+  }
+  
+  return positions;
 }
 
 /**
- * Get node click handler
+ * Hook to handle automatic layout of workflow nodes
  */
-export const useNodeClickHandler = (
-  setSelectedElement: Dispatch<SetStateAction<Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null>>
-): NodeMouseHandler => {
-  return useCallback((_, node) => {
-    setSelectedElement(node as Node<WorkflowNodeData>);
-  }, [setSelectedElement]);
-};
-
-/**
- * Get edge click handler
- */
-export const useEdgeClickHandler = (
-  setSelectedElement: Dispatch<SetStateAction<Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null>>
-): EdgeMouseHandler => {
-  return useCallback((_, edge) => {
-    setSelectedElement(edge as Edge<WorkflowEdgeData>);
-  }, [setSelectedElement]);
-};
-
-/**
- * Get edge double-click handler for deletion
- */
-export const useEdgeDoubleClickHandler = (
-  removeConnection: (id: string) => void,
-  selectedElement: Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null,
-  setSelectedElement: Dispatch<SetStateAction<Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null>>
-): EdgeMouseHandler => {
-  return useCallback((event, edge) => {
-    event.preventDefault();
-    event.stopPropagation();
+export function useAutoLayout() {
+  const blocks = useFormBuilderStore(state => state.blocks);
+  const connections = useFormBuilderStore(state => state.connections);
+  const updateNodePositions = useFormBuilderStore(state => state.updateNodePositions);
+  
+  return useCallback(() => {
+    // Create a map of source node IDs to their target node IDs
+    const connectionMap: Record<string, string[]> = {};
     
-    if (edge.id) {
-      console.log(`Double-click deleting connection with id: ${edge.id}`);
-      
-      // If this edge was selected, clear the selection first
-      if (selectedElement?.id === edge.id) {
-        setSelectedElement(null);
+    connections.forEach(conn => {
+      if (!connectionMap[conn.sourceId]) {
+        connectionMap[conn.sourceId] = [];
       }
-      
-      try {
-        // Remove the connection
-        removeConnection(edge.id);
-      } catch (error) {
-        console.error('Failed to remove connection:', error);
-      }
-    }
-  }, [removeConnection, selectedElement, setSelectedElement]);
+      connectionMap[conn.sourceId].push(conn.targetId);
+    });
+    
+    // Convert blocks to nodes for the layout algorithm
+    const nodes = blocks.map(block => ({
+      id: block.id,
+      data: { block },
+      position: { x: 0, y: 0 }
+    })) as Node<WorkflowNodeData>[];
+    
+    // Calculate the layout
+    const positions = calculateAutoLayout(nodes, connectionMap);
+    
+    // Update positions in the store
+    updateNodePositions(positions);
+    
+    return positions;
+  }, [blocks, connections, updateNodePositions]);
+}
+
+/**
+ * Node click handler - select a node when clicked
+ */
+export const useNodeClickHandler = (): NodeMouseHandler => {
+  const selectElement = useFormBuilderStore(state => state.selectElement);
+  
+  return useCallback((event: React.MouseEvent, node: Node<WorkflowNodeData>) => {
+    selectElement(node.id);
+  }, [selectElement]);
 };
 
 /**
- * Get the handler for when connections are created
+ * Edge click handler - select an edge when clicked
  */
-export const useConnectionHandler = (
-  addConnection: (connection: Connection) => void,
-  connections: Connection[],
-  setEdges: Dispatch<SetStateAction<Edge<WorkflowEdgeData>[]>>,
-  setSelectedElement: Dispatch<SetStateAction<Node<WorkflowNodeData> | Edge<WorkflowEdgeData> | null>>,
-  setTargetNode: Dispatch<SetStateAction<string | null>>,
-  setSourceNodeId: Dispatch<SetStateAction<string | null>>,
-  setIsConnecting: Dispatch<SetStateAction<boolean>>
-) => {
+export const useEdgeClickHandler = (): EdgeMouseHandler => {
+  const selectElement = useFormBuilderStore(state => state.selectElement);
+  
+  return useCallback((event: React.MouseEvent, edge: Edge<WorkflowEdgeData>) => {
+    selectElement(edge.id);
+  }, [selectElement]);
+};
+
+/**
+ * Edge double-click handler for deletion
+ */
+export const useEdgeDoubleClickHandler = (): EdgeMouseHandler => {
+  const removeConnection = useFormBuilderStore(state => state.removeConnection);
+  const selectElement = useFormBuilderStore(state => state.selectElement);
+  
+  return useCallback((event: React.MouseEvent, edge: Edge<WorkflowEdgeData>) => {
+    // Extract the connection ID from the edge
+    const connectionId = edge.id;
+    
+    // Confirm deletion
+    const confirmDelete = window.confirm('Are you sure you want to delete this connection?');
+    
+    if (confirmDelete) {
+      // Remove the connection
+      removeConnection(connectionId);
+      
+      // Unselect the element
+      selectElement(null);
+      
+      // In our decoupled architecture, we don't automatically reorder blocks
+      // when connections are removed. We do validate connections to ensure
+      // all connections point to valid blocks.
+      setTimeout(() => {
+        try {
+          const store = useFormBuilderStore.getState();
+          // Validate connections to ensure they point to valid blocks
+          if (typeof store.validateConnections === 'function') {
+            store.validateConnections();
+            console.log('Validated connections after removing a connection');
+          }
+        } catch (error) {
+          console.error('Failed to validate connections:', error);
+        }
+      }, 50);
+    }
+  }, [removeConnection, selectElement]);
+};
+
+/**
+ * Connection handler - handle new connections between nodes
+ */
+export const useConnectionHandler = (): OnConnect => {
+  const addConnection = useFormBuilderStore(state => state.addConnection);
+  const connections = useFormBuilderStore(state => state.connections);
+  const selectElement = useFormBuilderStore(state => state.selectElement);
+  const setIsConnecting = useFormBuilderStore(state => state.setIsConnecting);
+  const setSourceNodeId = useFormBuilderStore(state => state.setSourceNodeId);
+  const setTargetNodeId = useFormBuilderStore(state => state.setTargetNodeId);
+  
   return useCallback(
-    (connection: ReactFlowConnection) => {
-      if (!connection.source || !connection.target) {
-        console.error('Cannot create connection without source and target');
+    (params: ReactFlowConnection) => {
+      if (!params.source || !params.target) {
         return;
       }
       
-      // Check for duplicate connections - prevent creating duplicates
-      const isDuplicate = connections.some(
-        conn => conn.sourceId === connection.source && conn.targetId === connection.target
-      );
-      
-      if (isDuplicate) {
-        console.log('Skipping duplicate connection creation');
-        
-        // Reset connection state
-        setTargetNode(null);
-        setSourceNodeId(null);
-        setIsConnecting(false);
-        
-        return;
-      }
-      
-      // Create connection with unique ID
-      const newConnectionId = uuidv4();
-      console.log(`Creating new connection with id: ${newConnectionId}`);
-      
+      // Create a new connection
       const newConnection: Connection = {
-        id: newConnectionId,
-        sourceId: connection.source,
-        targetId: connection.target,
-        order: connections.length
+        id: uuidv4(),
+        sourceId: params.source,
+        targetId: params.target,
+        order_index: connections.length,
+        conditionType: 'always', // Default to always proceed
+        conditions: [] // Empty array for always proceed
       };
       
-      try {
-        // First update the UI with new edge
-        const newEdge = {
-          id: newConnectionId,
-          source: connection.source,
-          target: connection.target,
-          type: 'workflow',
-          data: { connection: newConnection }
-        } as Edge<WorkflowEdgeData>;
-        
-        // Update the edges display first
-        setEdges(edges => [...edges, newEdge]);
-        
-        // Then update the store
-        addConnection(newConnection);
-        
-        // Auto-open the sidebar to edit the new connection
-        setSelectedElement(newEdge);
-      } catch (error) {
-        console.error('Failed to create connection:', error);
+      // Add it to the store
+      const id = addConnection(newConnection);
+      
+      // Select it
+      if (id) {
+        selectElement(id);
       }
       
-      // Reset connection state
-      setTargetNode(null);
-      setSourceNodeId(null);
+      // Clean up the connecting UI state
       setIsConnecting(false);
+      setSourceNodeId(null);
+      setTargetNodeId(null);
+      
+      // In our decoupled architecture, we don't automatically reorder blocks when connections change
+      // Instead, we leave it as a manual operation that can be triggered from the UI
+      // However, we still validate connections to ensure they point to valid blocks
+      setTimeout(() => {
+        try {
+          const store = useFormBuilderStore.getState();
+          // Validate connections to ensure they point to valid blocks
+          if (typeof store.validateConnections === 'function') {
+            store.validateConnections();
+            console.log('Validated connections after creating new connection');
+          }
+        } catch (error) {
+          console.error('Failed to validate connections:', error);
+        }
+      }, 50);  // Small delay to ensure the store has been updated
     },
-    [addConnection, connections, setEdges, setSelectedElement, setTargetNode, setSourceNodeId, setIsConnecting]
+    [addConnection, connections.length, selectElement, setIsConnecting, setSourceNodeId, setTargetNodeId]
   );
 };
 
 /**
- * Get handlers for connection start/end
+ * Handlers for connection start/end
  */
-export const useConnectionStartEndHandlers = (
-  setIsConnecting: Dispatch<SetStateAction<boolean>>,
-  setSourceNodeId: Dispatch<SetStateAction<string | null>>,
-  setTargetNode: Dispatch<SetStateAction<string | null>>
-) => {
-  const onConnectStart = useCallback((
-    _event: React.MouseEvent | React.TouchEvent,
-    params: { nodeId: string | null; handleId: string | null }
-  ) => {
-    if (!params.nodeId) return;
-    
-    // Set connecting state
-    setIsConnecting(true);
-    setSourceNodeId(params.nodeId);
-  }, [setIsConnecting, setSourceNodeId]);
+export const useConnectionStartEndHandlers = () => {
+  const setIsConnecting = useFormBuilderStore(state => state.setIsConnecting);
+  const setSourceNodeId = useFormBuilderStore(state => state.setSourceNodeId);
+  const setTargetNodeId = useFormBuilderStore(state => state.setTargetNodeId);
   
+  const onConnectStart = useCallback((event: React.MouseEvent | React.TouchEvent, params: OnConnectStartParams) => {
+    // Only allow connections from handles, specifically the source handle (grey dot)
+    if (params.nodeId && params.handleId && params.handleType === 'source') {
+      setIsConnecting(true);
+      setSourceNodeId(params.nodeId);
+      
+      // For debugging
+      console.log('Starting connection from source handle:', params.nodeId);
+    } else {
+      // If connection attempt doesn't start from source handle, block it
+      event.preventDefault();
+      setIsConnecting(false);
+    }
+  }, [setIsConnecting, setSourceNodeId]);
+
   const onConnectEnd = useCallback(() => {
-    // Reset all connection state
+    // Always clean up connecting state
     setIsConnecting(false);
     setSourceNodeId(null);
-    setTargetNode(null);
-    
-    // Clean up any connection styling that might remain
-    setTimeout(() => {
-      // Remove connection-target class from all nodes
-      document.querySelectorAll('.connection-target').forEach(el => {
-        el.classList.remove('connection-target');
-      });
-      
-      // Remove connecting attribute from any source nodes
-      document.querySelectorAll('[data-connecting="true"]').forEach(el => {
-        el.removeAttribute('data-connecting');
-      });
-    }, 50);
-  }, [setIsConnecting, setSourceNodeId, setTargetNode]);
-  
+    setTargetNodeId(null);
+  }, [setIsConnecting, setSourceNodeId, setTargetNodeId]);
+
   return { onConnectStart, onConnectEnd };
 };
 
 /**
- * Handle node changes with connection target highlighting
- * Optimized version to prevent infinite loops
+ * Handle node position changes
  */
-export const useNodeChangeHandler = (
-  onNodesChange: (changes: NodeChange[]) => void,
-  isConnecting: boolean,
-  store: ReturnType<typeof useStoreApi>,
-  sourceNodeId: string | null,
-  targetNode: string | null,
-  setTargetNode: Dispatch<SetStateAction<string | null>>,
-  setNodes: Dispatch<SetStateAction<Node<WorkflowNodeData>[]>>
-) => {
-  return useCallback((changes: NodeChange[]) => {
-    // Apply the native onNodesChange first
-    onNodesChange(changes);
+export const useNodeDragHandler = (): NodeDragHandler => {
+  const updateNodePositions = useFormBuilderStore(state => state.updateNodePositions);
+  
+  return useCallback((event: React.MouseEvent | React.TouchEvent, node: Node, nodes: Node[]) => {
+    // Only update positions when drag ends (user releases mouse)
+    if (!event.type.includes('end')) return;
     
-    // Only run highlight logic during connection process
-    if (!isConnecting) {
-      // If we're not connecting but there's a targetNode set, clear it
-      if (targetNode) {
-        setTargetNode(null);
-        
-        // Reset highlighting on nodes - do this in a separate DOM update
-        // to avoid React state updates in the middle of a render cycle
-        setTimeout(() => {
-          document.querySelectorAll('.connection-target').forEach(el => {
-            el.classList.remove('connection-target');
-          });
-        }, 0);
-      }
-      return;
-    }
+    // Find the nodes that have absolute positions
+    const nodesWithPositions = nodes.filter(n => n.positionAbsolute);
     
-    // Handle connection targeting logic
-    try {
-      const state = store.getState();
-      const mousePosition = (state as Record<string, unknown>).mousePos as [number, number];
+    if (nodesWithPositions.length > 0) {
+      // Create a positions object to update the store
+      const positions: Record<string, XYPosition> = {};
       
-      if (!mousePosition) return;
-      
-      // Get node internals from store
-      const nodeInternals = state.nodeInternals as Map<string, NodeWithPosition>;
-      
-      if (!nodeInternals || nodeInternals.size === 0) return;
-      
-      // Find node under cursor
-      let nodeUnderMouse: NodeWithPosition | undefined;
-      
-      // Using traditional for loop to avoid creating unnecessary arrays
-      for (const node of nodeInternals.values()) {
-        if (!node.positionAbsolute || node.id === sourceNodeId) continue;
-        
-        const { x, y } = node.positionAbsolute;
-        const width = node.positionAbsolute.width || 240;
-        const height = node.positionAbsolute.height || 80;
-        
-        if (
-          mousePosition[0] >= x &&
-          mousePosition[0] <= x + width &&
-          mousePosition[1] >= y &&
-          mousePosition[1] <= y + height
-        ) {
-          nodeUnderMouse = node;
-          break;
+      nodesWithPositions.forEach(n => {
+        if (n.positionAbsolute) {
+          positions[n.id] = {
+            x: n.positionAbsolute.x,
+            y: n.positionAbsolute.y
+          };
         }
-      }
+      });
       
-      // Get new target node ID
-      const newTargetNodeId = nodeUnderMouse?.id || null;
-      
-      // Only update if the target node has changed
-      if (newTargetNodeId !== targetNode) {
-        setTargetNode(newTargetNodeId);
-        
-        // Use DOM manipulations for highlighting instead of React state updates
-        // This avoids unnecessary re-renders and potential infinite loops
-        if (targetNode) {
-          // Remove highlight from previous target
-          const prevEl = document.querySelector(`[data-id="${targetNode}"]`);
-          if (prevEl) {
-            prevEl.classList.remove('connection-target');
-          }
-        }
-        
-        if (newTargetNodeId) {
-          // Add highlight to new target
-          const newEl = document.querySelector(`[data-id="${newTargetNodeId}"]`);
-          if (newEl) {
-            newEl.classList.add('connection-target');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in node change handler:', error);
+      // Update the store with the new positions
+      updateNodePositions(positions);
     }
-  }, [onNodesChange, isConnecting, store, sourceNodeId, targetNode, setTargetNode]);
-}; 
+  }, [updateNodePositions]);
+};
+
+/**
+ * Helper function to handle node target highlighting
+ * when connecting nodes
+ */
+export const useNodeHighlightHandler = () => {
+  const isConnecting = useFormBuilderStore(state => state.isConnecting);
+  const sourceNodeId = useFormBuilderStore(state => state.sourceNodeId);
+  
+  return useCallback((nodes: Node<WorkflowNodeData>[]) => {
+    if (!isConnecting || !sourceNodeId) return nodes;
+    
+    // Add a visual indicator for potential target nodes
+    return nodes.map(node => {
+      // Don't highlight the source node itself as a target
+      if (node.id === sourceNodeId) return node;
+      
+      // Mark other nodes as potential targets
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          isConnectionTarget: true
+        }
+      };
+    });
+  }, [isConnecting, sourceNodeId]);
+};

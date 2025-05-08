@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection, ConditionRule } from '@/types/workflow-types';
+import type { Connection } from '@/types/workflow-types';
 
 /**
  * Save workflow edges to the database
@@ -10,10 +10,20 @@ import type { Connection, ConditionRule } from '@/types/workflow-types';
  * @param connections - Array of workflow connections
  * @returns Object containing success status and saved edges
  */
+interface WorkflowEdge {
+  id: string;
+  form_id: string;
+  source_id: string;
+  target_id: string;
+  condition_type?: string;
+  conditions?: object[];
+  order_index: number;
+}
+
 export async function saveWorkflowEdges(
   formId: string,
   connections: Connection[]
-): Promise<{ success: boolean, edges: any[] }> {
+): Promise<{ success: boolean, edges: WorkflowEdge[] }> {
   const supabase = createClient();
   
   if (!formId) {
@@ -51,12 +61,18 @@ export async function saveWorkflowEdges(
         return true;
       })
       .map((connection, index) => {
-        // Extract condition data if it exists
-        const conditionField = connection.condition?.field || null;
-        const conditionOperator = connection.condition?.operator || null;
-        const conditionValue = connection.condition?.value !== undefined 
-          ? connection.condition.value 
-          : null;
+        // Extract condition data using the new model (conditions array + conditionType)
+        let conditionField = null;
+        let conditionOperator = null;
+        let conditionValue = null;
+        
+        // If connection is conditional and has at least one condition, use the first one for backward database compatibility
+        if (connection.conditionType === 'conditional' && connection.conditions && connection.conditions.length > 0) {
+          const primaryCondition = connection.conditions[0];
+          conditionField = primaryCondition.field || null;
+          conditionOperator = primaryCondition.operator || null;
+          conditionValue = primaryCondition.value !== undefined ? primaryCondition.value : null;
+        }
         
         return {
           id: connection.id, // Keep existing ID for upsert
@@ -66,7 +82,9 @@ export async function saveWorkflowEdges(
           condition_field: conditionField,
           condition_operator: conditionOperator,
           condition_value: conditionValue,
-          order_index: connection.order || index
+          condition_type: connection.conditionType || 'always',
+          condition_json: connection.conditions && connection.conditions.length > 0 ? JSON.stringify(connection.conditions) : null,
+          order_index: connection.order_index || index
         };
       });
     

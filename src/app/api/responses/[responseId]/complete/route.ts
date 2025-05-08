@@ -2,13 +2,11 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 // Mark a form response as completed
-export async function POST(
-  request: Request,
-  { params }: { params: { responseId: string } }
-) {
+export async function POST(request: Request) {
   try {
     console.log('Starting /api/responses/[responseId]/complete POST request');
-    const { responseId } = params;
+    // Extract responseId from URL pattern
+    const responseId = request.url.split('/responses/')[1].split('/complete')[0];
     
     if (!responseId) {
       console.error('Response ID is required but not provided in URL parameters');

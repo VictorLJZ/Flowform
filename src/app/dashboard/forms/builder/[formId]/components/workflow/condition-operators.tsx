@@ -20,6 +20,7 @@ import { FormBlock } from '@/types/block-types';
 interface ConditionOperatorsProps extends ConditionComponentProps {
   currentConnection: Connection | null;
   sourceBlock: FormBlock | null | undefined;
+  conditionId?: string; // Optional ID to support multiple conditions
 }
 
 // Helper function to get user-friendly label based on field and operator
@@ -74,16 +75,23 @@ function getUserFriendlyOperatorLabel(
 
 export function ConditionOperators({ 
   element, 
-  sourceBlock,
+  sourceBlock, 
   sourceBlockType, 
   onConditionChange,
-  currentConnection
+  currentConnection,
+  conditionId
 }: ConditionOperatorsProps) {
   // Use currentConnection if available for more accurate UI state
   const connection = currentConnection || element?.data?.connection;
-  // Use consistent condition checking pattern 
-  const currentField = connection?.condition?.field || '';
-  const currentOperator = connection?.condition?.operator || 'equals';
+  
+  // Get the specific condition we're editing based on conditionId
+  const currentCondition = conditionId && connection?.conditions
+    ? connection.conditions.find(cond => cond.id === conditionId)
+    : connection?.conditions?.[0] || undefined;
+    
+  // Get current field and operator from the condition
+  const currentField = currentCondition?.field || '';
+  const currentOperator = currentCondition?.operator || 'equals';
 
   // Get operator options based on field and source block
   const availableOperators = getOperatorsForField(currentField, sourceBlock);

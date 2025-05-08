@@ -66,7 +66,7 @@ export async function updateFormBlock(
       title: block.title,
       description: block.description,
       required: block.required,
-      order: block.order_index,
+      order_index: block.order_index,
       settings: block.settings
     })) as FormBlock[];
     

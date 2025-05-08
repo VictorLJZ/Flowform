@@ -10,6 +10,10 @@ import type { SlideLayout } from './layout-types';
 import type { FormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
 import type { BlockPresentation, FormTheme } from './theme-types';
+import type { Node, Edge } from 'reactflow';
+
+// Re-export types needed in other files
+export type { Connection };
 
 /**
  * Core Form Data Slice
@@ -74,16 +78,54 @@ export interface FormUISlice {
 
 /**
  * Workflow Slice
- * Manages connections between blocks
+ * Manages connections between blocks and workflow UI state
  */
 export interface FormWorkflowSlice {
+  // Core data
   connections: Connection[];
+  nodePositions: Record<string, { x: number; y: number }>;
   
-  // Actions
+  // UI state
+  selectedElementId: string | null;
+  isConnecting: boolean;
+  sourceNodeId: string | null;
+  targetNodeId: string | null;
+  
+  // ReactFlow state
+  nodes: Node[];
+  edges: Edge[];
+  
+  // Selection actions
+  selectElement: (elementId: string | null) => void;
+  
+  // Connection mode actions
+  setConnectingMode: (isConnecting: boolean, sourceId?: string | null) => void;
+  setIsConnecting: (isConnecting: boolean) => void;
+  setSourceNodeId: (nodeId: string | null) => void;
+  setTargetNodeId: (nodeId: string | null) => void;
+  
+  // Node position actions
+  updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
+  updateNodePositions: (positions: Record<string, { x: number; y: number }>) => void;
+  
+  // ReactFlow actions
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  
+  // Connection actions
   setConnections: (connections: Connection[]) => void;
-  addConnection: (connection: Connection) => void;
+  addConnection: (connection: Connection) => string; // Returns the new ID
   updateConnection: (connectionId: string, updates: Partial<Connection>) => void;
   removeConnection: (connectionId: string) => void;
+  
+  // Block observation methods
+  onBlockAdded: (blockId: string) => void; // Called when a block is added to notify workflow system
+  onBlockRemoved: (blockId: string) => void; // Called when a block is removed to clean up connections
+  onBlocksReordered: (movedBlockId: string) => void; // Called when blocks are reordered with ID of moved block
+  validateConnections: () => boolean; // Validates connections against blocks, returns true if all valid
+  
+  // Sync actions
+  syncBlockOrderWithConnections: () => void; // Synchronizes block order with workflow connections
 }
 
 /**
@@ -91,7 +133,19 @@ export interface FormWorkflowSlice {
  * Handles saving and loading forms
  */
 export interface FormPersistenceSlice {
+  // State
+  isVersioned: boolean;
+  
   // Actions
+  // Main orchestration function that saves everything
   saveForm: () => Promise<void>;
+  
+  // Individual save functions for different concerns
+  saveFormAndBlocks: () => Promise<{ result: any, isExistingForm: boolean } | null>;
+  saveWorkflowEdges: (formId: string) => Promise<boolean>;
+  saveDynamicBlockConfigs: (result: any) => Promise<void>;
+  
+  // Load functions
   loadForm: (formId: string) => Promise<void>;
+  loadVersionedForm: (formId: string) => Promise<void>;
 }

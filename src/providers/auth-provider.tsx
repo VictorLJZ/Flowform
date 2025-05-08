@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (isDev) console.log("[Auth] State changed:", event);
+
       
       // Force data refresh to update auth state across the app
       mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Check for too frequent redirects
           const lastRedirect = parseInt(sessionStorage.getItem('last_redirect') || '0');
           if (Date.now() - lastRedirect < 2000) {
-            if (isDev) console.log("[Auth] Skipping redirect - too recent");
+
             return;
           }
           
@@ -100,11 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         mutate(AUTH_SWR_KEY, null, { revalidate: false });
       }
-    } catch (error) {
-      if (isDev) console.error("[Auth] Sign out error:", error);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
+
       mutate(AUTH_SWR_KEY, null, { revalidate: false });
     }
-  }, [supabase, isDev]);
+  }, [supabase]);
 
   return <AuthContext.Provider value={{ supabase, signOut }}>{children}</AuthContext.Provider>;
 }

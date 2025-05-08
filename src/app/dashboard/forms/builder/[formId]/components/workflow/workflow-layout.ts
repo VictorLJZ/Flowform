@@ -23,10 +23,9 @@ export function calculateLayout(
   const { 
     rootNodes, 
     childrenMap, 
-    parentMap, 
+    // parentMap and nodeRanks are calculated but not directly used in this function
     incomingEdgeCount,
-    outgoingEdgeCount,
-    nodeRanks 
+    outgoingEdgeCount 
   } = graphAnalysis;
   
   // Track processed nodes and their positions
@@ -289,7 +288,7 @@ function analyzeGraph(
  * Calculates the "rank" or depth of each node from roots
  */
 function calculateNodeRanks(
-  rootNodes: Node<any>[],
+  rootNodes: Node<WorkflowNodeData>[],
   childrenMap: Map<string, string[]>,
   nodeRanks: Map<string, number>,
   visited = new Set<string>()

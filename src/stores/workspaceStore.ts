@@ -28,11 +28,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       syncWorkspaceAfterInvitation: async (workspaceId, fetchWorkspaceFn) => {
         // Validate the workspace ID to prevent errors during login
         if (!workspaceId) {
-          console.warn('[WorkspaceStore] Cannot sync workspace after invitation: No workspace ID provided');
+
           return;
         }
         
-        console.log('[WorkspaceStore] Syncing workspace after invitation:', workspaceId);
+
         try {
           // Check if we already have this workspace in the store before fetching
           const existingWorkspaces = get().workspaces;
@@ -40,7 +40,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           
           // If we already have this workspace, no need to fetch it again
           if (existingWorkspace) {
-            console.log('[WorkspaceStore] Workspace already in store, setting as current:', workspaceId);
+
             set({ currentWorkspaceId: workspaceId });
             return;
           }
@@ -50,7 +50,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           
           if (workspace) {
             // Add the workspace to the store
-            console.log('[WorkspaceStore] Adding workspace after invitation:', workspace.name);
+
             const updatedWorkspaces = [...existingWorkspaces, workspace];
             
             // Update workspaces and set the current workspace ID
@@ -60,19 +60,17 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             });
           }
         } catch (error) {
-          console.error('[WorkspaceStore] Error syncing workspace after invitation:', error);
+          console.error('Error syncing workspace after invitation:', error);
         }
       },
       setCurrentWorkspaceId: (workspaceId) => {
-        console.log('[WorkspaceStore] Setting current workspace ID:', workspaceId);
+
         set({ currentWorkspaceId: workspaceId });
-        // Log the state after setting for debugging
+        // Removed debugging code that was not being used
         setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const newState = get();
-          console.log('[WorkspaceStore] State after update:', { 
-            currentId: newState.currentWorkspaceId,
-            workspaceCount: newState.workspaces.length
-          });
+          // State logging was previously here but removed
         }, 0);
       },
       setWorkspaces: (workspaces) => {
@@ -85,7 +83,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           
           if (!currentId || !currentWorkspaceExists) {
             // Either no workspace selected or the selected one is no longer available
-            console.log('[WorkspaceStore] Auto-selecting workspace:', workspaces[0].id);
+
             // Update both workspaces and currentWorkspaceId in one call
             set({ 
               workspaces,
@@ -93,35 +91,35 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             });
           } else {
             // Keep current selection and just update the list
-            console.log('[WorkspaceStore] Keeping current selection:', currentId);
+
             set({ workspaces });
           }
         } else {
           // If no workspaces, clear everything
-          console.log('[WorkspaceStore] No workspaces available, clearing selection');
+
           set({ workspaces, currentWorkspaceId: null });
         }
       },
       // Add a single workspace to the existing list
       addWorkspace: (workspace) => {
-        console.log('[WorkspaceStore] Adding new workspace:', workspace.id);
+
         const currentWorkspaces = get().workspaces;
         // Make a new array with the new workspace added
         const updatedWorkspaces = [...currentWorkspaces, workspace];
-        console.log('[WorkspaceStore] Updated workspace count:', updatedWorkspaces.length);
+
         set({ workspaces: updatedWorkspaces });
       },
       // Refresh workspaces from an async fetch function
       refreshWorkspaces: async (fetchFn) => {
-        console.log('[WorkspaceStore] Refreshing workspaces from external source');
+
         try {
           // Fetch fresh workspace data
           const freshWorkspaces = await fetchFn();
-          console.log('[WorkspaceStore] Fetched fresh workspaces:', freshWorkspaces.length);
+
           
           // Get saved workspace ID from localStorage (for after login restore)
           const savedWorkspaceId = get().currentWorkspaceId;
-          console.log('[WorkspaceStore] Saved workspace ID:', savedWorkspaceId);
+
           
           // Check if the saved workspace is still in the fresh workspaces
           const savedWorkspaceExists = savedWorkspaceId && 
@@ -130,14 +128,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           if (freshWorkspaces.length > 0) {
             if (savedWorkspaceExists) {
               // If we have a saved workspace and it still exists, restore it
-              console.log('[WorkspaceStore] Restoring saved workspace:', savedWorkspaceId);
+
               set({ 
                 workspaces: freshWorkspaces,
                 currentWorkspaceId: savedWorkspaceId 
               });
             } else {
               // If no valid saved workspace, select the first one
-              console.log('[WorkspaceStore] Selecting first workspace:', freshWorkspaces[0].id);
+
               set({ 
                 workspaces: freshWorkspaces,
                 currentWorkspaceId: freshWorkspaces[0].id 
@@ -145,7 +143,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             }
           } else {
             // No workspaces, clear selection
-            console.log('[WorkspaceStore] No workspaces available, clearing selection');
+  
             set({ 
               workspaces: freshWorkspaces,
               currentWorkspaceId: null 
@@ -154,7 +152,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           
           return freshWorkspaces;
         } catch (error) {
-          console.error('[WorkspaceStore] Error refreshing workspaces:', error);
+          console.error('Error refreshing workspaces:', error);
           throw error;
         }
       },
@@ -169,9 +167,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       // Setup proper rehydration
       onRehydrateStorage: () => (state) => {
         if (state) {
-          console.log('[WorkspaceStore] Rehydrated from storage, saved workspace ID:', state.currentWorkspaceId);
+
         } else {
-          console.log('[WorkspaceStore] No stored state found');
+
         }
       }
     }

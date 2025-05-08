@@ -19,7 +19,7 @@ export interface FormBlock {
   title: string;
   description?: string;
   required: boolean;
-  order: number;
+  order_index: number;
   settings: Record<string, unknown>;
 }
 

@@ -38,3 +38,21 @@ export type AnalyticsApiResponse<T> = {
   data: T;
   error?: string;
 };
+
+/**
+ * Form insights data for dashboard
+ * 
+ * Contains key metrics for the form insights dashboard
+ */
+export type FormInsights = {
+  // Core metrics
+  totalViews: number;
+  totalStarts: number;
+  totalSubmissions: number;
+  completionRate: number; // As percentage (0-100)
+  averageTimeToComplete: number; // In seconds
+  
+  // Time reference
+  lastUpdated: string; // ISO date string
+};
+

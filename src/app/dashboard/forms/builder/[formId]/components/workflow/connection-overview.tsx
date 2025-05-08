@@ -29,10 +29,14 @@ export function ConnectionOverview({
 
   // Use current connection if available, otherwise use element data
   const connection = currentConnection || element?.data?.connection;
-  const hasCondition = !!connection?.condition?.field;
+  
+  // Determine if the connection has conditions based on the new model
+  const hasConditions = 
+    connection?.conditionType === 'conditional' || 
+    (connection?.conditions && connection.conditions.length > 0);
 
   return (
-    <Card>
+    <Card className="p-0 shadow-sm border rounded-md overflow-hidden gap-0">
       <CardHeader className="py-3 px-4 bg-slate-50 border-b">
         <div className="flex items-start justify-between">
           <div>
@@ -41,7 +45,7 @@ export function ConnectionOverview({
               Flow direction and condition
             </CardDescription>
           </div>
-          {hasCondition && (
+          {hasConditions && (
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-normal">
               Conditional
             </Badge>
@@ -60,11 +64,11 @@ export function ConnectionOverview({
         </div>
         
         {/* Condition summary - use current connection for more accurate display */}
-        {hasCondition && (
+        {hasConditions && (
           <div className="mt-3 pt-3 border-t border-dashed">
             <div className="text-xs text-muted-foreground mb-1">Current condition:</div>
             <div className="text-sm bg-blue-50 p-2 rounded-md">
-              {getConditionSummary(connection, sourceBlock, sourceBlockType)}
+              {connection && getConditionSummary(connection, sourceBlock, sourceBlockType)}
             </div>
           </div>
         )}

@@ -21,7 +21,10 @@ interface UseFormAnswersProps {
  * Manages the state of answers for form questions
  */
 export function useFormAnswers({
+  // These parameters may be used in future implementations
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   formId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   responseId,
   blockId,
   storageKey
@@ -43,7 +46,7 @@ export function useFormAnswers({
       try {
         const savedData = localStorage.getItem(storageKey);
         if (savedData) {
-          parsedData = JSON.parse(savedData);
+          parsedData = JSON.parse(savedData) as Record<string, string | number | string[] | QAPair[]>;
           setAnswers(parsedData);
           
           // If we have an active block, set its answer as current

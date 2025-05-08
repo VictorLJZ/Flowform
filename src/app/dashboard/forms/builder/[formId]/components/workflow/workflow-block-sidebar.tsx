@@ -5,66 +5,82 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Node, Edge, useEdges } from 'reactflow'
-import { WorkflowNodeData } from '@/types/workflow-types'
+import { useEdges, Edge } from 'reactflow'
+// Removed unused imports
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Save, Edit2, X } from 'lucide-react'
 
-interface WorkflowBlockSidebarProps {
-  element: Node<WorkflowNodeData>;
-  onHasChanges?: (hasChanges: boolean) => void;
-}
-
-export default function WorkflowBlockSidebar({ element, onHasChanges }: WorkflowBlockSidebarProps) {
+export default function WorkflowBlockSidebar() {
+  // Place ALL hooks at the top level of the component to comply with React rules
   const blocks = useFormBuilderStore(state => state.blocks)
+  const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
   const updateBlock = useFormBuilderStore(state => state.updateBlock)
+  const saveForm = useFormBuilderStore(state => state.saveForm)
   const edges = useEdges()
   
+  // All state hooks must be declared before any conditional returns
   const [editMode, setEditMode] = useState(false)
-  const [title, setTitle] = useState(element?.data?.block?.title || '')
-  const [description, setDescription] = useState(element?.data?.block?.description || '')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   
-  // Update state when element changes
+  // Find the selected block - computed value, not a hook
+  const block = blocks.find(b => b.id === selectedElementId)
+  
+  // Update state when selected block changes
   useEffect(() => {
-    setTitle(element?.data?.block?.title || '')
-    setDescription(element?.data?.block?.description || '')
-    setEditMode(false)
-  }, [element?.id, element?.data?.block])
+    if (block) {
+      setTitle(block.title || '')
+      setDescription(block.description || '')
+      setEditMode(false)
+    }
+  }, [block])
   
   // Get incoming and outgoing connections for node
   const getIncomingConnections = () => {
-    return edges.filter(e => e.target === element.id);
+    if (!block) return [];
+    return edges.filter(e => e.target === block.id);
   }
   
   const getOutgoingConnections = () => {
-    return edges.filter(e => e.source === element.id);
+    if (!block) return [];
+    return edges.filter(e => e.source === block.id);
   }
   
   // Save changes to the block
   const saveChanges = () => {
-    if (element?.data?.block?.id) {
-      updateBlock(element.data.block.id, {
-        title,
-        description
-      })
-      setEditMode(false)
-      // Notify parent component that changes were made
-      if (onHasChanges) {
-        onHasChanges(true)
-      }
-    }
+    if (!block) return;
+    updateBlock(block.id, {
+      title,
+      description
+    })
+      
+    // Update local state
+    setEditMode(false)
+      
+    // Save to database
+    saveForm()
   }
   
   // Cancel editing and reset values
   const cancelEdit = () => {
-    setTitle(element?.data?.block?.title || '')
-    setDescription(element?.data?.block?.description || '')
+    if (!block) return;
+    setTitle(block.title || '')
+    setDescription(block.description || '')
     setEditMode(false)
   }
   
+  // If no block is selected, show a message
+  if (!block) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-4 text-muted-foreground">
+        No block selected
+      </div>
+    )
+  }
+
   return (
     <ScrollArea className="flex-1">
       <div className="p-4 space-y-5">
@@ -96,7 +112,7 @@ export default function WorkflowBlockSidebar({ element, onHasChanges }: Workflow
               <Label className="mb-1.5 block text-xs text-muted-foreground">TITLE</Label>
               {!editMode ? (
                 <div className="text-sm bg-muted py-2 px-3 rounded-md">
-                  {element?.data?.block?.title || 'Untitled'}
+                  {block.title || 'Untitled'}
                 </div>
               ) : (
                 <Input 
@@ -111,7 +127,7 @@ export default function WorkflowBlockSidebar({ element, onHasChanges }: Workflow
             <div>
               <Label className="mb-1.5 block text-xs text-muted-foreground">TYPE</Label>
               <div className="text-sm bg-muted py-2 px-3 rounded-md capitalize">
-                {element?.data?.block?.blockTypeId?.replace('_', ' ') || 'Unknown'}
+                {block.blockTypeId?.replace('_', ' ') || 'Unknown'}
               </div>
             </div>
             
@@ -119,7 +135,7 @@ export default function WorkflowBlockSidebar({ element, onHasChanges }: Workflow
               <Label className="mb-1.5 block text-xs text-muted-foreground">DESCRIPTION</Label>
               {!editMode ? (
                 <div className="text-sm bg-muted py-2 px-3 rounded-md min-h-[36px]">
-                  {element?.data?.block?.description || <span className="text-muted-foreground italic">No description</span>}
+                  {block.description || <span className="text-muted-foreground italic">No description</span>}
                 </div>
               ) : (
                 <Textarea 
