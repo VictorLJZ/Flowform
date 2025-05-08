@@ -267,27 +267,49 @@ export default function FormViewerPage() {
 
   // Memoized calculation for disabling next button
   const isNextDisabled = useMemo(() => {
-    if (!block) return true; 
+    if (!block) {
+      console.log('DEBUG_NEXT_BUTTON: No block available, disabling Next button');
+      return true; 
+    }
+
+    // Debug log to check block type
+    console.log('DEBUG_BLOCK_TYPE:', {
+      blockId: block.id,
+      blockType: block.type,
+      blockTypeId: block.blockTypeId,
+      settings: block.settings,
+      required: block.required,
+      answerType: typeof currentAnswer,
+      answerValue: currentAnswer
+    });
 
     // AI conversation has its own internal submit/next logic
     if (block.blockTypeId === 'ai_conversation') {
+      console.log('DEBUG_NEXT_BUTTON: Block is AI conversation, disabling standard Next button');
       return true; 
     }
 
     // Disable if submitting
-    if (submitting) return true;
+    if (submitting) {
+      console.log('DEBUG_NEXT_BUTTON: Currently submitting, disabling Next button');
+      return true;
+    }
 
     // Disable if required but no answer
     if (block.required) {
       if (Array.isArray(currentAnswer) && currentAnswer.length === 0) {
+        console.log('DEBUG_NEXT_BUTTON: Required array answer is empty, disabling Next button');
         return true;
       } else if (typeof currentAnswer === 'string' && currentAnswer.trim() === '') {
+        console.log('DEBUG_NEXT_BUTTON: Required string answer is empty, disabling Next button');
         return true;
       } else if (currentAnswer === null || currentAnswer === undefined) {
+        console.log('DEBUG_NEXT_BUTTON: Required answer is null/undefined, disabling Next button');
         return true;
       }
     }
 
+    console.log('DEBUG_NEXT_BUTTON: All checks passed, Next button is enabled');
     return false; 
   }, [block, currentAnswer, submitting]);
 
@@ -295,17 +317,16 @@ export default function FormViewerPage() {
   const prepareAnswer = useCallback(() => {
     console.log('[prepareAnswer] Preparing answer for block:', block?.id);
     if (!block) {
-      console.error('Block is not defined, cannot submit.');
-      return null;
-    } 
-    
-    // Don't submit if the Next button is disabled
-    if (isNextDisabled) {
-      console.log('Next button disabled, submission prevented.');
+      console.error('No block to prepare answer for');
       return null;
     }
     
-    // Determine the answer to submit - special handling for AI conversations
+    // Add validation if needed
+    if (isNextDisabled) {
+      console.error('Next is disabled, cannot submit');
+      return null;
+    }
+    
     let answerToSubmit = currentAnswer;
     if (block.blockTypeId === 'ai_conversation') { 
       if (aiConversationRef.current && typeof aiConversationRef.current.getMessages === 'function') {
@@ -317,20 +338,53 @@ export default function FormViewerPage() {
       }
     }
     
+    // DEBUG LOGGING: Track static answer data
+    console.log('[DEBUG][prepareAnswer] Prepared answer for block:', {
+      blockId: block.id,
+      blockType: block.type,
+      blockTypeId: block.blockTypeId,
+      settings: block.settings,
+      answerType: typeof answerToSubmit,
+      isArray: Array.isArray(answerToSubmit),
+      answerValue: answerToSubmit,
+      answerStringified: JSON.stringify(answerToSubmit).substring(0, 100) + '...'
+    });
+    
     return answerToSubmit;
   }, [block, currentAnswer, isNextDisabled, aiConversationRef]);
   
   // Simplified handler for submitting an answer
   // Handle form submission by combining the workflow navigation with API submission
   const handleSubmit = useCallback(async () => {
+    console.log('[DEBUG][handleSubmit] Starting form submission flow');
+    
     const answerToSubmit = prepareAnswer();
     if (answerToSubmit !== null && block) {
-      // First submit to the API
-      await submitAnswerToAPI(block, answerToSubmit);
+      console.log('[DEBUG][handleSubmit] Answer prepared successfully, about to submit to API:', {
+        blockId: block.id,
+        blockTypeId: block.blockTypeId,
+        answerType: typeof answerToSubmit
+      });
       
-      // Then use workflow navigation to determine the next block
-      // Type casting the answer to ensure compatibility with the workflow navigation
-      workflowSubmitAnswer(answerToSubmit as any);
+      try {
+        // First submit to the API
+        await submitAnswerToAPI(block, answerToSubmit);
+        
+        console.log('[DEBUG][handleSubmit] API submission successful, now handling workflow navigation');
+        
+        // Then use workflow navigation to determine the next block
+        // Type casting the answer to ensure compatibility with the workflow navigation
+        workflowSubmitAnswer(answerToSubmit as any);
+        
+        console.log('[DEBUG][handleSubmit] Workflow navigation completed');
+      } catch (error) {
+        console.error('[DEBUG][handleSubmit] Error during submission process:', error);
+      }
+    } else {
+      console.error('[DEBUG][handleSubmit] Unable to submit: answerToSubmit is null or block is undefined', {
+        hasAnswer: answerToSubmit !== null,
+        hasBlock: !!block
+      });
     }
   }, [block, prepareAnswer, submitAnswerToAPI, workflowSubmitAnswer]);
 
@@ -377,8 +431,30 @@ export default function FormViewerPage() {
                 submitAnswer={async (block, answer) => {
                   // Adapter function to bridge between the expected interfaces
                   // BlockRenderer expects a function that takes (block, answer) and returns Promise<void>
-                  // But workflowSubmitAnswer takes just (answer) and returns boolean
-                  workflowSubmitAnswer(answer as any);
+                  // First, log the call to help debug
+                  console.log('DEBUG_BLOCK_RENDERER_SUBMIT:', {
+                    blockId: block.id,
+                    blockType: block.type,
+                    blockTypeId: block.blockTypeId,
+                    answerType: typeof answer,
+                    answerValue: answer
+                  });
+                  
+                  try {
+                    // First save to API - this was missing in the original implementation!
+                    console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling submitAnswerToAPI...');
+                    await submitAnswerToAPI(block, answer);
+                    console.log('DEBUG_BLOCK_RENDERER_SUBMIT: API submission successful');
+                    
+                    // Then use workflow navigation
+                    console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling workflowSubmitAnswer...');
+                    workflowSubmitAnswer(answer as any);
+                    console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Workflow navigation completed');
+                  } catch (error) {
+                    console.error('DEBUG_BLOCK_RENDERER_SUBMIT: Error during submission:', error);
+                    // Still return resolved promise to avoid breaking the interface
+                  }
+                  
                   // Return a resolved promise to match the expected interface
                   return Promise.resolve();
                 }}

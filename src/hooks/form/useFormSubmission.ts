@@ -139,6 +139,16 @@ export const useFormSubmission = ({
   }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
 
   const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | QAPair[]) => {
+    // DEBUG LOGGING: Track the answer at the start of submission
+    console.log('[DEBUG][useFormSubmission] Starting submission for block:', {
+      blockId: block.id,
+      blockType: block.type,
+      blockTypeId: block.blockTypeId,
+      answerType: typeof answer,
+      isArray: Array.isArray(answer),
+      answerSize: typeof answer === 'string' ? answer.length : (Array.isArray(answer) ? answer.length : 'N/A'),
+      answerPreview: JSON.stringify(answer).substring(0, 50) + '...'
+    });
     if (!responseId) {
       console.error('No responseId available for submission');
       setSubmitError('Session ID is missing. Cannot submit.');

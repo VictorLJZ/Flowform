@@ -216,6 +216,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     
     // Process the answer based on block type
     if (blockType === 'static') {
+      // DEBUG LOGGING: Track static block answer on the server side
+      console.log(`[${requestId}][DEBUG] Processing static block answer:`, {
+        responseId,
+        blockId,
+        answerType: typeof answer,
+        isArray: Array.isArray(answer),
+        answerValuePreview: JSON.stringify(answer).substring(0, 100) + '...'
+      });
       // For static blocks, optionally save the answer based on the 'required' flag
       // Use the service client for public form submissions
       const { data: currentBlock } = await supabase
@@ -242,21 +250,76 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         const serviceSupabase = createServiceClient();
         
         // Create the answer directly using the service client
+        // Handle different answer data types by converting to proper string format
+        let formattedAnswer: string;
+        if (typeof answer === 'string') {
+          formattedAnswer = answer;
+        } else if (typeof answer === 'number') {
+          formattedAnswer = answer.toString();
+        } else if (Array.isArray(answer)) {
+          // If it's an array, stringify it to preserve structure
+          formattedAnswer = JSON.stringify(answer);
+        } else if (answer === null || answer === undefined) {
+          formattedAnswer = '';
+        } else {
+          // If it's an object or any other type, stringify it
+          formattedAnswer = JSON.stringify(answer);
+        }
+        
+        console.log(`[${requestId}] Formatted static answer for saving:`, {
+          originalType: typeof answer,
+          isArray: Array.isArray(answer),
+          formattedAnswer: formattedAnswer.substring(0, 100) + (formattedAnswer.length > 100 ? '...' : '')
+        });
+        
         const payload = {
           response_id: responseId,
           block_id: blockId,
-          answer: answer as string,
+          answer: formattedAnswer,
           answered_at: new Date().toISOString()
         };
         
-        const { error } = await serviceSupabase
+        // Log the exact payload we're about to save to the database
+        console.log(`[${requestId}][DEBUG] About to save static answer to database:`, {
+          payload,
+          answerType: typeof payload.answer,
+          answerLength: payload.answer.length
+        });
+
+        const { data: existingAnswer, error: fetchError } = await serviceSupabase
           .from('static_block_answers')
-          .upsert(payload, { onConflict: 'response_id,block_id' });
+          .select('*')
+          .eq('response_id', responseId)
+          .eq('block_id', blockId)
+          .maybeSingle();
+
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found, which is fine
+          console.error(`[${requestId}][DEBUG] Error checking existing answer:`, fetchError);
+        } else {
+          console.log(`[${requestId}][DEBUG] Existing answer check:`, {
+            exists: !!existingAnswer,
+            existingId: existingAnswer?.id,
+            existingAnswer: existingAnswer?.answer?.substring(0, 50) + '...'
+          });
+        }
+
+        // Try to use upsert with returning to get the saved record
+        const { data: savedRecord, error } = await serviceSupabase
+          .from('static_block_answers')
+          .upsert(payload, { onConflict: 'response_id,block_id' })
+          .select()
+          .single();
           
         if (error) {
-          console.error('Error saving static answer:', error);
+          console.error(`[${requestId}][DEBUG] Error saving static answer:`, error);
           throw error;
         }
+
+        // Log the successful save
+        console.log(`[${requestId}][DEBUG] Successfully saved static answer:`, {
+          savedRecordId: savedRecord?.id,
+          savedAnswer: savedRecord?.answer?.substring(0, 50) + '...'
+        });
       }
       
       // Get the next block in sequence
