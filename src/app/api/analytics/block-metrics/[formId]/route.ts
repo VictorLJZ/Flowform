@@ -87,10 +87,62 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     });
     
+    // Get static block answers to determine which blocks have been accessed
+    // This directly shows which blocks users have interacted with
+    // First get responses for this form
+    const { data: formResponses, error: respFetchError } = await supabase
+      .from('form_responses')
+      .select('id')
+      .eq('form_id', formId);
+      
+    if (respFetchError) {
+      console.error('[API] Error fetching form responses:', respFetchError);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch form responses',
+        details: respFetchError.message
+      }, { status: 500 });
+    }
+    
+    const responseIds = formResponses?.map(r => r.id) || [];
+    
+    // Now get answers for these responses
+    const { data: allAnswers, error: allAnswersError } = responseIds.length > 0 ? await supabase
+      .from('static_block_answers')
+      .select('block_id')
+      .in('response_id', responseIds)
+    : { data: [], error: null };
+    
+    // Count actual answers per block
+    const answerCountByBlock: Record<string, number> = {};
+    if (!allAnswersError && allAnswers) {
+      allAnswers.forEach(answer => {
+        if (answer.block_id) {
+          answerCountByBlock[answer.block_id] = (answerCountByBlock[answer.block_id] || 0) + 1;
+        }
+      });
+      console.log('[API] Successfully fetched block answers for metrics:', Object.keys(answerCountByBlock).length);
+    }
+    
     // Format the data in a way that matches our frontend expectations
     const formattedData = formBlocks.map((block): FormattedBlockMetrics => {
-      // Calculate metrics
-      const viewCount = totalResponses || 0;
+      // The key insight: a block can only be viewed if there are answers for it,
+      // or if there are answers for blocks that come after it in the sequence
+      
+      // Find if any blocks with higher order_index have answers
+      // This indicates users have navigated past this block
+      const laterBlocksWithAnswers = formBlocks.some(b => 
+        b.order_index > block.order_index && 
+        answerCountByBlock[b.id]
+      );
+      
+      // A block has been viewed if:
+      // 1. It has answers itself, OR
+      // 2. Later blocks have answers (meaning users navigated past it)
+      const hasBeenViewed = !!answerCountByBlock[block.id] || laterBlocksWithAnswers;
+      
+      // For view count: if block has been viewed, use total responses, otherwise 0
+      const viewCount = hasBeenViewed ? (totalResponses || 0) : 0;
       const completionCount = answersByBlock[block.id] || 0;
       const dropOffCount = viewCount > 0 ? (viewCount - completionCount) : 0;
       const dropOffRate = viewCount > 0 ? Math.round((dropOffCount / viewCount) * 100) : 0;
