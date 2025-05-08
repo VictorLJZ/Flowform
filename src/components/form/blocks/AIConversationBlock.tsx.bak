@@ -109,7 +109,7 @@ export function AIConversationBlock({
   
   // Use the provided blockRef or fall back to local ref
   const effectiveRef = blockRef || localRef
-  
+
   // Determine if we're in builder or viewer mode
   const { mode } = useFormBuilderStore()
   const isBuilder = mode === 'builder'
@@ -198,7 +198,7 @@ export function AIConversationBlock({
         settingsMaxQuestions,
         conversationLength: conversation.length,
         reachedMax: hasReachedMax,
-        activeQuestionIndex,
+    activeQuestionIndex,
         isEditing: activeQuestionIndex < conversation.length
       });
     }
@@ -395,17 +395,17 @@ export function AIConversationBlock({
   // Log component state updates
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('AIConversationBlock state updated:', {
-        isComplete: effectiveIsComplete,
-        hasReachedMaxQuestions,
-        conversationLength: conversation.length,
+    console.log('AIConversationBlock state updated:', {
+      isComplete: effectiveIsComplete,
+      hasReachedMaxQuestions,
+      conversationLength: conversation.length,
         maxQuestions: settingsMaxQuestions,
         nextQuestion: nextQuestion ? nextQuestion.substring(0, 20) + '...' : 'missing'
       });
     }
   }, [effectiveIsComplete, hasReachedMaxQuestions, conversation.length, settingsMaxQuestions, nextQuestion]);
-  
-  // Auto-trigger isComplete when max questions is reached
+    
+    // Auto-trigger isComplete when max questions is reached
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined;
     
@@ -666,15 +666,15 @@ export function AIConversationBlock({
           <p className="text-sm mb-4">Please configure a starting prompt/question in the block settings.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+      <div className="space-y-6">
           {/* Loading indicator */}
           {(isLoading || isSubmitting) && (
-            <div className="text-center py-4">
-              <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full inline-block mr-2" />
-              <span>Loading conversation...</span>
-            </div>
-          )}
-          
+          <div className="text-center py-4">
+            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full inline-block mr-2" />
+            <span>Loading conversation...</span>
+          </div>
+        )}
+        
           {/* Display errors if any */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
@@ -763,25 +763,25 @@ export function AIConversationBlock({
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
+              </div>
+            </div>
               )}
-              
+            
               {/* Only show answer field if not complete OR when editing a previous question */}
               {(!effectiveIsComplete || activeQuestionIndex < conversation.length) && (
-                <div>
-                  <Textarea
-                    placeholder="Type your answer here..."
-                    value={userInput}
-                    onChange={e => setUserInput(e.target.value)}
+            <div>
+              <Textarea
+                placeholder="Type your answer here..."
+                value={userInput}
+                onChange={e => setUserInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.shiftKey && !isSubmitting && userInput.trim()) {
                         e.preventDefault();
                         handleSubmit();
                       }
                     }}
-                    rows={4}
-                    className="w-full"
+                rows={4}
+                className="w-full"
                     disabled={isSubmitting || isLoading}
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -794,8 +794,8 @@ export function AIConversationBlock({
               <div className="flex justify-between">
                 <div>
                   {/* Empty div for flex alignment */}
-                </div>
-                
+            </div>
+            
                 {effectiveIsComplete && !isEditingQuestion ? (
                   // Show Continue button when all questions are answered and not editing
                   <Button 
@@ -814,26 +814,26 @@ export function AIConversationBlock({
                 ) : isInitialState && canSkip ? (
                   // Show both Submit and Skip buttons for initial question when skippable
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
+              <Button
+                variant="outline"
                       onClick={handleNext}
                       disabled={isNavigating}
-                    >
+              >
                       {isNavigating ? 'Skipping...' : 'Skip'}
-                    </Button>
-                    <Button
-                      onClick={handleSubmit}
+              </Button>
+              <Button
+                onClick={handleSubmit}
                       disabled={isSubmitting || isLoading || !userInput}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full inline-block mr-2" />
-                          Submitting...
-                        </>
-                      ) : (
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full inline-block mr-2" />
+                    Submitting...
+                  </>
+                ) : (
                         'Submit Answer'
-                      )}
-                    </Button>
+                )}
+              </Button>
                   </div>
                 ) : (
                   // Regular Submit Answer button
@@ -851,10 +851,10 @@ export function AIConversationBlock({
                     )}
                   </Button>
                 )}
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
+      </div>
       )}
     </SlideWrapper>
   )
