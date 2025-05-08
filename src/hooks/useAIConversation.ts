@@ -197,6 +197,7 @@ export function useAIConversation(
         answerLength: answer?.length || 0,
         questionIndex,
         isStarterQuestion,
+        isEditingPrevious: typeof questionIndex === 'number' && questionIndex < (data?.conversation?.length || 0) - 1,
         starterQuestionSample: isStarterQuestion ? question?.substring(0, 30) + '...' : ''
       });
       
@@ -208,7 +209,10 @@ export function useAIConversation(
         question, 
         answer,
         isStarterQuestion,
-        isComplete: data?.isComplete,
+        // When editing a previous answer, always set isComplete to false to prompt regeneration
+        isComplete: typeof questionIndex === 'number' && questionIndex < (data?.conversation?.length || 0) - 1 
+          ? false 
+          : data?.isComplete,
         questionIndex, // Add the question index to support truncating the conversation
         maxQuestions: effectiveMaxQuestions // Pass the effective max questions to API
       };
@@ -282,10 +286,26 @@ export function useAIConversation(
   // Add a derived state property that combines the conversation and nextQuestion
   // This helps ensure we maintain consistent UI state even during loading states
   const derivedState = useMemo(() => {
+    // Determine if we've reached max questions
+    const conversationLength = data?.conversation?.length || 0;
+    const reachedMaxQuestions = effectiveMaxQuestions > 0 && conversationLength >= effectiveMaxQuestions;
+    
+    // Clear nextQuestion if we've reached max questions (prevents showing extra question)
+    const safeNextQuestion = reachedMaxQuestions ? '' : (data?.nextQuestion || '');
+    
+    if (process.env.NODE_ENV === 'development' && reachedMaxQuestions && data?.nextQuestion) {
+      console.log('Suppressing next question display due to max questions reached:', {
+        conversationLength,
+        effectiveMaxQuestions,
+        hadNextQuestion: !!data?.nextQuestion,
+        nextQuestionLength: data?.nextQuestion?.length || 0
+      });
+    }
+    
     return {
       conversation: data?.conversation || [],
-      nextQuestion: data?.nextQuestion || '',
-      isComplete: data?.isComplete || false,
+      nextQuestion: safeNextQuestion,
+      isComplete: data?.isComplete || reachedMaxQuestions, // Force isComplete when max reached
       maxQuestions: effectiveMaxQuestions, // Use the effective max questions value
       isLoading: isBuilder ? false : isLoading,
       isSubmitting: isBuilder ? false : isValidating,

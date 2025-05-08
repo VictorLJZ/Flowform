@@ -82,11 +82,27 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     let conversation: QAPair[] = currentQAPairs?.conversation || [];
     console.log(`[${requestId}] Current conversation length:`, conversation.length);
 
+    // Initialize isComplete from input
+    let isComplete = input.isComplete || false;
+
     // Check if we need to truncate the conversation
     const questionIndex = input.questionIndex ?? null;
     if (questionIndex !== null && questionIndex >= 0 && questionIndex < conversation.length) {
-      console.log(`[${requestId}] Truncating conversation at index ${questionIndex}`);
+      console.log(`[${requestId}] Truncating conversation at index ${questionIndex}`, {
+        originalLength: conversation.length,
+        truncatingAt: questionIndex,
+        isEditingPrevious: questionIndex < conversation.length - 1,
+        willKeep: questionIndex,
+        willRemove: conversation.length - questionIndex
+      });
+      
+      // When editing a previous answer, we need to truncate the conversation and regenerate
       conversation = conversation.slice(0, questionIndex);
+      
+      // Force isComplete to false when editing a previous answer to ensure regeneration
+      if (questionIndex < conversation.length - 1) {
+        isComplete = false;
+      }
     }
 
     // Add the new answer to the conversation
@@ -123,7 +139,6 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     }
 
     let nextQuestion = '';
-    let isComplete = input.isComplete || false;
     
     // Get form context for AI - we need this to check max_questions
     const context = await getFormContextClient(formId, blockId);
@@ -140,6 +155,16 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     // Check if we've reached max questions - if so, mark as complete
     const hasReachedMaxQuestions = maxQuestions > 0 && conversation.length >= maxQuestions;
     
+    // Enhanced logging around maxQuestions to debug the issue
+    console.log(`[${requestId}] MaxQuestions check:`, {
+      maxQuestions,
+      conversationLength: conversation.length, 
+      hasReachedMaxQuestions,
+      isComplete,
+      isCompleteBefore: input.isComplete,
+      shouldSkipGeneration: hasReachedMaxQuestions || isComplete
+    });
+    
     if (hasReachedMaxQuestions) {
       console.log(`[${requestId}] Reached maximum questions (${maxQuestions}), marking conversation as complete`);
       isComplete = true;
@@ -147,39 +172,35 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     }
     
     // Process the conversation to generate the next question if not marked as complete
-    if (!isComplete) {
+    // AND we haven't reached max questions (double-check to prevent the extra question bug)
+    if (!isComplete && !hasReachedMaxQuestions) {
       try {
         console.log(`[${requestId}] Generating next question`);
         
-        // Double-check maxQuestions limit before generating a new question
-        if (hasReachedMaxQuestions) {
-          console.log(`[${requestId}] Skipping question generation as max questions (${maxQuestions}) reached`);
-        } else {
-          // Process the conversation to generate a next question
-          // Extract questions and answers for the AI
-          const prevQuestions = conversation.map(qa => qa.question);
-          const prevAnswers = conversation.map(qa => qa.answer);
-          
-          const params: ProcessConversationParams = {
-            prevQuestions,
-            prevAnswers,
-            instructions: 'You are an interviewer asking follow-up questions based on previous responses.',
-            temperature: 0.7,
-            formContext: context
-          };
+        // Process the conversation to generate a next question
+        // Extract questions and answers for the AI
+        const prevQuestions = conversation.map(qa => qa.question);
+        const prevAnswers = conversation.map(qa => qa.answer);
         
-          // Generate the next question from the AI
-          const result = await processConversation(params);
-          if (result.success && result.data) {
-            nextQuestion = result.data;
-            console.log(`[${requestId}] Generated next question (length: ${nextQuestion.length})`);
-          } else {
-            console.error(`[${requestId}] Failed to generate next question:`, result.error);
-            return {
-              success: false,
-              error: `AI processing error: ${result.error || 'Unknown error'}`
-            };
-          }
+        const params: ProcessConversationParams = {
+          prevQuestions,
+          prevAnswers,
+          instructions: 'You are an interviewer asking follow-up questions based on previous responses.',
+          temperature: 0.7,
+          formContext: context
+        };
+      
+        // Generate the next question from the AI
+        const result = await processConversation(params);
+        if (result.success && result.data) {
+          nextQuestion = result.data;
+          console.log(`[${requestId}] Generated next question (length: ${nextQuestion.length})`);
+        } else {
+          console.error(`[${requestId}] Failed to generate next question:`, result.error);
+          return {
+            success: false,
+            error: `AI processing error: ${result.error || 'Unknown error'}`
+          };
         }
       } catch (aiError) {
         console.error(`[${requestId}] Error processing conversation with AI:`, aiError);

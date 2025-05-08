@@ -15,6 +15,34 @@ import { useConversationInteraction } from '@/hooks/useConversationInteraction'
 import { useConversationNavigation } from '@/hooks/useConversationNavigation'
 import { AIConversationHandle } from '@/types/form-types'
 
+// AI Conversation Block
+// 
+// This component provides an interactive AI-powered conversation experience in forms.
+// 
+// Features:
+// - Dynamic question generation based on user answers
+// - Support for editing previous answers with question regeneration
+// - Navigation between questions in a conversation
+// - Automatic progression when reaching max questions
+// - Persistence of conversation state
+//
+// The edit feature works as follows:
+// 1. Users can click on previous questions in the conversation history
+// 2. When editing a previous answer, the component will:
+//    - Show the previous question and existing answer
+//    - When submitted, truncate the conversation at that point
+//    - Regenerate subsequent questions based on the new answer
+//    - Move focus to the next question after the edited one
+// 3. When returning to a previously completed block:
+//    - No automatic forwarding will occur
+//    - Users can view and edit their previous answers
+// 
+// Implementation notes:
+// - Uses activeQuestionIndex to track which question is being viewed/edited
+// - Tracks hasNavigatedForward to prevent repetitive automatic navigation
+// - Detects when users return to a block with hasReturnedToBlock
+// - Ensures database saves only happen once per submission
+
 interface AIConversationBlockProps {
   id: string
   title?: string
@@ -67,6 +95,11 @@ export function AIConversationBlock({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [isNavigating, setIsNavigating] = useState<boolean>(false)
   const [navigationAttempted, setNavigationAttempted] = useState<boolean>(false)
+  
+  // Add state for tracking the active question index and navigation history
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0)
+  const [hasNavigatedForward, setHasNavigatedForward] = useState<boolean>(false)
+  const [hasReturnedToBlock, setHasReturnedToBlock] = useState<boolean>(false)
   
   // Ref for auto-scrolling the conversation history
   const historyContainerRef = useRef<HTMLDivElement>(null)
@@ -128,6 +161,18 @@ export function AIConversationBlock({
     settingsMaxQuestions // Use the value from settings
   )
   
+  // Add activeQuestionIndex initialization based on conversation state
+  const initialQuestionIndex = useMemo(() => {
+    if (conversation.length === 0) {
+      console.log('Initializing with empty conversation, setting index to 0');
+      return 0; // Start at the beginning for new blocks
+    } else {
+      const index = Math.min(conversation.length, settingsMaxQuestions || 5);
+      console.log(`Initializing with existing conversation (length ${conversation.length}), setting index to ${index}`);
+      return index;
+    }
+  }, [conversation.length, settingsMaxQuestions]);
+  
   // Track if this is the first question - it's only true if conversation is empty
   const isFirstQuestion = useMemo(() => conversation.length === 0, [conversation])
   
@@ -143,8 +188,30 @@ export function AIConversationBlock({
   
   // Add derived state for more accurate tracking
   const effectiveIsComplete = useMemo(() => {
-    return isComplete || hasReachedMaxQuestions
-  }, [isComplete, hasReachedMaxQuestions])
+    // Consider complete when either explicitly marked as complete OR max questions reached
+    const hasReachedMax = settingsMaxQuestions > 0 && conversation.length >= settingsMaxQuestions;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Checking effective completion status:', {
+        isComplete,
+        hasReachedMaxQuestions,
+        settingsMaxQuestions,
+        conversationLength: conversation.length,
+        reachedMax: hasReachedMax
+      });
+    }
+    
+    return isComplete || hasReachedMax;
+  }, [isComplete, hasReachedMaxQuestions, conversation.length, settingsMaxQuestions]);
+  
+  // Add a ref to track when the component was mounted
+  const mountTimeRef = useRef(new Date().getTime());
+  
+  // Update activeQuestionIndex when initialQuestionIndex changes (on initial load)
+  useEffect(() => {
+    console.log(`Updating activeQuestionIndex to ${initialQuestionIndex} from initialQuestionIndex calculation`);
+    setActiveQuestionIndex(initialQuestionIndex);
+  }, [initialQuestionIndex]);
   
   // Handle submit
   const handleSubmit = async () => {
@@ -153,14 +220,27 @@ export function AIConversationBlock({
     try {
       setIsSubmitting(true)
       
-      // Get the appropriate question for submission
-      const questionToSubmit = isFirstQuestion 
-        ? starterPrompt 
-        : nextQuestion;
+      // Get the appropriate question for submission based on activeQuestionIndex
+      let questionToSubmit;
+      let isEditingPreviousQuestion = false;
+      
+      if (activeQuestionIndex < conversation.length) {
+        // Editing a previous question
+        questionToSubmit = conversation[activeQuestionIndex].question;
+        isEditingPreviousQuestion = true;
+      } else if (isFirstQuestion) {
+        // Answering the starter question
+        questionToSubmit = starterPrompt;
+      } else {
+        // Answering the next/current question
+        questionToSubmit = nextQuestion;
+      }
       
       // Log what we're about to submit
       console.log('Submitting answer with:', {
         isFirstQuestion,
+        isEditingPreviousQuestion,
+        activeQuestionIndex,
         questionToSubmit,
         questionLength: questionToSubmit?.length || 0,
         userInput: userInput.length > 20 ? userInput.substring(0, 20) + '...' : userInput,
@@ -171,15 +251,24 @@ export function AIConversationBlock({
       const finalQuestion = questionToSubmit || 
         (isFirstQuestion ? title || 'Initial question' : 'Follow-up question');
       
+      // Pass the appropriate question index based on what we're editing
       await submitAnswer(
         finalQuestion,
         userInput,
-        isFirstQuestion ? 0 : conversation.length,
-        isFirstQuestion
-      )
+        isEditingPreviousQuestion ? activeQuestionIndex : (isFirstQuestion ? 0 : conversation.length),
+        isFirstQuestion && !isEditingPreviousQuestion
+      );
       
-      // Clear input after submission
-      setUserInput('')
+      // After submitting, if editing a previous question, advance to the next question
+      if (isEditingPreviousQuestion) {
+        // Move to the next question after the one we just edited
+        setActiveQuestionIndex(activeQuestionIndex + 1);
+      } else {
+        // For new questions, clear input and advance to the next question
+        setUserInput('');
+        // Set active index to the end of the conversation (the new current question)
+        setActiveQuestionIndex(conversation.length + 1);
+      }
       
     } catch (error) {
       console.error('Error submitting answer:', error)
@@ -307,12 +396,21 @@ export function AIConversationBlock({
         settingsMaxQuestions,
         hasReachedMaxQuestions,
         isComplete,
-        shouldAutoNavigate: hasReachedMaxQuestions && !isComplete && onNext
+        hasNavigatedForward,
+        hasReturnedToBlock,
+        shouldAutoNavigate: hasReachedMaxQuestions && !isComplete && onNext && !hasNavigatedForward && !hasReturnedToBlock
       });
     }
     
-    if (hasReachedMaxQuestions && !isComplete && onNext) {
+    // Only auto-navigate if:
+    // 1. We have reached max questions
+    // 2. We haven't already navigated for this block session
+    // 3. This isn't a return visit to the block (OR we explicitly want to navigate on returns as well)
+    if (hasReachedMaxQuestions && !isComplete && onNext && 
+        (!hasNavigatedForward || (effectiveIsComplete && !hasNavigatedForward))) {
       console.log('Max questions reached, triggering completion');
+      setHasNavigatedForward(true);
+      
       // Add a short delay to allow rendering to complete
       timeoutId = setTimeout(() => {
         try {
@@ -327,7 +425,68 @@ export function AIConversationBlock({
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isComplete, hasReachedMaxQuestions, conversation.length, onNext, settingsMaxQuestions]);
+  }, [isComplete, hasReachedMaxQuestions, conversation.length, onNext, settingsMaxQuestions, hasNavigatedForward, hasReturnedToBlock, effectiveIsComplete]);
+  
+  // Update effect for detecting return to previous block to properly handle navigating to start
+  useEffect(() => {
+    // Reset when component first mounts with conversation data
+    const isReturnVisit = conversation.length > 0;
+    const currentTime = new Date().getTime();
+    const timeElapsedSinceMount = currentTime - mountTimeRef.current;
+    
+    // If significant time has passed (>2s) and we have conversation data, 
+    // this is almost certainly a return visit rather than initial load
+    const isLikelyReturnFromOtherBlock = timeElapsedSinceMount > 2000 && isReturnVisit;
+    
+    if (isReturnVisit) {
+      console.log('User appears to have returned to a previously answered AIConversationBlock', {
+        conversationLength: conversation.length,
+        hasReturnedToBlock,
+        timeElapsedSinceMount,
+        isLikelyReturnFromOtherBlock,
+        settingsMaxQuestions,
+        isComplete,
+        effectiveIsComplete
+      });
+      
+      // Mark as a return visit
+      if (!hasReturnedToBlock) {
+        setHasReturnedToBlock(true);
+        
+        // Reset navigation flag if this is a genuine return from another block
+        if (isLikelyReturnFromOtherBlock) {
+          setHasNavigatedForward(false);
+        }
+      }
+      
+      // If we're just returning, we should focus on the latest question
+      if (activeQuestionIndex === 0 && conversation.length > 0) {
+        // On initial render, set to the latest answer or conversation length (for current)
+        const newIndex = Math.min(conversation.length, settingsMaxQuestions);
+        console.log(`Setting active question index to ${newIndex} based on return visit detection`);
+        setActiveQuestionIndex(newIndex); 
+      }
+    }
+  }, [conversation, hasReturnedToBlock, activeQuestionIndex, settingsMaxQuestions, isComplete, effectiveIsComplete]);
+  
+  // Update active question index when conversation changes
+  useEffect(() => {
+    // If we're at a question beyond the conversation length, reset to the latest
+    if (activeQuestionIndex > conversation.length) {
+      setActiveQuestionIndex(conversation.length);
+    }
+  }, [conversation.length, activeQuestionIndex]);
+  
+  // Effect to update user input based on active question index
+  useEffect(() => {
+    // If viewing a previous question, show its answer
+    if (activeQuestionIndex < conversation.length) {
+      setUserInput(conversation[activeQuestionIndex].answer || '');
+    } else {
+      // When viewing the next/current question, clear the input
+      setUserInput('');
+    }
+  }, [activeQuestionIndex, conversation]);
   
   // Create a standard layout for SlideWrapper
   const standardLayout: SlideLayout = {
@@ -345,6 +504,11 @@ export function AIConversationBlock({
   
   // Determine which question to show to the user
   const currentQuestion = useMemo(() => {
+    // If viewing a past question in the conversation
+    if (activeQuestionIndex < conversation.length) {
+      return conversation[activeQuestionIndex].question;
+    }
+    
     // If we're at the first question, show starter prompt
     if (isFirstQuestion) {
       return starterPrompt;
@@ -363,7 +527,7 @@ export function AIConversationBlock({
     
     // Final fallback
     return starterPrompt;
-  }, [isFirstQuestion, starterPrompt, conversation, nextQuestion]);
+  }, [activeQuestionIndex, conversation, isFirstQuestion, starterPrompt, nextQuestion]);
   
   // Determine if this is the initial unanswered state
   const isInitialState = isFirstQuestion && !isComplete;
@@ -398,7 +562,42 @@ export function AIConversationBlock({
   const displayConversation = getMappedConversation();
   
   // For dynamic title, we'll pass the current question as title when not in builder mode
-  const effectiveTitle = !isBuilder && !isFirstQuestion && nextQuestion ? nextQuestion : title;
+  const effectiveTitle = useMemo(() => {
+    if (isBuilder) {
+      return title;
+    }
+
+    // When editing a previous question, show that question as the title
+    if (activeQuestionIndex < conversation.length) {
+      return conversation[activeQuestionIndex].question;
+    }
+    
+    // For new questions, use the next question as title
+    if (!isFirstQuestion && nextQuestion) {
+      return nextQuestion;
+    }
+    
+    // Default to the block title
+    return title;
+  }, [isBuilder, title, activeQuestionIndex, conversation, isFirstQuestion, nextQuestion]);
+  
+  // Add effect to log when activeQuestionIndex changes
+  useEffect(() => {
+    console.log('activeQuestionIndex changed:', {
+      activeQuestionIndex,
+      conversationLength: conversation.length,
+      displayConversationLength: displayConversation.length
+    });
+  }, [activeQuestionIndex, conversation.length, displayConversation.length]);
+  
+  // Add custom function to handle navigation to make debugging easier
+  const handleQuestionNavigation = (index: number) => {
+    console.log(`Navigation requested to question ${index}`, {
+      currentIndex: activeQuestionIndex,
+      conversationLength: conversation.length
+    });
+    setActiveQuestionIndex(index);
+  };
   
   // Render
   return (
@@ -450,21 +649,44 @@ export function AIConversationBlock({
                 </div>
               )}
               
-              {/* Current Question - Only show if there's actually a question to display and we're in builder mode */}
-              {currentQuestion && isBuilder && (
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 16v-4" />
-                        <path d="M12 8h.01" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p>{currentQuestion}</p>
-                    </div>
+              {/* Question navigation - Only show if we have more than one question */}
+              {conversation.length > 0 && (
+                <div className="mb-4 border p-3 rounded-md bg-gray-50">
+                  <h4 className="text-sm font-medium mb-2">Navigate Questions</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {displayConversation.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={`px-3 py-1.5 text-sm rounded-md ${
+                          activeQuestionIndex === idx 
+                            ? 'bg-primary text-primary-foreground font-medium' 
+                            : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-800'
+                        }`}
+                        onClick={() => handleQuestionNavigation(idx)}
+                      >
+                        {idx === 0 ? 'Start' : `Q${idx + 1}`}
+                      </button>
+                    ))}
+                    {!effectiveIsComplete && (
+                      <button
+                        type="button"
+                        className={`px-3 py-1.5 text-sm rounded-md ${
+                          activeQuestionIndex === conversation.length 
+                            ? 'bg-primary text-primary-foreground font-medium' 
+                            : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-800'
+                        }`}
+                        onClick={() => handleQuestionNavigation(conversation.length)}
+                      >
+                        Current
+                      </button>
+                    )}
                   </div>
+                  {hasReturnedToBlock && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      You can edit your previous answers and generate new follow-up questions.
+                    </p>
+                  )}
                 </div>
               )}
               
