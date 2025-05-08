@@ -197,21 +197,37 @@ export function AIConversationBlock({
         hasReachedMaxQuestions,
         settingsMaxQuestions,
         conversationLength: conversation.length,
-        reachedMax: hasReachedMax
+        reachedMax: hasReachedMax,
+        activeQuestionIndex,
+        isEditing: activeQuestionIndex < conversation.length
       });
     }
     
+    // If we're editing a previous answer, don't consider complete regardless of max questions
+    if (activeQuestionIndex < conversation.length) {
+      return false;
+    }
+    
     return isComplete || hasReachedMax;
-  }, [isComplete, hasReachedMaxQuestions, conversation.length, settingsMaxQuestions]);
+  }, [isComplete, hasReachedMaxQuestions, conversation.length, settingsMaxQuestions, activeQuestionIndex]);
   
   // Add a ref to track when the component was mounted
   const mountTimeRef = useRef(new Date().getTime());
   
-  // Update activeQuestionIndex when initialQuestionIndex changes (on initial load)
+  // Initialize activeQuestionIndex based on conversion state - not only on initial load
   useEffect(() => {
-    console.log(`Updating activeQuestionIndex to ${initialQuestionIndex} from initialQuestionIndex calculation`);
-    setActiveQuestionIndex(initialQuestionIndex);
-  }, [initialQuestionIndex]);
+    // If we have data but active index is beyond valid range, adjust it
+    if (conversation.length > 0) {
+      const maxValidIndex = Math.min(conversation.length, settingsMaxQuestions || 5);
+      
+      // If activeQuestionIndex is beyond max valid index, adjust it
+      // But skip auto-adjustment for index 0 (Start) to allow editing the first question
+      if (activeQuestionIndex > maxValidIndex && activeQuestionIndex !== 0) {
+        console.log(`Adjusting activeQuestionIndex from ${activeQuestionIndex} to ${maxValidIndex}`);
+        setActiveQuestionIndex(maxValidIndex);
+      }
+    }
+  }, [conversation.length, settingsMaxQuestions, activeQuestionIndex]);
   
   // Handle submit
   const handleSubmit = async () => {
@@ -454,7 +470,8 @@ export function AIConversationBlock({
         isLikelyReturnFromOtherBlock,
         settingsMaxQuestions,
         isComplete,
-        effectiveIsComplete
+        effectiveIsComplete,
+        activeQuestionIndex
       });
       
       // Mark as a return visit
@@ -468,8 +485,9 @@ export function AIConversationBlock({
       }
       
       // If we're just returning and no specific question index is selected,
-      // focus on the latest question
-      if (activeQuestionIndex === 0 && conversation.length > 0 && !isLikelyReturnFromOtherBlock) {
+      // focus on the latest question - but only if not already at a specific index like 0
+      if (activeQuestionIndex === 0 && conversation.length > 0 && !isLikelyReturnFromOtherBlock && 
+          !document.activeElement?.classList.contains('nav-question-btn')) {
         // On initial render, set to the latest answer or conversation length (for current)
         const newIndex = Math.min(conversation.length, settingsMaxQuestions);
         console.log(`Setting active question index to ${newIndex} based on return visit detection`);
@@ -544,6 +562,9 @@ export function AIConversationBlock({
   // Determine if block can be skipped based on required flag
   const canSkip = !required;
   
+  // Determine if we're currently editing a question (for button display logic)
+  const isEditingQuestion = activeQuestionIndex < conversation.length;
+  
   // Helper function to get mapped conversation with first question always showing the starter prompt
   const getMappedConversation = () => {
     if (conversation.length === 0) return [];
@@ -605,6 +626,12 @@ export function AIConversationBlock({
       currentIndex: activeQuestionIndex,
       conversationLength: conversation.length
     });
+    
+    // Special case for navigating to question 0 (Start)
+    // Ensure we explicitly set the index without interference
+    if (index === 0) {
+      console.log("Explicitly navigating to Start question (index 0)");
+    }
     
     // Prevent the automatic adjustment from the return detection logic
     setActiveQuestionIndex(index);
@@ -674,7 +701,7 @@ export function AIConversationBlock({
                       <button
                         key={idx}
                         type="button"
-                        className={`px-3 py-1.5 text-sm rounded-md ${
+                        className={`px-3 py-1.5 text-sm rounded-md nav-question-btn ${
                           activeQuestionIndex === idx 
                             ? 'bg-primary text-primary-foreground font-medium' 
                             : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-800'
@@ -768,8 +795,8 @@ export function AIConversationBlock({
                   {/* Empty div for flex alignment */}
                 </div>
                 
-                {effectiveIsComplete ? (
-                  // Show Continue button when all questions are answered
+                {effectiveIsComplete && !isEditingQuestion ? (
+                  // Show Continue button when all questions are answered and not editing
                   <Button 
                     onClick={handleNext}
                     disabled={isNextDisabled || isNavigating}
