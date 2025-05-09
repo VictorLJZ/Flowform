@@ -28,6 +28,7 @@ import {
   MobileBackgroundLayoutIcon
 } from "@/components/ui/slide-layout-icons"
 import { cn } from "@/lib/utils"
+import { MediaSelector } from "@/components/form/media/MediaSelector"
 
 interface BlockLayoutSettingsProps {
   blockId: string
@@ -535,17 +536,23 @@ export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
   const sizingMode = (currentLayout as MediaLeftLayout)?.sizingMode || 'cover';
   const opacity = (currentLayout as MediaLeftLayout)?.opacity || 100;
   
+  // Handle media selection
+  const handleMediaSelect = (selectedMediaId: string) => {
+    updateBlockLayout(blockId, { mediaId: selectedMediaId });
+  };
+  
   return (
     <div className="space-y-4">
       <Separator />
       <div className="space-y-2">
-        <Label>Media Settings</Label>
+        <Label>Media</Label>
         
-        {/* We'll add an actual media selector later */}
-        <div className="p-4 border border-dashed rounded-md bg-muted/50 text-center">
-          <span className="text-sm text-muted-foreground">
-            {mediaId ? 'Media: ' + mediaId : 'Click to add media'}
-          </span>
+        {/* Media selector */}
+        <div className="mt-2">
+          <MediaSelector 
+            selectedMediaId={mediaId} 
+            onSelect={handleMediaSelect}
+          />
         </div>
       </div>
       

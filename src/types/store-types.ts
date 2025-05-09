@@ -15,6 +15,7 @@ import type {
   FormWorkflowSlice,
   FormPersistenceSlice
 } from './form-store-slices-types';
+import type { FormMediaSlice } from './form-store-slices-types-media';
 
 /**
  * Analytics store state and actions
@@ -54,7 +55,8 @@ export interface FormBuilderState extends
   FormPresentationSlice,
   FormUISlice,
   FormWorkflowSlice,
-  FormPersistenceSlice {
+  FormPersistenceSlice,
+  FormMediaSlice {
   // This interface combines all the slice interfaces
   // These property definitions ensure the imported types are used and not flagged as unused
   // They're never actually used at runtime since the slices provide the actual implementation

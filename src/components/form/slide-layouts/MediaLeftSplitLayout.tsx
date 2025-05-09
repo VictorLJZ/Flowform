@@ -4,7 +4,7 @@ import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { MediaLeftSplitLayout as MediaLeftSplitLayoutType } from "@/types/layout-types"
-import Image from "next/image"
+import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
 interface MediaLeftSplitLayoutProps {
   id: string
@@ -56,29 +56,15 @@ export function MediaLeftSplitLayout({
     'right': 'text-right',
   }
   
-  // Placeholder for when no media is set
-  const mediaPlaceholder = (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-      <span className="text-gray-400">
-        {isBuilder ? "Click to add media" : "No media"}
-      </span>
-    </div>
+  // Media element using MediaRenderer component
+  const mediaElement = (
+    <MediaRenderer
+      mediaId={effectiveMediaId}
+      sizingMode="cover" // Force cover for split layouts
+      opacity={effectiveOpacity}
+      className="w-full h-full"
+    />
   )
-  
-  // Media element
-  const mediaElement = effectiveMediaId ? (
-    <div className="w-full h-full relative overflow-hidden">
-      <Image 
-        src={effectiveMediaId}
-        alt="Slide media"
-        fill
-        style={{ 
-          objectFit: 'cover', // Force cover
-          opacity: effectiveOpacity / 100
-        }}
-      />
-    </div>
-  ) : mediaPlaceholder
   
   const isViewer = mode === 'viewer'
 

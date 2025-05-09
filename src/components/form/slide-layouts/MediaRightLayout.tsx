@@ -4,7 +4,7 @@ import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { MediaRightLayout as MediaRightLayoutType } from "@/types/layout-types"
-import Image from "next/image"
+import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
 interface MediaRightLayoutProps {
   id: string
@@ -57,30 +57,15 @@ export function MediaRightLayout({
     'right': 'text-right',
   }
   
-  // Placeholder for when no media is set
-  const mediaPlaceholder = (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-      <span className="text-gray-400">
-        {isBuilder ? "Click to add media" : "No media"}
-      </span>
-    </div>
+  // Media element using MediaRenderer component
+  const mediaElement = (
+    <MediaRenderer
+      mediaId={effectiveMediaId}
+      sizingMode={effectiveSizingMode}
+      opacity={effectiveOpacity}
+      className="w-full h-full"
+    />
   )
-  
-  // Media element
-  const mediaElement = effectiveMediaId ? (
-    <div className="w-full h-full relative overflow-hidden">
-      {/* Note: Removed fill prop, using objectFit style directly. Added w-full, h-full and relative positioning for contained image sizing */}
-      <Image 
-        src={effectiveMediaId}
-        alt="Slide media"
-        layout="fill" // Use layout="fill" to make objectFit work correctly
-        style={{ 
-          objectFit: effectiveSizingMode, // Should be 'contain'
-          opacity: effectiveOpacity / 100
-        }}
-      />
-    </div>
-  ) : mediaPlaceholder
   
   return (
     <div 

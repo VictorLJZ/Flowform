@@ -9,8 +9,17 @@ const nextConfig = {
       'static.ghost.org',
       'blog.useflowform.com',
       'images.unsplash.com',
-      'images.pexels.com'
+      'images.pexels.com',
+      'res.cloudinary.com'
     ],
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      fs: false,
+      path: false,
+      stream: false,
+    };
+    return config;
   },
 }
 

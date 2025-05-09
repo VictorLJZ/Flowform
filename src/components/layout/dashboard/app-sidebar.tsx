@@ -10,7 +10,8 @@ import {
   BarChart,
   FolderPlus,
   Database,
-  Users
+  Users,
+  Image
 } from "lucide-react"
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
@@ -70,6 +71,12 @@ const data = {
       title: "Data Analysis",
       url: "/dashboard/data-analysis",
       icon: BarChart,
+      items: [], // Empty array means no dropdown menu
+    },
+    {
+      title: "Media Management",
+      url: "/dashboard/media/test",
+      icon: Image,
       items: [], // Empty array means no dropdown menu
     },
     {

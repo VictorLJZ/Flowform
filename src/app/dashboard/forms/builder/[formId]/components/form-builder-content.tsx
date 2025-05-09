@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
+import { useEffect } from "react"
 import { PlusCircle, ChevronLeft, ChevronRight, Smartphone, Monitor } from "lucide-react"
 import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
 import type { FormBlock } from '@/types/block-types'
@@ -29,8 +30,18 @@ export default function FormBuilderContent() {
     updateBlockSettings,
     setBlockSelectorOpen,
     viewportMode,
-    setViewportMode
+    setViewportMode,
+    loadMediaAssets,
+    isLoadingMedia
   } = useFormBuilderStore()
+  
+  // Load media assets from Cloudinary when the component initializes
+  useEffect(() => {
+    // Load media assets from Cloudinary
+    loadMediaAssets().catch(error => {
+      console.error('Error loading media assets:', error);
+    });
+  }, [loadMediaAssets]);
   
   const currentBlock = getCurrentBlock()
   

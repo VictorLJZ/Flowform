@@ -4,7 +4,7 @@ import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { MediaBackgroundLayout as MediaBackgroundLayoutType } from "@/types/layout-types"
-import Image from "next/image"
+import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
 interface MediaBackgroundLayoutProps {
   id: string
@@ -74,15 +74,6 @@ export function MediaBackgroundLayout({
     'dark': 'text-gray-900',
   }
   
-  // Placeholder for when no media is set
-  const mediaPlaceholder = (
-    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-      <span className="text-gray-400">
-        {isBuilder ? "Click to add background media" : "No background media"}
-      </span>
-    </div>
-  )
-  
   return (
     <div 
       className={cn(
@@ -91,19 +82,13 @@ export function MediaBackgroundLayout({
       )}
     >
       {/* Background media */}
-      {effectiveMediaId ? (
-        <div className="absolute inset-0 w-full h-full">
-          <Image 
-            src={effectiveMediaId}
-            alt="Background media"
-            fill
-            style={{ 
-              objectFit: effectiveSizingMode,
-              opacity: effectiveOpacity / 100
-            }}
-          />
-        </div>
-      ) : mediaPlaceholder}
+      <div className="absolute inset-0 w-full h-full">
+        <MediaRenderer
+          mediaId={effectiveMediaId}
+          sizingMode={effectiveSizingMode}
+          opacity={effectiveOpacity}
+        />
+      </div>
       
       {/* Overlay */}
       <div 

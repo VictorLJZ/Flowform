@@ -10,6 +10,7 @@ import { createFormPresentationSlice } from './slices/formPresentation'
 import { createFormUISlice } from './slices/formUI'
 import { createFormWorkflowSlice } from './slices/formWorkflow'
 import { createFormPersistenceSlice } from './slices/formPersistence'
+import { createFormMediaSlice } from './slices/formMedia'
 
 // Create the combined store
 export const useFormBuilderStore = create<FormBuilderState>()(
@@ -20,6 +21,7 @@ export const useFormBuilderStore = create<FormBuilderState>()(
     ...createFormUISlice(...a),
     ...createFormWorkflowSlice(...a),
     ...createFormPersistenceSlice(...a),
+    ...createFormMediaSlice(...a),
   })
 )
 
