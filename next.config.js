@@ -13,14 +13,6 @@ const nextConfig = {
       'res.cloudinary.com'
     ],
   },
-  webpack: (config) => {
-    config.resolve.fallback = {
-      fs: false,
-      path: false,
-      stream: false,
-    };
-    return config;
-  },
 }
 
 module.exports = nextConfig
