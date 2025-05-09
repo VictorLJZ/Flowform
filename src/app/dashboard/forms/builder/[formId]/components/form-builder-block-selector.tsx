@@ -8,16 +8,9 @@ import { Input } from "@/components/ui/input"
 import { getAllBlocks, getBlocksByCategory, getBlockDefinition } from "@/registry/blockRegistry"
 import type { BlockDefinition } from '@/types/block-types'
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { categoryColors, getBlockCategory } from "@/utils/block-utils"
 
-// Map of category IDs to colors for UI styling
-const categoryColors: Record<string, string> = {
-  "input": "#3b82f6", // Blue
-  "choice": "#8b5cf6", // Purple
-  "advanced": "#22c55e", // Green
-  "integration": "#f97316", // Orange
-  "layout": "#6366f1", // Indigo
-  "recommended": "#f43f5e", // Rose
-}
+// Using centralized category colors from block-utils.ts
 
 export default function FormBuilderBlockSelector() {
   const { blockSelectorOpen, setBlockSelectorOpen, addBlock } = useFormBuilderStore()
@@ -34,33 +27,27 @@ export default function FormBuilderBlockSelector() {
   const uiCategories = [
     {
       id: "integration",
-      name: "Connect to CRM",
-      color: categoryColors.integration
+      name: "Connect to CRM"
     },
     {
       id: "recommended",
-      name: "Recommended",
-      color: categoryColors.recommended
+      name: "Recommended"
     },
     {
       id: "input",
-      name: "Input Fields",
-      color: categoryColors.input
+      name: "Input Fields"
     },
     {
       id: "choice",
-      name: "Choice",
-      color: categoryColors.choice
+      name: "Choice"
     },
     {
       id: "advanced",
-      name: "Advanced",
-      color: categoryColors.advanced
+      name: "Advanced"
     },
     {
       id: "layout",
-      name: "Layout",
-      color: categoryColors.layout
+      name: "Layout"
     },
   ]
 
@@ -90,11 +77,16 @@ export default function FormBuilderBlockSelector() {
     )
   }
 
-  // Get category color by block ID
+  // Get category color by block ID using the centralized utility
   const getColorForBlock = (blockId: string) => {
-    const block = getBlockDefinition(blockId)
-    if (!block) return categoryColors.input // Default fallback
-    return categoryColors[block.category] || categoryColors.input
+    const category = getBlockCategory(blockId)
+    return categoryColors[category]?.text || categoryColors.input.text
+  }
+  
+  // Get background color by block ID
+  const getBackgroundColorForBlock = (blockId: string) => {
+    const category = getBlockCategory(blockId)
+    return categoryColors[category]?.bg || categoryColors.input.bg
   }
 
   // Handle block selection
@@ -162,8 +154,8 @@ export default function FormBuilderBlockSelector() {
                               style={{ width: '200px' }}
                               onClick={() => handleSelectBlock(block)}
                             >
-                              <div className="mr-3 rounded-md" style={{ backgroundColor: `${uiCategories[0].color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: uiCategories[0].color }} />}
+                              <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors.integration.bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors.integration.text }} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>
@@ -182,8 +174,8 @@ export default function FormBuilderBlockSelector() {
                               style={{ width: '200px' }}
                               onClick={() => handleSelectBlock(block)}
                             >
-                              <div className="mr-3 rounded-md" style={{ backgroundColor: `${uiCategories[1].color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: uiCategories[1].color }} />}
+                              <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors.recommended.bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors.recommended.text }} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>
@@ -215,7 +207,7 @@ export default function FormBuilderBlockSelector() {
                             style={{ width: '200px' }}
                             onClick={() => handleSelectBlock(block)}
                           >
-                            <div className="mr-3 rounded-md" style={{ backgroundColor: `${getColorForBlock(block.id)}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="mr-3 rounded-md" style={{ backgroundColor: getBackgroundColorForBlock(block.id), width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {block.icon && <block.icon className="h-4 w-4" style={{ color: getColorForBlock(block.id) }} />}
                             </div>
                             <span className="text-sm font-medium">{block.name}</span>
@@ -239,8 +231,8 @@ export default function FormBuilderBlockSelector() {
                               style={{ width: '200px' }}
                               onClick={() => handleSelectBlock(block)}
                             >
-                              <div className="mr-3 rounded-md" style={{ backgroundColor: `${category.color}20`, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: category.color }} />}
+                              <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors[category.id].bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors[category.id].text }} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>

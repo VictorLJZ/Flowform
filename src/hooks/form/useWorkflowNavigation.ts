@@ -303,6 +303,7 @@ export function useWorkflowNavigation({
 
   // Find the next block based on current answer and conditions
   const findNextBlockIndex = useCallback((currentAnswer: Answer): number => {
+    console.log(`🧭🧮🔀 [NEXT_BLOCK] Evaluating connections to find next block after ${currentBlock?.id}`);
     // Ensure we have a current block
     if (!currentBlock) {
       console.log('🧭🧮🔀 [NEXT_BLOCK] No current block, cannot find next');
@@ -406,7 +407,7 @@ export function useWorkflowNavigation({
 
     console.log('[useWorkflowNavigation] No next block found after evaluating all connections and sequential options.');
     return -1; // No next block found
-  }, [currentBlock, connections, blocks, currentIndex, findBlockIndex, evaluateCondition, evaluateRuleConditionGroup, setNavigationPath]);
+  }, [currentBlock, workflowConnections, blocks, currentIndex, findBlockIndex, evaluateRuleConditionGroup, setNavigationPath]);
 
   // Navigate to the next block based on the current answer and conditions
   const goToNext = useCallback((currentAnswer: Answer) => {
@@ -429,7 +430,7 @@ export function useWorkflowNavigation({
     
     console.log('🚀⚡️🔄 [NAVIGATION] Failed to navigate: no valid next block found');
     return false;
-  }, [findNextBlockIndex, navigationHistory, historyIndex]);
+  }, [findNextBlockIndex, navigationHistory, historyIndex, blocks]);
 
   // Go back to the previous block in history
   const goToPrevious = useCallback(() => {
@@ -477,12 +478,10 @@ export function useWorkflowNavigation({
     
     // If there are no outgoing connections, this is the last question
     return outgoingConnections.length === 0;
-  }, [currentBlock, connections]);
+  }, [currentBlock, workflowConnections]);
 
-  // Log navigation path for debugging
-  useCallback(() => {
-    console.log('Current navigation path:', navigationPath);
-  }, [navigationPath, workflowConnections, blocks]);
+  // We're not using a callback for logging navigation path - it's only used for return value
+  // Removed unused function to fix the build error
 
   return {
     currentIndex,

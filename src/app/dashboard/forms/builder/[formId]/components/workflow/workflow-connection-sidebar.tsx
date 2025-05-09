@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Trash2, PlusCircle, XCircle } from 'lucide-react';
 import { BlockPill } from '../block-pill';
-// import { getBlockTypeColors } from '@/utils/block-utils'; // Not currently used
 
 export default function WorkflowConnectionSidebar() {
   const blocks = useFormBuilderStore(state => state.blocks)
@@ -31,7 +30,7 @@ export default function WorkflowConnectionSidebar() {
   // const targetBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.defaultTargetId) : null, [blocks, connection]);
   const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
 
-  // We're now using the shared getBlockTypeColors function from block-utils.ts
+  // Using the shared getBlockTypeColors function from block-utils.ts for consistent styling
 
   // We're now using the shared BlockPill component
   

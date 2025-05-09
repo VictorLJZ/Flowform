@@ -56,7 +56,7 @@ export const categoryColors: Record<string, BlockColorScheme> = {
   "recommended": { bg: "#f43f5e20", text: "#f43f5e" }, // Rose
 }
 
-// Map of category IDs for form builder sidebar
+// Map of category IDs for form builder sidebar - using the same colors as above
 export const categoryColorMap: Record<string, string> = {
   "input": "#3b82f6", // Blue
   "choice": "#8b5cf6", // Purple

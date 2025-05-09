@@ -26,16 +26,9 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { BlockPill } from "./block-pill"
 
-// Map of category IDs to colors for UI styling (matching block selector)
-const categoryColors: Record<string, string> = {
-  "input": "#3b82f6", // Blue
-  "choice": "#8b5cf6", // Purple
-  "advanced": "#22c55e", // Green
-  "integration": "#f97316", // Orange
-  "layout": "#6366f1", // Indigo
-  "recommended": "#f43f5e", // Rose
-}
+// Using centralized block colors from block-utils.ts instead of local definition
 
 // Sortable block item component
 function SortableBlockItem({ block, index, isSelected, blockDef }: { 
@@ -66,8 +59,7 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
     zIndex: isDragging ? 999 : 1
   }
   
-  // Block icon component from definition
-  const Icon = blockDef?.icon || (() => null)
+  // We no longer need the Icon component since we're using BlockPill
   
   return (
     <div 
@@ -91,26 +83,13 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
         sidebarOpen ? "p-2" : "justify-center p-0"
       )}>
 
-        {/* Combined block number and icon in a pill */}
-        <div className="flex-shrink-0 flex items-center">
-          <div className={cn(
-            "rounded-full flex items-center justify-between",
-            sidebarOpen ? "h-6 px-2 w-11" : "h-6 px-1.5 w-9"
-          )}
-               style={{ 
-                 backgroundColor: `${categoryColors[blockDef?.category || 'input'] || categoryColors.input}20`,
-                 color: categoryColors[blockDef?.category || 'input'] || categoryColors.input
-               }}>
-            <span className={cn(
-              "font-medium",
-              sidebarOpen ? "text-xs" : "text-[10px]"
-            )}>{index + 1}</span>
-            <Icon 
-              size={sidebarOpen ? 16 : 14} 
-              style={{ color: categoryColors[blockDef?.category || 'input'] || categoryColors.input }} 
-            />
-          </div>
-        </div>
+        {/* Using the shared BlockPill component for consistent UI */}
+        <BlockPill
+          block={block}
+          index={index}
+          selected={isSelected}
+          compact={!sidebarOpen}
+        />
         
         {/* Block content (only when sidebar is open) */}
         {sidebarOpen && (
