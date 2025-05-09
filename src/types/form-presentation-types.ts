@@ -26,7 +26,7 @@ export interface StandardSlideLayout {
 }
 
 export interface MediaLayout {
-  type: 'media-left' | 'media-right' | 'media-background' | 'media-left-split' | 'media-right-split';
+  type: 'media-left' | 'media-right' | 'media-background' | 'media-left-split' | 'media-right-split' | 'media-top' | 'media-bottom' | 'media-between';
   mediaId?: string;
   sizingMode?: 'contain' | 'cover' | 'fill';
   opacity?: number;

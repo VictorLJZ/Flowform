@@ -64,7 +64,7 @@ export function SlideAspectRatioContainer({
           className="relative bg-background rounded-md shadow-md overflow-hidden mx-auto mt-[-150px]"
           style={{ 
             width: '400px', // Further increased width for mobile view
-            height: '700px', // Further increased height while maintaining approximately 9:16 ratio
+            height: '800px', // Further increased height while maintaining approximately 9:16 ratio
             maxHeight: 'calc(100% - 24px)' // Ensure it doesn't overflow the container
           }}
         >

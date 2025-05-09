@@ -30,7 +30,8 @@ export function MediaBetweenLayout({
   sizingMode = 'cover',
   opacity = 100,
   className,
-  settings
+  settings,
+  id // Add id to props to help with debugging
 }: MediaBetweenLayoutProps) {
   const { mode } = useFormBuilderStore();
   
@@ -87,59 +88,75 @@ export function MediaBetweenLayout({
   const mediaHeightPercentage = Math.round(effectiveMediaProportion * 100)
   const contentHeightPercentage = Math.round((100 - mediaHeightPercentage) / 2)
   
-  // Split the children into two parts - title/description and the form input
-  // This is a bit of a hack, but assuming React.Children.toArray(children) will return
-  // an array where the first elements are title/description and the last elements are the form inputs
-  const childrenArray = React.Children.toArray(children)
-  
-  // For simplicity, we'll use the first half of children for top section,
-  // and second half for bottom section
-  const midpoint = Math.ceil(childrenArray.length / 2)
-  const topChildren = childrenArray.slice(0, midpoint)
-  const bottomChildren = childrenArray.slice(midpoint)
+  // Instead of trying to split the children passed to us, we'll identify categories by className pattern
+  const extractChildrenByClassName = (classNamePattern: string): React.ReactNode[] => {
+    // Safely check if children is a valid React element
+    if (!React.isValidElement(children)) {
+      return [];
+    }
+
+    // Type assertion to access props.children safely
+    const childProps = children.props as {children?: React.ReactNode};
+    if (!childProps.children) return [];
+
+    // Get the children of the main wrapper div (if it exists)
+    const wrapperChildren = React.Children.toArray(childProps.children);
+
+    // Find elements with matching className
+    return wrapperChildren.filter(child => {
+      if (!React.isValidElement(child)) return false;
+      
+      // Type guard to check if child.props.className exists
+      const props = child.props as {className?: string};
+      return typeof props.className === 'string' && props.className.includes(classNamePattern);
+    });
+  };
+
+  // Extract all elements based on class names or characteristics
+  // First, try to find the counter that has 'mb-5' class
+  const counterElements = extractChildrenByClassName('mb-5'); // The counter has mb-5 class
+  const titleElements = extractChildrenByClassName('block-title');
+  const descriptionElements = extractChildrenByClassName('block-description');
+  const formElements = extractChildrenByClassName('mt-4'); // Form content has mt-4 class
+  const buttonElements = extractChildrenByClassName('mt-6'); // Next button has mt-6 class
   
   return (
     <div 
       className={cn(
-        "w-full h-full flex flex-col",
+        "w-full h-full flex items-center justify-center", // Center everything in the view
         className
       )}
     >
-      {/* Top content section */} 
-      <div 
-        className="w-full px-5 pt-4"
-        style={{ height: `${contentHeightPercentage}%` }}
-      >
+      {/* Main content container */}
+      <div className="w-full max-w-2xl px-6 py-8">
         <div className={cn(
-          "w-full h-full flex flex-col justify-end",
+          "w-full flex flex-col",
           alignmentClasses[effectiveTextAlignment],
           spacingClasses[effectiveSpacing],
-          "text-left space-y-4" // Added consistent base styling for all slide content
+          "text-left space-y-4"  // Consistent base styling
         )}>
-          {topChildren}
-        </div>
-      </div>
-      
-      {/* Media section - Middle */} 
-      <div 
-        className="w-full relative overflow-hidden my-3"
-        style={{ height: `${mediaHeightPercentage}%` }}
-      >
-        {mediaElement}
-      </div>
-      
-      {/* Bottom content section */} 
-      <div 
-        className="w-full px-5 pb-4"
-        style={{ height: `${contentHeightPercentage}%` }}
-      >
-        <div className={cn(
-          "w-full h-full flex flex-col justify-start",
-          alignmentClasses[effectiveTextAlignment],
-          spacingClasses[effectiveSpacing],
-          "text-left space-y-4" // Added consistent base styling for all slide content
-        )}>
-          {bottomChildren}
+          {/* Progress counter - "1 of 1" */}
+          {counterElements}
+          
+          {/* Title elements */}
+          {titleElements}
+          
+          {/* Description elements */}
+          {descriptionElements}
+          
+          {/* Media section - integrated between description and form */}
+          <div 
+            className="w-full relative overflow-hidden my-4" // Added margin for spacing
+            style={{ height: `${Math.max(150, 30 * effectiveMediaProportion * 10)}px` }} // Dynamic height but with minimum
+          >
+            {mediaElement}
+          </div>
+          
+          {/* Form content */}
+          {formElements}
+          
+          {/* Next button */}
+          {buttonElements}
         </div>
       </div>
     </div>
