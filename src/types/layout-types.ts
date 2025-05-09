@@ -5,18 +5,25 @@
  * for consistent rendering between form builder and form viewer.
  * Each form block is presented as a full-screen slide with different arrangements
  * of question, answer, and media elements.
+ * 
+ * The system supports different layouts for desktop and mobile viewports.
  */
 
 /**
  * Available slide layout types
  */
 export type SlideLayoutType = 
+  // Desktop layouts
   | 'standard'         // Standard layout with question and answer field in a vertical arrangement
   | 'media-left'       // Media on the left, question/answer content on the right
   | 'media-right'      // Media on the right, question/answer content on the left
   | 'media-background' // Media as full-screen background with question/answer overlaid
   | 'media-left-split' // Equal split with media on left (50/50 arrangement)
-  | 'media-right-split'; // Equal split with media on right (50/50 arrangement)
+  | 'media-right-split' // Equal split with media on right (50/50 arrangement)
+  // Mobile-specific layouts
+  | 'media-top'        // Media on top, question/answer content below
+  | 'media-bottom'     // Media on bottom, question/answer content above
+  | 'media-between';   // Media between question and answer content
 
 /**
  * Base layout interface with properties common to all slide layouts
@@ -95,6 +102,36 @@ export interface MediaRightSplitLayout extends BaseSlideLayout, MediaConfig {
 }
 
 /**
+ * Media top layout with question/answer below
+ */
+export interface MediaTopLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-top';
+  mediaProportion?: number; // 0.3-0.7 for media height (default 0.4 = 40%)
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in content section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Media bottom layout with question/answer above
+ */
+export interface MediaBottomLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-bottom';
+  mediaProportion?: number; // 0.3-0.7 for media height (default 0.4 = 40%)
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in content section
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
+ * Media between layout with question above and answer below
+ */
+export interface MediaBetweenLayout extends BaseSlideLayout, MediaConfig {
+  type: 'media-between';
+  mediaProportion?: number; // 0.3-0.7 for media height (default 0.3 = 30%)
+  textAlignment?: 'left' | 'center' | 'right'; // Text alignment in content sections
+  spacing?: 'compact' | 'normal' | 'spacious'; // Spacing between elements
+}
+
+/**
  * Union type of all slide layout configurations
  */
 export type SlideLayout = 
@@ -103,7 +140,18 @@ export type SlideLayout =
   | MediaRightLayout 
   | MediaBackgroundLayout 
   | MediaLeftSplitLayout 
-  | MediaRightSplitLayout;
+  | MediaRightSplitLayout
+  | MediaTopLayout
+  | MediaBottomLayout
+  | MediaBetweenLayout;
+
+/**
+ * Layout configuration for desktop and mobile viewports
+ */
+export interface ViewportLayouts {
+  desktop: SlideLayout;
+  mobile: SlideLayout;
+}
 
 /**
  * Default layout configurations
@@ -155,6 +203,30 @@ export const defaultMediaRightSplitLayout: MediaRightSplitLayout = {
   sizingMode: 'cover'
 };
 
+export const defaultMediaTopLayout: MediaTopLayout = {
+  type: 'media-top',
+  mediaProportion: 0.4,
+  textAlignment: 'center',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
+export const defaultMediaBottomLayout: MediaBottomLayout = {
+  type: 'media-bottom',
+  mediaProportion: 0.4,
+  textAlignment: 'center',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
+export const defaultMediaBetweenLayout: MediaBetweenLayout = {
+  type: 'media-between',
+  mediaProportion: 0.3,
+  textAlignment: 'center',
+  spacing: 'normal',
+  sizingMode: 'cover'
+};
+
 /**
  * Get default layout settings based on layout type
  */
@@ -170,7 +242,23 @@ export function getDefaultLayoutByType(type: SlideLayoutType): SlideLayout {
       return defaultMediaLeftSplitLayout;
     case 'media-right-split':
       return defaultMediaRightSplitLayout;
+    case 'media-top':
+      return defaultMediaTopLayout;
+    case 'media-bottom':
+      return defaultMediaBottomLayout;
+    case 'media-between':
+      return defaultMediaBetweenLayout;
     default:
       return defaultStandardLayout;
   }
+}
+
+/**
+ * Get default layout configuration for both desktop and mobile
+ */
+export function getDefaultViewportLayouts(): ViewportLayouts {
+  return {
+    desktop: defaultStandardLayout,
+    mobile: defaultMediaTopLayout
+  };
 }

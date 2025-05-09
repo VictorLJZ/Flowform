@@ -6,7 +6,7 @@
  */
 
 import type { FormBlock } from './block-types';
-import type { SlideLayout } from './layout-types';
+import type { SlideLayout, ViewportLayouts } from './layout-types';
 import type { FormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
 import type { BlockPresentation, FormTheme } from './theme-types';
@@ -57,10 +57,11 @@ export interface FormPresentationSlice {
   defaultBlockPresentation: BlockPresentation;
   
   // Actions
-  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => void;
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>, viewportMode?: 'desktop' | 'mobile') => void;
   getBlockPresentation: (blockId: string) => BlockPresentation;
   setBlockPresentation: (blockId: string, presentation: Partial<BlockPresentation>) => void;
   setFormTheme: (theme: Partial<FormTheme>) => void;
+  getEffectiveLayout: (blockId: string, viewportMode: 'desktop' | 'mobile') => SlideLayout | undefined;
 }
 
 /**

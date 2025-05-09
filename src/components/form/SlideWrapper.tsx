@@ -13,7 +13,10 @@ import {
   MediaRightLayout as MediaRightLayoutType, 
   MediaBackgroundLayout as MediaBackgroundLayoutType,
   MediaLeftSplitLayout as MediaLeftSplitLayoutType,
-  MediaRightSplitLayout as MediaRightSplitLayoutType
+  MediaRightSplitLayout as MediaRightSplitLayoutType,
+  MediaTopLayout as MediaTopLayoutType,
+  MediaBottomLayout as MediaBottomLayoutType,
+  MediaBetweenLayout as MediaBetweenLayoutType
 } from "@/types/layout-types"
 import { SlideAspectRatioContainer } from "./SlideAspectRatioContainer"
 import { StandardSlideLayout } from "./slide-layouts/StandardSlideLayout"
@@ -22,6 +25,9 @@ import { MediaRightLayout } from "./slide-layouts/MediaRightLayout"
 import { MediaBackgroundLayout } from "./slide-layouts/MediaBackgroundLayout"
 import { MediaLeftSplitLayout } from "./slide-layouts/MediaLeftSplitLayout"
 import { MediaRightSplitLayout } from "./slide-layouts/MediaRightSplitLayout"
+import { MediaTopLayout } from "./slide-layouts/MediaTopLayout"
+import { MediaBottomLayout } from "./slide-layouts/MediaBottomLayout"
+import { MediaBetweenLayout } from "./slide-layouts/MediaBetweenLayout"
 import type { FormBlock } from "@/types/supabase-types"; // Import FormBlock type
 
 interface SlideWrapperProps {
@@ -60,6 +66,8 @@ export function SlideWrapper({
 }: SlideWrapperProps) {
   // Get viewport mode from store
   const viewportMode = useFormBuilderStore(state => state.viewportMode);
+  // Extract stable primitive values for dependency arrays
+  const viewportModeValue = viewportMode; // This creates a stable string primitive
   const titleRef = useRef<HTMLDivElement>(null)
   const internalRef = useRef<HTMLDivElement>(null)
   const { mode } = useFormBuilderStore()
@@ -68,8 +76,14 @@ export function SlideWrapper({
   // Get block presentation from settings - using default if not provided
   settings.presentation = settings?.presentation || { layout: 'left', spacing: 'normal', titleSize: 'medium' }
   
-  // Get slide layout from settings or use standard layout as default
-  const slideLayout = settings?.layout || { type: 'standard' }
+  // Get the appropriate layout for the current viewport mode using the getEffectiveLayout helper
+  const { getEffectiveLayout } = useFormBuilderStore()
+  
+  // Get layout specific to the current viewport mode, falling back to the legacy layout or standard layout
+  const slideLayout = getEffectiveLayout(id, viewportMode) || settings?.layout || { type: 'standard' }
+  
+  // Extract the layout type to use in dependencies (stable primitive value instead of object reference)
+  const layoutType = slideLayout.type
   
   // Determine if we're in builder mode
   const isBuilder = mode === 'builder'
@@ -79,12 +93,38 @@ export function SlideWrapper({
 
   }, [mode, isBuilder, onNext])
   
-  // Update title ref when title prop changes
+  // Primary effect to update title on initial render and when title changes
   useEffect(() => {
-    if (titleRef.current && isBuilder && titleRef.current.textContent !== title) {
-      titleRef.current.textContent = title || ''
+    if (titleRef.current && isBuilder && title) {
+      titleRef.current.textContent = title
     }
   }, [title, isBuilder])
+  
+  // Layout-specific effect - runs only when layout changes
+  useEffect(() => {
+    if (titleRef.current && isBuilder && title) {
+      // Force title update when layout changes by using a RAF
+      requestAnimationFrame(() => {
+        if (titleRef.current) {
+          titleRef.current.textContent = title
+        }
+      })
+    }
+  }, [layoutType, isBuilder, title])
+  
+  // Viewport-specific effect - runs only when viewport changes
+  useEffect(() => {
+    if (titleRef.current && isBuilder && title) {
+      // Force title update when viewport changes
+      const current = titleRef.current
+      // Use setTimeout to ensure DOM update happens after React rendering
+      setTimeout(() => {
+        if (current && document.contains(current)) {
+          current.textContent = title
+        }
+      }, 0)
+    }
+  }, [viewportModeValue, isBuilder, title])
   
   // Handle title update
   const handleTitleUpdate = (e: React.FormEvent<HTMLDivElement>) => {
@@ -116,7 +156,10 @@ export function SlideWrapper({
   
   // Prepare the content of the slide
   const slideContent = (
-    <div className={isViewer ? "w-full" : ""}>
+    <div className={cn(
+      "w-full", 
+      isViewer ? "" : "transition-all duration-200" // Add transition for smoother layout changes
+    )}>
       
       {/* Slide counter with progress indicator */}
       {typeof index === 'number' && typeof totalBlocks === 'number' && (
@@ -131,14 +174,16 @@ export function SlideWrapper({
       )}
       
       {/* Block title with editing capabilities in builder mode */}
-      <div className="block-title">
+      <div className="block-title mb-4">
         {isBuilder ? (
           <div 
             ref={titleRef}
             contentEditable={isBuilder}
             onInput={handleTitleUpdate}
             onBlur={handleBlur}
-            className="text-2xl font-bold leading-tight outline-none focus:ring-1 focus:ring-primary/50 pb-1"
+            className="text-2xl font-bold leading-tight outline-none focus:ring-1 focus:ring-primary/50 pb-1 transition-all duration-200"
+            data-layout-type={layoutType} /* Add data attribute to help with debugging */
+            data-viewmode={viewportMode}
           />
         ) : (
           <h2 className="text-2xl font-bold leading-tight">{title}</h2>
@@ -289,12 +334,52 @@ export function SlideWrapper({
           {slideContent}
         </MediaRightSplitLayout>
       )
+      
+    // Mobile-specific layouts
+    case 'media-top':
+      return wrappedContent(
+        <MediaTopLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaTopLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
+        >
+          {slideContent}
+        </MediaTopLayout>
+      )
+      
+    case 'media-bottom':
+      return wrappedContent(
+        <MediaBottomLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaBottomLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
+        >
+          {slideContent}
+        </MediaBottomLayout>
+      )
+      
+    case 'media-between':
+      return wrappedContent(
+        <MediaBetweenLayout
+          id={id}
+          settings={slideLayout}
+          onUpdate={onUpdate ? (updates: Partial<{settings: Partial<MediaBetweenLayoutType>}>) => 
+            onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
+          : undefined}
+        >
+          {slideContent}
+        </MediaBetweenLayout>
+      )
     
     default:
       return wrappedContent(
         <StandardSlideLayout
           id={id}
-          settings={slideLayout}
+          settings={slideLayout as StandardSlideLayoutType}
           onUpdate={onUpdate ? (updates: Partial<{settings: Partial<StandardSlideLayoutType>}>) => 
             onUpdate({ settings: { ...settings, layout: { ...slideLayout, ...(updates.settings || {}) } } }) 
           : undefined}

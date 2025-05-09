@@ -10,7 +10,10 @@ import {
   SlideLayout,
   SlideLayoutType,
   MediaLeftLayout,
-  MediaBackgroundLayout
+  MediaBackgroundLayout,
+  MediaTopLayout,
+  MediaBottomLayout,
+  MediaBetweenLayout
 } from "@/types/layout-types"
 import {
   StandardLayoutIcon,
@@ -64,18 +67,25 @@ function LayoutOption({ type, label, icon: Icon, isSelected, onSelect }: LayoutO
 }
 
 export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSettingsProps) {
-  const { updateBlockLayout } = useFormBuilderStore()
+  const { updateBlockLayout, viewportMode, getEffectiveLayout } = useFormBuilderStore()
   
-  // Default to standard layout if none is set
-  const layoutType: SlideLayoutType = currentLayout?.type || 'standard'
+  // Get layouts for both desktop and mobile modes
+  const desktopLayout = getEffectiveLayout(blockId, 'desktop') || { type: 'standard' }
+  const mobileLayout = getEffectiveLayout(blockId, 'mobile') || { type: 'standard' }
   
-  // Handle layout type change
+  // Use the layout for the current viewport mode
+  const activeLayout = viewportMode === 'desktop' ? desktopLayout : mobileLayout
+  
+  // Default to standard layout if none is set for current viewport
+  const layoutType: SlideLayoutType = activeLayout?.type || 'standard'
+  
+  // Handle layout type change for the current viewport mode
   const handleLayoutTypeChange = (type: SlideLayoutType) => {
-    updateBlockLayout(blockId, { type })
+    updateBlockLayout(blockId, { type }, viewportMode)
   }
   
-  // Layout options with their icons
-  const layoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
+  // Define options for desktop and mobile layouts
+  const desktopLayoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
     { type: 'standard', label: 'Standard', icon: StandardLayoutIcon },
     { type: 'media-right', label: 'Media Right', icon: MediaRightLayoutIcon },
     { type: 'media-left', label: 'Media Left', icon: MediaLeftLayoutIcon },
@@ -84,10 +94,35 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
     { type: 'media-background', label: 'Background', icon: MediaBackgroundLayoutIcon },
   ]
   
+  const mobileLayoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
+    { type: 'standard', label: 'Standard', icon: StandardLayoutIcon },
+    { type: 'media-top', label: 'Media Top', icon: MediaLeftLayoutIcon }, // Reusing icons for now
+    { type: 'media-bottom', label: 'Media Bottom', icon: MediaRightLayoutIcon },
+    { type: 'media-between', label: 'Media Between', icon: MediaBackgroundLayoutIcon },
+    { type: 'media-background', label: 'Background', icon: MediaBackgroundLayoutIcon },
+  ]
+  
+  // Select the appropriate options based on viewport mode
+  const layoutOptions = viewportMode === 'mobile' ? mobileLayoutOptions : desktopLayoutOptions
+  
+  // Each viewport mode has its own set of compatible layouts
+  const mobileLayouts = ['media-top', 'media-bottom', 'media-between', 'standard', 'media-background']
+  const desktopLayouts = ['standard', 'media-left', 'media-right', 'media-left-split', 'media-right-split', 'media-background']
+  
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label>Slide Layout</Label>
+        <div className="flex justify-between items-center">
+          <Label>Slide Layout</Label>
+          <div className="text-xs flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1">
+            <span className="text-muted-foreground">{viewportMode === 'mobile' ? 'Mobile Layout' : 'Desktop Layout'}</span>
+          </div>
+        </div>
+        
+        <div className="text-xs text-muted-foreground mb-2">
+          <p>Configure the layout for {viewportMode} view. <span className="text-primary-foreground/80">Each view has its own layout settings.</span></p>
+        </div>
+        
         <div className="grid grid-cols-3 gap-2">
           {layoutOptions.map((option) => (
             <LayoutOption
@@ -103,15 +138,20 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
       </div>
       
       {/* Layout specific settings based on selected layout type */}
-      {layoutType === 'media-left' || layoutType === 'media-right' ? (
+      {(layoutType === 'media-left' || layoutType === 'media-right') ? (
         <MediaPositionSettings 
           blockId={blockId} 
-          currentLayout={currentLayout} 
+          currentLayout={activeLayout} 
         />
       ) : layoutType === 'media-background' ? (
         <MediaBackgroundSettings 
           blockId={blockId} 
-          currentLayout={currentLayout} 
+          currentLayout={activeLayout} 
+        />
+      ) : (layoutType === 'media-top' || layoutType === 'media-bottom' || layoutType === 'media-between') ? (
+        <MediaMobilePositionSettings
+          blockId={blockId}
+          currentLayout={activeLayout}
         />
       ) : null}
       
@@ -119,7 +159,7 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
       {layoutType !== 'standard' && (
         <MediaSettings
           blockId={blockId}
-          currentLayout={currentLayout}
+          currentLayout={activeLayout}
         />
       )}
     </div>
@@ -312,12 +352,119 @@ export function MediaBackgroundSettings({ blockId, currentLayout }: MediaBackgro
   )
 }
 
+interface MediaMobilePositionSettingsProps {
+  blockId: string
+  currentLayout?: SlideLayout
+}
+
+// Settings for mobile layouts (media-top, media-bottom, media-between)
+export function MediaMobilePositionSettings({ blockId, currentLayout }: MediaMobilePositionSettingsProps) {
+  const { updateBlockLayout } = useFormBuilderStore()
+  
+  // Skip if not a mobile media layout
+  if (!currentLayout || 
+      (currentLayout.type !== 'media-top' && 
+       currentLayout.type !== 'media-bottom' && 
+       currentLayout.type !== 'media-between')) {
+    return null
+  }
+  
+  // Get settings or use defaults based on the type
+  const mediaProportion = (() => {
+    if (currentLayout.type === 'media-top') {
+      return (currentLayout as MediaTopLayout).mediaProportion || 0.4
+    } else if (currentLayout.type === 'media-bottom') {
+      return (currentLayout as MediaBottomLayout).mediaProportion || 0.4
+    } else { // media-between
+      return (currentLayout as MediaBetweenLayout).mediaProportion || 0.3
+    }
+  })()
+  
+  const textAlignment = (() => {
+    if (currentLayout.type === 'media-top') {
+      return (currentLayout as MediaTopLayout).textAlignment || 'center'
+    } else if (currentLayout.type === 'media-bottom') {
+      return (currentLayout as MediaBottomLayout).textAlignment || 'center'
+    } else { // media-between
+      return (currentLayout as MediaBetweenLayout).textAlignment || 'center'
+    }
+  })()
+  
+  const spacing = (() => {
+    if (currentLayout.type === 'media-top') {
+      return (currentLayout as MediaTopLayout).spacing || 'normal'
+    } else if (currentLayout.type === 'media-bottom') {
+      return (currentLayout as MediaBottomLayout).spacing || 'normal'
+    } else { // media-between
+      return (currentLayout as MediaBetweenLayout).spacing || 'normal'
+    }
+  })()
+  
+  return (
+    <div className="space-y-4">
+      <Separator />
+      <div className="space-y-2">
+        <Label>Layout Settings</Label>
+        
+        <div className="space-y-2">
+          <Label htmlFor="media-proportion">
+            Media Size: {Math.round(mediaProportion * 100)}%
+          </Label>
+          <input
+            type="range"
+            min="0.2"
+            max="0.7"
+            step="0.05"
+            value={mediaProportion}
+            onChange={(e) => updateBlockLayout(blockId, { mediaProportion: parseFloat(e.target.value) })}
+            className="w-full"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="text-alignment">Text Alignment</Label>
+          <Select
+            value={textAlignment}
+            onValueChange={(value) => updateBlockLayout(blockId, { textAlignment: value as 'left' | 'center' | 'right' })}
+          >
+            <SelectTrigger id="text-alignment">
+              <SelectValue placeholder="Select alignment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="left">Left</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="right">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="spacing">Content Spacing</Label>
+          <Select
+            value={spacing}
+            onValueChange={(value) => updateBlockLayout(blockId, { spacing: value as 'compact' | 'normal' | 'spacious' })}
+          >
+            <SelectTrigger id="spacing">
+              <SelectValue placeholder="Select spacing" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="compact">Compact</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="spacious">Spacious</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface MediaSettingsProps {
   blockId: string
   currentLayout?: SlideLayout
 }
 
-// Shared media settings for all media layouts
+// Shared media settings for all layouts with media
 export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
   const { updateBlockLayout } = useFormBuilderStore()
   
@@ -327,7 +474,10 @@ export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
     currentLayout?.type === 'media-right' ||
     currentLayout?.type === 'media-background' ||
     currentLayout?.type === 'media-left-split' ||
-    currentLayout?.type === 'media-right-split';
+    currentLayout?.type === 'media-right-split' ||
+    currentLayout?.type === 'media-top' ||
+    currentLayout?.type === 'media-bottom' ||
+    currentLayout?.type === 'media-between';
   
   if (!isMediaLayout) return null;
   

@@ -21,7 +21,8 @@ export default function FormBuilderSettings() {
     updateBlockSettings, 
     removeBlock,
     setCurrentBlockId,
-    blocks
+    blocks,
+    viewportMode // Add viewportMode to the list of subscribed values
   } = useFormBuilderStore()
   
   const currentBlock = getCurrentBlock()

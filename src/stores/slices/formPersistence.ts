@@ -21,6 +21,7 @@ import { defaultFormData } from './formCore'
 import type { SaveFormInput } from '@/types/form-service-types'
 import type { BlockType } from '@/types/block-types'
 import type { Rule, Connection } from '@/types/workflow-types'
+import { migrateAllBlockLayouts } from '@/services/form/layoutMigration'
 // FormBlock type is used for the DbFormBlock interface definition
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { FormBlock } from '@/types/block-types'
@@ -729,6 +730,9 @@ export const createFormPersistenceSlice: StateCreator<
         // The user will need to create connections manually in the workflow editor
       }
       
+      // Migrate block layouts from legacy format to new viewportLayouts format
+      const migratedBlocks = migrateAllBlockLayouts(blocks)
+      
       // Update the store with form and blocks
       set({
         formData: {
@@ -748,8 +752,8 @@ export const createFormPersistenceSlice: StateCreator<
             ...(typeof formData.settings === 'object' ? formData.settings : {})
           } : { ...defaultFormData.settings }
         },
-        blocks: blocks,
-        currentBlockId: blocks.length > 0 ? blocks[0].id : null,
+        blocks: migratedBlocks,
+        currentBlockId: migratedBlocks.length > 0 ? migratedBlocks[0].id : null,
         connections: workflowConnections,
         nodePositions
       })

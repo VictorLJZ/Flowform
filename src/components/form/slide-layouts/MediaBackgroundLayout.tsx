@@ -122,9 +122,10 @@ export function MediaBackgroundLayout({
         )}
       >
         <div className={cn(
-          "w-full max-w-2xl px-8 py-8",
+          "w-full max-w-2xl px-6 py-8", // Changed from px-8 to px-6 to match StandardSlideLayout
           textAlignmentClasses[effectiveTextAlignment],
-          textColorClasses[effectiveTextColor]
+          textColorClasses[effectiveTextColor],
+          "text-left space-y-4" // Added text-left to match StandardSlideLayout
         )}>
           {children}
         </div>

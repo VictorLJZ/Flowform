@@ -3,7 +3,8 @@
 import { StateCreator } from 'zustand'
 import type { FormPresentationSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
-import type { SlideLayout } from '@/types/layout-types'
+import type { SlideLayout, ViewportLayouts } from '@/types/layout-types'
+import { getDefaultViewportLayouts } from '@/types/layout-types'
 import type { BlockPresentation, FormTheme } from '@/types/theme-types'
 import { defaultBlockPresentation, defaultFormTheme } from '@/types/theme-types'
 
@@ -17,8 +18,8 @@ export const createFormPresentationSlice: StateCreator<
   defaultBlockPresentation,
   
   // Actions  
-  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>) => {
-    const { blocks } = get()
+  updateBlockLayout: (blockId: string, layoutConfig: Partial<SlideLayout>, viewportMode?: 'desktop' | 'mobile') => {
+    const { blocks, viewportMode: currentViewportMode } = get()
     const blockToUpdate = blocks.find(block => block.id === blockId)
     
     if (!blockToUpdate) {
@@ -29,13 +30,26 @@ export const createFormPresentationSlice: StateCreator<
     // Get current settings
     const currentSettings = blockToUpdate.settings || {}
     
-    // Extract current layout or use empty object
-    const currentLayout = (currentSettings.layout || {}) as Record<string, unknown>
+    // Determine which viewport layout to update
+    const effectiveViewportMode = viewportMode || currentViewportMode
     
-    // Create updated layout by merging current with new config
-    const updatedLayout = { ...currentLayout, ...layoutConfig }
+    // Get current viewport layouts or initialize with defaults
+    let viewportLayouts: ViewportLayouts = currentSettings.viewportLayouts as ViewportLayouts || getDefaultViewportLayouts()
     
-    // Update block settings with new layout
+    // Create updated layout for the specific viewport
+    if (effectiveViewportMode === 'desktop') {
+      viewportLayouts = {
+        ...viewportLayouts,
+        desktop: { ...viewportLayouts.desktop, ...layoutConfig } as SlideLayout
+      }
+    } else {
+      viewportLayouts = {
+        ...viewportLayouts,
+        mobile: { ...viewportLayouts.mobile, ...layoutConfig } as SlideLayout
+      }
+    }
+    
+    // Update block settings with new viewport layouts
     set((state) => ({
       blocks: state.blocks.map(block => 
         block.id === blockId 
@@ -43,7 +57,7 @@ export const createFormPresentationSlice: StateCreator<
               ...block, 
               settings: { 
                 ...block.settings, 
-                layout: updatedLayout 
+                viewportLayouts
               } 
             } 
           : block
@@ -92,6 +106,24 @@ export const createFormPresentationSlice: StateCreator<
           : block
       )
     }))
+  },
+  
+  getEffectiveLayout: (blockId: string, viewportMode: 'desktop' | 'mobile') => {
+    const { blocks } = get()
+    const block = blocks.find(block => block.id === blockId)
+    
+    if (!block || !block.settings) return undefined
+    
+    // Try to get viewport layouts from block settings
+    const viewportLayouts = block.settings.viewportLayouts as ViewportLayouts | undefined
+    
+    if (!viewportLayouts) {
+      // For backward compatibility, try to get the legacy layout
+      return block.settings.layout as SlideLayout | undefined
+    }
+    
+    // Return the appropriate layout for the current viewport mode
+    return viewportMode === 'desktop' ? viewportLayouts.desktop : viewportLayouts.mobile
   },
   
   setFormTheme: (theme: Partial<FormTheme>) => {
