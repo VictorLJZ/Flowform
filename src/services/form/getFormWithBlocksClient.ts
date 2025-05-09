@@ -18,6 +18,17 @@ export async function getFormWithBlocksClient(
   const data = await res.json();
 
   // === ADDED LOGGING START ===
+  // 🔥👾🔍💾🧪 DIAGNOSTIC LOG: Check blocks after receiving from API
+  if (data.form && data.form.blocks && data.form.blocks.length > 0) {
+    console.log(`🔥👾🔍💾🧪 CLIENT DIAGNOSTIC: Received ${data.form.blocks.length} blocks from API for form ${formId}`);
+    data.form.blocks.forEach((block: { id: string; type: string; subtype: string; title: string }) => {
+      console.log(`🔥👾🔍💾🧪 BLOCK ${block.id}: type=${block.type}, subtype=${block.subtype}, title=${block.title}`);
+    });
+  } else {
+    console.log(`🔥👾🔍💾🧪 CLIENT DIAGNOSTIC: No blocks found in API response for form ${formId}, or data.form is undefined.`);
+  }
+  
+  // Original workflow edges logging
   if (data.form && data.form.workflow_edges && data.form.workflow_edges.length > 0) {
     console.log(`🔎 [getFormWithBlocksClient] Received workflow_edges from API for form ${formId}:`);
     data.form.workflow_edges.forEach((edge: WorkflowEdge) => {

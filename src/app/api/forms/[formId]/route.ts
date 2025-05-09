@@ -29,6 +29,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         { status: 404 }
       )
     }
+    
+    // 🔍🧩🔄🔎🔮 DIAGNOSTIC LOG: Check form blocks in API before sending to client
+    if (form.blocks && form.blocks.length > 0) {
+      console.log(`🔍🧩🔄🔎🔮 API DIAGNOSTIC: Inspecting ${form.blocks.length} blocks BEFORE sending to client`);
+      form.blocks.forEach(block => {
+        console.log(`🔍🧩🔄🔎🔮 BLOCK ${block.id}: type=${block.type}, subtype=${block.subtype}, title=${block.title}`);
+      });
+    } else {
+      console.log(`🔍🧩🔄🔎🔮 API DIAGNOSTIC: No blocks found in form ${formId} to send to client`);
+    }
 
     if (form.workflow_edges && form.workflow_edges.length > 0) {
       console.log(`🔎 [API Route /api/forms/${formId}] Workflow edges BEFORE JSON serialization:`);

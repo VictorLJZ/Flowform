@@ -46,26 +46,95 @@ interface DbForm {
  * Extracted from formPersistence.ts
  */
 function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
+  // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Begin converting blocks
+  console.log(`🌟🔧📊🛠️🔍 CONVERSION DIAGNOSTIC: Processing ${backendBlocks.length} blocks from database to UI model`);
+  
   return backendBlocks.map((block) => {
+    // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Individual block input
+    console.log(`🌟🔧📊🛠️🔍 INPUT BLOCK ${block.id}: type=${block.type}, subtype=${block.subtype}, title=${block.title}`);
+    
+    if (block.settings) {
+      console.log(`🌟🔧📊🛠️🔍 BLOCK SETTINGS KEYS for ${block.id}: ${Object.keys(block.settings).join(', ')}`);
+    }
+    
     // Map database type/subtype to frontend blockTypeId
-    const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
+    // This is critical - blockTypeId must match exactly what the registry expects
+    let blockTypeId = block.subtype;
+    
+    // Special case for dynamic blocks
+    if (block.type === 'dynamic' && block.subtype === 'dynamic') {
+      blockTypeId = 'ai_conversation';
+      console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping dynamic block to ai_conversation`);
+    }
+    
+    // Special case for layout blocks
+    else if (block.type === 'layout') {
+      if (block.subtype === 'short_text') {
+        // Try to determine if this is a page_break or redirect based on settings
+        if (block.settings && typeof block.settings === 'object') {
+          if ('url' in block.settings) {
+            blockTypeId = 'redirect';
+            console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to redirect based on url setting`);
+          } else {
+            blockTypeId = 'page_break';
+            console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to page_break`);
+          }
+        } else {
+          blockTypeId = 'page_break'; // Default for layout blocks
+          console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to page_break (default)`);
+        }
+      }
+    }
+    
+    // For other cases where block.subtype might be different from what registry expects
+    // Use our mapFromDbBlockType utility as a backup
+    if (!blockTypeId || blockTypeId === '') {
+      console.log(`🌟🔧📊🛠️🔍 USING FALLBACK: blockTypeId empty, calling mapFromDbBlockType`);
+      blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
+    }
+    
+    // Log the mapping result
+    console.log(`🌟🔧📊🛠️🔍 MAPPING RESULT: Block ${block.id} mapped to blockTypeId=${blockTypeId}`);
     
     // Determine block type (static, dynamic, etc)
-    const blockType = (block.type === 'dynamic' || blockTypeId === 'ai_conversation') 
-      ? 'dynamic' 
-      : ((block.type === 'static' || block.type === 'dynamic' || block.type === 'layout') ? block.type : 'static');
+    // This is the database "type" value, not to be confused with blockTypeId
+    let blockType = block.type as BlockType;
     
-    // Create properly typed FormBlock object
-    return {
+    // Ensure blockType is valid (defensive programming)
+    if (!['static', 'dynamic', 'layout', 'integration'].includes(blockType)) {
+      console.warn(`🌟🔧📊🛠️🔍 VALIDATION WARNING: Invalid block type: ${blockType} for block ${block.id}, defaulting to 'static'`);
+      blockType = 'static';
+    }
+    
+    // Create the transformed block with correct typing
+    // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Final blockTypeId and type values
+    console.log(`🌟🔧📊🛠️🔍 OUTPUT BLOCK ${block.id}: blockTypeId=${blockTypeId}, type=${blockType}`);
+    
+    // CRITICAL FIX: Create a new block object where the blockTypeId is explicitly set
+    // and forced to be a string type to prevent any type coercion issues
+    const transformedBlock: FormBlock = {
       id: block.id,
-      blockTypeId,
+      blockTypeId: String(blockTypeId), // Ensure blockTypeId is the mapped value from subtype and is a string
       type: blockType,
-      title: block.title,
+      title: block.title || '',
       description: block.description || '',
-      required: block.required,
+      required: block.required || false,
       order_index: block.order_index,
       settings: block.settings || {}
     };
+    
+    // Extra validation to ensure we NEVER set blockTypeId to the block's type
+    if (transformedBlock.blockTypeId === transformedBlock.type && ['static', 'dynamic', 'layout', 'integration'].includes(transformedBlock.blockTypeId)) {
+      console.error(`🔥 CRITICAL ERROR: blockTypeId is same as type (${transformedBlock.blockTypeId}). This will cause render issues. Original subtype was ${block.subtype}`);
+      
+      // Emergency fallback: If for some reason blockTypeId ended up as 'static', use the subtype as a fallback
+      if (block.subtype && block.subtype !== transformedBlock.type) {
+        console.log(`🔥 CRITICAL FIX: Forced blockTypeId to subtype value: ${block.subtype}`);
+        transformedBlock.blockTypeId = String(block.subtype);
+      }
+    }
+    
+    return transformedBlock;
   });
 }
 

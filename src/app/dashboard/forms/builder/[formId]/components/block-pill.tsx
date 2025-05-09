@@ -1,9 +1,22 @@
 "use client"
 
 import React from 'react'
-import { FileText } from 'lucide-react'
+import { 
+  FileText, 
+  MessageSquare, 
+  CheckSquare, 
+  List, 
+  Mail, 
+  Hash, 
+  Calendar,
+  User,
+  ArrowUpRight,
+  Bookmark,
+  Sparkles
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getBlockDefinition } from '@/registry/blockRegistry'
+import { getBlockTypeColors } from '@/utils/block-utils'
 
 interface BlockPillProps {
   block: {
@@ -11,6 +24,8 @@ interface BlockPillProps {
     blockTypeId?: string;
     order_index?: number;
     title?: string;
+    type?: string;
+    subtype?: string; // Added for block type persistence fix
   } | null | undefined;
   index?: number;
   selected?: boolean;
@@ -28,40 +43,96 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
     return <span className="text-muted-foreground text-sm">{fallbackText}</span>;
   }
   
-  // Get block definition directly from registry
-  const blockDef = getBlockDefinition(block.blockTypeId || '');
+  // FIX FOR BLOCK TYPE PERSISTENCE ISSUE
+  // If blockTypeId is a generic type (like "static"), use block.subtype instead if available
+  let blockTypeId = '';
   
-  // Set default colors based on block category
-  let bgColor = "#3b82f620"; // Default blue (input) background
-  let textColor = "#3b82f6"; // Default blue (input) text
-  
-  // Set colors based on category from block definition
-  if (blockDef?.category) {
-    const category = blockDef.category;
-    
-    if (category === 'input') {
-      bgColor = "#3b82f620";
-      textColor = "#3b82f6"; // Blue
-    } else if (category === 'choice') {
-      bgColor = "#8b5cf620";
-      textColor = "#8b5cf6"; // Purple
-    } else if (category === 'advanced') {
-      bgColor = "#22c55e20";
-      textColor = "#22c55e"; // Green
-    } else if (category === 'integration') {
-      bgColor = "#f9731620";
-      textColor = "#f97316"; // Orange
-    } else if (category === 'layout') {
-      bgColor = "#6366f120";
-      textColor = "#6366f1"; // Indigo
-    } else if (category === 'recommended') {
-      bgColor = "#f43f5e20";
-      textColor = "#f43f5e"; // Rose
-    }
+  // Check for invalid/generic blockTypeId values that should be substituted with subtype
+  if (block.blockTypeId && ['static', 'dynamic', 'layout', 'integration'].includes(block.blockTypeId) && block.subtype) {
+    // This is a critical fix: the blockTypeId is incorrectly set to the block type instead of subtype
+    console.log(`🔥 CRITICAL FIX: BlockPill received invalid blockTypeId=${block.blockTypeId}, using block.subtype=${block.subtype} instead`);
+    blockTypeId = block.subtype;
+  } else {
+    // Use the blockTypeId normally
+    blockTypeId = block.blockTypeId || '';
   }
   
-  // Use icon directly from block definition
-  const Icon = blockDef?.icon || FileText;
+  const blockDef = getBlockDefinition(blockTypeId);
+  
+  // Console log for debugging
+  console.log(`BlockPill rendering for blockTypeId: ${blockTypeId}, found definition:`, !!blockDef);
+  
+  // Get colors using the utility function from block-utils
+  // This is more consistent than the inline logic and will work even without a blockDef
+  const colorScheme = getBlockTypeColors(blockTypeId);
+  const bgColor = colorScheme.bg;
+  const textColor = colorScheme.text;
+  
+  // Extract the core block type (in case there's a prefix/path)
+  let coreType = blockTypeId;
+  if (blockTypeId && blockTypeId.includes('/')) {
+    const parts = blockTypeId.split('/');
+    coreType = parts[parts.length - 1];
+  }
+  
+  // Log the block type for debugging
+  console.log(`BlockPill: Finding icon for type ${blockTypeId}, core: ${coreType}`);
+  
+  // Instead of dynamically assigning different icon components to a variable,
+  // we'll use a function that renders the appropriate icon based on the type
+  const renderIcon = (size: number) => {
+    // Check block definition icon first (highest priority)
+    if (blockDef?.icon) {
+      const DefinedIcon = blockDef.icon;
+      return <DefinedIcon size={size} style={{ color: textColor }} />;
+    }
+    
+    // Then use our switch statement for known types
+    switch (coreType) {
+      // Input blocks
+      case 'short_text':
+      case 'long_text':
+        return <FileText size={size} style={{ color: textColor }} />;
+      case 'email':
+        return <Mail size={size} style={{ color: textColor }} />;
+      case 'number':
+        return <Hash size={size} style={{ color: textColor }} />;
+      case 'date':
+        return <Calendar size={size} style={{ color: textColor }} />;
+      
+      // Choice blocks
+      case 'multiple_choice':
+      case 'dropdown':
+        return <List size={size} style={{ color: textColor }} />;
+      case 'checkbox_group':
+        return <CheckSquare size={size} style={{ color: textColor }} />;
+      
+      // Dynamic/AI blocks
+      case 'ai_conversation':
+      case 'dynamic':
+        return <MessageSquare size={size} style={{ color: textColor }} />;
+      
+      // Layout blocks
+      case 'page_break':
+        return <Bookmark size={size} style={{ color: textColor }} />;
+      case 'redirect':
+        return <ArrowUpRight size={size} style={{ color: textColor }} />;
+      
+      // Integration blocks
+      case 'hubspot':
+        return <User size={size} style={{ color: textColor }} />;
+      
+      // Default fallback
+      default:
+        // If type contains "dynamic", use Sparkles icon
+        if (coreType?.includes('dynamic')) {
+          return <Sparkles size={size} style={{ color: textColor }} />;
+        } else {
+          console.log(`No icon mapping for ${coreType}, using default`);
+          return <FileText size={size} style={{ color: textColor }} />;
+        }
+    }
+  };
   
   // Figure out what number to display
   const displayIndex = index !== undefined 
@@ -83,10 +154,7 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
         )}>
           {displayIndex}
         </span>
-        <Icon 
-          size={compact ? 14 : 16} 
-          style={{ color: textColor }} 
-        />
+        {renderIcon(compact ? 14 : 16)}
       </div>
     </div>
   )

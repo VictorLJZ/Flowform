@@ -120,11 +120,19 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       // Transform blocks from DB format to application format
       // Default to an empty array if form.blocks is null or undefined
       const parsedBlocks = (form.blocks || []).map((block: FormBlock) => {
-        const blockDef = getBlockDefinition(block.type); // block.type is already the granular BlockType enum
+        // CRITICAL FIX: BlockTypeId should be the SUBTYPE, not the type
+        // The previous implementation incorrectly mapped blockTypeId to block.type
+        console.log(`🔄 BLOCK MAPPING: id=${block.id}, type=${block.type}, subtype=${block.subtype}`);
+        
+        // Get the block definition based on subtype, not type
+        const blockDef = getBlockDefinition(block.subtype);
+        
+        // Fixed property mapping
         return {
           id: block.id,
-          blockTypeId: block.type, // Add blockTypeId, which is the same as block.type (BlockType enum)
-          type: block.type, // Retain for clarity or if used elsewhere with this exact name
+          blockTypeId: block.subtype, // FIXED: blockTypeId should be the subtype (e.g., 'multiple_choice')
+          type: block.type, // Keep the generic type (e.g., 'static')
+          subtype: block.subtype, // Also add the subtype explicitly for future reference
           title: block.title || blockDef?.defaultTitle || '',
           description: block.description || undefined, // Ensure undefined instead of null
           required: block.required, // Already boolean

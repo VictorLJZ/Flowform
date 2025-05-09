@@ -366,6 +366,12 @@ export const createFormPersistenceSlice: StateCreator<
         theme: formData.theme as FormTheme,
       };
       
+      // Diagnostic logs for blocks before setting in store
+      console.log(`🚀🔍🧪🧩💾 STORE DIAGNOSTIC: Checking ${blocks.length} blocks before setting in store`);
+      blocks.forEach(block => {
+        console.log(`🚀🔍🧪🧩💾 STORE BLOCK ${block.id}: blockTypeId=${block.blockTypeId}, type=${block.type}, title=${block.title}`);
+      });
+      
       // Update form state
       set({
         formData: formDataWithFormId,
@@ -375,6 +381,15 @@ export const createFormPersistenceSlice: StateCreator<
         // Set current block to the first block if blocks exist
         currentBlockId: blocks.length > 0 ? blocks[0].id : null
       });
+      
+      // Add more diagnostic logs to verify blocks in store after setting
+      setTimeout(() => {
+        const storeState = get();
+        console.log(`🚀🔍🧪🧩💾 STORE AFTER SET: Checking ${storeState.blocks.length} blocks in store`);
+        storeState.blocks.forEach(block => {
+          console.log(`🚀🔍🧪🧩💾 STORE AFTER SET BLOCK ${block.id}: blockTypeId=${block.blockTypeId}, type=${block.type}, title=${block.title}`);
+        });
+      }, 0);
       
       // Add a temporary subscription to watch for connection changes during initial load
       // Using a more specific type for the store with subscribe functionality

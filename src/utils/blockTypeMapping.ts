@@ -74,30 +74,53 @@ export function mapToDbBlockType(blockTypeId: string): {
  */
 export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic'): string {
   // Log input values for debugging
-  console.log('Mapping DB -> Frontend:', { type, subtype });
+  console.log('💼🔢🖇👓🚀 MAP FUNCTION: Mapping DB -> Frontend:', { type, subtype });
+  console.log(`💼🔢🖇👓🚀 MAP FUNCTION: DB type=${type}, subtype=${subtype}, type of subtype=${typeof subtype}`);
   
-  // Check for dynamic blocks with more permissive matching
-  // This covers case variations and whitespace issues
+  // Special case for dynamic blocks
   if (String(type).toLowerCase().trim() === 'dynamic' && 
       String(subtype).toLowerCase().trim() === 'dynamic') {
     console.log('Dynamic block identified, mapping to ai_conversation');
     return 'ai_conversation';
   }
   
-  // Explicitly handle each supported subtype
-  switch (subtype) {
-    case 'short_text':
-    case 'long_text':
-    case 'email':
-    case 'date':
-    case 'multiple_choice':
-    case 'checkbox_group':
-    case 'dropdown':
-    case 'number':
-    case 'scale':
-    case 'yes_no':
-      return subtype;
-    default:
-      return subtype; // Fallback for unrecognized subtypes
+  // Special case for layout blocks
+  if (String(type).toLowerCase().trim() === 'layout') {
+    if (subtype === 'short_text') {
+      // Check for specific layout block types
+      // We'll need to make an educated guess based on the registry's allowed values
+      // This is a limitation since we're losing information in the DB mapping
+      // Better would be to store the original blockTypeId in the DB
+      console.log('Layout block detected, checking for specific layout type');
+      return 'page_break'; // Default to page_break - consider enhancing this logic
+    }
   }
+  
+  // Map special cases for choice blocks that need specific IDs
+  if (type === 'static') {
+    switch (String(subtype).toLowerCase().trim()) {
+      // Direct mappings where subtype matches blockTypeId
+      case 'short_text':
+      case 'long_text':
+      case 'email':
+      case 'date':
+      case 'number':
+      case 'multiple_choice':
+      case 'checkbox_group':
+      case 'dropdown':
+      case 'scale':
+      case 'yes_no':
+        console.log(`Direct mapping for ${subtype}`);
+        return subtype;
+      
+      // Handle any other cases here
+      default:
+        console.log(`Unknown subtype: ${subtype}, using as-is`);
+        return String(subtype);
+    }
+  }
+  
+  // If we can't determine a specific mapping, return the subtype
+  // This is a fallback that keeps existing behavior
+  return String(subtype);
 }
