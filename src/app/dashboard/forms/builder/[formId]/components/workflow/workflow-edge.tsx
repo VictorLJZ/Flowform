@@ -1,10 +1,9 @@
 "use client"
 
-import { memo, useMemo, useState } from 'react'
-import { EdgeLabelRenderer, getBezierPath, EdgeProps } from 'reactflow'
+import { memo, useMemo } from 'react'
+import { getBezierPath, EdgeProps } from 'reactflow'
 import { WorkflowEdgeData, Connection, Rule } from '@/types/workflow-types' 
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { getConditionSummary } from '@/utils/workflow/condition-utils';
 import { FormBlock } from '@/types/block-types'; 
 
 const WorkflowEdge = ({
@@ -16,12 +15,12 @@ const WorkflowEdge = ({
   sourcePosition,
   targetPosition,
   data,
-  selected,
 }: EdgeProps<WorkflowEdgeData>) => {
   const blocks = useFormBuilderStore(state => state.blocks)
-  const selectElement = useFormBuilderStore(state => state.selectElement)
   
   const connection = data?.connection || null;
+  const isRulePath = data?.isRulePath || false;
+  const rule = data?.rule || null;
   
   const sourceBlock = useMemo(() => {
     if (!connection?.sourceId) return null
@@ -29,9 +28,13 @@ const WorkflowEdge = ({
   }, [blocks, connection?.sourceId])
   
   const targetBlock = useMemo(() => {
-    if (!connection?.defaultTargetId) return null
-    return blocks.find(block => block.id === connection.defaultTargetId)
-  }, [blocks, connection?.defaultTargetId])
+    if (isRulePath && rule?.target_block_id) {
+      return blocks.find(block => block.id === rule.target_block_id)
+    } else if (!isRulePath && connection?.defaultTargetId) {
+      return blocks.find(block => block.id === connection.defaultTargetId)
+    }
+    return null
+  }, [blocks, connection?.defaultTargetId, isRulePath, rule?.target_block_id])
   
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -43,59 +46,23 @@ const WorkflowEdge = ({
     curvature: 0.15
   })
 
+  // Completely unified edge styles with no distinctions
   const getEdgeStyles = () => {
     const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
     
-    const isConditional = !!(connection?.rules && connection.rules.length > 0);
-    const hasActualConditions = isConditional && connection!.rules!.some(rule => 
-      rule.condition_group && rule.condition_group.conditions && rule.condition_group.conditions.length > 0
-    );
-
-    const firstRuleWithConditions = connection?.rules?.find(rule => rule.condition_group && rule.condition_group.conditions && rule.condition_group.conditions.length > 0);
-    const operatorType = firstRuleWithConditions?.condition_group.conditions[0]?.operator || '';
-
-    const baseColor = '#000000'
-    const goldColor = '#f59e0b'
-    
-    let dashArray = '0'
-    const edgeWidth = selected ? 1.5 : 1
-    
-    if (!isConditional || !hasActualConditions) { 
-      dashArray = '0' 
-    } else if (operatorType === 'equals') {
-      dashArray = '0'
-    } else if (operatorType === 'not_equals') {
-      dashArray = '5,3'
-    } else if (operatorType.includes('greater') || operatorType.includes('less')) {
-      dashArray = '10,3'
-    } else if (isConditional) { 
-      dashArray = '3,3';
-    }
-
+    // All paths look identical - no visual distinctions
     return {
-      stroke: baseColor,
-      goldColor,
-      strokeWidth: edgeWidth,
-      strokeDasharray: dashArray,
-      transition: 'stroke 0.2s, stroke-width 0.2s',
-      sourceBlockType,
-      hasConditions: hasActualConditions,
-      isConditional,
-      conditionField: firstRuleWithConditions?.condition_group.conditions[0]?.field || '', 
-      operatorType
+      stroke: '#000000', // black color
+      strokeWidth: 1, // consistent line width
+      strokeDasharray: '0', // solid line
+      sourceBlockType
     }
   }
   
   const edgeStyles = getEdgeStyles()
-  
-  const conditionText = useMemo(() => {
-    if (!connection || !sourceBlock) return 'Connecting...'; 
-    return getConditionSummary(connection, sourceBlock, sourceBlock.blockTypeId);
-  }, [connection, sourceBlock]);
+  // No condition text needed since we removed the labels
 
   if (!connection) return null; 
-
-  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <>
@@ -112,30 +79,14 @@ const WorkflowEdge = ({
         >
           <path 
             d="M 0 0 L 10 5 L 0 10 z" 
-            fill={selected || isHovered ? edgeStyles.goldColor : edgeStyles.stroke} 
+            fill="#000000" 
           />
         </marker>
       </defs>
 
-      {/* Edge wrapper for hover detection */}
-      <g 
-        className={`edge-wrapper ${selected ? 'selected' : ''}`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onClick={() => selectElement(id)}
-        style={{ cursor: 'pointer' }}
-      >
-        {/* Enhanced background path for easier interaction */}
-        {(selected || isHovered) && (
-          <path
-            d={edgePath}
-            stroke={selected ? '#fff8e6' : '#e5e7eb'}
-            strokeWidth={10}
-            strokeOpacity={0.5}
-            fill="none"
-            pointerEvents="stroke"
-          />
-        )}
+      {/* Edge wrapper - completely non-interactive */}
+      <g className="edge-wrapper">
+        {/* Simple edge path without interaction elements */}
         
         {/* Main visible edge path with arrow */}
         <path
@@ -143,40 +94,19 @@ const WorkflowEdge = ({
           d={edgePath}
           fill="none"
           markerEnd={`url(#arrow-${id})`}
-          strokeDasharray={edgeStyles.strokeDasharray}
-          className="pointer-events-stroke cursor-pointer transition-colors duration-200"
+          strokeDasharray="0" // Always solid line
+          className="transition-colors duration-200"
           style={{
-            strokeWidth: selected || isHovered ? edgeStyles.strokeWidth + 1 : edgeStyles.strokeWidth,
-            stroke: selected || isHovered ? '#f59e0b' : '#000000',
+            strokeWidth: 1, // Consistent width
+            stroke: '#000000', // Black for all paths
             strokeOpacity: 1,
-            visibility: 'visible'
+            visibility: 'visible',
+            pointerEvents: 'none' // Make non-interactive
           }}
         />
       </g>
       
-      {/* Enhanced label with clearer formatting - position ABOVE the edge */}
-      <EdgeLabelRenderer>
-        <div 
-          className={`
-            nodrag nopan px-3 py-2 rounded-md text-xs border flex gap-2 font-medium
-            absolute pointer-events-auto max-w-[280px] z-[9999] opacity-100 transition-colors
-            ${selected ? 'bg-amber-50 border-amber-500 text-amber-600 shadow-md' : 
-              isHovered ? 'bg-white border-amber-300 text-amber-700 shadow-lg' : 
-              'bg-white border-slate-200 text-slate-800 shadow-sm'}
-          `}
-          style={{
-            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY}px)`,
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-          }}
-          data-edge-id={id}
-        >
-          <div className="overflow-hidden flex flex-col">
-            <span className="whitespace-normal hyphens-auto break-words leading-tight">
-              {conditionText}
-            </span>
-          </div>
-        </div>
-      </EdgeLabelRenderer>
+      {/* Labels removed as requested */}
     </>
   )
 }

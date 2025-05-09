@@ -5,8 +5,8 @@ import { X, Save, Info, Settings, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Node } from 'reactflow'
 import { WorkflowNodeData } from '@/types/workflow-types'
-import WorkflowConnectionSidebar from './workflow-connection-sidebar'
-import WorkflowBlockSidebar from './workflow-block-sidebar'
+import ConnectionSidebar from './connection/connection-sidebar'
+import WorkflowConnectionsCard from './connection/workflow-connections-card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
@@ -95,7 +95,7 @@ export default function WorkflowSidebar() {
     return (
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
-          <Card>
+          <Card className="overflow-hidden border shadow-sm !py-0 !gap-0">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm">Workflow Overview</CardTitle>
               <CardDescription className="text-xs">
@@ -137,8 +137,8 @@ export default function WorkflowSidebar() {
   }
   
   return (
-    <div className="w-[420px] border-l bg-background flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b shrink-0">
+    <div className="w-[420px] bg-background flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-l shrink-0">
         <h2 className="font-medium">
           {!effectiveElement ? 'Workflow' : (isEdge && edgeExists ? 'Connection Settings' : 'Block Settings')}
         </h2>
@@ -156,13 +156,17 @@ export default function WorkflowSidebar() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden border-l">
         {!effectiveElement ? (
           renderDefaultOverview()
         ) : isEdge && edgeExists ? (
-          <WorkflowConnectionSidebar />
+          <ConnectionSidebar />
+        ) : foundBlock ? (
+          <ConnectionSidebar blockId={foundBlock.id} />
         ) : (
-          <WorkflowBlockSidebar />
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">No element selected</p>
+          </div>
         )}
       </div>
     </div>

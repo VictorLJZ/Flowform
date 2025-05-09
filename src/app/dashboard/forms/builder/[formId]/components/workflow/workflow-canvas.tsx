@@ -51,6 +51,7 @@ export default function WorkflowCanvas() {
   const [forceRefreshKey] = useState(0) 
   const [isLayouting, setIsLayouting] = useState(false)
   const [initialRenderComplete, setInitialRenderComplete] = useState(false)
+  const [layoutingComplete, setLayoutingComplete] = useState(false)
   const { toast } = useToast()
   
   // We'll use Tailwind classes instead of global styles
@@ -162,9 +163,23 @@ export default function WorkflowCanvas() {
       updateNodePositions(positions)
       applyNodePositions()
       
-      // Center the viewport on the layout
+      // Center the viewport on the layout with a balanced zoom view
       setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 })
+        // Use moderate padding for balanced view
+        reactFlowInstance.fitView({ 
+          padding: 0.35,
+          minZoom: 0.5,
+          maxZoom: 0.8 // Allow a bit more zoom if needed
+        })
+        
+        // Fine-tune the zoom level to a balanced value
+        const currentTransform = reactFlowInstance.getViewport();
+        reactFlowInstance.setViewport({
+          x: currentTransform.x,
+          y: currentTransform.y,
+          zoom: 0.65 // Balanced zoom level - not too close, not too far
+        });
+        
         setIsLayouting(false)
       }, 500)
       
@@ -174,26 +189,29 @@ export default function WorkflowCanvas() {
     }
   }, [nodes, edges, reactFlowInstance, isLayouting, updateNodePositions, applyNodePositions])
   
-  // Apply initial layout on first render
+  // Always apply auto-layout when the workflow tab is loaded
   useEffect(() => {
-    if (!initialRenderComplete && nodes.length > 0 && !isLayouting) {
+    if (!initialRenderComplete && nodes.length >= 2 && !isLayouting) {
+      // Set this flag to prevent multiple layout attempts
       setInitialRenderComplete(true)
       
-      // Check if we already have node positions
-      const hasPositions = nodes.every(node => 
-        node.position && 
-        typeof node.position.x === 'number' && 
-        typeof node.position.y === 'number'
-      )
-      
-      // Only apply auto layout if we don't have positions
-      if (!hasPositions) {
+      // Use a longer timeout to ensure all nodes and edges are fully loaded
+      setTimeout(() => {
+        console.log('🔄 Applying automatic layout on workflow tab load')
+        // Set the isLayouting flag to show loading
+        setIsLayouting(true)
+        // Small delay to ensure React can update UI
         setTimeout(() => {
           applyAutoLayout()
-        }, 300)
-      }
+          // Mark layout as complete after a small delay to ensure nodes have settled
+          setTimeout(() => {
+            setIsLayouting(false)
+            setLayoutingComplete(true)
+          }, 200)
+        }, 50)
+      }, 500)
     }
-  }, [nodes, applyAutoLayout, initialRenderComplete, isLayouting])
+  }, [nodes.length, applyAutoLayout, initialRenderComplete, isLayouting])
   
   // Handle keyboard shortcuts for deleting connections
   useEffect(() => {
@@ -235,6 +253,16 @@ export default function WorkflowCanvas() {
   return (
     <div className="flex-1 flex h-full">
       <div className="flex-1 h-full relative overflow-hidden" ref={flowWrapperRef}>
+        {/* Loading overlay with smooth fade transition */}
+        <div 
+          className={`absolute inset-0 z-50 bg-white/80 flex items-center justify-center transition-opacity duration-500 ease-in-out ${(!layoutingComplete && (isLayouting || initialRenderComplete)) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        >
+          <div className="flex flex-col items-center space-y-4 p-4 rounded-lg">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm font-medium text-slate-600">Organizing workflow...</p>
+          </div>
+        </div>
+        
         <ReactFlow
           key={`flow-${forceRefreshKey}`}
           nodes={nodes}
@@ -251,11 +279,11 @@ export default function WorkflowCanvas() {
           onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
           fitViewOptions={{ 
-            padding: 0.2, 
+            padding: 0.4, 
             includeHiddenNodes: true,
-            minZoom: 0.5, 
+            minZoom: 0.4, 
             maxZoom: 1.0
           }}
           connectionLineType={ConnectionLineType.Bezier}
@@ -279,7 +307,10 @@ export default function WorkflowCanvas() {
             // Apply styles that were previously in workflow-styles.ts as CSS vars
             '--edge-stroke-width': '1px',
             '--edge-path-stroke': '#000000',
-            '--edge-curvature': '0.05'
+            '--edge-curvature': '0.05',
+            // Hide the workflow until layout is complete
+            opacity: layoutingComplete ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out'
           } as React.CSSProperties}
         >
           <WorkflowControls 

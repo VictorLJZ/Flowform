@@ -56,9 +56,7 @@ export async function saveWorkflowEdges(
         const rulesArray: Rule[] = connection.rules && Array.isArray(connection.rules) ? connection.rules : [];
         const rulesJson = JSON.stringify(rulesArray);
         
-        // Determine condition_type based on rules presence
-        const condition_type: 'always' | 'conditional' | 'fallback' = 
-          rulesArray.length > 0 ? 'conditional' : 'always';
+        // Note: condition_type was removed as it doesn't exist in the database schema
 
         return {
           id: connection.id,
@@ -66,8 +64,7 @@ export async function saveWorkflowEdges(
           source_block_id: connection.sourceId,
           default_target_id: connection.defaultTargetId, // This is now string | null, matching the global type
           rules: rulesJson,
-          order_index: connection.order_index || index,
-          condition_type: condition_type // ADDED condition_type
+          order_index: connection.order_index || index
           // created_at and updated_at will be handled by Supabase
         };
       });

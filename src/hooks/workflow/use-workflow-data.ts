@@ -71,65 +71,147 @@ export function useWorkflowData() {
     console.log(`🔎🔎 [WorkflowData] Converting ${connections.length} connections to ReactFlow edges`);
     
     if (connections.length > 0) {
-      console.log(`🔎🔎 [WorkflowData] Connections data sample (showing default targets):`,
-        connections.slice(0, 3).map(c => `${c.sourceId} -> ${c.defaultTargetId || 'N/A (no default)'} (Rules: ${c.rules?.length || 0})`));
+      console.log(`🔎🔎 [WorkflowData] Connections data sample:`,
+        connections.slice(0, 3).map(c => `${c.sourceId} -> ${c.defaultTargetId || 'N/A'} (Rules: ${c.rules?.length || 0})`));
       
       if (connections.length > 3) {
         console.log(`🔎… [WorkflowData] ...and ${connections.length - 3} more connections`);
       }
     }
     
-    // Validate that both source and target blocks exist for each connection's default path
-    const validConnections = connections.filter(connection => {
-      const sourceExists = blocks.some(block => block.id === connection.sourceId);
-      const defaultTargetBlockId = connection.defaultTargetId;
-      // A connection is considered valid for default path rendering if its defaultTargetId is set and the target block exists.
-      // Connections that only have rules (and no defaultTargetId) will be filtered out here for now,
-      // as this part of the code currently only renders default paths.
-      const targetExists = defaultTargetBlockId ? blocks.some(block => block.id === defaultTargetBlockId) : false;
-      
-      if (!sourceExists || !targetExists) {
-        // Updated error message to be more specific about defaultTargetId
-        console.error(`🚨🚨 [WorkflowData] Skipping invalid default connection ${connection.id}: ${connection.sourceId} -> ${defaultTargetBlockId || 'undefined (no defaultTargetId)'}. Source exists: ${sourceExists}, Target exists: ${targetExists}`);
-        return false;
-      }
-      // Ensure defaultTargetId is present for the edge to be created in the next step.
-      return !!defaultTargetBlockId;
-    });
+    // 1. Create a list to store all edges (default paths and rule-based paths)
+    const allEdges = [];
     
-    if (validConnections.length !== connections.length) {
-      const skippedCount = connections.length - validConnections.length;
-      console.warn(`⚠️⚠️ [WorkflowData] Filtered out ${skippedCount} connections. This may include connections that only have rules and no default target, or connections with invalid default targets.`);
+    // 2. Process each connection
+    for (const connection of connections) {
+      const sourceId = connection.sourceId;
+      const sourceExists = blocks.some(block => block.id === sourceId);
+      
+      if (!sourceExists) {
+        console.error(`🔴 [WorkflowData] Skipping connection ${connection.id} with invalid source: ${sourceId}`);
+        continue;
+      }
+      
+      // 3. First, create an edge for the default path if it exists
+      if (connection.defaultTargetId) {
+        const targetExists = blocks.some(block => block.id === connection.defaultTargetId);
+        
+        if (targetExists) {
+          // Create the default path edge
+          const defaultEdge = {
+            id: `${connection.id}-default`,
+            source: sourceId,
+            target: connection.defaultTargetId,
+            type: 'workflow',
+            selected: selectedElementId === connection.id,
+            data: { 
+              connection,
+              isDefaultPath: true
+            },
+            // Visual styling for default path
+            zIndex: selectedElementId === connection.id ? 10 : 5,
+            style: { 
+              strokeWidth: selectedElementId === connection.id ? 3 : 2,
+              stroke: '#000000' // Default color
+            }
+          };
+          
+          allEdges.push(defaultEdge);
+          console.log(`🔎✅ [WorkflowData] Created edge for default path: ${sourceId} -> ${connection.defaultTargetId}`);
+        } else {
+          console.error(`🔴 [WorkflowData] Skipping default path with invalid target: ${connection.defaultTargetId}`);
+        }
+      }
+      
+      // 4. Then, create edges for each rule target
+      if (connection.rules && connection.rules.length > 0) {
+        for (const rule of connection.rules) {
+          const targetBlockId = rule.target_block_id;
+          
+          if (!targetBlockId) {
+            console.warn(`⚠️ [WorkflowData] Rule ${rule.id} has no target block ID`);
+            continue;
+          }
+          
+          const targetExists = blocks.some(block => block.id === targetBlockId);
+          
+          if (targetExists) {
+            // Skip if this rule's target is the same as the default path
+            // (to avoid duplicate edges)
+            if (targetBlockId === connection.defaultTargetId) {
+              console.log(`🔎ℹ️ [WorkflowData] Rule ${rule.id} target matches default path, not creating duplicate edge`);
+              continue;
+            }
+            
+            // Generate a unique ID for the rule-based edge
+            const ruleEdgeId = `${connection.id}-rule-${rule.id}`;
+            
+            // Determine if the rule has actual conditions
+            const hasConditions = rule.condition_group && 
+                                 rule.condition_group.conditions && 
+                                 rule.condition_group.conditions.length > 0;
+            
+            // Get the condition operator (useful for styling)
+            const firstCondition = hasConditions ? rule.condition_group.conditions[0] : null;
+            const conditionOperator = firstCondition ? firstCondition.operator : null;
+            
+            // Create the rule-based edge
+            const ruleEdge = {
+              id: ruleEdgeId,
+              source: sourceId,
+              target: targetBlockId,
+              type: 'workflow',
+              selected: selectedElementId === ruleEdgeId,
+              data: { 
+                connection,
+                isRulePath: true,
+                rule,
+                hasConditions,
+                conditionOperator
+              },
+              // Visual styling for rule-based path - black like all paths
+              zIndex: selectedElementId === ruleEdgeId ? 10 : 4,
+              style: { 
+                strokeWidth: 1, // Consistent width for all paths
+                stroke: '#000000', // Black color for all paths
+                strokeDasharray: '0', // Always solid line
+              }
+            };
+            
+            allEdges.push(ruleEdge);
+            console.log(`🔎✅ [WorkflowData] Created edge for rule path: ${sourceId} -> ${targetBlockId} (rule ${rule.id})`);
+          } else {
+            console.error(`🔴 [WorkflowData] Skipping rule path with invalid target: ${targetBlockId}`);
+          }
+        }
+      }
     }
     
-    // Create edges from connections that have a valid defaultTargetId
-    const newEdges = validConnections.map(connection => {
-      // At this point, connection.defaultTargetId is guaranteed to be set due to the filter above.
-      const edge = {
-        id: connection.id, // For now, one connection object maps to one edge. This might change if rules are visualized.
-        source: connection.sourceId,
-        target: connection.defaultTargetId!, // Non-null assertion due to the filter
-        type: 'workflow',
-        selected: selectedElementId === connection.id,
-        data: { connection },
-        // Visual styling based on selection
-        zIndex: selectedElementId === connection.id ? 10 : 5,
-        style: { strokeWidth: selectedElementId === connection.id ? 3 : 2 }
-      };
-      
-      console.log(`🔎✅ [WorkflowData] Created edge for default path ${connection.id}: ${connection.sourceId} -> ${connection.defaultTargetId}`);
-      return edge;
-    });
+    console.log(`🔎📊 [WorkflowData] Setting ${allEdges.length} edges in ReactFlow`);
+    setEdges(allEdges);
     
-    console.log(`🔎📊 [WorkflowData] Setting ${newEdges.length} edges in ReactFlow`);
-    setEdges(newEdges);
-    
-    // Look for nodes that have no incoming or outgoing connections (based on defaultTargetId for incoming)
+    // 5. Check for orphaned nodes (now accounting for rule-based connections too)
     const orphanedNodes = blocks.filter(block => {
-      const hasOutgoing = connections.some(conn => conn.sourceId === block.id && conn.defaultTargetId); // Consider outgoing only if it has a default target
-      const hasIncoming = connections.some(conn => conn.defaultTargetId === block.id);
-      // Also consider rules for outgoing/incoming if visualizing rule-based edges in the future
-      return !hasOutgoing && !hasIncoming;
+      // Check default outgoing connections
+      const hasDefaultOutgoing = connections.some(conn => conn.sourceId === block.id && conn.defaultTargetId);
+      
+      // Check rule-based outgoing connections
+      const hasRuleOutgoing = connections.some(conn => 
+        conn.sourceId === block.id && 
+        conn.rules && 
+        conn.rules.some(rule => rule.target_block_id)
+      );
+      
+      // Check default incoming connections
+      const hasDefaultIncoming = connections.some(conn => conn.defaultTargetId === block.id);
+      
+      // Check rule-based incoming connections
+      const hasRuleIncoming = connections.some(conn => 
+        conn.rules && 
+        conn.rules.some(rule => rule.target_block_id === block.id)
+      );
+      
+      return !hasDefaultOutgoing && !hasRuleOutgoing && !hasDefaultIncoming && !hasRuleIncoming;
     });
     
     if (orphanedNodes.length > 0) {

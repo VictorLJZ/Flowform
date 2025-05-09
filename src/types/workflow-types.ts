@@ -2,6 +2,8 @@ import type { FormBlock } from './block-types';
 import type { LogicalOperator } from './workflow-condition-types';
 export type { LogicalOperator };
 
+export type ConditionOperator = 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than' | 'before' | 'after' | 'starts_with' | 'ends_with';
+
 export interface Rule {
   id: string;
   name?: string;
@@ -25,8 +27,9 @@ export interface Connection {
 export interface ConditionRule {
   id: string;
   field: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  operator: ConditionOperator;
   value: string | number | boolean;
+  logical_operator?: LogicalOperator; // Relationship to the NEXT condition
 }
 
 export interface NodePosition {
@@ -47,4 +50,9 @@ export interface WorkflowNodeData {
 
 export interface WorkflowEdgeData {
   connection: Connection;
+  isDefaultPath?: boolean;
+  isRulePath?: boolean;
+  rule?: Rule;
+  hasConditions?: boolean;
+  conditionOperator?: ConditionOperator | null;
 }

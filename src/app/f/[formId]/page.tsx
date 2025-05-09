@@ -41,6 +41,26 @@ export default function FormViewerPage() {
   const loadVersionedForm = useFormBuilderStore(state => state.loadVersionedForm);
   const setMode = useFormBuilderStore(state => state.setMode);
   
+  // Log connection details to help debug connection regeneration issues
+  useEffect(() => {
+    console.log('🔄🔍 [FORM_VIEWER] Connections before passing to navigation:', connections.map(c => ({
+      id: c.id,
+      sourceId: c.sourceId,
+      defaultTargetId: c.defaultTargetId,
+      rulesCount: c.rules?.length || 0,
+      hasRules: !!(c.rules && c.rules.length > 0)
+    })));
+    
+    // Look for connections with rules to verify they're intact
+    const connectionsWithRules = connections.filter(c => c.rules && c.rules.length > 0);
+    if (connectionsWithRules.length > 0) {
+      console.log(`🔄🔍 [FORM_VIEWER] Found ${connectionsWithRules.length} connections with rules:`, 
+        connectionsWithRules.map(c => `${c.id}: ${c.rules.length} rules`));
+    } else {
+      console.warn('⚠️ [FORM_VIEWER] No connections with rules found. This might indicate an issue with loading workflow logic.');
+    }
+  }, [connections]);
+  
   // Use workflow-based navigation instead of simple index navigation
   const { 
     currentIndex, 
@@ -57,14 +77,14 @@ export default function FormViewerPage() {
     initialBlockIndex: 0
   });
   
-  // Determine if this is the last question based on workflow logic
-  // A question is the last one if it has no outgoing connections
+  // Use the workflow navigation's built-in isLastQuestion property instead of calculating it manually
+  // This ensures we're using the same logic for determining the last question as the navigation system
   const isLastQuestion = useMemo(() => {
+    // For backwards compatibility, we still check for outgoing connections
+    // but rely on the workflow navigation's isLastQuestion property first
     if (!block) return false;
-    
-    // Check if there are any outgoing connections from this block
-    return !connections.some(conn => conn.sourceId === block.id);
-  }, [block, connections]);
+    return workflowIsComplete || !connections.some(conn => conn.sourceId === block.id);
+  }, [block, connections, workflowIsComplete]);
 
   // persistence key and saved answers
   const storageKey = `flowform-${formId}-session`

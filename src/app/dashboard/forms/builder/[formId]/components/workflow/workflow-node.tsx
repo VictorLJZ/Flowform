@@ -3,87 +3,14 @@
 
 import { memo, useState } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { 
-  FileText, 
-  MessageSquare, 
-  CheckSquare, 
-  List, 
-  Mail, 
-  Hash, 
-  Calendar,
-  User,
-  ArrowUpRight,
-  Bookmark,
-  Sparkles
-} from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkflowNodeData } from '@/types/workflow-types'
+import { BlockPill } from '../block-pill'
+import { getBlockTypeColors, iconMap } from '@/utils/block-utils'
 
-// Icon map to match the block registry
-const iconMap = {
-  // Input blocks
-  'short_text': FileText,
-  'long_text': FileText,
-  'email': Mail,
-  'number': Hash,
-  'date': Calendar,
-  
-  // Choice blocks
-  'multiple_choice': List,
-  'checkbox_group': CheckSquare,
-  'dropdown': List,
-  
-  // Advanced blocks
-  'ai_conversation': MessageSquare,
-  
-  // Integration blocks
-  'hubspot': User,
-  
-  // Layout blocks
-  'page_break': Bookmark,
-  'redirect': ArrowUpRight,
-  
-  // Fallback for dynamic content
-  'dynamic': Sparkles
-} as const
-
-// Category colors matching form-builder-block-selector.tsx
-const categoryColors: Record<string, { bg: string, text: string }> = {
-  "input": { bg: "#3b82f620", text: "#3b82f6" }, // Blue
-  "choice": { bg: "#8b5cf620", text: "#8b5cf6" }, // Purple
-  "advanced": { bg: "#22c55e20", text: "#22c55e" }, // Green
-  "integration": { bg: "#f9731620", text: "#f97316" }, // Orange
-  "layout": { bg: "#6366f120", text: "#6366f1" }, // Indigo
-  "recommended": { bg: "#f43f5e20", text: "#f43f5e" }, // Rose
-}
-
-// Function to get the appropriate color for a block type
-const getBlockTypeColors = (blockTypeId: string) => {
-  if (blockTypeId.includes('text') || blockTypeId.includes('email') || 
-      blockTypeId.includes('number') || blockTypeId.includes('date')) {
-    return categoryColors.input;
-  }
-  
-  if (blockTypeId.includes('multiple_choice') || blockTypeId.includes('checkbox') || 
-      blockTypeId.includes('dropdown')) {
-    return categoryColors.choice;
-  }
-  
-  if (blockTypeId.includes('ai_conversation')) {
-    return categoryColors.advanced;
-  }
-  
-  if (blockTypeId.includes('hubspot')) {
-    return categoryColors.integration;
-  }
-  
-  if (blockTypeId.includes('page_break') || blockTypeId.includes('redirect')) {
-    return categoryColors.layout;
-  }
-  
-  // Default to input color if no match
-  return categoryColors.input;
-}
+// Export these for backwards compatibility if needed
+export { getBlockTypeColors, iconMap }
 
 const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
   const { block, isConnectionTarget } = data
@@ -97,16 +24,20 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
   return (
     <div 
       className={cn(
-        "p-4 rounded-md border shadow-sm bg-white",
-        "min-w-[240px] h-[80px]", // Increased dimensions for better visibility
+        "rounded-md border shadow-sm bg-white",
+        "min-w-[240px] h-[80px]", // Dimensions with reduced vertical padding
         "relative",
-        "flex items-center", // Center content vertically
+        "flex", // Keep it as flex but don't force center
         isConnectionTarget && "ring-1 ring-green-500 ring-opacity-50",
         isHovered && "shadow-sm" // Add shadow on hover
       )}
       style={{ 
         willChange: 'transform', // Hardware acceleration for dragging
-        transform: 'translateZ(0)' 
+        transform: 'translateZ(0)',
+        padding: '10px 16px', // Set padding directly in inline styles
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -167,39 +98,18 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
       </div>
       
       {/* Block content */}
-      <div className="flex gap-3 items-center w-full">
-        <div className="flex-shrink-0 flex items-center">
-          <div
-            className={cn(
-              "rounded-full flex items-center justify-between h-6 px-2 w-11"
-            )}
-            style={selected ? 
-              { backgroundColor: "#fef3c7", color: "#b45309" } : 
-              { backgroundColor: `${blockColors.bg}`, color: blockColors.text }
-            }
-          >
-            <span className="font-medium text-xs">{block.order_index + 1}</span>
-            <Icon size={16} />
-          </div>
-        </div>
-        <div className="flex-1 overflow-hidden">
+      <div className="flex gap-3 items-center w-full my-auto" style={{ height: '100%' }}>
+        <BlockPill 
+          block={block} 
+          selected={selected} 
+        />
+        <div className="flex-1 overflow-hidden flex flex-col justify-center" style={{ height: '100%' }}>
           <h4 className={cn(
             "font-medium text-sm truncate",
             selected && "text-amber-800"
           )}>
             {block.title || 'Untitled Block'}
           </h4>
-          {block.description && (
-            <p className="text-xs text-muted-foreground truncate">
-              {block.description}
-            </p>
-          )}
-          {/* If no description, add an empty element with same height to maintain consistency */}
-          {!block.description && (
-            <p className="text-xs text-muted-foreground truncate h-[16px]">
-              &nbsp;
-            </p>
-          )}
         </div>
       </div>
 
