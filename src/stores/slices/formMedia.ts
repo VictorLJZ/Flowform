@@ -5,6 +5,7 @@ import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormMediaSlice } from '@/types/form-store-slices-types-media'
 import { MediaAsset, mockMediaAssets } from '@/types/media-types'
+import { deleteMediaAsset as deleteMediaAssetService } from '@/services/media-service'
 
 export const createFormMediaSlice: StateCreator<
   FormBuilderState,
@@ -105,6 +106,35 @@ export const createFormMediaSlice: StateCreator<
         }));
         
         return [];
+      }
+    },
+    
+    deleteMediaAsset: async (mediaId: string) => {
+      const asset = get().getMediaAssetByMediaId(mediaId);
+      
+      if (!asset) {
+        console.error('Media asset not found:', mediaId);
+        return false;
+      }
+      
+      // First, remove from the store
+      set(
+        produce((state) => {
+          delete state.mediaAssets[asset.id];
+          // If the deleted asset was selected, clear selection
+          if (state.selectedMediaId === mediaId) {
+            state.selectedMediaId = null;
+          }
+        })
+      );
+      
+      // Then, delete from Cloudinary
+      try {
+        const success = await deleteMediaAssetService(mediaId);
+        return success;
+      } catch (error) {
+        console.error('Error deleting media asset:', error);
+        return false;
       }
     }
   };

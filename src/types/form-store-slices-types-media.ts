@@ -24,4 +24,5 @@ export interface FormMediaSlice {
   getMediaAssetById: (id: string) => MediaAsset | undefined;
   getMediaAssetByMediaId: (mediaId: string) => MediaAsset | undefined;
   loadMediaAssets: () => Promise<MediaAsset[]>;
+  deleteMediaAsset: (mediaId: string) => Promise<boolean>;
 }

@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { Check, ImageIcon, VideoIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getCloudinaryUrl } from '@/lib/cloudinary-client'
+import { MediaItemMenu } from './MediaItemMenu'
 
 interface MediaBrowserProps {
   onSelect: (mediaId: string) => void
@@ -70,6 +71,9 @@ export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
                     </div>
                   </div>
                 )}
+                
+                {/* Media item menu for actions like delete */}
+                <MediaItemMenu mediaId={asset.mediaId} />
                 
                 {/* Selection indicator */}
                 {isSelected && (
