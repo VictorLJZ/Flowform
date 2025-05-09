@@ -7,16 +7,18 @@ import { Connection } from '@/types/workflow-types';
 import { defaultFormTheme } from '@/types/theme-types';
 import { defaultFormData } from '@/stores/slices/formCore';
 import { v4 as uuidv4 } from 'uuid';
+import { CompleteForm } from '@/types/supabase-types';
+import { CustomFormData } from '@/types/form-builder-types';
 
 /**
  * Format form data with defaults
  * Keeping UI formatting consistent between regular and versioned forms
  */
-function formatFormData(formData: any) {
+function formatFormData(formData: CompleteForm): CustomFormData {
   return {
     form_id: formData.form_id,
     title: formData.title || 'Untitled Form',
-    description: formData.description || '',
+    description: formData.description || undefined, // Use undefined instead of empty string to match FormData type
     workspace_id: formData.workspace_id,
     created_by: formData.created_by,
     status: formData.status || 'published',
@@ -58,14 +60,12 @@ function createDefaultConnections(blocks: FormBlock[]): Connection[] {
 }
 
 /**
- * Loads a published version of a form with full support for workflows
- * Enhances the existing getVersionedFormWithBlocksClient with complete workflow and rule support
- * 
+ * Load a complete versioned form with all its components
  * @param formId The ID of the form to load
  * @returns An object containing formData, blocks, connections, and nodePositions
  */
 export async function loadVersionedFormComplete(formId: string): Promise<{
-  formData: any;
+  formData: CustomFormData;
   blocks: FormBlock[];
   connections: Connection[];
   nodePositions: Record<string, {x: number, y: number}>;
@@ -78,7 +78,10 @@ export async function loadVersionedFormComplete(formId: string): Promise<{
   }
 
   // Use the helper function to transform the form data with proper typing
-  let { blocks, connections, nodePositions } = transformVersionedFormData(result);
+  const { blocks, connections: initialConnections, nodePositions } = transformVersionedFormData(result);
+  
+  // Initialize connections variable that will be modified
+  let connections = initialConnections;
   
   // Apply connection validation to ensure all blocks exist
   connections = validateConnections(connections, blocks);

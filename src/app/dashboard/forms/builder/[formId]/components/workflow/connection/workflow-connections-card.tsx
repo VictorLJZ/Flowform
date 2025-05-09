@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { v4 as uuidv4 } from 'uuid'
-import { Connection, LogicalOperator } from '@/types/workflow-types'
+import { Connection } from '@/types/workflow-types'
 import { BlockPill } from '../../block-pill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -19,7 +19,7 @@ interface WorkflowConnectionsCardProps {
 export default function WorkflowConnectionsCard({ blockId }: WorkflowConnectionsCardProps) {
   // State and hooks
   const blocks = useFormBuilderStore(state => state.blocks)
-  const connections = useFormBuilderStore(state => state.connections)
+  // const connections = useFormBuilderStore(state => state.connections) // Not currently used
   const saveForm = useFormBuilderStore(state => state.saveForm)
   const addConnection = useFormBuilderStore(state => state.addConnection)
   const edges = useEdges()
@@ -144,8 +144,9 @@ export default function WorkflowConnectionsCard({ blockId }: WorkflowConnections
                       onClick={() => {
                         // Create a new connection
                         if (targetBlockId && block) {
-                          const newRuleId = uuidv4();
-                          const newConditionId = uuidv4();
+                          // These IDs are not currently used in this function
+                          // const newRuleId = uuidv4();
+                          // const newConditionId = uuidv4();
 
                           const newConnection: Connection = {
                             id: uuidv4(),

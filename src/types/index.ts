@@ -1,6 +1,9 @@
 // Export all type definitions from their respective files
 // This provides a centralized import point for all type definitions
 
+// Common types
+export * from './common-types';
+
 // AI types
 export * from './ai-types';
 

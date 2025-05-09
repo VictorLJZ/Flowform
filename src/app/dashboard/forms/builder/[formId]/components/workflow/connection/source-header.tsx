@@ -12,7 +12,7 @@ interface SourceHeaderProps {
 /**
  * Displays information about the source block of a connection
  */
-export function SourceHeader({ connectionId, sourceId }: SourceHeaderProps) {
+export function SourceHeader({ sourceId }: SourceHeaderProps) {
   const blocks = useFormBuilderStore(state => state.blocks)
   
   // Find the source block
@@ -33,7 +33,7 @@ export function SourceHeader({ connectionId, sourceId }: SourceHeaderProps) {
     <div>
       <div className="flex items-center space-x-2">
         <BlockPill block={sourceBlock} />
-        <span className="font-medium">"{sourceBlock.title || 'Untitled Block'}"</span>
+        <span className="font-medium">&quot;{sourceBlock.title || 'Untitled Block'}&quot;</span>
       </div>
     </div>
   )

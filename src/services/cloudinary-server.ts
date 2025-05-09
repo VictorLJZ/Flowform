@@ -3,15 +3,37 @@
  * IMPORTANT: This file should only be imported in server components or API routes
  */
 
-import { v2 as cloudinary } from 'cloudinary';
+// Use dynamic import for better compatibility with Next.js
+import type { v2 as CloudinaryType } from 'cloudinary';
 
-// Configure Cloudinary with credentials from environment variables
-if (!cloudinary.config().cloud_name) {
-  cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
+// Initialize Cloudinary with a dynamic import
+// This avoids the 'Module not found' error during build time
+let cloudinaryModule: { v2: typeof CloudinaryType } | null = null;
+
+// Helper function to initialize and get the cloudinary instance
+async function getCloudinary(): Promise<typeof CloudinaryType> {
+  if (!cloudinaryModule) {
+    try {
+      // Dynamic import happens at runtime, not build time
+      cloudinaryModule = await import('cloudinary');
+    } catch (error) {
+      console.error('Failed to load Cloudinary module:', error);
+      throw new Error('Failed to initialize Cloudinary');
+    }
+  }
+
+  const cloudinary = cloudinaryModule.v2;
+  
+  // Configure if not already configured
+  if (!cloudinary.config().cloud_name) {
+    cloudinary.config({
+      cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+  
+  return cloudinary;
 }
 
 // Create upload preset if it doesn't exist
@@ -26,11 +48,14 @@ export async function createUploadPreset() {
     }
     
     try {
+      // Get the initialized cloudinary instance
+      const cloudinary = await getCloudinary();
+      
       // Check if preset already exists
       const presets = await cloudinary.api.upload_presets();
       
       const presetExists = presets.presets.some(
-        (preset: any) => preset.name === presetName
+        (preset: Record<string, unknown>) => preset.name === presetName
       );
       
       if (!presetExists) {
@@ -67,6 +92,9 @@ export async function createUploadPreset() {
 // List media assets
 export async function listMediaAssets() {
   try {
+    // Get the initialized cloudinary instance
+    const cloudinary = await getCloudinary();
+    
     // Fetch media assets from Cloudinary
     const result = await cloudinary.search
       .expression('folder:flowform_media')
@@ -81,4 +109,5 @@ export async function listMediaAssets() {
   }
 }
 
-export { cloudinary };
+// Export the getCloudinary function instead of the cloudinary instance
+export { getCloudinary };

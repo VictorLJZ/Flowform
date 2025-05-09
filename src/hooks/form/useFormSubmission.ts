@@ -161,7 +161,7 @@ export const useFormSubmission = ({
     }
 
     // Helper function to check if the answer is empty
-    const isEmptyAnswer = (ans: any): boolean => {
+    const isEmptyAnswer = (ans: unknown): boolean => {
       if (ans === undefined || ans === null) return true;
       if (typeof ans === 'string') return ans.trim() === '';
       if (Array.isArray(ans)) return ans.length === 0;

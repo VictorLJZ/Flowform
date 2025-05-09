@@ -1,7 +1,7 @@
 import { FormBlock } from '@/types/block-types';
 import { BlockChoiceOption, operatorLabels } from '@/types/workflow-condition-types';
 import { Edge } from 'reactflow';
-import { Connection, Rule, ConditionRule, ConditionGroup, WorkflowEdgeData } from '@/types/workflow-types';
+import { Connection, ConditionRule, WorkflowEdgeData } from '@/types/workflow-types';
 
 // Function to get human-readable field name
 export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): string => {
@@ -32,8 +32,7 @@ export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): s
 // Renamed from getSingleConditionSummary and adjusted for ConditionRule type
 const summarizeConditionRule = (
   conditionRule: ConditionRule, 
-  sourceBlock: FormBlock | null | undefined, 
-  sourceBlockType: string
+  sourceBlock: FormBlock | null | undefined
 ): string => {
   if (!conditionRule) return 'Invalid condition';
   const fieldName = getFieldName(conditionRule.field, sourceBlock);
@@ -47,8 +46,7 @@ const summarizeConditionRule = (
 // Get a summary of the current condition in plain language
 export const getConditionSummary = (
   connectionData: Connection | Edge<WorkflowEdgeData>, 
-  sourceBlock: FormBlock | null | undefined, 
-  sourceBlockType: string
+  sourceBlock: FormBlock | null | undefined
 ): string => {
   const isEdge = (data: Connection | Edge<WorkflowEdgeData>): data is Edge<WorkflowEdgeData> => {
     return 'data' in data && data.data !== undefined;
@@ -70,7 +68,7 @@ export const getConditionSummary = (
       return `Always proceed to rule's target`; 
     }
     const groupSummary = rule.condition_group.conditions
-      .map(cr => summarizeConditionRule(cr, sourceBlock, sourceBlockType))
+      .map(cr => summarizeConditionRule(cr, sourceBlock))
       .join(` ${rule.condition_group.logical_operator} `);
     return `If ${groupSummary}, proceed to rule's target`; 
   }

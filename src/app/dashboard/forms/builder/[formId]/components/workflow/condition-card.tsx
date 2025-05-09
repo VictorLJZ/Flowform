@@ -5,8 +5,8 @@ import { Edge } from 'reactflow';
 import { WorkflowEdgeData, Connection, ConditionRule } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Info, Plus, Trash2, ArrowRight, Check } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Info, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,7 +34,7 @@ export function ConditionCard({
   sourceBlockType,
   onConditionTypeChange,
   onConditionChange,
-  onAddCondition,
+  // onAddCondition, // Not currently used
   onRemoveCondition, 
   currentConnection,
   onTargetChange
@@ -43,31 +43,44 @@ export function ConditionCard({
   const updateConnectionTarget = useFormBuilderStore(state => state.updateConnectionTarget);
   
   const connection = currentConnection || element?.data?.connection;
-  if (!connection) return null;
-
-  const targetBlock = useMemo(() => blocks.find(b => b.id === connection.defaultTargetId), [blocks, connection.defaultTargetId]);
   
+  // Move all hooks to the top level - before any conditional returns
+  // Use null/empty defaults for cases where connection might be null
   const [targetSelectOpen, setTargetSelectOpen] = useState(false);
-
+  
+  // const defaultTargetId = connection?.defaultTargetId || ''; // Not currently used
+  // Not currently using targetBlock, but keeping the variable for future use
+  // const targetBlock = useMemo(() => 
+  //   connection ? blocks.find(b => b.id === defaultTargetId) : null, 
+  //   [blocks, defaultTargetId, connection]
+  // );
+  
+  // Wrap connectionRules in useMemo to avoid re-creating on every render
+  const connectionRules = useMemo(() => connection?.rules || [], [connection?.rules]);
   const isActuallyConditional = useMemo(() => 
-    !!(connection.rules && 
-       connection.rules.length > 0 && 
-       connection.rules[0].condition_group && 
-       connection.rules[0].condition_group.conditions.length > 0),
-    [connection.rules]
-  );
-  const conditionTypeForDisplay = isActuallyConditional ? 'conditional' : 'always';
-
-  const allConditions: ConditionRule[] = useMemo(() => 
-    connection.rules?.[0]?.condition_group?.conditions || [], 
-    [connection.rules]
+    !!(connectionRules && 
+       connectionRules.length > 0 && 
+       connectionRules[0].condition_group && 
+       connectionRules[0].condition_group.conditions.length > 0),
+    [connectionRules]
   );
   
-  const potentialTargets = useMemo(() => 
-    blocks.filter(block => block.id !== sourceBlock?.id)
-          .sort((a, b) => a.order_index - b.order_index),
-    [blocks, sourceBlock?.id]
+  const allConditions: ConditionRule[] = useMemo(() => 
+    connectionRules?.[0]?.condition_group?.conditions || [], 
+    [connectionRules]
   );
+  
+  const sourceBlockId = sourceBlock?.id || '';
+  const potentialTargets = useMemo(() => 
+    blocks.filter(block => block.id !== sourceBlockId)
+          .sort((a, b) => a.order_index - b.order_index),
+    [blocks, sourceBlockId]
+  );
+  
+  // Return null after all hooks have been called
+  if (!connection) return null;
+  
+  const conditionTypeForDisplay = isActuallyConditional ? 'conditional' : 'always';
   
   const handleTargetChange = (newTargetId: string) => {
     if (!connection) return;
@@ -213,7 +226,7 @@ export function ConditionCard({
               <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 py-2 px-3">
                 <AlertCircle className="h-4 w-4 text-yellow-500" />
                 <AlertDescription className="text-xs">
-                  This rule is currently set to conditional but has no conditions. It will effectively act as 'always'. Add conditions below or set to 'Always'.
+                  This rule is currently set to conditional but has no conditions. It will effectively act as &apos;always&apos;. Add conditions below or set to &apos;Always&apos;.
                 </AlertDescription>
               </Alert>
             )}

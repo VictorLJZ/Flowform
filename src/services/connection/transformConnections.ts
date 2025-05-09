@@ -1,13 +1,11 @@
-import { FormBlock } from '@/types/block-types';
-import { Connection, Rule } from '@/types/workflow-types';
+import { Connection, Rule, DbWorkflowEdgeWithOldConditions } from '@/types/workflow-types';
 
 /**
  * Transform connection data from database format to application format
  * Extracts and parses rules from database connections
  */
 export function transformConnections(
-  edges: any[],
-  blocks: FormBlock[]
+  edges: DbWorkflowEdgeWithOldConditions[]
 ): Connection[] {
   if (!edges || !Array.isArray(edges) || edges.length === 0) {
     return [];
@@ -61,7 +59,7 @@ export function transformConnections(
     return {
       id: edge.id,
       sourceId: edge.source_block_id,
-      defaultTargetId: edge.default_target_id,
+      defaultTargetId: edge.default_target_id || null, // Ensure it's never undefined
       order_index: edge.order_index ?? index, // Default to index if order_index is null
       rules // Assign the parsed or default empty rules array
     };

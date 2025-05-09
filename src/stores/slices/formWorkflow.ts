@@ -3,7 +3,7 @@
 import { StateCreator } from 'zustand'
 import type { FormWorkflowSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
-import type { Connection, Rule } from '@/types/workflow-types'
+import type { Connection } from '@/types/workflow-types'
 import type { Node, Edge } from 'reactflow'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -88,7 +88,7 @@ export const createFormWorkflowSlice: StateCreator<
   updateConnectionTarget: (connectionId: string, newTargetId: string) => {
     // Get current state
     const state = get();
-    const { connections, blocks } = state;
+    const { connections } = state;
     
     // Find the connection to update
     const connectionToUpdate = connections.find(conn => conn.id === connectionId);
@@ -97,8 +97,7 @@ export const createFormWorkflowSlice: StateCreator<
       return false;
     }
     
-    // Get the current source and target
-    const sourceId = connectionToUpdate.sourceId;
+    // Get the current target
     const oldTargetId = connectionToUpdate.defaultTargetId;
     
     // Create a preview of the new connections state after the update

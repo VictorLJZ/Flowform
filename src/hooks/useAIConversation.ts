@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { SaveDynamicResponseInput, DynamicResponseData } from '@/types/form-service-types'
-import { QAPair } from '@/types/supabase-types'
 
 const CONVERSATION_KEY_PREFIX = 'conversation'
 

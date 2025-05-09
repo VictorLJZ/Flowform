@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection, ConditionRule, Rule } from '@/types/workflow-types';
+import type { Connection, Rule, ConditionOperator, DbWorkflowEdgeWithOldConditions } from '@/types/workflow-types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -19,12 +19,14 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
   
   try {
     // Fetch edges from the database
-    const { data: edges, error } = await supabase
+    const { data: edgesData, error } = await supabase
       .from('workflow_edges')
       .select('*')
       .eq('form_id', formId)
       .order('order_index', { ascending: true });
-      
+    
+    const edges = edgesData as DbWorkflowEdgeWithOldConditions[] | null;
+
     if (error) {
       console.error('[getWorkflowEdges] Error fetching workflow edges:', error);
       return [];
@@ -52,9 +54,9 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
               conditions: [
                 {
                   id: edge.condition_id || uuidv4(), // Condition gets its own ID
-                  field: edge.condition_field,
-                  operator: edge.condition_operator as 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than',
-                  value: edge.condition_value
+                  field: edge.condition_field!, // Assert non-null as it's checked in the if condition
+                  operator: edge.condition_operator! as ConditionOperator, // Assert non-null and cast
+                  value: edge.condition_value! // Assert non-null
                 }
               ]
             }
@@ -81,4 +83,6 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
     console.error('[getWorkflowEdges] Error:', error);
     return [];
   }
-} 
+}
+
+// Note: The DbWorkflowEdgeWithOldConditions interface is now defined in workflow-types.ts

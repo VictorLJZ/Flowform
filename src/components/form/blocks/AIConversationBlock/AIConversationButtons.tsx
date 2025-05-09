@@ -9,7 +9,7 @@ import { AIConversationButtonsProps } from './types';
 export function AIConversationButtons({
   effectiveIsComplete,
   isEditingQuestion,
-  isInitialState,
+  // isInitialState, // Not currently used
   handleNext,
   handleSubmit,
   isNextDisabled,
@@ -20,7 +20,7 @@ export function AIConversationButtons({
   onPrevious,
   activeQuestionIndex,
   setActiveQuestionIndex,
-  conversation
+  // conversation // Not currently used
 }: AIConversationButtonsProps) {
   // Enhanced handler for navigating to previous question or previous form block
   const handlePrevious = () => {
@@ -40,8 +40,8 @@ export function AIConversationButtons({
 
   // Determine if we can go to a previous question
   const hasPreviousQuestion = activeQuestionIndex > 0;
-  // Determine if we should show the back button
-  const shouldShowBackButton = hasPreviousQuestion || onPrevious;
+  // Determine if we should show the back button - using isStartQuestion instead
+  // const shouldShowBackButton = hasPreviousQuestion || onPrevious;
   // Whether this is the start question
   const isStartQuestion = activeQuestionIndex === 0;
 

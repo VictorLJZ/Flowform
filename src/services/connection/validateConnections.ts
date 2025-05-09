@@ -1,5 +1,5 @@
 import { FormBlock } from '@/types/block-types';
-import { Connection, Rule } from '@/types/workflow-types';
+import { Connection } from '@/types/workflow-types';
 
 /**
  * Validate connections by ensuring they reference existing blocks

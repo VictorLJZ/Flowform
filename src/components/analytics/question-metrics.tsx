@@ -148,7 +148,7 @@ function EmptyState() {
         <FileQuestionIcon className="h-8 w-8 text-muted-foreground mb-4" />
         <h3 className="text-sm font-medium">No question data available</h3>
         <p className="text-xs text-muted-foreground mt-1 max-w-md">
-          When people start viewing and responding to your form, you'll see metrics for each question here.
+          When people start viewing and responding to your form, you&apos;ll see metrics for each question here.
         </p>
       </div>
     </div>

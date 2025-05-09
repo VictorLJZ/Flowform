@@ -31,8 +31,8 @@ export default function FormBuilderContent() {
     setBlockSelectorOpen,
     viewportMode,
     setViewportMode,
-    loadMediaAssets,
-    isLoadingMedia
+    loadMediaAssets
+    // isLoadingMedia - Not currently used
   } = useFormBuilderStore()
   
   // Load media assets from Cloudinary when the component initializes

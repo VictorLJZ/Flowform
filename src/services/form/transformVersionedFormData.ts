@@ -1,7 +1,6 @@
 import { CompleteForm } from '@/types/supabase-types';
 import { FormBlock, BlockType } from '@/types/block-types';
-import { Connection, Rule, ConditionRule } from '@/types/workflow-types';
-import { v4 as uuidv4 } from 'uuid';
+import { Connection, Rule } from '@/types/workflow-types';
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
 
 /**
@@ -47,7 +46,7 @@ export function transformVersionedFormData(formData: CompleteForm): {
           const rulesFromEdge = JSON.parse(edge.rules);
           if (Array.isArray(rulesFromEdge)) {
             parsedRules = rulesFromEdge.filter(
-              (r: any) => r.id && r.target_block_id && r.condition_group
+              (r: Partial<Rule>) => r.id && r.target_block_id && r.condition_group
             ) as Rule[]; 
           } else {
             console.warn(`Parsed edge.rules for edge ${edge.id} is not an array:`, rulesFromEdge);

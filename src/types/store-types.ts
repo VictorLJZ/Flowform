@@ -5,7 +5,7 @@
  */
 import type { FormBlock } from './block-types';
 import type { SlideLayout } from './layout-types';
-import type { FormData } from './form-builder-types';
+import type { CustomFormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
 import type {
   FormCoreSlice,
@@ -62,7 +62,7 @@ export interface FormBuilderState extends
   // They're never actually used at runtime since the slices provide the actual implementation
   __blockType?: FormBlock;
   __layoutType?: SlideLayout;
-  __formDataType?: FormData;
+  __formDataType?: CustomFormData;
   __connectionType?: Connection;
 }
 

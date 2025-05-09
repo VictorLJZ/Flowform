@@ -66,9 +66,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Continue anyway, we'll use default values for metrics
     }
     
+    // Define a proper interface for the block metrics
+    interface BlockMetric {
+      block_id?: string;
+      views: number;
+      submissions: number;
+      skips: number;
+      average_time_seconds: number;
+      drop_off_count: number;
+      drop_off_rate: number;
+    }
+    
     // Create a map of block metrics for easy lookup
-    const metricsMap: Record<string, any> = {};
-    (blockMetrics || []).forEach(metric => {
+    const metricsMap: Record<string, BlockMetric> = {};
+    (blockMetrics || []).forEach((metric: BlockMetric) => {
       if (metric.block_id) {
         metricsMap[metric.block_id] = metric;
       }

@@ -6,9 +6,10 @@
  */
 
 import type { FormBlock } from './block-types';
-import type { SlideLayout, ViewportLayouts } from './layout-types';
-import type { FormData } from './form-builder-types';
+import type { SlideLayout } from './layout-types';
+import type { CustomFormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
+import type { JsonObject } from './common-types';
 import type { BlockPresentation, FormTheme } from './theme-types';
 import type { Node, Edge } from 'reactflow';
 
@@ -20,13 +21,13 @@ export type { Connection };
  * Manages the basic form metadata and settings
  */
 export interface FormCoreSlice {
-  formData: FormData;
+  formData: CustomFormData;
   isLoading: boolean;
   isSaving: boolean;
   mode: 'builder' | 'viewer';
   
   // Actions
-  setFormData: (data: Partial<FormData>) => void;
+  setFormData: (data: Partial<CustomFormData>) => void;
   setMode: (mode: 'builder' | 'viewer') => void;
 }
 
@@ -145,9 +146,9 @@ export interface FormPersistenceSlice {
   saveForm: () => Promise<void>;
   
   // Individual save functions for different concerns
-  saveFormAndBlocks: () => Promise<{ result: any, isExistingForm: boolean } | null>;
+  saveFormAndBlocks: () => Promise<{ result: JsonObject, isExistingForm: boolean } | null>;
   saveWorkflowEdges: (formId: string) => Promise<boolean>;
-  saveDynamicBlockConfigs: (result: any) => Promise<void>;
+  saveDynamicBlockConfigs: (result: JsonObject) => Promise<void>;
   
   // Load functions
   loadForm: (formId: string) => Promise<void>;

@@ -69,7 +69,6 @@ export default function FormViewerPage() {
     goToPrevious,
     submitAnswer: workflowSubmitAnswer,
     currentBlock: block,
-    setCurrentAnswer: workflowSetCurrentAnswer,
     isComplete: workflowIsComplete
   } = useFormWorkflowNavigation({
     blocks,
@@ -155,7 +154,7 @@ export default function FormViewerPage() {
     responseId,
     currentBlockId,
     completed,
-    analytics, 
+    analytics,
   });
 
   // Type aliases for analytics data shapes used in useEffect
@@ -393,8 +392,7 @@ export default function FormViewerPage() {
         console.log('[DEBUG][handleSubmit] API submission successful, now handling workflow navigation');
         
         // Then use workflow navigation to determine the next block
-        // Type casting the answer to ensure compatibility with the workflow navigation
-        workflowSubmitAnswer(answerToSubmit as any);
+        workflowSubmitAnswer(answerToSubmit);
         
         console.log('[DEBUG][handleSubmit] Workflow navigation completed');
       } catch (error) {
@@ -468,7 +466,7 @@ export default function FormViewerPage() {
                     
                     // Then use workflow navigation
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling workflowSubmitAnswer...');
-                    workflowSubmitAnswer(answer as any);
+                    workflowSubmitAnswer(answer);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Workflow navigation completed');
                   } catch (error) {
                     console.error('DEBUG_BLOCK_RENDERER_SUBMIT: Error during submission:', error);

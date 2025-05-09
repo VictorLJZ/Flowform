@@ -22,7 +22,7 @@ export function useQuestionMetrics(formId: string | null) {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (e) {
+        } catch {
           // Ignore json parsing error
         }
         console.error('[useQuestionMetrics] API error:', errorMessage);

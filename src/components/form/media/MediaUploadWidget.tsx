@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { PlusCircle, Upload } from 'lucide-react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { MediaAsset } from '@/types/media-types'
+import { CloudinaryWidgetOptions, CloudinaryWidgetResult } from '@/types/common-types'
 import { v4 as uuidv4 } from 'uuid'
 import Script from 'next/script'
 
@@ -15,7 +16,7 @@ interface MediaUploadWidgetProps {
 declare global {
   interface Window {
     cloudinary?: {
-      createUploadWidget: (options: any, callback: (error: any, result: any) => void) => {
+      createUploadWidget: (options: CloudinaryWidgetOptions, callback: (error: Error | null, result: CloudinaryWidgetResult) => void) => {
         open: () => void;
         close: () => void;
       };
@@ -88,10 +89,10 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
           }
         }
       },
-      (error: any, result: any) => {
+      (error: Error | null, result: CloudinaryWidgetResult) => {
         setIsLoading(false)
-        if (!error && result && result.event === 'success') {
-          const { info } = result
+        if (!error && result && result.event === 'success' && result.info) {
+          const info = result.info
           
           // Create a new media asset with the uploaded file info
           const newAsset: MediaAsset = {

@@ -16,14 +16,13 @@ import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useForm } from "@/hooks/useForm"
 import { usePublishForm } from "@/hooks/usePublishForm"
 import { getBlockDefinition } from "@/registry/blockRegistry"
-import { mapFromDbBlockType } from '@/utils/blockTypeMapping'
-import { BlockType } from '@/types/block-types'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-import { FormData } from "@/types/form-builder-types"
+import { CustomFormData } from "@/types/form-builder-types"
 import { FormTheme, defaultFormTheme } from "@/types/theme-types"
+import { FormBlock } from '@/types/supabase-types';
 import FormBuilderSidebar from "./components/form-builder-sidebar"
 import FormBuilderContent from "./components/form-builder-content"
 import FormBuilderSettings from "./components/form-builder-settings"
@@ -82,7 +81,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
     return () => {
       if (saveTimer) clearTimeout(saveTimer);
     };
-  }, [viewMode, saveForm, connections.length]); // Include connections.length since it's used in the effect
+  }, [viewMode, saveForm, connections.length, formId]); // Include connections.length since it's used in the effect
   
   // Load form data from API
   useEffect(() => {
@@ -114,36 +113,31 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         created_by: form.created_by,
         status: form.status || 'draft',
         published_at: form.published_at || undefined,
-        settings: form.settings as FormData['settings'],
+        settings: form.settings as CustomFormData['settings'],
         theme: ensureValidTheme(form.theme),
       })
       
-      // Transform blocks from API to our internal format
-      if (form.blocks && Array.isArray(form.blocks)) {
-        // Transform blocks from API format to our internal format
-        const transformedBlocks = form.blocks.map((block, index) => {
-          // Map database types to our frontend types
-          const blockTypeId = mapFromDbBlockType(block.type || 'static', block.subtype || 'short_text');
-          const blockDef = getBlockDefinition(blockTypeId);
-          
-          return {
-            id: block.id,
-            blockTypeId,
-            type: block.type as BlockType,
-            title: block.title || blockDef?.defaultTitle || '',
-            description: block.description || '',
-            required: !!block.required,
-            order_index: block.order_index || index,
-            settings: block.settings || {}
-          }
-        })
-        
-        setBlocks(transformedBlocks)
-        
-        // Set the first block as current
-        if (transformedBlocks.length > 0) {
-          setCurrentBlockId(transformedBlocks[0].id)
-        }
+      // Transform blocks from DB format to application format
+      // Default to an empty array if form.blocks is null or undefined
+      const parsedBlocks = (form.blocks || []).map((block: FormBlock) => {
+        const blockDef = getBlockDefinition(block.type); // block.type is already the granular BlockType enum
+        return {
+          id: block.id,
+          blockTypeId: block.type, // Add blockTypeId, which is the same as block.type (BlockType enum)
+          type: block.type, // Retain for clarity or if used elsewhere with this exact name
+          title: block.title || blockDef?.defaultTitle || '',
+          description: block.description || undefined, // Ensure undefined instead of null
+          required: block.required, // Already boolean
+          order_index: block.order_index, // Already number
+          settings: block.settings || {},
+        };
+      });
+      
+      setBlocks(parsedBlocks)
+      
+      // Set the first block as current
+      if (parsedBlocks.length > 0) {
+        setCurrentBlockId(parsedBlocks[0].id)
       }
       
       // Process workflow connections from API response
@@ -159,7 +153,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
               if (Array.isArray(rulesFromEdge)) {
                 // Basic validation: check if objects have essential Rule properties
                 parsedRules = rulesFromEdge.filter(
-                  (r: any) => r.id && r.target_block_id && r.condition_group
+                  (r: Partial<Rule>) => r.id && r.target_block_id && r.condition_group
                 ) as Rule[];
               } else {
                 console.warn(`Parsed edge.rules for edge ${edge.id} is not an array:`, rulesFromEdge);
@@ -195,7 +189,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         console.log('🔄 FORM LOAD: No workflow connections found in API response');
       }
     }
-  }, [form, setFormData, setBlocks, setCurrentBlockId, setConnections])
+  }, [form, setFormData, setBlocks, setCurrentBlockId, setConnections, formId])
   
   const handlePublish = async () => {
     if (isPublishing) return
@@ -228,8 +222,8 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       console.error('Error publishing form:', error)
       toast({
         variant: "destructive",
-        title: "Publish failed",
-        description: "There was an error publishing your form. Please try again.",
+        title: "Error Publishing Form",
+        description: (error as Error)?.message || "An unknown error occurred.",
       })
     }
   }
@@ -249,7 +243,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   }
   
   // Display loading state
-  if (isLoading && !formData.form_id) {
+  if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-1/3" />

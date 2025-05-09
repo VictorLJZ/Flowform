@@ -1,7 +1,20 @@
 import { BlockPresentation, SlideLayout } from "@/types/form-presentation-types";
 import { QAPair } from '@/types/supabase-types';
-import { AIConversationHandle } from '@/types/form-types';
+// import { AIConversationHandle } from '@/types/form-types'; // Not currently used
 import React from "react";
+
+/**
+ * Type for block updates that works with both block-types.ts and supabase-types.ts FormBlock definitions
+ */
+export interface BlockUpdate {
+  id?: string;
+  title?: string;
+  description?: string | null;
+  required?: boolean;
+  order_index?: number;
+  settings?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
 
 export interface AIConversationBlockProps {
   id: string;
@@ -21,7 +34,7 @@ export interface AIConversationBlockProps {
   };
   value?: QAPair[];
   onChange?: (value: QAPair[]) => void;
-  onUpdate?: (updates: any) => void;
+  onUpdate?: (updates: BlockUpdate) => void;
   // Navigation props
   onNext?: () => void;
   onPrevious?: () => void;

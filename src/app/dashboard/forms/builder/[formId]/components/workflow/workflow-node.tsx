@@ -1,25 +1,20 @@
 // src/app/dashboard/forms/builder/[formId]/components/workflow/workflow-node.tsx
 "use client"
 
-import { memo, useState } from 'react'
-import { Handle, Position, NodeProps } from 'reactflow'
-import { FileText } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { WorkflowNodeData } from '@/types/workflow-types'
-import { BlockPill } from '../block-pill'
-import { getBlockTypeColors, iconMap } from '@/utils/block-utils'
+import { memo, useState } from 'react';
+import { Handle, Position, NodeProps } from 'reactflow';
+import { BlockPill } from '../block-pill';
+import { WorkflowNodeData } from '@/types/workflow-types';
+import { cn } from '@/lib/utils';
 
-// Export these for backwards compatibility if needed
-export { getBlockTypeColors, iconMap }
+// We're extending NodeProps to maintain type safety and for future extensibility
+// This is not an empty interface as it inherits all properties from NodeProps with WorkflowNodeData
+type WorkflowNodeProps = NodeProps<WorkflowNodeData>;
 
-const WorkflowNode = ({ data, selected }: NodeProps<WorkflowNodeData>) => {
+const WorkflowNode: React.FC<WorkflowNodeProps> = ({ data, selected }) => {
   const { block, isConnectionTarget } = data
-  const Icon = iconMap[block.blockTypeId as keyof typeof iconMap] || FileText
   const [isHovered, setIsHovered] = useState(false)
   const [isOutputHandleHovered, setIsOutputHandleHovered] = useState(false)
-  
-  // Get colors based on block type
-  const blockColors = getBlockTypeColors(block.blockTypeId);
   
   return (
     <div 

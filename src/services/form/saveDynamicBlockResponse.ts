@@ -1,11 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
 import { QAPair } from '@/types/supabase-types';
-import { SaveDynamicResponseInput, SaveDynamicResponseResult, DynamicResponseData } from '@/types/form-service-types';
+import { SaveDynamicResponseInput, SaveDynamicResponseResult } from '@/types/form-service-types';
 import { processConversation } from '@/services/ai/processConversation';
 import { getFormContextClient } from './getFormContextClient';
 import { ProcessConversationParams } from '@/types/ai-types';
-import { formatFormContext } from './getFormContext';
 
 /**
  * Save a response to a dynamic block and generate the next question if needed

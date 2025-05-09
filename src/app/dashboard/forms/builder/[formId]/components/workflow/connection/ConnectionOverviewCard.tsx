@@ -5,7 +5,7 @@ import { FormBlock } from '@/types/block-types'
 import { Connection } from '@/types/workflow-types'
 import { BlockPill } from '../../block-pill'
 import { ArrowRight } from 'lucide-react'
-import { getBlockTypeColors } from '@/utils/block-utils'
+// import { getBlockTypeColors } from '@/utils/block-utils' // Not currently used
 
 interface ConnectionOverviewCardProps {
   connection: Connection;
@@ -16,9 +16,9 @@ interface ConnectionOverviewCardProps {
 export function ConnectionOverviewCard({ connection, sourceBlock, targetBlock }: ConnectionOverviewCardProps) {
   if (!connection || !sourceBlock) return null;
   
-  const sourceBlockType = sourceBlock.blockTypeId || 'unknown';
-  // Get color scheme without destructuring to avoid TypeScript errors
-  const colorScheme = getBlockTypeColors(sourceBlockType);
+  // const sourceBlockType = sourceBlock.blockTypeId || 'unknown'; // Not currently used
+  // We don't need the color scheme in this component currently
+  // const colorScheme = getBlockTypeColors(sourceBlockType);
   
   return (
     <Card className="overflow-hidden border shadow-sm !py-0 !gap-0">

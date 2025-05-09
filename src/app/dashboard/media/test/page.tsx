@@ -98,7 +98,7 @@ export default function MediaTestPage() {
                   <label className="text-sm font-medium">Sizing Mode</label>
                   <select
                     value={sizingMode}
-                    onChange={(e) => setSizingMode(e.target.value as any)}
+                    onChange={(e) => setSizingMode(e.target.value as 'contain' | 'cover' | 'fill')}
                     className="w-full mt-1 px-2 py-1 border rounded-md"
                   >
                     <option value="cover">Cover</option>

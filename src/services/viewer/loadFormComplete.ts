@@ -3,27 +3,57 @@ import { createClient } from '@/lib/supabase/client';
 import { transformConnections } from '../connection/transformConnections';
 import { validateConnections } from '../connection/validateConnections';
 import { preserveRules } from '../connection/preserveRules';
-import { FormBlock } from '@/types/block-types';
+import { FormBlock, BlockType } from '@/types/block-types';
 import { Connection } from '@/types/workflow-types';
 import { migrateAllBlockLayouts } from '../form/layoutMigration';
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
 import { defaultFormTheme } from '@/types/theme-types';
 import { defaultFormData } from '@/stores/slices/formCore';
-import { BlockType } from '@/types/block-types';
+
+// Define types for database records
+interface DbFormBlock {
+  id: string;
+  form_id: string;
+  type: string;
+  subtype: string;
+  title: string;
+  description: string | null;
+  required: boolean;
+  order_index: number;
+  settings: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
+interface DbForm {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  workspace_id: string;
+  settings: Record<string, unknown> | null;
+  blocks?: DbFormBlock[];
+  workflow_edges?: Record<string, unknown>[];
+  version_id?: string;
+  version_number?: number;
+  [key: string]: unknown;
+}
 
 /**
  * Convert backend blocks to frontend block format
  * Extracted from formPersistence.ts
  */
-function convertBackendBlocks(backendBlocks: any[]): FormBlock[] {
+function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
   return backendBlocks.map((block) => {
     // Map database type/subtype to frontend blockTypeId
-    const blockTypeId = mapFromDbBlockType(block.type, block.subtype);
+    const blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
     
     // Determine block type (static, dynamic, etc)
     const blockType = (block.type === 'dynamic' || blockTypeId === 'ai_conversation') 
       ? 'dynamic' 
-      : (block.type as BlockType) || 'static';
+      : ((block.type === 'static' || block.type === 'dynamic' || block.type === 'layout') ? block.type : 'static');
     
     // Create properly typed FormBlock object
     return {
@@ -43,7 +73,7 @@ function convertBackendBlocks(backendBlocks: any[]): FormBlock[] {
  * Extract node positions from form settings
  * Extracted from formPersistence.ts
  */
-function extractNodePositions(formData: any): Record<string, {x: number, y: number}> {
+function extractNodePositions(formData: DbForm): Record<string, {x: number, y: number}> {
   try {
     if (formData.settings?.workflow && typeof formData.settings.workflow === 'object') {
       const workflow = formData.settings.workflow as { nodePositions?: Record<string, {x: number, y: number}> };
@@ -61,13 +91,16 @@ function extractNodePositions(formData: any): Record<string, {x: number, y: numb
  * Format form data with defaults
  * Extracted from formPersistence.ts
  */
-function formatFormData(formData: any, isVersioned: boolean = false) {
+function formatFormData(formData: DbForm, isVersioned: boolean = false): DbForm {
   return {
-    form_id: formData.form_id,
+    id: formData.id,
+    form_id: formData.id, // Use id as form_id for compatibility
     title: formData.title || 'Untitled Form',
     description: formData.description || '',
     workspace_id: formData.workspace_id,
-    created_by: formData.created_by,
+    created_at: formData.created_at,
+    updated_at: formData.updated_at,
+    created_by: formData.created_by || '',
     status: formData.status || (isVersioned ? 'published' : 'draft'),
     // Always use defaultFormTheme as the base and merge with any available theme properties
     theme: formData.theme ? { 
@@ -91,7 +124,7 @@ function formatFormData(formData: any, isVersioned: boolean = false) {
  * @returns An object containing formData, blocks, connections, and nodePositions
  */
 export async function loadFormComplete(formId: string): Promise<{
-  formData: any;
+  formData: DbForm;
   blocks: FormBlock[];
   connections: Connection[];
   nodePositions: Record<string, {x: number, y: number}>;
@@ -103,21 +136,35 @@ export async function loadFormComplete(formId: string): Promise<{
     throw new Error(`Form with ID ${formId} not found`);
   }
   
-  // Extract core data
-  const formData = result;
-  const backendBlocks = result.blocks;
+  // Extract core data and ensure proper type conversion
+  // Convert CompleteForm to DbForm by explicitly mapping properties
+  const formData: DbForm = {
+    id: result.form_id,
+    title: result.title,
+    description: result.description,
+    created_at: result.created_at,
+    updated_at: result.updated_at,
+    workspace_id: result.workspace_id,
+    settings: result.settings,
+    blocks: result.blocks as DbFormBlock[],
+    workflow_edges: result.workflow_edges as unknown as Record<string, unknown>[],
+    version_id: result.version_id,
+    version_number: result.version_number
+  };
+  
+  const backendBlocks = result.blocks as DbFormBlock[];
   
   // Convert blocks to frontend format
-  const blocks = convertBackendBlocks(backendBlocks);
+  const blocks: FormBlock[] = convertBackendBlocks(backendBlocks);
   
   // Extract node positions from form settings
-  const nodePositions = extractNodePositions(formData);
+  const nodePositions: Record<string, {x: number, y: number}> = extractNodePositions(formData);
   
   // Load connections from workflow_edges table
   let workflowConnections: Connection[] = [];
   try {
     const supabase = createClient();
-    const { data: edges, error } = await supabase
+    const { data, error } = await supabase
       .from('workflow_edges')
       .select('*')
       .eq('form_id', formId)
@@ -128,9 +175,9 @@ export async function loadFormComplete(formId: string): Promise<{
       throw error;
     }
     
-    if (edges && edges.length > 0) {
+    if (data && data.length > 0) {
       // Transform connections from DB format to app format
-      workflowConnections = transformConnections(edges, blocks);
+      workflowConnections = transformConnections(data);
       
       // Validate connections to remove those with invalid block references
       workflowConnections = validateConnections(workflowConnections, blocks);

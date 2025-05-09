@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+// import { useState } from 'react' // Not currently used
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormBlock } from '@/types/block-types'
 import { Connection, ConditionGroup, ConditionRule, Rule } from '@/types/workflow-types'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, Plus, PlusCircle } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { getBlockTypeColors } from '@/utils/block-utils'
+// import { getBlockTypeColors } from '@/utils/block-utils' // Not currently used
 
 interface RuleSettingsCardProps {
   connection: Connection;

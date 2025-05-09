@@ -71,7 +71,7 @@ function LayoutOption({ type, label, icon: Icon, isSelected, onSelect }: LayoutO
   )
 }
 
-export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSettingsProps) {
+export function BlockLayoutSettings({ blockId /* currentLayout - Not currently used */ }: BlockLayoutSettingsProps) {
   const { updateBlockLayout, viewportMode, getEffectiveLayout } = useFormBuilderStore()
   
   // Get layouts for both desktop and mobile modes

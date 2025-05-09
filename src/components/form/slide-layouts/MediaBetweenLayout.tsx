@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { useFormBuilderStore } from "@/stores/formBuilderStore"
+// import { useFormBuilderStore } from "@/stores/formBuilderStore" // Not currently used
 import { MediaBetweenLayout as MediaBetweenLayoutType } from "@/types/layout-types"
 import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
@@ -31,12 +31,12 @@ export function MediaBetweenLayout({
   opacity = 100,
   className,
   settings,
-  id // Add id to props to help with debugging
+  // id - Not currently used, but kept for debugging purposes
 }: MediaBetweenLayoutProps) {
-  const { mode } = useFormBuilderStore();
+  // const { mode } = useFormBuilderStore(); // Not currently used
   
-  // Determine if we're in builder mode
-  const isBuilder = mode === 'builder'
+  // Determine if we're in builder mode - Not currently used
+  // const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
   const effectiveMediaProportion = settings?.mediaProportion || 0.3 // Default 30% height for media
@@ -69,9 +69,9 @@ export function MediaBetweenLayout({
     />
   )
   
-  // Calculate the heights for all sections
-  const mediaHeightPercentage = Math.round(effectiveMediaProportion * 100)
-  const contentHeightPercentage = Math.round((100 - mediaHeightPercentage) / 2)
+  // Calculate the heights for all sections - Not currently using mediaHeightPercentage directly
+  // const mediaHeightPercentage = Math.round(effectiveMediaProportion * 100)
+  // const contentHeightPercentage = Math.round((100 - mediaHeightPercentage) / 2) // Not currently used
   
   // Instead of trying to split the children passed to us, we'll identify categories by className pattern
   const extractChildrenByClassName = (classNamePattern: string): React.ReactNode[] => {

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { motion, AnimatePresence } from "motion/react"
 import { Save, Plus } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { Connection, Rule, ConditionGroup, ConditionRule } from '@/types/workflow-types'
+import { Rule } from '@/types/workflow-types'
 import { SourceHeader } from './source-header'
 import { DefaultTarget } from './default-target'
 import { RuleList } from './rule-list'
@@ -22,7 +22,7 @@ interface ConnectionSidebarProps {
 }
 
 export default function ConnectionSidebar({ blockId }: ConnectionSidebarProps = {}) {
-  const blocks = useFormBuilderStore(state => state.blocks)
+  // const blocks = useFormBuilderStore(state => state.blocks) // Not currently used
   const connections = useFormBuilderStore(state => state.connections)
   const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
   const updateConnection = useFormBuilderStore(state => state.updateConnection)
@@ -36,12 +36,12 @@ export default function ConnectionSidebar({ blockId }: ConnectionSidebarProps = 
     ? connections.find(conn => conn.sourceId === blockId) // Find connection for a block
     : connections.find(conn => conn.id === selectedElementId) // Normal case - editing selected connection
   
-  // Get the source block
-  const sourceBlock = connection 
-    ? blocks.find(b => b.id === connection.sourceId)
-    : blockId 
-      ? blocks.find(b => b.id === blockId) 
-      : null
+  // Get the source block - currently not directly used but keeping for context
+  // const sourceBlock = connection 
+  //   ? blocks.find(b => b.id === connection.sourceId)
+  //   : blockId 
+  //     ? blocks.find(b => b.id === blockId) 
+  //     : null
   
   // Handle saving changes
   const handleSaveChanges = async () => {
@@ -54,7 +54,7 @@ export default function ConnectionSidebar({ blockId }: ConnectionSidebarProps = 
     if (!connection) return
     
     const newRuleId = uuidv4()
-    const newConditionId = uuidv4()
+    // const newConditionId = uuidv4() // Not used since we're generating a new ID directly in the conditions array
     
     // Create a new rule with one empty condition
     const newRule: Rule = {
@@ -91,7 +91,7 @@ export default function ConnectionSidebar({ blockId }: ConnectionSidebarProps = 
             </CardHeader>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground mb-4">
-                This block doesn't have any outgoing connections yet. Create a connection to define where users should go after this block.
+                This block doesn&apos;t have any outgoing connections yet. Create a connection to define where users should go after this block.
               </p>
               <Button 
                 onClick={() => {

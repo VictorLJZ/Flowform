@@ -105,7 +105,7 @@ export function RuleItem({ rule, ruleIndex, connectionId, onPendingChange }: Rul
   
   // Get the conditions for this rule
   const conditions = rule.condition_group?.conditions || []
-  const logicalOperator = rule.condition_group?.logical_operator || 'AND'
+  // const logicalOperator = rule.condition_group?.logical_operator || 'AND' // No longer needed as we're using per-condition logical operators
   
   return (
     <div className="border border-border-secondary rounded-md overflow-hidden bg-background">

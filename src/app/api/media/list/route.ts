@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { cloudinary, listMediaAssets } from '@/services/cloudinary-server';
+import { getCloudinary } from '@/services/cloudinary-server';
 import { v4 as uuidv4 } from 'uuid';
 import { MediaAsset } from '@/types/media-types';
 
 export async function GET() {
   try {
     // Fetch media assets from Cloudinary
+    const cloudinary = await getCloudinary();
     const result = await cloudinary.search
       .expression('folder:flowform_media')
       .sort_by('created_at', 'desc')
@@ -13,7 +14,20 @@ export async function GET() {
       .execute();
 
     // Format the response
-    const formattedResults: MediaAsset[] = result.resources.map((resource: any) => ({
+    interface CloudinaryResource {
+      asset_id?: string;
+      public_id: string;
+      resource_type: string;
+      secure_url: string;
+      width: number;
+      height: number;
+      format: string;
+      duration?: number;
+      created_at?: string;
+      tags?: string[];
+    }
+    
+    const formattedResults: MediaAsset[] = result.resources.map((resource: CloudinaryResource) => ({
       id: resource.asset_id || uuidv4(),
       mediaId: resource.public_id,
       type: resource.resource_type === 'video' ? 'video' : 'image',
@@ -24,7 +38,7 @@ export async function GET() {
       width: resource.width,
       height: resource.height,
       duration: resource.duration,
-      createdAt: new Date(resource.created_at),
+      createdAt: resource.created_at ? new Date(resource.created_at) : new Date(),
       tags: resource.tags || []
     }));
 

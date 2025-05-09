@@ -457,7 +457,7 @@ export function useWorkflowNavigation({
     if (!currentBlock) return false;
     
     // Get connections from current block to possible target blocks
-    const outgoingConnections = connections.filter(
+    const outgoingConnections = workflowConnections.filter(
       conn => conn.sourceId === currentBlock.id
     );
     
@@ -482,7 +482,7 @@ export function useWorkflowNavigation({
   // Log navigation path for debugging
   useCallback(() => {
     console.log('Current navigation path:', navigationPath);
-  }, [navigationPath]);
+  }, [navigationPath, workflowConnections, blocks]);
 
   return {
     currentIndex,

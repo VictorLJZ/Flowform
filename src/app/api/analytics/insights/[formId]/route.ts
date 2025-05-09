@@ -13,8 +13,9 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { formId: string } }
+  context: { params: { formId: string } }
 ) {
+  const { params } = context;
   const formId = params.formId;
   
   // Check if formId is valid

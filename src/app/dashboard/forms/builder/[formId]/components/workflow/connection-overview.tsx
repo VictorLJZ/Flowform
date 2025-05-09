@@ -1,5 +1,4 @@
-import { Edge } from 'reactflow';
-import { WorkflowEdgeData, Connection } from '@/types/workflow-types';
+import { Connection } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
@@ -16,7 +15,7 @@ interface ConnectionOverviewProps {
 export function ConnectionOverview({ 
   sourceBlock, 
   targetBlock, 
-  sourceBlockType,
+  // sourceBlockType, // Not currently used
   currentConnection
 }: ConnectionOverviewProps) {
   const getSourceName = () => sourceBlock?.title || 'Unknown';
@@ -88,7 +87,7 @@ export function ConnectionOverview({
           <div className="mt-3 pt-3 border-t border-dashed">
             <div className="text-xs text-muted-foreground mb-1">Current condition:</div>
             <div className="text-sm bg-blue-50 p-2 rounded-md">
-              {getConditionSummary(connection, sourceBlock, sourceBlockType)}
+              {getConditionSummary(connection, sourceBlock)}
             </div>
           </div>
         )}

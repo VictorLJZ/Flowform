@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { useFormBuilderStore } from "@/stores/formBuilderStore"
+// import { useFormBuilderStore } from "@/stores/formBuilderStore" // Not currently used
 import { MediaRightLayout as MediaRightLayoutType } from "@/types/layout-types"
 import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
@@ -31,10 +31,10 @@ export function MediaRightLayout({
   className,
   settings
 }: MediaRightLayoutProps) {
-  const { mode } = useFormBuilderStore()
+  // const { mode } = useFormBuilderStore() // Not currently used
   
-  // Determine if we're in builder mode
-  const isBuilder = mode === 'builder'
+  // Determine if we're in builder mode - Not currently used
+  // const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
   const effectiveTextAlignment = settings?.textAlignment || textAlignment

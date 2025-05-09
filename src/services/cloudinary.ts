@@ -1,21 +1,47 @@
-import { v2 as cloudinary } from 'cloudinary';
+// Import type definitions only for build time
+import type { v2 as CloudinaryType } from 'cloudinary';
 
-// Configure Cloudinary with credentials from environment variables
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Initialize Cloudinary with a dynamic import
+let cloudinaryModule: { v2: typeof CloudinaryType } | null = null;
+
+// Helper function to initialize and get the cloudinary instance
+async function getCloudinary(): Promise<typeof CloudinaryType> {
+  if (!cloudinaryModule) {
+    try {
+      // Dynamic import happens at runtime, not build time
+      cloudinaryModule = await import('cloudinary');
+    } catch (error) {
+      console.error('Failed to load Cloudinary module:', error);
+      throw new Error('Failed to initialize Cloudinary');
+    }
+  }
+
+  const cloudinary = cloudinaryModule.v2;
+  
+  // Configure if not already configured
+  if (!cloudinary.config().cloud_name) {
+    cloudinary.config({
+      cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+  
+  return cloudinary;
+}
 
 // Create a single upload preset function for server-side use
 export async function createUploadPreset() {
   try {
+    // Get the cloudinary instance
+    const cloudinary = await getCloudinary();
+    
     // Check if preset already exists
     const presets = await cloudinary.api.upload_presets();
     const presetName = 'flowform_media_upload';
     
     const presetExists = presets.presets.some(
-      (preset: any) => preset.name === presetName
+      (preset: Record<string, unknown>) => preset.name === presetName
     );
     
     if (!presetExists) {
@@ -59,4 +85,5 @@ export function getCloudinaryUrl(publicId: string, options: {
   return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${type}/upload/${transformations}/${publicId}`;
 }
 
-export { cloudinary };
+// Export the getCloudinary function
+export { getCloudinary };

@@ -4,7 +4,7 @@ import type { Connection } from './workflow-types';
 /**
  * Data representing the form metadata
  */
-export interface FormData {
+export interface CustomFormData {
   form_id: string;
   title: string;
   description?: string;

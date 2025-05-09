@@ -167,7 +167,6 @@ export const useEdgeDoubleClickHandler = (): EdgeMouseHandler => {
  */
 export const useConnectionHandler = (): OnConnect => {
   const addConnection = useFormBuilderStore(state => state.addConnection);
-  const connections = useFormBuilderStore(state => state.connections);
   const selectElement = useFormBuilderStore(state => state.selectElement);
   const setIsConnecting = useFormBuilderStore(state => state.setIsConnecting);
   const setSourceNodeId = useFormBuilderStore(state => state.setSourceNodeId);
@@ -195,7 +194,7 @@ export const useConnectionHandler = (): OnConnect => {
       addConnection(newConnection);
       selectElement(newConnection.id); // Select the new connection
     },
-    [addConnection, connections.length, selectElement, setIsConnecting, setSourceNodeId, setTargetNodeId]
+    [addConnection, selectElement, setIsConnecting, setSourceNodeId, setTargetNodeId]
   );
 };
 

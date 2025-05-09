@@ -32,7 +32,7 @@ export function ConditionItem({
   conditionIndex, 
   connectionId, 
   ruleId,
-  isLast,
+  // isLast, // Not currently used
   onPendingChange 
 }: ConditionItemProps) {
   const blocks = useFormBuilderStore(state => state.blocks)
@@ -41,8 +41,8 @@ export function ConditionItem({
   
   // Find the connection and source block
   const connection = connections.find(conn => conn.id === connectionId)
-  const sourceBlock = blocks.find(block => block.id === connection?.sourceId)
-  const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
+  // const sourceBlock = blocks.find(block => block.id === connection?.sourceId) // Not currently used
+  // const sourceBlockType = sourceBlock?.blockTypeId || 'unknown' // Not currently used
   
   // Find the field block
   const fieldBlock = blocks.find(block => block.id === condition.field)
@@ -176,12 +176,12 @@ export function ConditionItem({
     }
     
     return defaultOperators
-  }, [fieldBlock, fieldBlock?.blockTypeId, condition.field])
+  }, [fieldBlock, condition.field])
   
-  // Get logical operator label
-  const logicalLabel = conditionIndex === 0 
-    ? 'If' 
-    : condition.logical_operator === 'AND' ? 'AND' : 'OR'
+  // This logical operator label was previously used but is now handled directly in the JSX
+  // const logicalLabel = conditionIndex === 0 
+  //   ? 'If' 
+  //   : condition.logical_operator === 'AND' ? 'AND' : 'OR'
   
   return (
     <div className="bg-background rounded-md p-3 relative border border-border-secondary">

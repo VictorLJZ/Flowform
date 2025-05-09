@@ -5,7 +5,7 @@ import { FormBlock } from '@/types/block-types'
 import { Connection } from '@/types/workflow-types'
 import { BlockPill } from '../../block-pill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getBlockTypeColors } from '@/utils/block-utils'
+// import { getBlockTypeColors } from '@/utils/block-utils' // Not currently used
 
 interface DefaultTargetCardProps {
   connection: Connection;
@@ -15,8 +15,8 @@ interface DefaultTargetCardProps {
 }
 
 export function DefaultTargetCard({ connection, blocks, onTargetChange, onPendingChange }: DefaultTargetCardProps) {
-  const sourceBlock = blocks.find(b => b.id === connection.sourceId);
-  const sourceBlockType = sourceBlock?.blockTypeId || 'unknown';
+  // const sourceBlock = blocks.find(b => b.id === connection.sourceId); // Not currently used
+  // const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'; // Not currently used
   // Using static styling instead of dynamic color scheme to avoid TypeScript errors
   
   // Filter out the source block from the available target blocks

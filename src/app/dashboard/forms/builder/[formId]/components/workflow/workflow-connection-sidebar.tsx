@@ -4,8 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Edge } from 'reactflow'
-import { WorkflowEdgeData, ConditionRule, Connection, Rule, ConditionGroup } from '@/types/workflow-types'
-import { ConnectionOverview } from './connection-overview'
+import { WorkflowEdgeData, ConditionRule, Rule, ConditionGroup } from '@/types/workflow-types'
 import { ConditionCard } from './condition-card' // ConditionCard will be refactored next
 import { Button } from '@/components/ui/button'
 import { Save } from 'lucide-react'
@@ -14,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Trash2, PlusCircle, XCircle } from 'lucide-react';
 import { BlockPill } from '../block-pill';
-import { getBlockTypeColors } from '@/utils/block-utils';
+// import { getBlockTypeColors } from '@/utils/block-utils'; // Not currently used
 
 export default function WorkflowConnectionSidebar() {
   const blocks = useFormBuilderStore(state => state.blocks)
@@ -28,7 +27,8 @@ export default function WorkflowConnectionSidebar() {
   const connection = useMemo(() => connections.find(conn => conn.id === selectedElementId), [connections, selectedElementId]);
   
   const sourceBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.sourceId) : null, [blocks, connection]);
-  const targetBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.defaultTargetId) : null, [blocks, connection]);
+  // We don't need targetBlock in this component currently
+  // const targetBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.defaultTargetId) : null, [blocks, connection]);
   const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
 
   // We're now using the shared getBlockTypeColors function from block-utils.ts
@@ -163,7 +163,7 @@ export default function WorkflowConnectionSidebar() {
   const handleRemoveCondition = useCallback((conditionId: string) => {
     if (!connection || !connection.rules || connection.rules.length === 0 || !connection.rules[0].condition_group) return;
 
-    let currentRules = [...connection.rules];
+    const currentRules = [...connection.rules];
     const conditionGroup = currentRules[0].condition_group;
     const updatedInnerConditions = conditionGroup.conditions.filter(cond => cond.id !== conditionId);
 
@@ -219,7 +219,7 @@ export default function WorkflowConnectionSidebar() {
           {sourceBlock && connection && (
             <div className="space-y-2">
               <label htmlFor="default-target-select" className="block text-sm font-medium text-foreground">
-                Logic from: <span className="italic">"{sourceBlock.title || 'Untitled Question'}"</span>
+                Logic from: <span className="italic">&quot;{sourceBlock.title || 'Untitled Question'}&quot;</span>
               </label>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-muted-foreground">Always go to</span>

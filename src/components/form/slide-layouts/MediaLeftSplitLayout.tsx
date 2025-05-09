@@ -33,8 +33,8 @@ export function MediaLeftSplitLayout({
 }: MediaLeftSplitLayoutProps) {
   const { mode } = useFormBuilderStore()
   
-  // Determine if we're in builder mode
-  const isBuilder = mode === 'builder'
+  // Determine if we're in builder mode - Not currently used
+  // const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
   const effectiveTextAlignment = settings?.textAlignment || textAlignment

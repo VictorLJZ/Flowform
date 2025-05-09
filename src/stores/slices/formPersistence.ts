@@ -8,11 +8,12 @@ import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
 import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { saveWorkflowEdges } from '@/services/form/saveWorkflowEdges'
 import { loadFormComplete, loadVersionedFormComplete } from '@/services/viewer'
-import type { SaveFormInput, SaveFormOutput } from '@/types/form-service-types'
+import type { SaveFormInput } from '@/types/form-service-types'
 import type { BlockType, FormBlock } from '@/types/block-types'
 import type { Connection } from '@/types/workflow-types'
-import type { FormData } from '@/types/form-builder-types'
+import type { CustomFormData } from '@/types/form-builder-types'
 import type { FormTheme } from '@/types/theme-types'
+import type { JsonObject } from '@/types/common-types'
 
 export const createFormPersistenceSlice: StateCreator<
   FormBuilderState,
@@ -35,7 +36,7 @@ export const createFormPersistenceSlice: StateCreator<
     }
 
     try {
-      console.log('\u23f1\ufe0f Saving form and blocks...', {
+      console.log('⏱️ Saving form and blocks...', {
         formId: formData.form_id,
         blockCount: blocks.length,
       })
@@ -45,8 +46,8 @@ export const createFormPersistenceSlice: StateCreator<
         form_id: formData.form_id,
         title: formData.title || 'Untitled Form',
         description: formData.description,
-        workspace_id: formData.workspace_id,
-        created_by: formData.created_by,
+        workspace_id: typeof formData.workspace_id === 'string' ? formData.workspace_id : '',
+        created_by: typeof formData.created_by === 'string' ? formData.created_by : '',
         status: formData.status,
         theme: formData.theme as unknown as Record<string, unknown>,
         settings: formData.settings,
@@ -62,13 +63,13 @@ export const createFormPersistenceSlice: StateCreator<
       )
 
       if (result) {
-        console.log('\u2705 Form saved')
+        console.log('✅ Form saved')
         return {
-          result,
+          result: result as unknown as JsonObject,
           isExistingForm: true
         }
       } else {
-        console.error('\u274c Form save failed')
+        console.error('❌ Form save failed')
         return null
       }
     } catch (error) {
@@ -98,7 +99,14 @@ export const createFormPersistenceSlice: StateCreator<
   },
 
   // Separate function to save dynamic block configurations
-  saveDynamicBlockConfigs: async (blockId: string) => {
+  saveDynamicBlockConfigs: async (result: JsonObject) => {
+    // Extract blockId from result
+    const blockId = result.id as string || result.blockId as string;
+    if (!blockId) {
+      console.error('No blockId found in result object');
+      return;
+    }
+    
     const state = get()
     const { blocks } = state
     const block = blocks.find(b => b.id === blockId)
@@ -110,7 +118,7 @@ export const createFormPersistenceSlice: StateCreator<
       set({ isSaving: true })
 
       // Extract settings from the block based on its blockTypeId
-      const dynamicConfig: any = {}
+      const dynamicConfig: Record<string, unknown> = {}
 
       if (block.blockTypeId === 'ai_conversation') {
         // Map AI conversation block settings
@@ -122,11 +130,26 @@ export const createFormPersistenceSlice: StateCreator<
         if (block.settings?.promptConfig) {
           dynamicConfig.promptConfig = block.settings.promptConfig
         }
+
+        // Store any other AI-specific settings
+        if (block.settings?.modelId) {
+          dynamicConfig.modelId = block.settings.modelId
+        }
       } else if (block.blockTypeId === 'choice') {
         // Map choice block settings
         dynamicConfig.options = block.settings?.options || []
         dynamicConfig.allowMultiple = block.settings?.allowMultiple === true
         dynamicConfig.displayMode = block.settings?.displayMode || 'radio'
+      } else if (block.blockTypeId === 'payment') {
+        // Map payment block settings
+        dynamicConfig.amount = block.settings?.amount || 0
+        dynamicConfig.currency = block.settings?.currency || 'USD'
+        dynamicConfig.paymentMethod = block.settings?.paymentMethod || 'card'
+      } else if (block.blockTypeId === 'file_upload') {
+        // Map file upload settings
+        dynamicConfig.maxFiles = block.settings?.maxFiles || 1
+        dynamicConfig.maxSize = block.settings?.maxSize || 5
+        dynamicConfig.allowedTypes = block.settings?.allowedTypes || []
       }
 
       // Save the dynamic configuration
@@ -153,7 +176,7 @@ export const createFormPersistenceSlice: StateCreator<
     const updatedBlocks = [...blocks]
     
     // Get default settings for the block type
-    let defaultSettings: any = {}
+    let defaultSettings: Record<string, unknown> = {}
     
     // Special handling for AI conversation blocks
     if (blockTypeId === 'ai_conversation') {
@@ -196,7 +219,7 @@ export const createFormPersistenceSlice: StateCreator<
     // For dynamic blocks, we need to immediately save their configuration
     if (type === 'dynamic') {
       setTimeout(() => {
-        get().saveDynamicBlockConfigs(blockId)
+        get().saveDynamicBlockConfigs({ id: blockId } as JsonObject)
       }, 100)
     }
   },
@@ -319,9 +342,33 @@ export const createFormPersistenceSlice: StateCreator<
       const { formData, blocks, connections, nodePositions } = 
         await loadFormComplete(formId);
       
+      // Create a CustomFormData compatible object from the DbForm returned by loadFormComplete
+      const formDataWithFormId: CustomFormData = {
+        form_id: formData.id, // Ensure form_id is set from id
+        title: formData.title,
+        description: formData.description || undefined, // Convert null to undefined for CustomFormData compatibility
+        workspace_id: typeof formData.workspace_id === 'string' ? formData.workspace_id : '',
+        created_by: typeof formData.created_by === 'string' ? formData.created_by : '',
+        status: typeof formData.status === 'string' ? (formData.status as 'draft' | 'published' | 'archived') : 'draft',
+        // Convert the settings to the expected format
+        settings: {
+          showProgressBar: formData.settings?.showProgressBar as boolean || false,
+          requireSignIn: formData.settings?.requireSignIn as boolean || false,
+          theme: formData.settings?.theme as string || 'default',
+          primaryColor: formData.settings?.primaryColor as string || '#3b82f6',
+          fontFamily: formData.settings?.fontFamily as string || 'Inter',
+          estimatedTime: formData.settings?.estimatedTime as number,
+          estimatedTimeUnit: formData.settings?.estimatedTimeUnit as 'minutes' | 'hours',
+          redirectUrl: formData.settings?.redirectUrl as string,
+          customCss: formData.settings?.customCss as string,
+          workflow: formData.settings?.workflow as { connections: Connection[] },
+        },
+        theme: formData.theme as FormTheme,
+      };
+      
       // Update form state
       set({
-        formData,
+        formData: formDataWithFormId,
         blocks,
         connections,
         nodePositions,
@@ -330,9 +377,9 @@ export const createFormPersistenceSlice: StateCreator<
       });
       
       // Add a temporary subscription to watch for connection changes during initial load
-      // Using any here because we don't have the store's subscribe type directly available
+      // Using a more specific type for the store with subscribe functionality
       // This is just for debugging purposes 
-      const storeWithSubscribe = get() as any;
+      const storeWithSubscribe = get() as { subscribe?: (listener: (state: FormBuilderState, prevState: FormBuilderState) => void) => () => void };
       if (storeWithSubscribe.subscribe) {
         const unsubscribe = storeWithSubscribe.subscribe(
           (state: FormBuilderState, prevState: FormBuilderState) => {

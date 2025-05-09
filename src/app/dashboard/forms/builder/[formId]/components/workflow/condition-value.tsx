@@ -5,7 +5,7 @@ import { ConditionComponentProps, ValueSuggestion, BlockChoiceOption } from '@/t
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, X } from 'lucide-react';
+// import { Check, X } from 'lucide-react'; // Not currently used
 import { 
   Select,
   SelectContent,
@@ -22,54 +22,53 @@ interface ConditionValueProps extends ConditionComponentProps {
   conditionId: string;
 }
 
-export function ConditionValue({ 
-  sourceBlock, 
-  sourceBlockType, 
-  onConditionChange,
+export function ConditionValue({
+  conditionId,
+  sourceBlock,
+  sourceBlockType,
   currentConnection,
-  conditionId
+  onConditionChange
 }: ConditionValueProps) {
   const [inputValue, setInputValue] = useState<string>('');
-  
-  const connection = currentConnection;
-  if (!connection) return null;
-  
-  const conditionsInFirstRule = connection.rules?.[0]?.condition_group?.conditions;
-  const currentCondition: ConditionRule | undefined = conditionsInFirstRule?.find((cond: ConditionRule) => cond.id === conditionId);
-    
-  const field = currentCondition?.field || '';
-  const operator = currentCondition?.operator || 'equals';
-  const currentValue = currentCondition?.value;
 
+  // Extract all the data we need at the top level
+  const connection = currentConnection;
+  const conditionsInFirstRule = connection?.rules?.[0]?.condition_group?.conditions || [];
+  const currentCondition: ConditionRule | undefined = conditionsInFirstRule.find((cond: ConditionRule) => cond.id === conditionId);
+  const fieldValue = currentCondition?.field || '';
+  // const operator = currentCondition?.operator || 'equals'; // Not currently used
+  const currentValueData = currentCondition?.value;
+
+  // Move all hooks to the top level - before any conditional returns
   const handleStringChange = useCallback((value: string) => {
     setInputValue(value);
     onConditionChange('value', value);
   }, [onConditionChange]);
-  
+
   const handleNumberChange = useCallback((value: string) => {
     setInputValue(value);
     if (!isNaN(Number(value))) {
       onConditionChange('value', Number(value));
     }
   }, [onConditionChange]);
-  
+
   const handleBooleanChange = useCallback((checked: boolean | "indeterminate") => {
     onConditionChange('value', checked === true);
   }, [onConditionChange]);
 
-  const getDefaultValueForField = useCallback((field: string, blockType: string): string | number | boolean => {
-    if (field.startsWith('choice:') || (field === 'selected' && blockType === 'checkbox_group')) {
+  const getDefaultValueForField = useCallback((fieldValueName: string, blockType: string): string | number | boolean => {
+    if (fieldValueName.startsWith('choice:') || (fieldValueName === 'selected' && blockType === 'checkbox_group')) {
       return true;
     }
-    if ((field === 'answer' && blockType === 'number') || 
-        field === 'rating' || field === 'length') {
+    if ((fieldValueName === 'answer' && blockType === 'number') || 
+        fieldValueName === 'rating' || fieldValueName === 'length') {
       return 0;
     }
     return '';
   }, []);
 
   const getSuggestedValues = useCallback((): ValueSuggestion[] => {
-    if ((field === 'answer') && (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown')) {
+    if ((fieldValue === 'answer') && (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown')) {
       const options = sourceBlock?.settings || {};
       const choices = ((options.choices || options.options) as BlockChoiceOption[] | undefined) || [];
       if (!Array.isArray(choices) || choices.length === 0) {
@@ -80,7 +79,7 @@ export function ConditionValue({
         value: choice.value || choice.label || ''
       }));
     }
-    if (field === 'domain' && sourceBlockType === 'email') {
+    if (fieldValue === 'domain' && sourceBlockType === 'email') {
       return [
         { label: 'gmail.com', value: 'gmail.com' },
         { label: 'outlook.com', value: 'outlook.com' },
@@ -92,7 +91,7 @@ export function ConditionValue({
         { label: 'Other', value: 'other' },
       ];
     }
-    if (field === 'weekday') {
+    if (fieldValue === 'weekday') {
       return [
         { label: 'Monday', value: 'monday' },
         { label: 'Tuesday', value: 'tuesday' },
@@ -105,7 +104,7 @@ export function ConditionValue({
         { label: 'Weekend', value: 'weekend' },
       ];
     }
-    if (field === 'sentiment') {
+    if (fieldValue === 'sentiment') {
       return [
         { label: 'Positive', value: 'positive' },
         { label: 'Neutral', value: 'neutral' },
@@ -113,24 +112,24 @@ export function ConditionValue({
       ];
     }
     return [];
-  }, [field, sourceBlock, sourceBlockType]);
+  }, [fieldValue, sourceBlock, sourceBlockType]);
 
   useEffect(() => {
-    if (currentValue !== undefined) {
-      setInputValue(String(currentValue));
+    if (currentValueData !== undefined) {
+      setInputValue(String(currentValueData));
     }
-  }, [currentValue, field]);
+  }, [currentValueData, fieldValue]);
 
   useEffect(() => {
-    if (field && currentValue === undefined && connection) { 
-      const defaultValue = getDefaultValueForField(field, sourceBlockType);
+    if (fieldValue && currentValueData === undefined && connection) { 
+      const defaultValue = getDefaultValueForField(fieldValue, sourceBlockType);
       onConditionChange('value', defaultValue);
     }
-  }, [field, currentValue, sourceBlockType, onConditionChange, connection, getDefaultValueForField]);
+  }, [fieldValue, currentValueData, sourceBlockType, onConditionChange, connection, getDefaultValueForField]);
   
-  if (!field) return null;
+  if (!fieldValue) return null;
 
-  if (field.startsWith('choice:')) {
+  if (fieldValue.startsWith('choice:')) {
     if (sourceBlockType === 'multiple_choice') {
       return (
         <div className="mt-2">
@@ -143,9 +142,9 @@ export function ConditionValue({
       );
     }
     
-    const fieldParts = field.split(':');
-    if (fieldParts.length > 1) {
-      const choiceWithIndex = fieldParts[1];
+    const fieldValueParts = fieldValue.split(':');
+    if (fieldValueParts.length > 1) {
+      const choiceWithIndex = fieldValueParts[1];
       const choiceValue = choiceWithIndex.split('_')[0];
       
       const options = sourceBlock?.settings || {};
@@ -166,7 +165,7 @@ export function ConditionValue({
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-700">Is &quot;{choiceLabel}&quot; selected?</span>
               <Checkbox 
-                checked={currentValue === true} 
+                checked={currentValueData === true} 
                 onCheckedChange={handleBooleanChange}
                 className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
               />
@@ -178,14 +177,14 @@ export function ConditionValue({
     return null;
   }
 
-  if (field === 'selected' && sourceBlockType === 'checkbox_group') {
+  if (fieldValue === 'selected' && sourceBlockType === 'checkbox_group') {
     return (
       <div className="mt-2">
         <div className="bg-slate-50 p-3 rounded-md mb-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-700">Is any option selected?</span>
             <Checkbox 
-              checked={currentValue === true} 
+              checked={currentValueData === true} 
               onCheckedChange={handleBooleanChange}
               className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
             />
@@ -197,13 +196,13 @@ export function ConditionValue({
 
   const suggestions = getSuggestedValues();
   if (suggestions.length > 0) {
-    const isOtherDomain = field === 'domain' && currentValue === 'other';
-    const displaySuggestions = suggestions.filter(s => !(field === 'domain' && s.value === 'other'));
+    const isOtherDomain = fieldValue === 'domain' && currentValueData === 'other';
+    const displaySuggestions = suggestions.filter(s => !(fieldValue === 'domain' && s.value === 'other'));
 
     return (
       <div>
         <Label className="mb-1.5 block text-xs text-muted-foreground">VALUE</Label>
-        <Select value={String(currentValue)} onValueChange={handleStringChange}>
+        <Select value={String(currentValueData)} onValueChange={handleStringChange}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Select a value" />
           </SelectTrigger>
@@ -213,7 +212,7 @@ export function ConditionValue({
                 {option.label}
               </SelectItem>
             ))}
-            {field === 'domain' && (
+            {fieldValue === 'domain' && (
               <SelectItem value="other">Other...</SelectItem>
             )}
           </SelectContent>
@@ -231,8 +230,8 @@ export function ConditionValue({
     );
   }
 
-  const inputType = (field === 'answer' && sourceBlockType === 'number') || 
-                  field === 'rating' || field === 'length' 
+  const inputType = (fieldValue === 'answer' && sourceBlockType === 'number') || 
+                  fieldValue === 'rating' || fieldValue === 'length' 
                   ? 'number' 
                   : 'text';
 

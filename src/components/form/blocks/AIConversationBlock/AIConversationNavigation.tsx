@@ -13,7 +13,7 @@ export function AIConversationNavigation({
   setHasReturnedToBlock,
   effectiveIsComplete,
   nextQuestion,
-  settingsMaxQuestions
+  // settingsMaxQuestions - Not currently used
 }: AIConversationNavigationProps) {
   // Create a custom function to handle question navigation
   const handleQuestionNavigation = (index: number) => {
@@ -43,7 +43,7 @@ export function AIConversationNavigation({
 
   // Helper function to get mapped conversation with first question always showing the starter prompt
   const getMappedConversation = () => {
-    return conversation.map((item, idx) => item); // Just return the items for mapping
+    return conversation.map((item) => item); // Just return the items for mapping
   };
 
   const displayConversation = getMappedConversation();

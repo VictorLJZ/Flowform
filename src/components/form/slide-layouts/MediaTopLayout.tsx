@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { useFormBuilderStore } from "@/stores/formBuilderStore"
+// import { useFormBuilderStore } from "@/stores/formBuilderStore" // Not currently used
 import { MediaTopLayout as MediaTopLayoutType } from "@/types/layout-types"
 import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 
@@ -32,10 +32,10 @@ export function MediaTopLayout({
   className,
   settings
 }: MediaTopLayoutProps) {
-  const { mode } = useFormBuilderStore();
+  // const { mode } = useFormBuilderStore(); // Not currently used
   
-  // Determine if we're in builder mode
-  const isBuilder = mode === 'builder'
+  // Determine if we're in builder mode - Not currently used
+  // const isBuilder = mode === 'builder'
   
   // Use settings if provided, otherwise use props
   const effectiveMediaProportion = settings?.mediaProportion || 0.4 // Default 40% height for media

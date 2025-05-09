@@ -1,10 +1,9 @@
 "use client"
 
-import { memo, useMemo } from 'react'
-import { getBezierPath, EdgeProps } from 'reactflow'
-import { WorkflowEdgeData, Connection, Rule } from '@/types/workflow-types' 
-import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { FormBlock } from '@/types/block-types'; 
+import React from 'react';
+import { getBezierPath, EdgeProps } from 'reactflow';
+import { memo } from 'react';
+import { WorkflowEdgeData } from '@/types/workflow-types'; 
 
 const WorkflowEdge = ({
   id,
@@ -16,27 +15,32 @@ const WorkflowEdge = ({
   targetPosition,
   data,
 }: EdgeProps<WorkflowEdgeData>) => {
-  const blocks = useFormBuilderStore(state => state.blocks)
+  // const blocks = useFormBuilderStore(state => state.blocks) // Not currently used
   
   const connection = data?.connection || null;
-  const isRulePath = data?.isRulePath || false;
-  const rule = data?.rule || null;
+  // These variables are not currently used in the component
+  // const isRulePath = data?.isRulePath || false
+  // const rule = data?.rule || null;
   
+  // This variable is not directly used in the component
+  /*
   const sourceBlock = useMemo(() => {
     if (!connection?.sourceId) return null
     return blocks.find(block => block.id === connection.sourceId)
   }, [blocks, connection?.sourceId])
+  */
   
-  const targetBlock = useMemo(() => {
-    if (isRulePath && rule?.target_block_id) {
-      return blocks.find(block => block.id === rule.target_block_id)
-    } else if (!isRulePath && connection?.defaultTargetId) {
-      return blocks.find(block => block.id === connection.defaultTargetId)
-    }
-    return null
-  }, [blocks, connection?.defaultTargetId, isRulePath, rule?.target_block_id])
+  // We don't need to use targetBlock in this component, but keeping the logic for future reference
+  // const targetBlock = useMemo(() => {
+  //   if (isRulePath && rule?.target_block_id) {
+  //     return blocks.find(block => block.id === rule.target_block_id)
+  //   } else if (!isRulePath && connection?.defaultTargetId) {
+  //     return blocks.find(block => block.id === connection.defaultTargetId)
+  //   }
+  //   return null
+  // }, [blocks, connection?.defaultTargetId, isRulePath, rule?.target_block_id])
   
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -47,6 +51,8 @@ const WorkflowEdge = ({
   })
 
   // Completely unified edge styles with no distinctions
+  // This function is not currently used in the component
+  /*
   const getEdgeStyles = () => {
     const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
     
@@ -58,8 +64,9 @@ const WorkflowEdge = ({
       sourceBlockType
     }
   }
+  */
   
-  const edgeStyles = getEdgeStyles()
+  // We can use getEdgeStyles() directly in the JSX if needed
   // No condition text needed since we removed the labels
 
   if (!connection) return null; 

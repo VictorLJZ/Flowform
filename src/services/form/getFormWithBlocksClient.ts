@@ -1,4 +1,4 @@
-import { CompleteForm } from '@/types/supabase-types';
+import { CompleteForm, WorkflowEdge } from '@/types/supabase-types';
 
 /**
  * Client-side version of getFormWithBlocks
@@ -20,7 +20,7 @@ export async function getFormWithBlocksClient(
   // === ADDED LOGGING START ===
   if (data.form && data.form.workflow_edges && data.form.workflow_edges.length > 0) {
     console.log(`🔎 [getFormWithBlocksClient] Received workflow_edges from API for form ${formId}:`);
-    data.form.workflow_edges.forEach((edge: any) => { // Use any for logging flexibility
+    data.form.workflow_edges.forEach((edge: WorkflowEdge) => {
       console.log(`  Edge ID: ${edge.id}, default_target_id: ${edge.default_target_id}, type: ${typeof edge.default_target_id}, property_exists: ${Object.prototype.hasOwnProperty.call(edge, 'default_target_id')}`);
     });
   } else {

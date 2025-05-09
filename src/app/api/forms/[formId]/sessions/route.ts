@@ -367,9 +367,9 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         }
         
         // Get the current question index from the request or default to the end
-        const questionIndex = body.questionIndex ?? (existingData?.conversation?.length || 0);
+        // const questionIndex = body.questionIndex ?? (existingData?.conversation?.length || 0); // Not currently used
         
-        let conversation: QAPair[] = existingData?.conversation || [];
+        const conversation: QAPair[] = existingData?.conversation || [];
         
         // Add the new answer to the conversation
         if (body.isStarterQuestion) {

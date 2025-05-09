@@ -26,7 +26,7 @@ export function AIConversationBlock({
   totalBlocks,
   maxQuestions = 0,
   settings = {},
-  value = [],
+  // value = [], // Not currently used
   onChange,
   onUpdate,
   onNext,
@@ -128,7 +128,7 @@ export function AIConversationBlock({
   );
   
   // Use the navigation hook
-  const { handleQuestionNavigation } = useAIConversationNavigation(
+  const { /* handleQuestionNavigation - Not currently used */ } = useAIConversationNavigation(
     conversation,
     activeQuestionIndex,
     setActiveQuestionIndex,
@@ -364,7 +364,7 @@ export function AIConversationBlock({
           {/* Display errors if any */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
-              <p className="text-sm">Error: {typeof error === 'string' ? error : (error as any)?.message || 'Failed to load conversation'}</p>
+              <p className="text-sm">Error: {typeof error === 'string' ? error : (error as Error)?.message || 'Failed to load conversation'}</p>
             </div>
           )}
           
