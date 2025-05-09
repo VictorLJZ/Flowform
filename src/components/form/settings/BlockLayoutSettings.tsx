@@ -73,15 +73,18 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
   const desktopLayout = getEffectiveLayout(blockId, 'desktop') || { type: 'standard' }
   const mobileLayout = getEffectiveLayout(blockId, 'mobile') || { type: 'standard' }
   
-  // Use the layout for the current viewport mode
-  const activeLayout = viewportMode === 'desktop' ? desktopLayout : mobileLayout
+  // Get the types for both layouts
+  const desktopLayoutType: SlideLayoutType = desktopLayout.type || 'standard'
+  const mobileLayoutType: SlideLayoutType = mobileLayout.type || 'standard'
   
-  // Default to standard layout if none is set for current viewport
-  const layoutType: SlideLayoutType = activeLayout?.type || 'standard'
+  // Handle layout type change for desktop
+  const handleDesktopLayoutChange = (type: SlideLayoutType) => {
+    updateBlockLayout(blockId, { type }, 'desktop')
+  }
   
-  // Handle layout type change for the current viewport mode
-  const handleLayoutTypeChange = (type: SlideLayoutType) => {
-    updateBlockLayout(blockId, { type }, viewportMode)
+  // Handle layout type change for mobile
+  const handleMobileLayoutChange = (type: SlideLayoutType) => {
+    updateBlockLayout(blockId, { type }, 'mobile')
   }
   
   // Define options for desktop and mobile layouts
@@ -96,72 +99,113 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
   
   const mobileLayoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
     { type: 'standard', label: 'Standard', icon: StandardLayoutIcon },
-    { type: 'media-top', label: 'Media Top', icon: MediaLeftLayoutIcon }, // Reusing icons for now
+    { type: 'media-top', label: 'Media Top', icon: MediaLeftLayoutIcon },
     { type: 'media-bottom', label: 'Media Bottom', icon: MediaRightLayoutIcon },
     { type: 'media-between', label: 'Media Between', icon: MediaBackgroundLayoutIcon },
     { type: 'media-background', label: 'Background', icon: MediaBackgroundLayoutIcon },
   ]
   
-  // Select the appropriate options based on viewport mode
-  const layoutOptions = viewportMode === 'mobile' ? mobileLayoutOptions : desktopLayoutOptions
-  
-  // Each viewport mode has its own set of compatible layouts
-  const mobileLayouts = ['media-top', 'media-bottom', 'media-between', 'standard', 'media-background']
-  const desktopLayouts = ['standard', 'media-left', 'media-right', 'media-left-split', 'media-right-split', 'media-background']
-  
   return (
     <div className="space-y-6">
+      {/* Desktop Layout Section */}
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <Label>Slide Layout</Label>
+          <Label>Desktop Layout</Label>
           <div className="text-xs flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1">
-            <span className="text-muted-foreground">{viewportMode === 'mobile' ? 'Mobile Layout' : 'Desktop Layout'}</span>
+            <span className={cn(
+              "text-xs",
+              viewportMode === 'desktop' ? "text-primary font-medium" : "text-muted-foreground"
+            )}>Desktop View</span>
           </div>
         </div>
         
-        <div className="text-xs text-muted-foreground mb-2">
-          <p>Configure the layout for {viewportMode} view. <span className="text-primary-foreground/80">Each view has its own layout settings.</span></p>
-        </div>
-        
         <div className="grid grid-cols-3 gap-2">
-          {layoutOptions.map((option) => (
+          {desktopLayoutOptions.map((option) => (
             <LayoutOption
-              key={option.type}
+              key={`desktop-${option.type}`}
               type={option.type}
               label={option.label}
               icon={option.icon}
-              isSelected={layoutType === option.type}
-              onSelect={handleLayoutTypeChange}
+              isSelected={desktopLayoutType === option.type}
+              onSelect={handleDesktopLayoutChange}
             />
           ))}
         </div>
+        
+        {/* Desktop layout specific settings */}
+        {(desktopLayoutType === 'media-left' || desktopLayoutType === 'media-right') && (
+          <MediaPositionSettings 
+            blockId={blockId} 
+            currentLayout={desktopLayout} 
+          />
+        )}
+        
+        {desktopLayoutType === 'media-background' && (
+          <MediaBackgroundSettings 
+            blockId={blockId} 
+            currentLayout={desktopLayout} 
+          />
+        )}
+        
+        {/* Common media settings for desktop */}
+        {desktopLayoutType !== 'standard' && (
+          <MediaSettings
+            blockId={blockId}
+            currentLayout={desktopLayout}
+          />
+        )}
       </div>
       
-      {/* Layout specific settings based on selected layout type */}
-      {(layoutType === 'media-left' || layoutType === 'media-right') ? (
-        <MediaPositionSettings 
-          blockId={blockId} 
-          currentLayout={activeLayout} 
-        />
-      ) : layoutType === 'media-background' ? (
-        <MediaBackgroundSettings 
-          blockId={blockId} 
-          currentLayout={activeLayout} 
-        />
-      ) : (layoutType === 'media-top' || layoutType === 'media-bottom' || layoutType === 'media-between') ? (
-        <MediaMobilePositionSettings
-          blockId={blockId}
-          currentLayout={activeLayout}
-        />
-      ) : null}
+      <Separator />
       
-      {/* Common settings for all layouts with media */}
-      {layoutType !== 'standard' && (
-        <MediaSettings
-          blockId={blockId}
-          currentLayout={activeLayout}
-        />
-      )}
+      {/* Mobile Layout Section */}
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <Label>Mobile Layout</Label>
+          <div className="text-xs flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1">
+            <span className={cn(
+              "text-xs",
+              viewportMode === 'mobile' ? "text-primary font-medium" : "text-muted-foreground"
+            )}>Mobile View</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-2">
+          {mobileLayoutOptions.map((option) => (
+            <LayoutOption
+              key={`mobile-${option.type}`}
+              type={option.type}
+              label={option.label}
+              icon={option.icon}
+              isSelected={mobileLayoutType === option.type}
+              onSelect={handleMobileLayoutChange}
+            />
+          ))}
+        </div>
+        
+        {/* Mobile layout specific settings */}
+        {(mobileLayoutType === 'media-top' || mobileLayoutType === 'media-bottom' || mobileLayoutType === 'media-between') && (
+          <MediaMobilePositionSettings
+            blockId={blockId}
+            currentLayout={mobileLayout}
+          />
+        )}
+        
+        {mobileLayoutType === 'media-background' && (
+          <MediaBackgroundSettings 
+            blockId={blockId} 
+            currentLayout={mobileLayout} 
+          />
+        )}
+        
+        {/* Common media settings for mobile */}
+        {mobileLayoutType !== 'standard' && (
+          <MediaSettings
+            blockId={blockId}
+            currentLayout={mobileLayout}
+          />
+        )}
+      </div>
     </div>
   )
 }
