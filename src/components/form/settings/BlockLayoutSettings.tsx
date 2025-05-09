@@ -21,7 +21,11 @@ import {
   MediaRightLayoutIcon,
   MediaBackgroundLayoutIcon,
   MediaLeftSplitLayoutIcon,
-  MediaRightSplitLayoutIcon
+  MediaRightSplitLayoutIcon,
+  MediaTopLayoutIcon,
+  MediaBottomLayoutIcon,
+  MediaBetweenLayoutIcon,
+  MobileBackgroundLayoutIcon
 } from "@/components/ui/slide-layout-icons"
 import { cn } from "@/lib/utils"
 
@@ -99,10 +103,10 @@ export function BlockLayoutSettings({ blockId, currentLayout }: BlockLayoutSetti
   
   const mobileLayoutOptions: Array<{ type: SlideLayoutType; label: string; icon: React.FC<{ className?: string }> }> = [
     { type: 'standard', label: 'Standard', icon: StandardLayoutIcon },
-    { type: 'media-top', label: 'Media Top', icon: MediaLeftLayoutIcon },
-    { type: 'media-bottom', label: 'Media Bottom', icon: MediaRightLayoutIcon },
-    { type: 'media-between', label: 'Media Between', icon: MediaBackgroundLayoutIcon },
-    { type: 'media-background', label: 'Background', icon: MediaBackgroundLayoutIcon },
+    { type: 'media-top', label: 'Media Top', icon: MediaTopLayoutIcon },
+    { type: 'media-bottom', label: 'Media Bottom', icon: MediaBottomLayoutIcon },
+    { type: 'media-between', label: 'Media Between', icon: MediaBetweenLayoutIcon },
+    { type: 'media-background', label: 'Background', icon: MobileBackgroundLayoutIcon },
   ]
   
   return (

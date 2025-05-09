@@ -5,6 +5,32 @@ interface LayoutIconProps {
   className?: string
 }
 
+// Mobile Layout Icons
+export const MediaTopLayoutIcon: React.FC<LayoutIconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="20" viewBox="0 0 12 20" fill="none" className={className}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M0 2C0 0.89543 0.895431 0 2 0H10C11.1046 0 12 0.895431 12 2V9C12 9.55229 11.5523 10 11 10H1C0.447715 10 0 9.55229 0 9V2ZM2 16.25C2 15.8358 2.33579 15.5 2.75 15.5H7.25C7.66421 15.5 8 15.8358 8 16.25C8 16.6642 7.66421 17 7.25 17H2.75C2.33579 17 2 16.6642 2 16.25ZM2.75 12.5C2.33579 12.5 2 12.8358 2 13.25C2 13.6642 2.33579 14 2.75 14H9.25C9.66421 14 10 13.6642 10 13.25C10 12.8358 9.66421 12.5 9.25 12.5H2.75Z" fill="currentColor" />
+  </svg>
+)
+
+export const MediaBottomLayoutIcon: React.FC<LayoutIconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="20" viewBox="0 0 12 20" fill="none" className={className}>
+    {/* Flipped version of the MediaTopLayoutIcon */}
+    <path fillRule="evenodd" clipRule="evenodd" d="M0 18C0 19.1046 0.895431 20 2 20H10C11.1046 20 12 19.1046 12 18V11C12 10.4477 11.5523 10 11 10H1C0.447715 10 0 10.4477 0 11V18ZM2 3.75C2 4.16421 2.33579 4.5 2.75 4.5H7.25C7.66421 4.5 8 4.16421 8 3.75C8 3.33579 7.66421 3 7.25 3H2.75C2.33579 3 2 3.33579 2 3.75ZM2.75 7.5C2.33579 7.5 2 7.16421 2 6.75C2 6.33579 2.33579 6 2.75 6H9.25C9.66421 6 10 6.33579 10 6.75C10 7.16421 9.66421 7.5 9.25 7.5H2.75Z" fill="currentColor" />
+  </svg>
+)
+
+export const MediaBetweenLayoutIcon: React.FC<LayoutIconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="20" viewBox="0 0 12 20" fill="none" className={className}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M1.75 4C1.33579 4 1 4.33579 1 4.75C1 5.16421 1.33579 5.5 1.75 5.5H8.25C8.66421 5.5 9 5.16421 9 4.75C9 4.33579 8.66421 4 8.25 4H1.75ZM1 8.5C1 7.67157 1.67157 7 2.5 7H9.5C10.3284 7 11 7.67157 11 8.5V11.5C11 12.3284 10.3284 13 9.5 13H2.5C1.67157 13 1 12.3284 1 11.5V8.5ZM1 15.25C1 14.8358 1.33579 14.5 1.75 14.5H8.25C8.66421 14.5 9 14.8358 9 15.25C9 15.6642 8.66421 16 8.25 16H1.75C1.33579 16 1 15.6642 1 15.25Z" fill="currentColor" />
+  </svg>
+)
+
+export const MobileBackgroundLayoutIcon: React.FC<LayoutIconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="20" viewBox="0 0 12 20" fill="none" className={className}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M0 2C0 0.895431 0.895431 0 2 0H10C11.1046 0 12 0.895431 12 2V18C12 19.1046 11.1046 20 10 20H2C0.895431 20 0 19.1046 0 18V2ZM2 11.75C2 11.3358 2.33579 11 2.75 11H7.25C7.66421 11 8 11.3358 8 11.75C8 12.1642 7.66421 12.5 7.25 12.5H2.75C2.33579 12.5 2 12.1642 2 11.75ZM2.75 8C2.33579 8 2 8.33579 2 8.75C2 9.16421 2.33579 9.5 2.75 9.5H9.25C9.66421 9.5 10 9.16421 10 8.75C10 8.33579 9.66421 8 9.25 8H2.75Z" fill="currentColor" />
+  </svg>
+)
+
 export const StandardLayoutIcon: React.FC<LayoutIconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="28" height="20" viewBox="0 0 28 20" fill="none" className={className}>
     <path fillRule="evenodd" clipRule="evenodd" d="M6.75 3C6.33579 3 6 3.33579 6 3.75C6 4.16421 6.33579 4.5 6.75 4.5H15.25C15.6642 4.5 16 4.16421 16 3.75C16 3.33579 15.6642 3 15.25 3H6.75ZM6 8C6 6.89543 6.89543 6 8 6H20C21.1046 6 22 6.89543 22 8V12C22 13.1046 21.1046 14 20 14H8C6.89543 14 6 13.1046 6 12V8ZM6 16.25C6 15.8358 6.33579 15.5 6.75 15.5H13.25C13.6642 15.5 14 15.8358 14 16.25C14 16.6642 13.6642 17 13.25 17H6.75C6.33579 17 6 16.6642 6 16.25Z" fill="currentColor" />
@@ -57,6 +83,13 @@ export const getLayoutIcon = (type: SlideLayoutType): React.FC<LayoutIconProps> 
       return MediaLeftSplitLayoutIcon
     case 'media-background':
       return MediaBackgroundLayoutIcon
+    // Mobile layout icons
+    case 'media-top':
+      return MediaTopLayoutIcon
+    case 'media-bottom':
+      return MediaBottomLayoutIcon
+    case 'media-between':
+      return MediaBetweenLayoutIcon
     default:
       return StandardLayoutIcon
   }
