@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useFormInsightsChat } from '@/hooks/analytics/useFormInsightsChat';
-import { Loader2, Send, MessagesSquare } from 'lucide-react';
+import { Loader2, Send, MessagesSquare, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ChatMessage } from '@/types/chat-types';
 import { ChatSessions } from './ChatSessions';
 import { ProcessEmbeddingsButton } from './ProcessEmbeddingsButton';
+import ReactMarkdown from 'react-markdown';
 
 // Suggested questions - more compact
 const SUGGESTED_QUESTIONS = [
@@ -174,6 +175,14 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
 function ChatMessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
   
+  // Check if message contains RAG search indicator
+  const isSearching = message.role === 'assistant' && 
+    message.content.includes('Searching form responses');
+    
+  // Check if response includes RAG citation
+  const hasRagResults = message.role === 'assistant' && 
+    message.content.includes('[Conversation');
+  
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -183,13 +192,31 @@ function ChatMessageBubble({ message }: { message: ChatMessage }) {
             : 'bg-muted'
         }`}
       >
-        <div className="prose prose-sm dark:prose-invert">
-          {message.content.split('\n').map((line, i) => (
-            <p key={i} className={`${i > 0 ? 'mt-2' : 'mt-0'} ${!isUser ? 'text-left' : ''}`}>
-              {line}
-            </p>
-          ))}
-        </div>
+        {isUser ? (
+          <div className="prose prose-sm dark:prose-invert">
+            {message.content.split('\n').map((line, i) => (
+              <p key={i} className={`${i > 0 ? 'mt-2' : 'mt-0'}`}>
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert">
+            {isSearching && (
+              <div className="flex items-center text-muted-foreground mb-2">
+                <Search className="h-3 w-3 mr-2 animate-pulse" />
+                <span className="text-xs">Searching form responses...</span>
+              </div>
+            )}
+            {hasRagResults && (
+              <div className="flex items-center text-muted-foreground mb-2">
+                <Search className="h-3 w-3 mr-2" />
+                <span className="text-xs">Found relevant form responses</span>
+              </div>
+            )}
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );

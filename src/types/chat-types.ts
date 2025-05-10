@@ -39,6 +39,7 @@ export interface ChatRequest {
   formId: string;
   query: string;
   sessionId?: string;
+  previous_response_id?: string; // OpenAI response ID for conversation continuity
 }
 
 /**
@@ -47,6 +48,7 @@ export interface ChatRequest {
 export interface ChatResponse {
   sessionId: string;
   response: string;
+  response_id?: string; // OpenAI response ID for state management
 }
 
 /**

@@ -28,6 +28,7 @@ interface UseFormInsightsChatReturn {
 export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastResponseId, setLastResponseId] = useState<string | null>(null);
   
   // Use the session store for managing sessions
   const { 
@@ -79,7 +80,9 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
         formId,
         query: message,
         // Only include sessionId if it's not null
-        ...(currentSessionId && { sessionId: currentSessionId })
+        ...(currentSessionId && { sessionId: currentSessionId }),
+        // Include previous response ID for conversation continuity
+        ...(lastResponseId && { previous_response_id: lastResponseId })
       };
       
       const response = await fetch('/api/analytics/chat', {
@@ -95,11 +98,16 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
         throw new Error(errorData.error || 'Failed to send message');
       }
       
-      const responseData = await response.json() as ChatResponse;
+      const responseData = await response.json() as ChatResponse & { response_id?: string };
       
       // Update session ID if this is a new conversation
       if (!currentSessionId) {
         setCurrentSession(responseData.sessionId);
+      }
+      
+      // Save the response ID for conversation continuity
+      if (responseData.response_id) {
+        setLastResponseId(responseData.response_id);
       }
       
       // Update session metadata with last message
@@ -114,7 +122,7 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
     } finally {
       setIsSending(false);
     }
-  }, [formId, currentSessionId, setCurrentSession, updateSessionMetadata, revalidateMessages]);
+  }, [formId, currentSessionId, setCurrentSession, updateSessionMetadata, revalidateMessages, lastResponseId]);
   
   // Set error from SWR if present
   useEffect(() => {

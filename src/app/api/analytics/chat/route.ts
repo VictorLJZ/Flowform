@@ -1,41 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { OpenAI } from 'openai';
-import { OpenAIMessage } from '@/types/ai-types';
-import { generateRagResponse } from '@/services/ai/ragService';
+import { generateRagResponse, RAGResponseWithState } from '@/services/ai/ragService';
 import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
 // Define a type for individual conversation entries
 interface ConversationEntry {
   similarity: number;
   conversation_text: string;
-  // Add other relevant fields if they exist
 }
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Create a new response interface that includes response_id
+interface ChatResponseWithState {
+  sessionId: string;
+  response: string;
+  response_id?: string;
+}
 
 // Initialize Google AI client
-const googleAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
-const geminiModel = googleAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+const googleApiKey = process.env.GEMINI_API_KEY || '';
+let geminiModel: any = null;
+
+if (googleApiKey) {
+  try {
+    const googleAI = new GoogleGenerativeAI(googleApiKey);
+    // Using the more stable and fully featured pro model
+    geminiModel = googleAI.getGenerativeModel({ 
+      model: "gemini-2.5-pro-exp-03-25",
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+      ],
+    });
+    console.log('[Gemini] Model initialized successfully in route handler');
+  } catch (error) {
+    console.error('[Gemini] Error initializing client in route handler:', error);
+  }
+}
 
 /**
  * RAG System Prompt template for analytics insights
  */
 const RAG_SYSTEM_PROMPT = `
-You are an analytics assistant for form creators using Flowform. Your task is to help form owners understand patterns in their form responses, particularly from AI conversation blocks.
+You are an analytics assistant for form creators using Flowform. Your task is to help form owners understand patterns in their form responses.
 
-I'll provide you with relevant form responses based on the user's question. Use ONLY the information provided to answer their questions. If the information isn't in the provided context, admit that you don't know rather than guessing.
+You have access to a tool called 'search_form_responses' that can search for relevant form response data. Only use this tool when you need specific information from form submissions to answer a question.
 
-Focus on identifying:
-1. Common themes and patterns
-2. Unusual or standout responses
-3. Quantitative insights when possible
-4. Actionable suggestions for the form creator
+For simple greetings, clarification questions, or general knowledge inquiries, respond directly without using the tool.
+
+When using the search tool:
+1. Create a specific, focused query related to the user's question
+2. Request an appropriate number of results based on query complexity
+3. Use the retrieved information to provide insights about:
+   - Common themes and patterns
+   - Unusual or standout responses
+   - Quantitative insights when possible
+   - Actionable suggestions for the form creator
+
+If the retrieved information doesn't address the user's question, acknowledge this and explain what information is missing.
 `;
+
+/**
+ * Definition for the search_form_responses function tool
+ */
+const searchFormResponsesFunctionDeclaration = {
+  name: 'search_form_responses',
+  description: 'Searches form responses to find relevant information for answering user queries about form data. Only use this when you need specific information from form submissions.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      query: {
+        type: 'STRING',
+        description: 'The search query to find relevant form responses. Make this specific and focused on information you need.'
+      },
+      maxResults: {
+        type: 'INTEGER',
+        description: 'Maximum number of relevant results to return (1-10). Default is 5 if not specified.'
+      }
+    },
+    required: ['query']
+  }
+};
 
 /**
  * Format retrieved conversations into a context string for the LLM
@@ -47,13 +98,35 @@ function formatContextFromConversations(conversations: ConversationEntry[]): str
 }
 
 /**
+ * Implementation of the search_form_responses function
+ */
+async function searchFormResponses(
+  query: string,
+  formId: string,
+  maxResults: number = 5
+): Promise<string> {
+  // Ensure maxResults is within reasonable bounds
+  maxResults = Math.max(1, Math.min(maxResults, 10));
+  
+  // Search for relevant conversations
+  const conversations = await searchSimilarConversations(query, formId, maxResults);
+  
+  if (!conversations || conversations.length === 0) {
+    return "No relevant form responses found. This might be because there aren't enough responses yet, or the responses don't contain information related to your query.";
+  }
+  
+  // Format context from retrieved conversations
+  return formatContextFromConversations(conversations);
+}
+
+/**
  * POST handler for chat API
  * Creates a new message and generates a response
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { formId, query, sessionId } = body;
+    const { formId, query, sessionId, previous_response_id } = body;
     
     if (!formId) {
       return NextResponse.json({ error: 'Form ID is required' }, { status: 400 });
@@ -129,16 +202,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: userMessageError.message }, { status: 500 });
     }
     
-    // Fetch form details
-    const { error: formError } = await supabase
-      .from('forms')
-      .select('title')
-      .eq('form_id', formId)
-      .single();
-    
-    if (formError) {
-      console.error('Error fetching form data:', formError);
-      return NextResponse.json({ error: formError.message }, { status: 500 });
+    // Fetch previous response_id from the session if not provided
+    let responseId = previous_response_id;
+    if (!responseId && chatSessionId) {
+      const { data: sessionData, error: sessionFetchError } = await supabase
+        .from('chat_sessions')
+        .select('last_response_id')
+        .eq('id', chatSessionId)
+        .single();
+      
+      if (!sessionFetchError && sessionData?.last_response_id) {
+        responseId = sessionData.last_response_id;
+      }
     }
     
     // Get existing messages for context
@@ -153,45 +228,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: messagesError.message }, { status: 500 });
     }
     
-    // RAG Implementation: Search for relevant conversations
+    // Generate RAG response with the new tool-based approach
     let aiResponse = '';
+    let newResponseId: string | undefined;
+    
     try {
-      // Option 1: Use the dedicated RAG service
-      aiResponse = await generateRagResponse(query, formId);
-    } catch (ragError) {
-      console.error('Error with RAG service, using fallback method:', ragError);
+      // Using the updated generateRagResponse function with previous messages context
+      // and optional response ID for conversation continuity
+      const responseResult = await generateRagResponse(
+        query, 
+        formId,
+        previousMessages,
+        responseId
+      );
       
-      try {
-        // Option 2: Fallback - implement RAG directly
-        const conversations = await searchSimilarConversations(query, formId, 5);
+      aiResponse = responseResult.text;
+      newResponseId = responseResult.id;
         
-        if (!conversations || conversations.length === 0) {
-          aiResponse = "I couldn't find any relevant form responses to answer your question. This might be because there aren't enough responses yet, or the responses don't contain information related to your question.";
-        } else {
-          // Format conversation history and context for Gemini
-          let prompt = RAG_SYSTEM_PROMPT + "\n\n";
-          
-          // Add conversation history for context
-          if (previousMessages && previousMessages.length > 0) {
-            prompt += "Previous conversation:\n";
-            for (const msg of previousMessages) {
-              prompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
-            }
-            prompt += "\n";
-          }
-          
-          // Add the context and current query
-          const context = formatContextFromConversations(conversations);
-          prompt += `CONTEXT:\n${context}\n\nQUESTION:\n${query}`;
-          
-          // Generate response using Google's Gemini model
-          const result = await geminiModel.generateContent(prompt);
-          aiResponse = result.response.text();
-        }
-      } catch (fallbackError) {
-        console.error('Fallback RAG implementation failed:', fallbackError);
-        aiResponse = "I'm having trouble accessing form response data to answer your question. Please try again later.";
+      // Store the response ID in the session for future continuity
+      if (newResponseId) {
+        await supabase
+          .from('chat_sessions')
+          .update({ last_response_id: newResponseId })
+          .eq('id', chatSessionId);
       }
+    } catch (ragError) {
+      console.error('Error with RAG service:', ragError);
+      
+      // Simplified fallback
+      aiResponse = "I'm having trouble accessing form response data to answer your question. Please try again later.";
     }
     
     // Save the assistant response
@@ -208,10 +273,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: assistantMessageError.message }, { status: 500 });
     }
     
-    return NextResponse.json({
+    // Return session ID, response, and response ID if available
+    const responseObject: ChatResponseWithState = {
       sessionId: chatSessionId,
       response: aiResponse
-    });
+    };
+    
+    if (newResponseId) {
+      responseObject.response_id = newResponseId;
+    }
+    
+    return NextResponse.json(responseObject);
   } catch (error) {
     console.error('Error processing chat:', error);
     return NextResponse.json({ 

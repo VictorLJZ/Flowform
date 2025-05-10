@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 // DELETE endpoint to delete a session
 export async function DELETE(
   request: NextRequest,
-  context: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> | { sessionId: string } }
 ) {
-  const sessionId = context.params.sessionId;
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const { sessionId } = resolvedParams;
   
   if (!sessionId) {
     return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
@@ -58,9 +60,11 @@ export async function DELETE(
 // PATCH endpoint to update session metadata
 export async function PATCH(
   request: NextRequest,
-  context: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> | { sessionId: string } }
 ) {
-  const sessionId = context.params.sessionId;
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const { sessionId } = resolvedParams;
   
   if (!sessionId) {
     return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });

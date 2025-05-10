@@ -12,48 +12,22 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormInsightsChatbot } from '@/components/analytics/FormInsightsChatbot';
-
-// Placeholder for FormInsights
-function FormInsights({ formId }: { formId: string }) {
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">Form Insights</h3>
-      <p className="text-muted-foreground">
-        Insights for form {formId} would be displayed here.
-      </p>
-    </div>
-  );
-}
-
-// Placeholder for QuestionMetrics
-function QuestionMetrics({ formId }: { formId: string }) {
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">Question Metrics</h3>
-      <p className="text-muted-foreground">
-        Metrics for individual questions in form {formId} would be displayed here.
-      </p>
-    </div>
-  );
-}
-
-// Placeholder for ResponsesWithVersioningSupport
-function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">Form Responses</h3>
-      <p className="text-muted-foreground">
-        Responses for form {formId} would be displayed here.
-      </p>
-    </div>
-  );
-}
+import { FormInsights } from '@/components/analytics/form-insights';
+import { QuestionMetrics } from '@/components/analytics/question-metrics';
+import { VersionedResponsesTable } from '@/components/analytics';
+import { useVersionedFormResponses } from '@/hooks/useVersionedAnalyticsData';
+import { FormAnalyticsDashboard } from '@/components/analytics/form-analytics-dashboard';
 
 export default function FormAnalyticsPage() {
   const params = useParams()
   const formId = params.formId as string
   
   const { form, isLoading, error } = useForm(formId)
+  
+  // Get the versioned form responses
+  const formResponsesData = useVersionedFormResponses(formId)
+  const responses = formResponsesData.responses || []
+  const responsesLoading = formResponsesData.loading
 
   return (
     <div className="flex flex-1 flex-col">
@@ -104,17 +78,20 @@ export default function FormAnalyticsPage() {
         ) : !form ? (
           <div className="w-full p-12 text-center">Form not found</div>
         ) : (
-          <Tabs defaultValue="chat" className="w-full">
+          <Tabs defaultValue="responses" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="responses">Responses</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="chat">Chat with Data</TabsTrigger>
-              <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
             </TabsList>
               
             <TabsContent value="responses" className="mt-0 bg-white border rounded-md">
               <div className="p-4">
-                <ResponsesWithVersioningSupport formId={formId} />
+                <VersionedResponsesTable 
+                  responses={responses} 
+                  loading={responsesLoading} 
+                />
               </div>
             </TabsContent>
             
@@ -130,14 +107,12 @@ export default function FormAnalyticsPage() {
               </div>
             </TabsContent>
             
-            <TabsContent value="chat" className="mt-0 h-[70vh]">
-              <FormInsightsChatbot formId={formId} />
+            <TabsContent value="summary" className="mt-0">
+              <FormAnalyticsDashboard formId={formId} />
             </TabsContent>
             
-            <TabsContent value="summary" className="mt-0">
-              <div className="text-center p-12 text-muted-foreground">
-                Summary coming soon
-              </div>
+            <TabsContent value="chat" className="mt-0 h-[70vh]">
+              <FormInsightsChatbot formId={formId} />
             </TabsContent>
           </Tabs>
         )}

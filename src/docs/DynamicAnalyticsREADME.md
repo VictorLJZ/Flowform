@@ -448,6 +448,27 @@ QUESTION:
 {question}
 ```
 
+### Tool-Based RAG Prompt
+
+```
+You are an analytics assistant for form creators using Flowform. Your task is to help form owners understand patterns in their form responses.
+
+You have access to a tool called 'search_form_responses' that can search for relevant form response data. Only use this tool when you need specific information from form submissions to answer a question.
+
+For simple greetings, clarification questions, or general knowledge inquiries, respond directly without using the tool.
+
+When using the search tool:
+1. Create a specific, focused query related to the user's question
+2. Request an appropriate number of results based on query complexity
+3. Use the retrieved information to provide insights about:
+   - Common themes and patterns
+   - Unusual or standout responses
+   - Quantitative insights when possible
+   - Actionable suggestions for the form creator
+
+If the retrieved information doesn't address the user's question, acknowledge this and explain what information is missing.
+```
+
 ## 10. Recent Updates and Changes
 
 ### 10.1 Page Structure Updates
@@ -524,5 +545,74 @@ This implementation plan focuses on the core RAG functionality while maintaining
 3. User confirms; the dialog shows a loading spinner while the operation is in progress.
 4. On success, the dialog closes and the chat history is cleared from both the UI and the database.
 5. On error, an error message is shown in the dialog.
+
+## 11. Intelligent Tool-Based RAG Implementation
+
+The RAG system has been enhanced to use a tool-based approach, where the AI model decides when to search for relevant data rather than searching for every query. This approach improves efficiency, user experience, and result quality.
+
+### 11.1 Function-Based RAG Architecture
+
+```
+┌───────────────────┐     ┌─────────────────────┐
+│   User Query      │────▶│   Gemini Model      │
+└───────────────────┘     │   with RAG Tool     │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │   Does query need   │ No  ┌─────────────────┐
+                          │    form data?       │────▶│ Direct Response │
+                          └──────────┬──────────┘     └─────────────────┘
+                                     │ Yes
+                                     ▼
+                          ┌─────────────────────┐
+                          │  Call RAG Function  │
+                          │  with refined query │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  Vector DB Search   │
+                          │  for relevant data  │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  Generate Response  │
+                          │  using retrieved    │
+                          │  context            │
+                          └─────────────────────┘
+```
+
+### 11.2 Benefits of Tool-Based RAG
+
+1. **Efficiency**: Only searches the database when necessary, reducing database load
+2. **Better UX**: Simple questions get immediate responses without database lookups
+3. **Transparency**: Users can see when their form data is being searched
+4. **Improved Relevance**: The model can refine search queries for better results
+5. **Natural Conversations**: Maintains conversational flow for non-data questions
+
+### 11.3 Implementation Details
+
+The RAG system uses Gemini's function calling capabilities to implement a `search_form_responses` tool with the following parameters:
+
+- **query**: The refined search query for finding relevant form responses
+- **maxResults**: The number of results to retrieve (dynamically chosen by the model)
+
+When the model determines that form data is needed to answer a question, it calls this function, which:
+
+1. Executes the vector similarity search with the refined query
+2. Returns the most relevant form responses as context
+3. The model then uses this context to generate a comprehensive answer
+
+### 11.4 UI Feedback
+
+The UI has been enhanced to provide feedback when the RAG tool is being used:
+
+- Shows "Searching form responses..." indicator during search
+- Potentially displays which responses informed the answer
+- Maintains a clean interface when RAG is not needed
+
+This tool-based approach creates a more natural, efficient, and effective conversation experience when analyzing form data.
 
 --- 
