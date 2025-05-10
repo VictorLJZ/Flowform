@@ -327,7 +327,9 @@ export default function FormBuilderContent() {
               
 
               
-              {currentBlock.blockTypeId === 'ai_conversation' && (
+              {(currentBlock.blockTypeId === 'ai_conversation' || 
+                currentBlock.blockTypeId === 'dynamic' || 
+                currentBlock.type === 'dynamic') && (
                 <AIConversationBlock
                   id={currentBlock.id}
                   title={currentBlock.title}

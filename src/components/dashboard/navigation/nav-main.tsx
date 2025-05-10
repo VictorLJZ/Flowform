@@ -3,6 +3,8 @@
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
+import { useRecentForms } from "@/hooks/useRecentForms"
+import { Button } from "@/components/ui/button"
 
 import {
   Collapsible,
@@ -31,14 +33,19 @@ export function NavMain({
     icon?: LucideIcon
     isActive?: boolean
     action?: string
+    isDynamic?: boolean
     items?: {
-      title: string
-      url: string
-    }[]
+      id: string;
+      title: string;
+      url: string;
+    }[];
   }[]
 }) {
   const router = useRouter();
   const { workspaces } = useWorkspaces();
+  
+  // Fetch recent forms for the dropdown
+  const { recentForms, isLoading: formsLoading } = useRecentForms(5);
   
   // Handle action items like form creation
   const handleAction = async (action: string) => {
@@ -74,36 +81,65 @@ export function NavMain({
       <SidebarGroupLabel>FlowForm</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
+          // For dynamic items (like Recent Forms), populate the items array
+          const processedItem = { ...item };
+          
+          if (item.isDynamic && item.title === "Recent Forms") {
+            // Dynamic Recent Forms section
+            processedItem.items = recentForms?.map(form => ({
+              id: form.form_id,
+              title: form.title || "Untitled Form", 
+              url: `/dashboard/forms/builder/${form.form_id}`
+            })) || [];
+            
+            // Add a message if no forms or still loading
+            if (formsLoading) {
+              processedItem.items = [{ id: "loading-placeholder", title: "Loading...", url: "#" }];
+            } else if (processedItem.items.length === 0) {
+              processedItem.items = [{ id: "no-recent-forms-placeholder", title: "No recent forms", url: "#" }];
+            }
+          }
+          
           // Check if the item has subitems
-          const hasSubItems = item.items && item.items.length > 0;
+          const hasSubItems = processedItem.items && processedItem.items.length > 0;
           
           // We always use the Collapsible component for consistency
           // but use different content inside based on whether it has subitems
           return (
             <Collapsible
-              key={item.title}
+              key={processedItem.title}
               asChild
-              defaultOpen={item.isActive}
+              defaultOpen={processedItem.isActive}
               className="group/collapsible"
             >
               <SidebarMenuItem>
                 {!hasSubItems ? (
                   // Direct link but wrapped in CollapsibleTrigger for consistency
                   <CollapsibleTrigger asChild>
-                    {item.action ? (
+                    {processedItem.action === 'create-form' ? (
+                      <div className="w-full px-3 py-2">
+                        <Button 
+                          className="w-full justify-start"
+                          onClick={() => handleAction(processedItem.action!)}
+                        >
+                          {processedItem.icon && <processedItem.icon className="mr-2 h-4 w-4" />}
+                          {processedItem.title}
+                        </Button>
+                      </div>
+                    ) : processedItem.action ? (
                       <SidebarMenuButton 
                         className="cursor-pointer"
-                        tooltip={item.title}
-                        onClick={() => handleAction(item.action!)}
+                        tooltip={processedItem.title}
+                        onClick={() => handleAction(processedItem.action!)}
                       >
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
+                        {processedItem.icon && <processedItem.icon />}
+                        <span>{processedItem.title}</span>
                       </SidebarMenuButton>
                     ) : (
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <Link href={item.url} className="flex w-full items-center gap-2">
-                          {item.icon && <item.icon />}
-                          <span>{item.title}</span>
+                      <SidebarMenuButton asChild tooltip={processedItem.title}>
+                        <Link href={processedItem.url} className="flex w-full items-center gap-2">
+                          {processedItem.icon && <processedItem.icon />}
+                          <span>{processedItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     )}
@@ -112,16 +148,16 @@ export function NavMain({
                   // Regular dropdown trigger
                   <>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
+                      <SidebarMenuButton tooltip={processedItem.title}>
+                        {processedItem.icon && <processedItem.icon />}
+                        <span>{processedItem.title}</span>
                         <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {item.items?.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
+                        {processedItem.items?.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.id}>
                             <SidebarMenuSubButton asChild>
                               <Link href={subItem.url}>
                                 <span>{subItem.title}</span>

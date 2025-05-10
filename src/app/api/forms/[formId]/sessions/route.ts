@@ -118,19 +118,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let starterQuestion = '';
 
     if (firstBlock.type === 'dynamic') {
-      // Get the dynamic block config
-      const { data: config, error: configError } = await serviceSupabase
-        .from('dynamic_block_configs')
-        .select('*')
-        .eq('block_id', firstBlock.id)
-        .single();
+      try {
+        // Try to get the dynamic block config first
+        const { data: config, error: configError } = await serviceSupabase
+          .from('dynamic_block_configs')
+          .select('*')
+          .eq('block_id', firstBlock.id)
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
-      if (configError) {
-        console.error('Error fetching dynamic block config:', configError);
-        throw configError;
+        if (config && !configError) {
+          // If config exists, use the starter_question
+          starterQuestion = config.starter_question;
+        } else {
+          // Fallback to using the block title
+          console.log('No dynamic block config found, using block title instead');
+          starterQuestion = firstBlock.title;
+          
+          // Use settings if available (for AI conversation blocks)
+          if (firstBlock.settings && typeof firstBlock.settings === 'object') {
+            // If there's a contextInstructions in settings, log it for debugging
+            if (firstBlock.settings.contextInstructions) {
+              console.log('Using contextInstructions from settings:', firstBlock.settings.contextInstructions);
+            }
+          }
+        }
+      } catch (configError) {
+        console.warn('Error fetching dynamic block config, using block title instead:', configError);
+        starterQuestion = firstBlock.title;
       }
-
-      starterQuestion = config.starter_question;
     } else {
       // For static blocks
       starterQuestion = firstBlock.title;
@@ -349,6 +364,24 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       console.log(`[${requestId}] Processing dynamic or AI conversation block`);
       
       try {
+        // Fetch the block information to get settings if needed
+        const { data: blockData, error: blockError } = await supabase
+          .from('form_blocks')
+          .select('*')
+          .eq('id', blockId)
+          .single();
+        
+        if (blockError) {
+          console.error(`[${requestId}] Error fetching block data:`, blockError);
+          return NextResponse.json(
+            { error: `Database error: ${blockError.message}` },
+            { status: 500 }
+          );
+        }
+        
+        // Get block settings for temperature
+        const temperature = blockData.settings?.temperature || 0.7;
+        
         // For dynamic blocks, pass to saveDynamicBlockResponse
         // Get the existing conversation
         const { data: existingData, error: existingError } = await supabase
@@ -375,19 +408,32 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         if (body.isStarterQuestion) {
           console.log(`[${requestId}] Processing starter question answer`);
           conversation.push({
-            question: currentQuestion || "What's your answer?",
+            question: currentQuestion || blockData.title || "What's your answer?",
             answer: answer as string,
             timestamp: new Date().toISOString(),
             is_starter: true
           });
-        } else {
+        } else if (!body.isComplete) {
+          // Only add new answer to conversation if not "Continue" button (isComplete)
           console.log(`[${requestId}] Processing follow-up question answer`);
-          conversation.push({
-            question: currentQuestion || (existingData?.next_question || 'Follow-up question'),
-            answer: answer as string,
-            timestamp: new Date().toISOString(),
-            is_starter: false
-          });
+          
+          // Check if the answer is the entire conversation array 
+          // (this can happen if the Continue button sends the current state)
+          if (Array.isArray(answer) && answer.length > 0 && answer[0].question) {
+            console.log(`[${requestId}] Detected conversation array submitted as answer, ignoring`);
+            // Don't add this to conversation - it's a duplicate
+          } else {
+            // Normal case - add the answer to conversation
+            conversation.push({
+              question: currentQuestion || (existingData?.next_question || 'Follow-up question'),
+              answer: answer as string,
+              timestamp: new Date().toISOString(),
+              is_starter: false
+            });
+          }
+        } else {
+          console.log(`[${requestId}] Continue button pressed, not adding to conversation`);
+          // This is just the "Continue" button press, don't add it to conversation
         }
         
         // Get form context
@@ -420,6 +466,9 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
             const prevQuestions = conversation.map(qa => qa.question);
             const prevAnswers = conversation.map(qa => qa.answer);
             
+            // Get context instructions from block settings if available
+            const contextInstructions = blockData.settings?.contextInstructions || '';
+            
             // Use your AI service to generate the next question
             const response = await fetch(`${request.nextUrl.origin}/api/ai/generate-question`, {
               method: 'POST',
@@ -428,7 +477,8 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
                 prevQuestions,
                 prevAnswers,
                 formContext,
-                temperature: 0.7
+                contextInstructions,
+                temperature
               })
             });
             

@@ -99,41 +99,35 @@ export async function updateFormBlock(
 
   // If this is a dynamic block and we have config updates, apply them
   if (existingBlock.type === 'dynamic' && dynamicConfig) {
-    const { data: config, error: configError } = await supabase
-      .from('dynamic_block_configs')
-      .update(dynamicConfig)
-      .eq('block_id', blockId)
+    // Instead of updating a separate config table, we'll update the settings in the form_blocks table
+    // Convert dynamic config to settings property 
+    const updatedSettings = {
+      ...updatedBlock.settings,
+      temperature: dynamicConfig.temperature || 0.7,
+      maxQuestions: dynamicConfig.max_questions || 5,
+      contextInstructions: dynamicConfig.ai_instructions || ''
+    };
+    
+    // Update the block with these settings
+    const { data: blockWithSettings, error: settingsError } = await supabase
+      .from('form_blocks')
+      .update({ settings: updatedSettings })
+      .eq('id', blockId)
       .select()
       .single();
-
-    if (configError) {
-      console.error('Error updating dynamic block config:', configError);
-      throw configError;
+      
+    if (settingsError) {
+      console.error('Error updating block settings:', settingsError);
+      throw settingsError;
     }
-
-    return {
-      ...updatedBlock,
-      dynamic_config: config
-    };
+    
+    // Return the updated block with settings
+    return blockWithSettings;
   }
 
-  // If it's a dynamic block, fetch the current config
+  // If it's a dynamic block, no need to fetch config - it's in the settings
   if (existingBlock.type === 'dynamic') {
-    const { data: config, error: configError } = await supabase
-      .from('dynamic_block_configs')
-      .select('*')
-      .eq('block_id', blockId)
-      .single();
-
-    if (configError) {
-      console.error('Error fetching dynamic block config:', configError);
-      throw configError;
-    }
-
-    return {
-      ...updatedBlock,
-      dynamic_config: config
-    };
+    return updatedBlock;
   }
 
   // Invalidate form cache after successful update

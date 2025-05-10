@@ -34,37 +34,31 @@ export async function createFormBlock(
 
   // If this is a dynamic block, create the configuration
   if (block.type === 'dynamic' && dynamicConfig) {
-    const { data: config, error: configError } = await supabase
-      .from('dynamic_block_configs')
-      .insert({
-        block_id: block.id,
-        starter_question: dynamicConfig.starter_question,
-        temperature: dynamicConfig.temperature || 0.7,
-        max_questions: dynamicConfig.max_questions || 5,
-        ai_instructions: dynamicConfig.ai_instructions
-      })
+    // Instead of creating a separate config entry, add the configuration to the block settings
+    const updatedSettings = {
+      ...block.settings,
+      temperature: dynamicConfig.temperature || 0.7,
+      maxQuestions: dynamicConfig.max_questions || 3,
+      contextInstructions: dynamicConfig.ai_instructions || ''
+    };
+    
+    // Update the block with dynamic settings
+    const { data: updatedBlock, error: updateError } = await supabase
+      .from('form_blocks')
+      .update({ settings: updatedSettings })
+      .eq('id', block.id)
       .select()
       .single();
-
-    if (configError) {
-      console.error('Error creating dynamic block config:', configError);
       
-      // Attempt to clean up the block if config creation fails
-      await supabase
-        .from('form_blocks')
-        .delete()
-        .eq('id', block.id);
-        
-      throw configError;
+    if (updateError) {
+      console.error('Error updating block with dynamic settings:', updateError);
+      throw updateError;
     }
-
+    
     // Invalidate form cache after successful dynamic block creation
     invalidateFormCache(block.form_id);
-
-    return {
-      ...block,
-      dynamic_config: config
-    };
+    
+    return updatedBlock;
   }
 
   // Invalidate form cache after successful static block creation

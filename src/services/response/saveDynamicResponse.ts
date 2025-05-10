@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
-import { DynamicBlockResponse, DynamicBlockConfig, QAPair } from '@/types/supabase-types';
+import { DynamicBlockResponse, QAPair } from '@/types/supabase-types';
 import { generateQuestion } from '@/services/ai/generateQuestion';
 
 /**
@@ -31,7 +31,6 @@ export async function saveDynamicResponse(
   
   // First, get the existing conversation or create a new one
   let existingConversation: DynamicBlockResponse | null = null;
-  let dynamicConfig: DynamicBlockConfig | null = null;
   
   if (!isFirstQuestion) {
     // Try to fetch existing conversation
@@ -50,19 +49,22 @@ export async function saveDynamicResponse(
     existingConversation = conversation;
   }
   
-  // Get the dynamic block configuration
-  const { data: config, error: configError } = await supabase
-    .from('dynamic_block_configs')
+  // Get the block data for settings
+  const { data: blockData, error: blockError } = await supabase
+    .from('form_blocks')
     .select('*')
-    .eq('block_id', blockId)
+    .eq('id', blockId)
     .single();
   
-  if (configError) {
-    console.error('Error fetching dynamic block config:', configError);
-    throw configError;
+  if (blockError) {
+    console.error('Error fetching block data:', blockError);
+    throw blockError;
   }
   
-  dynamicConfig = config;
+  // Extract settings from block data
+  const temperature = blockData.settings?.temperature || 0.7;
+  const maxQuestions = blockData.settings?.maxQuestions || 3;
+  const contextInstructions = blockData.settings?.contextInstructions || '';
   
   // Create the new Q&A pair
   const newQAPair: QAPair = {
@@ -76,15 +78,22 @@ export async function saveDynamicResponse(
   let conversation: QAPair[] = [];
   
   if (existingConversation) {
-    // Add to existing conversation
-    conversation = [...existingConversation.conversation, newQAPair];
+    // Add to existing conversation - but check if answer is already a QAPair array
+    if (Array.isArray(answer) && answer.length > 0 && 
+        typeof answer[0] === 'object' && 'question' in answer[0]) {
+      console.log('Detected conversation being passed as answer, ignoring to prevent duplication');
+      conversation = [...existingConversation.conversation];
+    } else {
+      // Normal case - add new QA pair to conversation
+      conversation = [...existingConversation.conversation, newQAPair];
+    }
   } else {
     // Start new conversation
     conversation = [newQAPair];
   }
   
   // Check if we've reached the maximum number of questions
-  const isComplete = conversation.length >= (dynamicConfig?.max_questions || 5); // Default to 5 if not set
+  const isComplete = conversation.length >= maxQuestions;
   
   // Generate the next question if we haven't reached the maximum
   let nextQuestion: string | null = null;
@@ -99,15 +108,15 @@ export async function saveDynamicResponse(
     // Add the AI instructions as a system message
     aiConversation.unshift({ 
       role: 'developer', 
-      content: dynamicConfig?.ai_instructions || 'Generate a follow-up question based on the previous conversation.'
+      content: contextInstructions || 'Generate a follow-up question based on the previous conversation.'
     });
     
     // Generate the next question
     try {
       const result = await generateQuestion(
         aiConversation, 
-        dynamicConfig?.ai_instructions || '',
-        dynamicConfig?.temperature || 0.7 // Default temperature if not set
+        contextInstructions,
+        temperature
       );
       
       if (result.success) {

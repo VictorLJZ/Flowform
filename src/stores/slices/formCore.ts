@@ -5,10 +5,11 @@ import type { FormCoreSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import type { CustomFormData } from '@/types/form-builder-types'
 import { defaultFormTheme } from '@/types/theme-types'
+import { v4 as uuidv4 } from 'uuid';
 
 // Initial empty form data
 export const defaultFormData: CustomFormData = {
-  form_id: '',
+  form_id: uuidv4(), // Generate UUID for new forms
   title: 'Untitled Form',
   description: '',
   settings: {

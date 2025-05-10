@@ -80,7 +80,8 @@ export const getBlockTypeColors = (blockTypeId: string): BlockColorScheme => {
     return categoryColors.choice;
   }
   
-  if (blockTypeId.includes('ai_conversation')) {
+  // Enhanced condition to catch all dynamic blocks, including ai_conversation
+  if (blockTypeId.includes('ai_conversation') || blockTypeId.includes('dynamic') || blockTypeId === 'dynamic') {
     return categoryColors.advanced;
   }
   

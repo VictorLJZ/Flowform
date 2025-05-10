@@ -33,22 +33,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
     
-    // Get block config for max questions
-    const { data: config, error: configError } = await supabase
-      .from('dynamic_block_configs')
+    // Get block data to find max questions from settings
+    const { data: blockData, error: blockError } = await supabase
+      .from('form_blocks')
       .select('*')
-      .eq('block_id', blockId)
+      .eq('id', blockId)
       .single()
       
-    if (configError && configError.code !== 'PGRST116') {
-      console.error('Error fetching config:', configError)
-      return NextResponse.json({ success: false, error: configError.message }, { status: 500 })
+    if (blockError) {
+      console.error('Error fetching block data:', blockError)
+      return NextResponse.json({ success: false, error: blockError.message }, { status: 500 })
     }
     
     const conversation = data?.conversation || []
     
-    // IMPROVED: More reliable maxQuestions handling
-    const maxQuestions = config?.max_questions || 5
+    // Get maxQuestions from the block settings
+    const maxQuestions = blockData?.settings?.maxQuestions || 5
     const hasReachedMaxQuestions = maxQuestions > 0 && conversation.length >= maxQuestions
     
     // ADDED: Detect if this is a new conversation that's just starting

@@ -215,6 +215,25 @@ export function AIConversationBlock({
     setIsNavigating(true);
     
     try {
+      // Before navigating, mark this conversation as complete on the server
+      // This prevents issues where the entire conversation history is sent as a new answer
+      if (responseId && conversation.length > 0) {
+        fetch(`/api/forms/${formId}/sessions`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            responseId,
+            blockId: id,
+            blockType: 'dynamic',
+            answer: null, // Empty answer for Continue button
+            isComplete: true // Important flag to indicate this is just a continue action
+          })
+        }).catch(error => {
+          console.error('Error marking conversation as complete:', error);
+          // Continue with navigation even if this fails
+        });
+      }
+    
       // Set a max timeout to ensure navigation happens even if there's an error
       const timeoutId = setTimeout(() => {
         if (isNavigating && navigationAttempted) {

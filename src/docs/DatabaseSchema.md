@@ -186,29 +186,7 @@ Stores question blocks within forms.
 | Users can manage blocks in their forms | ALL | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 | Users can view blocks in their forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 7. dynamic_block_configs
-
-Stores AI configuration for dynamic blocks.
-
-| Column         | Type                    | Description                       |
-|----------------|-------------------------|-----------------------------------|
-| block_id         | UUID                    | References form_blocks.id (primary key) |
-| starter_question | TEXT                    | Initial question to ask           |
-| temperature      | FLOAT                   | AI temperature setting (0.0-1.0)  |
-| max_questions    | INTEGER                 | Maximum number of follow-up questions |
-| ai_instructions  | TEXT                    | Guidelines for the AI             |
-| created_at       | TIMESTAMP WITH TIME ZONE| When config was created           |
-| updated_at       | TIMESTAMP WITH TIME ZONE| When config was last updated      |
-
-#### Row Level Security Policies
-
-| Policy Name | Command | Using (qual) | With Check |
-|-------------|---------|--------------|------------|
-| Users can manage dynamic block configs in their forms | ALL | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())))` | null |
-| Users can view dynamic block configs in their forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())))` | null |
-| Anyone can read dynamic block configs | SELECT | `true` | null |
-
-### 8. block_options
+### 7. block_options
 
 Stores options for multiple choice and similar blocks.
 
@@ -227,7 +205,7 @@ Stores options for multiple choice and similar blocks.
 |-------------|---------|--------------|------------|
 | Public can view options in published forms | SELECT | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` | null |
 
-### 9. workflow_edges
+### 8. workflow_edges
 
 Stores the connections between form blocks in the workflow, including any conditional logic for form navigation.
 
@@ -249,7 +227,7 @@ Stores the connections between form blocks in the workflow, including any condit
 | Form owners and workspace members can manage edges | ALL | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 | Public can view edges in published forms | SELECT | `form_id IN (SELECT form_id FROM forms WHERE status = 'published')` | null |
 
-### 10. form_responses
+### 9. form_responses
 
 Stores form submissions.
 
@@ -276,7 +254,7 @@ Stores form submissions.
 | Allow form owners to view responses | SELECT | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 | Allow form owners to delete responses | DELETE | `form_id IN (SELECT form_id FROM forms WHERE created_by = auth.uid() OR workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND role IN ('owner', 'admin')))` | null |
 
-### 11. form_versions
+### 10. form_versions
 
 Stores versioning information for forms to track changes over time.
 
@@ -295,7 +273,7 @@ Stores versioning information for forms to track changes over time.
 | Form owners can create versions | INSERT | null | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.created_by = auth.uid())` |
 | Anyone with form access can view versions | SELECT | `form_id IN (SELECT forms.form_id FROM forms WHERE forms.status = 'published' OR forms.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm JOIN forms f ON f.workspace_id = wm.workspace_id WHERE f.form_id = form_id AND wm.user_id = auth.uid()))` | null |
 
-### 12. form_block_versions
+### 11. form_block_versions
 
 Stores the state of form blocks at specific versions, enabling historical view of forms.
 
@@ -321,7 +299,7 @@ Stores the state of form blocks at specific versions, enabling historical view o
 | Form owners can create block versions | INSERT | null | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.created_by = auth.uid())` |
 | Anyone with form access can view block versions | SELECT | `form_version_id IN (SELECT fv.id FROM form_versions fv JOIN forms f ON f.form_id = fv.form_id WHERE f.status = 'published' OR f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 13. static_block_answers
+### 12. static_block_answers
 +**Note:** A UNIQUE constraint on `(response_id, block_id)` ensures each question is answered only once per session.
 
 Stores answers to static blocks.
@@ -340,7 +318,7 @@ Stores answers to static blocks.
 |-------------|---------|--------------|------------|
 | Form owners and workspace members can view static answers | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 
-### 14. dynamic_block_responses
+### 13. dynamic_block_responses
 
 Stores AI-driven conversations.
 
@@ -360,7 +338,7 @@ Stores AI-driven conversations.
 | Form owners and workspace members can view dynamic responses | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 ## Analytics Tables
 
-### 15. form_views
+### 14. form_views
 
 Tracks visitors viewing forms.
 
@@ -382,7 +360,7 @@ Tracks visitors viewing forms.
 | Anonymous users can create form views | INSERT | `authenticated, anon` | `true` |
 | Workspace members can view form views | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 16. form_metrics
+### 15. form_metrics
 
 Aggregated metrics for form performance. These metrics are automatically calculated and maintained by RPC functions.
 
@@ -439,7 +417,7 @@ See [AnalyticsRPCSchema.md](./AnalyticsRPCSchema.md) for detailed documentation 
 |-------------|---------|--------------|------------|
 | Workspace members can view form analytics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 17. block_metrics
+### 16. block_metrics
 
 Performance metrics for individual question blocks.
 
@@ -468,7 +446,7 @@ Performance metrics for individual question blocks.
 |-------------|---------|--------------|------------|
 | Workspace members can view block metrics | SELECT | `form_id IN (SELECT form_id FROM forms WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()))` | null |
 
-### 18. form_interactions
+### 17. form_interactions
 
 Granular tracking of user interactions with form elements.
 
@@ -498,7 +476,7 @@ Granular tracking of user interactions with form elements.
 | Form owners and workspace members can view interactions | SELECT | `response_id IN (SELECT fr.id FROM form_responses fr JOIN forms f ON fr.form_id = f.form_id WHERE f.created_by = auth.uid() OR EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = f.workspace_id AND wm.user_id = auth.uid()))` | null |
 | Anonymous users can create interactions | INSERT | null | `block_id IN (SELECT id FROM form_blocks WHERE form_id IN (SELECT form_id FROM forms WHERE status = 'published'))` |
 
-### 19. dynamic_block_analytics
+### 18. dynamic_block_analytics
 
 Analytics specific to AI-driven conversation blocks.
 

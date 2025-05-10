@@ -5,17 +5,14 @@ import {
   FileText,
   ClipboardList,
   LayoutDashboard,
-  Settings,
-  PlusCircle,
-  BarChart,
   FolderPlus,
-  Database,
-  Users,
-  Image
+  Image,
+  Plus
 } from "lucide-react"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { toast } from "@/components/ui/use-toast"
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
-import { NavProjects } from "@/components/dashboard/navigation/nav-projects"
 import { NavUser } from "@/components/dashboard/navigation/nav-user"
 import { WorkspaceSwitcher } from "@/components/dashboard/navigation/workspace-switcher"
 import {
@@ -24,6 +21,11 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  useSidebar
 } from "@/components/ui/sidebar"
 import { useAuthSession } from "@/hooks/useAuthSession"
 
@@ -55,23 +57,12 @@ const data = {
       items: [], // No dropdown, direct link to dashboard overview
     },
     {
-      title: "My Forms",
-      url: "/dashboard/forms",
+      title: "Recent Forms",
+      url: "#", // No direct URL, this will be a dropdown
       icon: FileText,
-      items: [], // Empty array means no dropdown menu
-    },
-    {
-      title: "Create a Form",
-      url: "#create-form", // Special URL that will be handled via client action
-      icon: PlusCircle,
-      action: "create-form", // Flag to indicate this should trigger an action, not navigation
-      items: [], // Empty array means no dropdown menu
-    },
-    {
-      title: "Data Analysis",
-      url: "/dashboard/data-analysis",
-      icon: BarChart,
-      items: [], // Empty array means no dropdown menu
+      isActive: true, // Set to true to expand by default
+      items: [], // This will be populated dynamically
+      isDynamic: true, // Flag to indicate this needs dynamic population
     },
     {
       title: "Media Management",
@@ -79,34 +70,14 @@ const data = {
       icon: Image,
       items: [], // Empty array means no dropdown menu
     },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings,
-      items: [], // No dropdown, direct link to settings page
-    },
-  ],
-  projects: [
-    {
-      name: "Recent Forms",
-      url: "/dashboard/forms/recent",
-      icon: FileText,
-    },
-    {
-      name: "Shared With Me",
-      url: "/dashboard/forms/shared",
-      icon: Users,
-    },
-    {
-      name: "Form Library",
-      url: "/dashboard/forms/library",
-      icon: Database,
-    },
+    // Settings removed - now accessible from header gear icon
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isLoading, error } = useAuthSession();
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
 
   if (isLoading) {
      return null;
@@ -131,15 +102,85 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: undefined
   };
 
+  // Handle form creation
+  const handleCreateForm = async () => {
+    // Get current workspace ID from the workspace store
+    const currentWorkspaceId = useWorkspaceStore.getState().currentWorkspaceId;
+    
+    if (!currentWorkspaceId) {
+      console.error('No current workspace selected');
+      toast({
+        variant: "destructive",
+        title: "No workspace selected",
+        description: "Please select a workspace to create a form."
+      });
+      return;
+    }
+    
+    try {
+      // Show loading state (if needed)
+      
+      // Authorization will be handled by the API using the session
+      const response = await fetch('/api/forms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: currentWorkspaceId
+        })
+      });
 
+      const { form_id, error } = await response.json();
+      
+      if (error) {
+        console.error('Error creating form:', error);
+        toast({
+          variant: "destructive",
+          title: "Error creating form",
+          description: error || "An unexpected error occurred"
+        });
+        return;
+      }
+      
+      // Navigate to the newly created form using router for better client-side navigation
+      // Note: We're preserving the existing method of navigation to ensure consistency
+      window.location.href = `/dashboard/forms/builder/${form_id}`;
+    } catch (error) {
+      console.error('Failed to create form:', error);
+      toast({
+        variant: "destructive",
+        title: "Error creating form",
+        description: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+    }
+  };
+  
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <WorkspaceSwitcher />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="flex flex-col gap-0">
+        {/* Create Form section */}
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleCreateForm}
+                tooltip="Create Form"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground justify-center"
+              >
+                {isCollapsed ? (
+                  <Plus className="h-4 w-4 mx-auto" />
+                ) : (
+                  <span>Create Form</span>
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+        
+        {/* Main Navigation */}
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

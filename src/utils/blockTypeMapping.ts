@@ -11,7 +11,7 @@ import { StaticBlockSubtype } from '@/types/supabase-types';
  */
 export function mapToDbBlockType(blockTypeId: string): { 
   type: BlockType, 
-  subtype: StaticBlockSubtype | 'dynamic' 
+  subtype: StaticBlockSubtype | 'dynamic' | 'ai_conversation' 
 } {
   console.log('DEBUG - mapToDbBlockType called with:', blockTypeId);
   
@@ -23,8 +23,8 @@ export function mapToDbBlockType(blockTypeId: string): {
   
   // Dynamic blocks
   if (blockTypeId === 'ai_conversation') {
-    console.log('DEBUG - Mapping ai_conversation to dynamic/dynamic');
-    return { type: 'dynamic', subtype: 'dynamic' };
+    console.log('DEBUG - Mapping ai_conversation to dynamic/ai_conversation');
+    return { type: 'dynamic', subtype: 'ai_conversation' };
   }
 
   // Use distinct subtypes for each choice block type
@@ -72,16 +72,19 @@ export function mapToDbBlockType(blockTypeId: string): {
  * @param subtype - The database block subtype
  * @returns Block type ID for the registry
  */
-export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic'): string {
+export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic' | 'ai_conversation'): string {
   // Log input values for debugging
   console.log('💼🔢🖇👓🚀 MAP FUNCTION: Mapping DB -> Frontend:', { type, subtype });
   console.log(`💼🔢🖇👓🚀 MAP FUNCTION: DB type=${type}, subtype=${subtype}, type of subtype=${typeof subtype}`);
   
   // Special case for dynamic blocks
-  if (String(type).toLowerCase().trim() === 'dynamic' && 
-      String(subtype).toLowerCase().trim() === 'dynamic') {
-    console.log('Dynamic block identified, mapping to ai_conversation');
-    return 'ai_conversation';
+  if (String(type).toLowerCase().trim() === 'dynamic') {
+    // Handle both potential subtypes for AI conversation blocks
+    if (String(subtype).toLowerCase().trim() === 'dynamic' || 
+        String(subtype).toLowerCase().trim() === 'ai_conversation') {
+      console.log('Dynamic block identified, mapping to ai_conversation');
+      return 'ai_conversation';
+    }
   }
   
   // Special case for layout blocks
