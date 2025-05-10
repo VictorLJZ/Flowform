@@ -52,7 +52,8 @@ export const createFormMediaSlice: StateCreator<
     
     setSelectedMediaId: (id: string | null) => set(
       produce((state) => {
-        state.selectedMediaId = id;
+        // Handle empty string as null to maintain consistent state representation
+        state.selectedMediaId = id === '' ? null : id;
       })
     ),
     

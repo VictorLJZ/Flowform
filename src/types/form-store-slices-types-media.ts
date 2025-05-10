@@ -13,7 +13,7 @@ import type { MediaAsset } from './media-types';
 export interface FormMediaSlice {
   // State
   mediaAssets: Record<string, MediaAsset>;
-  selectedMediaId: string | null;
+  selectedMediaId: string | null; // Empty string ('') also used to indicate no selection
   isLoadingMedia: boolean;
   
   // Actions

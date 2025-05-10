@@ -64,7 +64,14 @@ export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
                   ? "border-primary ring-2 ring-primary/20" 
                   : "hover:border-primary/50"
               )}
-              onClick={() => onSelect(asset.mediaId)}
+              onClick={() => {
+                // Toggle selection - if already selected, unselect it
+                if (isSelected) {
+                  onSelect('')  // Empty string to indicate no selection
+                } else {
+                  onSelect(asset.mediaId)
+                }
+              }}
             >
               <div className="relative aspect-square w-full">
                 {asset.type === 'image' ? (

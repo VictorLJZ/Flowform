@@ -536,9 +536,11 @@ export function MediaSettings({ blockId, currentLayout }: MediaSettingsProps) {
   const sizingMode = (currentLayout as MediaLeftLayout)?.sizingMode || 'cover';
   const opacity = (currentLayout as MediaLeftLayout)?.opacity || 100;
   
-  // Handle media selection
+  // Handle media selection or deselection
   const handleMediaSelect = (selectedMediaId: string) => {
-    updateBlockLayout(blockId, { mediaId: selectedMediaId });
+    // If selectedMediaId is empty string, it's a deselection - set to undefined instead of mediaId
+    const mediaValue = selectedMediaId === '' ? undefined : selectedMediaId;
+    updateBlockLayout(blockId, { mediaId: mediaValue });
   };
   
   return (
