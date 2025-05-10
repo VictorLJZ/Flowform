@@ -1,122 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { generateRagResponse, RAGResponseWithState } from '@/services/ai/ragService';
-import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { generateRagResponse } from '@/services/ai/ragService';
 
-// Define a type for individual conversation entries
-interface ConversationEntry {
-  similarity: number;
-  conversation_text: string;
-}
-
-// Create a new response interface that includes response_id
+// Define a type for the chat response
 interface ChatResponseWithState {
   sessionId: string;
   response: string;
   response_id?: string;
-}
-
-// Initialize Google AI client
-const googleApiKey = process.env.GEMINI_API_KEY || '';
-let geminiModel: any = null;
-
-if (googleApiKey) {
-  try {
-    const googleAI = new GoogleGenerativeAI(googleApiKey);
-    // Using the more stable and fully featured pro model
-    geminiModel = googleAI.getGenerativeModel({ 
-      model: "gemini-2.5-pro-exp-03-25",
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        }
-      ],
-    });
-    console.log('[Gemini] Model initialized successfully in route handler');
-  } catch (error) {
-    console.error('[Gemini] Error initializing client in route handler:', error);
-  }
-}
-
-/**
- * RAG System Prompt template for analytics insights
- */
-const RAG_SYSTEM_PROMPT = `
-You are an analytics assistant for form creators using Flowform. Your task is to help form owners understand patterns in their form responses.
-
-You have access to a tool called 'search_form_responses' that can search for relevant form response data. Only use this tool when you need specific information from form submissions to answer a question.
-
-For simple greetings, clarification questions, or general knowledge inquiries, respond directly without using the tool.
-
-When using the search tool:
-1. Create a specific, focused query related to the user's question
-2. Request an appropriate number of results based on query complexity
-3. Use the retrieved information to provide insights about:
-   - Common themes and patterns
-   - Unusual or standout responses
-   - Quantitative insights when possible
-   - Actionable suggestions for the form creator
-
-If the retrieved information doesn't address the user's question, acknowledge this and explain what information is missing.
-`;
-
-/**
- * Definition for the search_form_responses function tool
- */
-const searchFormResponsesFunctionDeclaration = {
-  name: 'search_form_responses',
-  description: 'Searches form responses to find relevant information for answering user queries about form data. Only use this when you need specific information from form submissions.',
-  parameters: {
-    type: 'OBJECT',
-    properties: {
-      query: {
-        type: 'STRING',
-        description: 'The search query to find relevant form responses. Make this specific and focused on information you need.'
-      },
-      maxResults: {
-        type: 'INTEGER',
-        description: 'Maximum number of relevant results to return (1-10). Default is 5 if not specified.'
-      }
-    },
-    required: ['query']
-  }
-};
-
-/**
- * Format retrieved conversations into a context string for the LLM
- */
-function formatContextFromConversations(conversations: ConversationEntry[]): string {
-  return conversations.map((conversation, index) => {
-    return `[Conversation ${index + 1} (Relevance: ${Math.round(conversation.similarity * 100)}%)]\n${conversation.conversation_text}`;
-  }).join('\n\n');
-}
-
-/**
- * Implementation of the search_form_responses function
- */
-async function searchFormResponses(
-  query: string,
-  formId: string,
-  maxResults: number = 5
-): Promise<string> {
-  // Ensure maxResults is within reasonable bounds
-  maxResults = Math.max(1, Math.min(maxResults, 10));
-  
-  // Search for relevant conversations
-  const conversations = await searchSimilarConversations(query, formId, maxResults);
-  
-  if (!conversations || conversations.length === 0) {
-    return "No relevant form responses found. This might be because there aren't enough responses yet, or the responses don't contain information related to your query.";
-  }
-  
-  // Format context from retrieved conversations
-  return formatContextFromConversations(conversations);
+  usedRAG?: boolean;
 }
 
 /**
@@ -231,6 +122,7 @@ export async function POST(request: NextRequest) {
     // Generate RAG response with the new tool-based approach
     let aiResponse = '';
     let newResponseId: string | undefined;
+    let usedRAG = false;
     
     try {
       // Using the updated generateRagResponse function with previous messages context
@@ -244,6 +136,7 @@ export async function POST(request: NextRequest) {
       
       aiResponse = responseResult.text;
       newResponseId = responseResult.id;
+      usedRAG = responseResult.usedRAG || false;
         
       // Store the response ID in the session for future continuity
       if (newResponseId) {
@@ -257,6 +150,7 @@ export async function POST(request: NextRequest) {
       
       // Simplified fallback
       aiResponse = "I'm having trouble accessing form response data to answer your question. Please try again later.";
+      usedRAG = false;
     }
     
     // Save the assistant response
@@ -276,7 +170,8 @@ export async function POST(request: NextRequest) {
     // Return session ID, response, and response ID if available
     const responseObject: ChatResponseWithState = {
       sessionId: chatSessionId,
-      response: aiResponse
+      response: aiResponse,
+      usedRAG: usedRAG
     };
     
     if (newResponseId) {

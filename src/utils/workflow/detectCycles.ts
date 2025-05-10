@@ -65,7 +65,7 @@ export function detectCycles(
   });
   
   // Used to track nodes in the current DFS path
-  const visited = new Set<string>();
+  // const visited = new Set<string>();
   // Used to track all visited nodes across all DFS calls
   const globalVisited = new Set<string>();
   

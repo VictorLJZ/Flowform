@@ -1,32 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
 import { searchSimilarConversations, ConversationResult } from './searchVectorDb';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-
-// Initialize Google AI client
-const googleApiKey = process.env.GEMINI_API_KEY;
-let geminiModel: any = null;
-
-if (googleApiKey) {
-  try {
-    const googleAI = new GoogleGenerativeAI(googleApiKey);
-    geminiModel = googleAI.getGenerativeModel({ 
-      model: "gemini-2.5-pro-exp-03-25",
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        }
-      ],
-    });
-    console.log('[Gemini] Model initialized successfully');
-  } catch (error) {
-    console.error('[Gemini] Error initializing client:', error);
-  }
-}
+import { 
+  extractResponseText, 
+  extractFunctionCall, 
+  createGeminiChat, 
+  geminiModel 
+} from './geminiService';
 
 /**
  * RAG System Prompt template for analytics insights
@@ -126,59 +105,7 @@ async function searchFormResponses(
 export interface RAGResponseWithState {
   text: string;
   id?: string;
-}
-
-/**
- * Extract text from a Gemini response, handling various response formats
- */
-function extractResponseText(response: any): string {
-  if (!response) {
-    console.error('[Gemini] Empty response received');
-    return "";
-  }
-  
-  try {
-    // Case 1: Direct text property is a function (common in newer Gemini SDK)
-    if (response.text && typeof response.text === 'function') {
-      try {
-        const text = response.text();
-        if (text && typeof text === 'string') {
-          return text;
-        }
-      } catch (textFuncError) {
-        console.error('[Gemini] Error calling text() function:', textFuncError);
-      }
-    }
-    
-    // Case 2: Response has nested structure with candidates (newer Gemini API)
-    if (response.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return response.response.candidates[0].content.parts[0].text;
-    }
-    
-    // Case 3: Response has direct candidates array
-    if (response.candidates && response.candidates.length > 0) {
-      const candidate = response.candidates[0];
-      if (candidate.content?.parts?.[0]?.text) {
-        return candidate.content.parts[0].text;
-      }
-    }
-    
-    // Case 4: Response text is a direct string property
-    if (response.text && typeof response.text === 'string') {
-      return response.text;
-    }
-    
-    // Case 5: Parts array direct access
-    if (response.parts && response.parts.length > 0 && response.parts[0].text) {
-      return response.parts[0].text;
-    }
-    
-    console.error('[Gemini] Failed to extract text from response');
-    return "";
-  } catch (error) {
-    console.error('[Gemini] Error extracting text from response:', error);
-    return "";
-  }
+  usedRAG?: boolean;
 }
 
 /**
@@ -188,7 +115,8 @@ export async function generateRagResponse(
   query: string,
   formId: string,
   previousMessages: Array<{ role: string, content: string }> = [],
-  previousResponseId?: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _previousResponseId?: string
 ): Promise<RAGResponseWithState> {
   console.log(`[Gemini] Generate RAG response: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"`);
   
@@ -226,18 +154,7 @@ export async function generateRagResponse(
     }
     
     // Create a chat session with the prepared history
-    const chat = geminiModel.startChat({
-      history: chatHistory,
-      generationConfig: { 
-        temperature: 0.2,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1024
-      },
-      tools: [{
-        functionDeclarations: [searchFormResponsesFunctionDeclaration]
-      }]
-    });
+    const chat = createGeminiChat(chatHistory, [searchFormResponsesFunctionDeclaration]);
     
     // Send the user query
     const response = await chat.sendMessage(query);
@@ -245,18 +162,7 @@ export async function generateRagResponse(
 
     try {
       // Check for function calls in the response
-      let functionCall = null;
-      
-      // Case 1: New nested structure in response.response.candidates[0].content.parts[0].functionCall
-      if (response.response?.candidates?.[0]?.content?.parts?.[0]?.functionCall) {
-        functionCall = response.response.candidates[0].content.parts[0].functionCall;
-        console.log('[Gemini] Function call detected:', functionCall.name);
-      } 
-      // Case 2: Direct functionCalls array property
-      else if (response.functionCalls && response.functionCalls.length > 0) {
-        functionCall = response.functionCalls[0];
-        console.log('[Gemini] Function call detected:', functionCall.name);
-      }
+      const functionCall = extractFunctionCall(response);
       
       // Process function call if found
       if (functionCall && functionCall.name === 'search_form_responses') {
@@ -270,10 +176,10 @@ export async function generateRagResponse(
         }
         
         // Execute the form search function
-        const searchResult = await searchFormResponses(searchQuery, formId, maxResults);
+        const searchResult = await searchFormResponses(searchQuery as string, formId, maxResults as number);
         
-        // Prepare the function response
-        const functionResponse = { context: searchResult };
+        let responseText = '';
+        let usedRAG = false;
         
         try {
           // Send the search results back to the model to generate the final response
@@ -282,45 +188,54 @@ export async function generateRagResponse(
             {
               functionResponse: {
                 name: functionCall.name,
-                response: functionResponse
+                response: { content: searchResult }
               }
             }
           ]);
           
           console.log('[Gemini] Final response received after function call');
-          
-          // Extract the text from the final response
-          const responseText = extractResponseText(finalResponse);
+          responseText = extractResponseText(finalResponse);
+          usedRAG = true;
           
           if (!responseText) {
             console.error('[Gemini] Failed to extract text from final response');
-            return {
-              text: "I found some information in the form responses, but had trouble generating a complete answer. Here's what I found:\n\n" +
-                   searchResult.substring(0, 800) + (searchResult.length > 800 ? "..." : "")
-            };
+            responseText = "I found some information in the form responses, but had trouble generating a complete answer. Here's what I found:\n\n" +
+                        searchResult.substring(0, 800) + (searchResult.length > 800 ? "..." : "");
+            usedRAG = true;
           }
           
-          return { text: responseText };
-        } catch (functionCallError) {
-          console.error('[Gemini] Error sending function response:', functionCallError);
+          return { text: responseText, usedRAG };
+        } catch (error) {
+          console.error('[Gemini] Error sending function response:', error);
           
-          // Fallback: Send a regular message with the search results directly
-          console.log('[Gemini] Attempting fallback with direct message');
-          try {
-            const fallbackResponse = await chat.sendMessage(
-              `Here are the relevant form responses I found:\n\n${searchResult}\n\nBased on these responses, please answer the user's query.`
-            );
+          // Define and actually use the service error message 
+          const serviceErrorMsg = "I encountered a temporary issue communicating with the AI service.";
+          
+          // Check if it's a service unavailable error
+          if (error instanceof Error && 
+              (error.toString().includes('503') || 
+               error.toString().includes('Service Unavailable'))) {
+            console.log('[Gemini] Attempting fallback with direct message');
             
-            const fallbackText = extractResponseText(fallbackResponse);
-            return {
-              text: fallbackText || `I found some information in form responses but couldn't process it properly. Here's what I found: ${searchResult.substring(0, 800)}...`
-            };
-          } catch (fallbackError) {
-            console.error('[Gemini] Fallback response also failed');
-            return {
-              text: `I found some relevant information but couldn't generate a complete answer. Here's what I found: ${searchResult.substring(0, 800)}...`
-            };
+            try {
+              // Try a simpler fallback approach - send a direct message with the search results
+              const fallbackResponse = await chat.sendMessage(
+                `I found some relevant information:\n\n${searchResult}\n\nBased on this information, please answer the user's question: "${query}"`
+              );
+              responseText = extractResponseText(fallbackResponse);
+              usedRAG = true;
+            } catch (fbError) {
+              console.error('[Gemini] Fallback also failed:', fbError);
+              // Use the search results directly with a canned response if all else fails
+              responseText = `I found some relevant form responses, but am having trouble analyzing them right now. Here's what I found:\n\n${searchResult}\n\nPlease try asking me about this information again in a moment.`;
+              usedRAG = true;
+            }
+          } else {
+            // Use the serviceErrorMsg here
+            responseText = `${serviceErrorMsg} Please try again or rephrase your question.`;
           }
+          
+          return { text: responseText, usedRAG };
         }
       }
       
@@ -331,21 +246,24 @@ export async function generateRagResponse(
       if (!directResponseText) {
         console.error('[Gemini] Failed to extract text from direct response');
         return {
-          text: "I'm having trouble generating a proper response. Could you try rephrasing your question or asking something more specific about the form responses?"
+          text: "I'm having trouble generating a proper response. Could you try rephrasing your question or asking something more specific about the form responses?",
+          usedRAG: false
         };
       }
       
-      return { text: directResponseText };
+      return { text: directResponseText, usedRAG: false };
     } catch (extractionError) {
       console.error('[Gemini] Error in response processing:', extractionError);
       return {
-        text: "I'm having trouble processing your request due to a technical issue. Please try again with a different question."
+        text: "I'm having trouble processing your request due to a technical issue. Please try again with a different question.",
+        usedRAG: false
       };
     }
   } catch (error) {
     console.error('[Gemini] Error generating RAG response:', error);
     return {
-      text: "I'm sorry, there was an error generating a response. Please try again."
+      text: "I'm sorry, there was an error generating a response. Please try again.",
+      usedRAG: false
     };
   }
 }

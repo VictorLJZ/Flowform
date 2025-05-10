@@ -49,6 +49,7 @@ export interface ChatResponse {
   sessionId: string;
   response: string;
   response_id?: string; // OpenAI response ID for state management
+  usedRAG?: boolean; // Flag indicating whether RAG was used for this response
 }
 
 /**
@@ -73,4 +74,14 @@ export interface EmbeddingProcessingStatus {
   processed: number;
   skipped: number;
   errors: number;
+}
+
+/**
+ * RAG processing status for streaming updates
+ */
+export interface RagStatus {
+  stage: 'searching' | 'processing' | 'complete';
+  query?: string;
+  resultsCount?: number;
+  timestamp: number;
 } 

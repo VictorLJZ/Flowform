@@ -240,7 +240,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Push workspaces to global state store
       setWorkspaces([...workspaceData.workspaces]);
     }
-  }, [workspaceData.workspaces, setWorkspaces]);
+  }, [workspaceData.workspaces, setWorkspaces, workspaceData]);
   
   // Handle default workspace creation when needed (after deletion of last workspace)
   useEffect(() => {

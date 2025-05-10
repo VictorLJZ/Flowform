@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useFormInsightsChat } from '@/hooks/analytics/useFormInsightsChat';
-import { Loader2, Send, MessagesSquare, Search } from 'lucide-react';
+import { Loader2, Send, MessagesSquare, Search, Database, BrainCircuit } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ChatMessage } from '@/types/chat-types';
+import { ChatMessage, RagStatus } from '@/types/chat-types';
 import { ChatSessions } from './ChatSessions';
 import { ProcessEmbeddingsButton } from './ProcessEmbeddingsButton';
 import ReactMarkdown from 'react-markdown';
+import React from 'react';
 
 // Suggested questions - more compact
 const SUGGESTED_QUESTIONS = [
@@ -33,13 +34,21 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
     isLoading,
     isSending,
     error,
+    ragStatus,
     sendMessage
   } = useFormInsightsChat(formId);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, ragStatus]);
+
+  // Auto-focus input after initializing
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   // Handler for sending messages
   const handleSendMessage = async () => {
@@ -47,8 +56,10 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
       const message = inputValue;
       setInputValue(''); // Clear input after sending
       await sendMessage(message);
-      // Focus input after sending
-      inputRef.current?.focus();
+      // Focus input after sending for immediate follow-up
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -63,7 +74,65 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
   // Handler for using a suggested question
   const handleSuggestedQuestion = (question: string) => {
     setInputValue(question);
+    inputRef.current?.focus();
   };
+
+  // Prepare messages and RAG status for display
+  const displayItems = React.useMemo(() => {
+    // Only show RAG status if it exists
+    const shouldShowRagStatus = !!ragStatus;
+    
+    if (shouldShowRagStatus) {
+      // Create a copy of messages to work with
+      const messageList = [...messages];
+      
+      // Debug what's happening with RAG status
+      console.log("RAG Status:", ragStatus);
+      
+      // Find the last user message to place the RAG status after it
+      const lastUserMessageIndex = messageList.map(m => m.role).lastIndexOf('user');
+      
+      if (lastUserMessageIndex !== -1) {
+        // Create an array with user messages, then RAG status, then AI messages
+        const result: Array<{ type: 'message' | 'status', content: ChatMessage | RagStatus }> = [];
+        
+        // Add all messages up to and including the last user message
+        for (let i = 0; i <= lastUserMessageIndex; i++) {
+          result.push({
+            type: 'message',
+            content: messageList[i]
+          });
+        }
+        
+        // Add the RAG status indicator
+        result.push({
+          type: 'status',
+          content: ragStatus
+        });
+        
+        // Add any remaining messages (AI responses that came after the last user message)
+        // These would be the assistant's responses to the user's query
+        const assistantMessagesAfterLastUser = messageList
+          .slice(lastUserMessageIndex + 1)
+          .filter(m => m.role === 'assistant');
+        
+        for (const message of assistantMessagesAfterLastUser) {
+          result.push({
+            type: 'message',
+            content: message
+          });
+        }
+        
+        return result;
+      }
+    }
+    
+    // Otherwise, just return messages without status
+    return messages.map(message => ({
+      type: 'message' as const,
+      content: message
+    }));
+  }, [messages, ragStatus]);
 
   return (
     <div className="flex h-full gap-4">
@@ -87,8 +156,8 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
         </CardHeader>
         
         <CardContent className="flex-grow overflow-auto p-4 space-y-4">
-          {/* Error message */}
-          {error && (
+          {/* Error message - only show serious errors, not streaming-related ones */}
+          {error && !error.includes('status stream') && (
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
@@ -120,15 +189,23 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((message) => (
-                <ChatMessageBubble key={message.id} message={message} />
+              {/* Display messages and RAG status in the correct sequence */}
+              {displayItems.map((item, index) => (
+                <React.Fragment key={index}>
+                  {item.type === 'message' ? (
+                    <ChatMessageBubble message={item.content as ChatMessage} />
+                  ) : (
+                    <RagStatusIndicator status={item.content as RagStatus} />
+                  )}
+                </React.Fragment>
               ))}
+              
               <div ref={messagesEndRef} />
             </div>
           )}
           
           {/* Loading indicator */}
-          {isLoading && (
+          {isLoading && !ragStatus && (
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
@@ -167,6 +244,35 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
           <ChatSessions formId={formId} />
         </div>
       )}
+    </div>
+  );
+}
+
+// RAG Status Indicator Component
+function RagStatusIndicator({ status }: { status: { stage: string, query?: string, resultsCount?: number } }) {
+  // Add debug logging
+  console.log("Rendering RAG Status:", status);
+  
+  let message = 'Processing your request...';
+  let icon = <Loader2 className="h-3 w-3 mr-2 animate-spin" />;
+  
+  if (status.stage === 'searching') {
+    message = `Searching form responses for "${status.query?.substring(0, 30)}${status.query && status.query.length > 30 ? '...' : ''}"`;
+    icon = <Search className="h-3 w-3 mr-2 animate-pulse" />;
+  } else if (status.stage === 'processing') {
+    message = `Found ${status.resultsCount ?? '?'} relevant ${status.resultsCount === 1 ? 'response' : 'responses'}, analyzing...`;
+    icon = <Database className="h-3 w-3 mr-2 animate-pulse" />;
+  } else if (status.stage === 'complete') {
+    message = `Analyzed ${status.resultsCount ?? '?'} relevant ${status.resultsCount === 1 ? 'response' : 'responses'}`;
+    icon = <BrainCircuit className="h-3 w-3 mr-2" />;
+  }
+  
+  return (
+    <div className="flex items-center justify-center my-2 opacity-90 transition-opacity duration-300">
+      <div className="bg-muted/80 hover:bg-muted px-4 py-2 rounded-md text-xs flex items-center text-muted-foreground shadow-sm transition-all">
+        {icon}
+        <span>{message}</span>
+      </div>
     </div>
   );
 }
@@ -210,7 +316,7 @@ function ChatMessageBubble({ message }: { message: ChatMessage }) {
             )}
             {hasRagResults && (
               <div className="flex items-center text-muted-foreground mb-2">
-                <Search className="h-3 w-3 mr-2" />
+                <Database className="h-3 w-3 mr-2" />
                 <span className="text-xs">Found relevant form responses</span>
               </div>
             )}
