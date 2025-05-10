@@ -4,6 +4,8 @@ import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
 import { Form } from '@/types/supabase-types';
+import { mutate } from 'swr';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 /**
  * Save a complete form with all its blocks
@@ -156,6 +158,44 @@ export async function saveFormWithBlocks(
       throw new Error(getFormError.message);
     }
     
+    // --- BEGINNING OF MODIFIED CODE FOR OPTIMISTIC UPDATE ---
+    const currentWorkspaceId = useWorkspaceStore.getState().currentWorkspaceId;
+    if (currentWorkspaceId) {
+      const swrKey = ['recent-forms', currentWorkspaceId];
+      
+      // Optimistically update the recent forms list
+      mutate(
+        swrKey,
+        (currentData: Form[] | undefined): Form[] => {
+          let newData: Form[];
+          if (currentData) {
+            // Check if the updated form is already in the list
+            const existingFormIndex = currentData.findIndex(form => form.form_id === updatedForm.form_id);
+            if (existingFormIndex !== -1) {
+              // Replace existing form
+              newData = [...currentData];
+              newData[existingFormIndex] = updatedForm;
+            } else {
+              // Add new form to the beginning
+              newData = [updatedForm, ...currentData];
+            }
+          } else {
+            // If no current data, start with the updated form
+            newData = [updatedForm];
+          }
+          // Sort by updated_at (descending) and limit to 5 (consistent with useRecentForms)
+          return newData
+            .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+            .slice(0, 5);
+        },
+        { revalidate: true } // Revalidate in the background to ensure consistency
+      );
+      console.log(`[saveFormWithBlocks] Optimistically mutated 'recent-forms' for workspace: ${currentWorkspaceId}`);
+    } else {
+      console.warn('[saveFormWithBlocks] Could not mutate recent-forms: No currentWorkspaceId found.');
+    }
+    // --- END OF MODIFIED CODE FOR OPTIMISTIC UPDATE ---
+
     return {
       success: true,
       form: updatedForm as Form,

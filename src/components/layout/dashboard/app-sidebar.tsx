@@ -57,6 +57,14 @@ const data = {
       items: [], // No dropdown, direct link to dashboard overview
     },
     {
+      title: "Recent Forms",
+      url: "#", // No direct URL, this will be a dropdown
+      icon: FileText,
+      isActive: true, // Set to true to expand by default
+      items: [], // This will be populated dynamically
+      isDynamic: true, // Flag to indicate this needs dynamic population
+    },
+    {
       title: "Media Management",
       url: "/dashboard/media/test",
       icon: Image,
