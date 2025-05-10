@@ -1,117 +1,50 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useState, useMemo } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
+import { useParams } from 'next/navigation';
+import { useForm } from '@/hooks/useForm';
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
-import { useForm } from "@/hooks/useForm"
+} from '@/components/ui/breadcrumb';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormInsightsChatbot } from '@/components/analytics/FormInsightsChatbot';
 
-import { VersionedResponsesTable } from "@/components/analytics/versioned-responses-table"
-import { useVersionedFormResponses } from "@/hooks/useVersionedAnalyticsData"
-import { FormInsights } from "@/components/analytics/form-insights"
-import { QuestionMetrics } from "@/components/analytics/question-metrics"
-
-// Component to display responses with versioning support
-function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
-  const {
-    responses,
-    versions,
-    loading,
-    error
-  } = useVersionedFormResponses(formId);
-
-  // State for version selection
-  const [selectedVersionId, setSelectedVersionId] = useState<string | 'all'>('all');
-
-  // Check if the form has multiple versions
-  const hasMultipleVersions = versions.length > 1;
-
-  // Filter responses based on selected version
-  const filteredResponses = useMemo(() => {
-    if (selectedVersionId === 'all') return responses;
-    return responses.filter(r => r.form_version?.id === selectedVersionId);
-  }, [responses, selectedVersionId]);
-
-  // Get the selected version number for display
-  const selectedVersionNumber = useMemo(() => {
-    if (selectedVersionId === 'all') return null;
-    const version = versions.find(v => v.id === selectedVersionId);
-    return version?.version_number || null;
-  }, [selectedVersionId, versions]);
-
+// Placeholder for FormInsights
+function FormInsights({ formId }: { formId: string }) {
   return (
-    <div className="space-y-4">
-      {hasMultipleVersions && (
-        <div className="flex flex-col space-y-3 mb-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Form Versions</h3>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                {versions.length} versions detected
-              </span>
-            </div>
-          </div>
-          
-          {/* Version selector */}
-          <div className="inline-flex items-center p-0.5 rounded-md bg-muted text-sm">
-            <button
-              onClick={() => setSelectedVersionId('all')}
-              className={cn(
-                "px-3 py-1.5 rounded-sm transition-all",
-                selectedVersionId === 'all' 
-                  ? "bg-background shadow-sm" 
-                  : "hover:bg-background/50"
-              )}
-            >
-              All Versions
-            </button>
-            
-            {versions.map(version => (
-              <button
-                key={version.id}
-                onClick={() => setSelectedVersionId(version.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-sm transition-all",
-                  selectedVersionId === version.id 
-                    ? "bg-background shadow-sm" 
-                    : "hover:bg-background/50"
-                )}
-              >
-                v{version.version_number}
-              </button>
-            ))}
-          </div>
-          
-          {/* Additional context about current view */}
-          <div className="text-xs text-muted-foreground">
-            {selectedVersionId === 'all' 
-              ? `Showing all responses across ${versions.length} versions` 
-              : `Showing responses from version ${selectedVersionNumber}`}
-          </div>
-        </div>
-      )}
+    <div>
+      <h3 className="text-lg font-semibold mb-2">Form Insights</h3>
+      <p className="text-muted-foreground">
+        Insights for form {formId} would be displayed here.
+      </p>
+    </div>
+  );
+}
 
-      {error ? (
-        <div className="p-8 text-center text-destructive">
-          Error loading responses: {error.message}
-        </div>
-      ) : (
-        <VersionedResponsesTable
-          responses={filteredResponses}
-          loading={loading}
-          selectedVersionId={selectedVersionId}
-        />
-      )}
+// Placeholder for QuestionMetrics
+function QuestionMetrics({ formId }: { formId: string }) {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-2">Question Metrics</h3>
+      <p className="text-muted-foreground">
+        Metrics for individual questions in form {formId} would be displayed here.
+      </p>
+    </div>
+  );
+}
+
+// Placeholder for ResponsesWithVersioningSupport
+function ResponsesWithVersioningSupport({ formId }: { formId: string }) {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-2">Form Responses</h3>
+      <p className="text-muted-foreground">
+        Responses for form {formId} would be displayed here.
+      </p>
     </div>
   );
 }
@@ -126,7 +59,6 @@ export default function FormAnalyticsPage() {
     <div className="flex flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center gap-2 border-b">
         <div className="flex items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
           <div className="flex-1">
             <Breadcrumb>
               <BreadcrumbList>
@@ -153,7 +85,7 @@ export default function FormAnalyticsPage() {
         </div>
       </header>
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 space-y-4 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">
             {isLoading ? "Loading..." : form?.title || "Form Analytics"}
@@ -172,10 +104,11 @@ export default function FormAnalyticsPage() {
         ) : !form ? (
           <div className="w-full p-12 text-center">Form not found</div>
         ) : (
-          <Tabs defaultValue="responses" className="w-full">
+          <Tabs defaultValue="chat" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="responses">Responses</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="chat">Chat with Data</TabsTrigger>
               <TabsTrigger value="summary" disabled>Summary</TabsTrigger>
             </TabsList>
               
@@ -197,7 +130,11 @@ export default function FormAnalyticsPage() {
               </div>
             </TabsContent>
             
-            <TabsContent value="summary" className="mt-0 bg-white border rounded-md p-6">
+            <TabsContent value="chat" className="mt-0 h-[70vh]">
+              <FormInsightsChatbot formId={formId} />
+            </TabsContent>
+            
+            <TabsContent value="summary" className="mt-0">
               <div className="text-center p-12 text-muted-foreground">
                 Summary coming soon
               </div>

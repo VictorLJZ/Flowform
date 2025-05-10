@@ -31,6 +31,7 @@ import WorkflowContent from "./components/workflow-content"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import ConnectContent from "./components/connect-content"
 import { Rule } from '@/types/workflow-types';
+import { ToastAction } from "@/components/ui/toast"; // Added ToastAction import
 
 // Wrapper that provides an isolated store per formId
 export default function FormBuilderPage() {
@@ -220,12 +221,37 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       // Refresh form data
       mutate()
       
+      const shareableLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${formId}`;
+
       toast({
         title: "Form published!",
         description: result.version 
           ? `Version ${result.version.version_number} created.` 
           : "Your form is now live.",
-      })
+        action: (
+          <ToastAction
+            altText="Copy link"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(shareableLink);
+                toast({
+                  description: "Link copied to clipboard!",
+                  duration: 2000,
+                });
+              } catch (copyError) {
+                console.error('Failed to copy link:', copyError);
+                toast({
+                  variant: "destructive",
+                  title: "Failed to copy link",
+                  description: "Could not copy link to clipboard.",
+                });
+              }
+            }}
+          >
+            Copy Link
+          </ToastAction>
+        ),
+      });
     } catch (error) {
       console.error('Error publishing form:', error)
       toast({
