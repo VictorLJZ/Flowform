@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/client';
 import { storeConversationEmbedding, embeddingExists } from '../ai/generateEmbeddings';
 
+// Define a type for chat messages
+interface ChatMessage {
+  role: string;
+  content: string;
+  // Add other relevant fields like 'name' or 'tool_calls' if they exist
+}
+
 /**
  * Formats a conversation for embedding
  * Converts the JSONB conversation array into a readable text format
@@ -8,17 +15,16 @@ import { storeConversationEmbedding, embeddingExists } from '../ai/generateEmbed
  * @param conversation The conversation array from the database
  * @returns Formatted text suitable for generating embeddings
  */
-export function formatConversationForEmbedding(conversation: any[]): string {
+export function formatConversationForEmbedding(conversation: ChatMessage[]): string {
   if (!Array.isArray(conversation)) {
     return '';
   }
   
-  return conversation.map((item, index) => {
-    const questionText = item.question || '';
-    const answerText = item.answer || '';
-    
-    return `Q${index + 1}: ${questionText}\nA${index + 1}: ${answerText}`;
-  }).join('\n\n');
+  return conversation.map((item) => {
+    // Assuming 'role' and 'content' are the key fields. Adjust if different.
+    const speaker = item.role === 'user' ? 'User' : item.role === 'assistant' ? 'Assistant' : 'System';
+    return `${speaker}: ${item.content}`;
+  }).join('\n');
 }
 
 /**

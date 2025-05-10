@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { OpenAI } from 'openai';
-import { OpenAIMessage, OpenAIResponsesOptions } from '@/types/ai-types';
+import { OpenAIMessage } from '@/types/ai-types';
 import { generateRagResponse } from '@/services/ai/ragService';
 import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
+
+// Define a type for individual conversation entries
+interface ConversationEntry {
+  similarity: number;
+  conversation_text: string;
+  // Add other relevant fields if they exist
+}
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -28,7 +35,7 @@ Focus on identifying:
 /**
  * Format retrieved conversations into a context string for the LLM
  */
-function formatContextFromConversations(conversations: any[]): string {
+function formatContextFromConversations(conversations: ConversationEntry[]): string {
   return conversations.map((conversation, index) => {
     return `[Conversation ${index + 1} (Relevance: ${Math.round(conversation.similarity * 100)}%)]\n${conversation.conversation_text}`;
   }).join('\n\n');
@@ -55,10 +62,10 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     
     // Get user ID from session
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (userError || !userData?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
     
     let chatSessionId = sessionId;
@@ -76,7 +83,7 @@ export async function POST(request: NextRequest) {
         .from('chat_sessions')
         .insert({
           form_id: formId,
-          user_id: user.id,
+          user_id: userData.user.id,
           title: defaultTitle,
           last_message: query
         })
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
         .from('chat_sessions')
         .update({ last_message: query })
         .eq('id', chatSessionId)
-        .eq('user_id', user.id);
+        .eq('user_id', userData.user.id);
       
       if (updateError) {
         console.error('Error updating chat session:', updateError);
@@ -118,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Fetch form details
-    const { data: formData, error: formError } = await supabase
+    const { error: formError } = await supabase
       .from('forms')
       .select('title')
       .eq('form_id', formId)
@@ -183,13 +190,11 @@ export async function POST(request: NextRequest) {
           });
           
           // Generate response using OpenAI Responses API
-          const requestOptions: OpenAIResponsesOptions = {
-            model: "gpt-4o",
-            input: inputMessages,
+          const response = await openai.responses.create({
+            model: "gpt-4o", 
+            input: inputMessages as { role: 'user' | 'assistant' | 'developer'; content: string }[], 
             store: true
-          };
-          
-          const response = await openai.responses.create(requestOptions as any);
+          });
           aiResponse = response.output_text;
         }
       } catch (fallbackError) {
@@ -241,9 +246,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     
     // Get user ID from session
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     
-    if (!user) {
+    if (userError || !userData?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -252,7 +257,7 @@ export async function GET(request: NextRequest) {
       .from('chat_sessions')
       .select('id')
       .eq('id', sessionId)
-      .eq('user_id', user.id)
+      .eq('user_id', userData.user.id)
       .single();
     
     if (sessionError || !session) {

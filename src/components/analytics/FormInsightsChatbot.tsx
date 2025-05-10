@@ -32,8 +32,7 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
     isLoading,
     isSending,
     error,
-    sendMessage,
-    sessionId
+    sendMessage
   } = useFormInsightsChat(formId);
 
   // Auto-scroll to bottom when messages change

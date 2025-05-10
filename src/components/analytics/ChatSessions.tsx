@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlusCircle, MessageCircle, Trash2, Trash } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChatSessionsStore } from '@/stores/chatSessionsStore';
-import { createClient } from '@/lib/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,9 +58,7 @@ export function ChatSessions({ formId }: ChatSessionsProps) {
   };
 
   // Handler for deleting a session
-  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+  const handleDeleteSession = async (sessionId: string) => {
     try {
       await deleteSession(sessionId);
     } catch (error) {
@@ -73,7 +70,8 @@ export function ChatSessions({ formId }: ChatSessionsProps) {
   const formatTimeAgo = (dateString: string): string => {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
       return "recently";
     }
   };
@@ -206,7 +204,7 @@ export function ChatSessions({ formId }: ChatSessionsProps) {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 ml-1 text-muted-foreground opacity-0 group-hover:opacity-100"
-                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  onClick={() => handleDeleteSession(session.id)}
                   disabled={isLoading}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

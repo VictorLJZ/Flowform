@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CopyField } from "@/components/ui/copy-button"
-import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Edit, MoreHorizontal, Link, Trash, FileText, BarChart, FileUp } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { usePublishForm } from "@/hooks/usePublishForm"
@@ -16,13 +16,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ViewAnalyticsButton } from "@/components/ui/view-analytics-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface FormsViewProps {
   workspaceId?: string | null;
@@ -145,18 +143,19 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
 
   return (
     <div className={`flex flex-1 flex-col ${className}`}>
-      <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-1 flex-col gap-0">
         {/* View controls moved to dashboard page */}
 
         {forms.length > 0 ? (
           <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full" 
-            : "flex flex-col space-y-2 h-full"
+            ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 h-full" 
+            : "flex flex-col gap-2 h-full"
           }>
             {forms.map((form, index) => (
               <Card 
                 key={form.form_id || `form-${index}`} 
-                className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} h-full ${viewMode === 'list' ? 'p-3' : '!pt-0'} cursor-pointer hover:shadow-md transition-shadow`}
+                // List View: Added gap-x-4
+                className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row p-3 gap-x-4' : 'flex-col !p-0 gap-0'} h-full cursor-pointer hover:shadow-md transition-shadow`}
                 onClick={(e) => {
                   // Prevent navigation if clicking on dropdown or buttons
                   if (e.target instanceof Element) {
@@ -180,46 +179,114 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                     </div>
                   </div>
                 )}
-                <CardHeader className={`pb-3 ${viewMode === 'list' ? 'flex-1 !px-0 !py-0' : ''}`}>
-                  <div className="flex justify-between items-start">
-                    <div>
+                {/* Grid View: CardHeader bottom padding changed from pb-1 to pb-0 */}
+                {/* List View: Constrain grid to hug content vertically */}
+                <CardHeader className={viewMode === 'list' ? 'flex-1 self-start !px-0 !py-0 grid-rows-1 !gap-0' : 'pt-4 pl-6 pr-4 pb-0'}>
+                  {/* Grid View: Parent flex changed to items-center. List View: Added w-full and gap-x-3 */}
+                  <div className={`flex w-full ${viewMode === 'list' ? 'flex-row items-center gap-x-3' : 'flex-row justify-between items-center'}`}> 
+                    {/* Grid View: Title container is 'pr-2 flex items-center'. List View: Title container is 'flex flex-row items-center gap-2' to include badge */}
+                    <div className={`flex-1 min-w-0 ${viewMode === 'grid' ? 'pr-2 flex items-center' : 'flex flex-row items-center gap-2'}`}> 
                       <CardTitle className="line-clamp-1">{form.title}</CardTitle>
-                      <CardDescription className={`mt-1 text-xs ${viewMode === 'list' ? 'inline-block ml-2' : ''}`}>Last edited: {new Date(form.updated_at).toLocaleDateString()}</CardDescription>
+                      {/* Badge moved here for list view, next to the title */}
+                      {viewMode === 'list' && (
+                        <Badge variant="outline" className="text-xs flex-shrink-0">Last edited: {new Date(form.updated_at).toLocaleDateString()}</Badge>
+                      )}
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-dropdown-trigger>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" data-dropdown-content>
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem key="edit" onClick={() => router.push(`/dashboard/forms/builder/${form.form_id}`)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem key="duplicate">
-                          <Copy className="mr-2 h-4 w-4" /> Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem key="share">
-                          <ExternalLink className="mr-2 h-4 w-4" /> Share
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator key="separator" />
-                        <DropdownMenuItem key="delete" className="text-destructive">
-                          <Trash className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Status Indicators - Moved into CardHeader for List View */} 
+                    {viewMode === 'list' && (
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground flex-shrink-0 gap-2">
+                        <p className="flex items-center gap-1">
+                          {form.status === 'published' ? (
+                            <><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>Published</>
+                          ) : (
+                            <><span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>Draft</>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    <div className={`${viewMode === 'list' ? 'ml-auto flex-shrink-0' : 'flex-shrink-0'}`}> 
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="w-8 h-8" data-dropdown-trigger>
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Form actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem key="edit" onClick={() => router.push(`/dashboard/forms/builder/${form.form_id}`)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+
+                          {form.status !== 'published' && (
+                            <DropdownMenuItem 
+                              key="publish"
+                              onClick={() => handlePublishForm(form.form_id)}
+                              disabled={publishingFormId === form.form_id}
+                            >
+                              {publishingFormId === form.form_id ? (
+                                <>
+                                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                                  Publishing...
+                                </>
+                              ) : (
+                                <>
+                                  <FileUp className="mr-2 h-4 w-4" /> Publish
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuItem key="analytics" onClick={() => router.push(`/dashboard/forms/analytics/${form.form_id}`)}>
+                            <BarChart className="mr-2 h-4 w-4" /> Analytics
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem key="copyLink" onClick={async () => {
+                            // Reverted to dynamic link construction
+                            const shareableLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`;
+                            try {
+                              await navigator.clipboard.writeText(shareableLink);
+                              toast({ 
+                                title: 'Link Copied!', 
+                                description: 'Form link copied to clipboard.' 
+                              });
+                            } catch (err) {
+                              console.error('Failed to copy link: ', err);
+                              toast({
+                                variant: "destructive",
+                                title: "Failed to copy",
+                                description: "Could not copy link to clipboard.",
+                              });
+                            }
+                          }}>
+                            {/* Link Icon made always visible */}
+                            <Link className="mr-2 h-4 w-4" /> Copy link
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator key="separator" />
+                          <DropdownMenuItem key="delete" className="text-destructive" onClick={() => {/* TODO: Implement delete form functionality */ toast({ title: 'Delete clicked (not implemented)', description: `Form ID: ${form.form_id}`}) }}>
+                            <Trash className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </CardHeader>
 
-                <CardContent className={`pt-0 ${viewMode === 'list' ? 'flex-1 !px-0' : ''}`}>
-                  {/* Shareable link field */}
-                  <div className={`${viewMode === 'list' ? 'mt-0' : 'mt-2'} w-full`}>
-                    <p className="text-xs text-muted-foreground mb-1.5">Share link</p>
-                    <CopyField 
-                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`} 
-                      className="text-xs bg-muted h-8 w-full" 
-                    />
+                {viewMode !== 'list' && (
+                  <div className="px-[20px] pt-1 text-xs"> 
+                    <Badge variant="outline">Last edited: {new Date(form.updated_at).toLocaleDateString()}</Badge>
+                  </div>
+                )}
+
+                {viewMode !== 'list' && form.description && (
+                  <CardContent className="px-6 pt-2 pb-4"> 
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {form.description}
+                    </p>
+                  </CardContent>
+                )}
+                {/* List View: Status indicators moved to CardHeader. Grid View: Renders status here. */}
+                <CardContent className={`pt-0 ${viewMode === 'list' ? 'flex-shrink-0 !px-0 !py-0 !min-h-0 hidden' : 'px-6 pt-2 pb-4'}`}> 
+                  {viewMode !== 'list' && (
                     <div className="flex items-center justify-between mt-1.5">
                       <p className="text-[10px] text-muted-foreground">
                         {form.status === 'published' ? (
@@ -229,38 +296,22 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                           </span>
                         ) : (
                           <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Draft (not publicly accessible)
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                            Draft
                           </span>
                         )}
                       </p>
-                      <div className="flex gap-2">
-                        <ViewAnalyticsButton
-                          formId={form.form_id}
-                          size="sm"
-                          className="h-6 text-[10px] px-2"
-                        />
-                        {form.status !== 'published' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="h-6 text-[10px] px-2"
-                            onClick={() => handlePublishForm(form.form_id)}
-                            disabled={publishingFormId === form.form_id}
-                          >
-                            {publishingFormId === form.form_id ? (
-                              <>
-                                <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                                Publishing...
-                              </>
-                            ) : (
-                              <>Publish</>
-                            )}
-                          </Button>
-                        )}
-                      </div>
+                      {form.status === 'published' && (
+                        <Link
+                          href={`/dashboard/forms/submissions/${form.form_id}`}
+                          className="text-[10px] text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()} // Prevent card click
+                        >
+                          View Submissions
+                        </Link>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
