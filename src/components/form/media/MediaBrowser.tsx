@@ -1,11 +1,12 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent } from '@/components/ui/card'
 import Image from 'next/image'
-import { Check, ImageIcon, VideoIcon } from 'lucide-react'
+import { Check, ImageIcon, VideoIcon, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getCloudinaryUrl } from '@/lib/cloudinary-client'
 import { MediaItemMenu } from './MediaItemMenu'
@@ -16,9 +17,29 @@ interface MediaBrowserProps {
 }
 
 export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
-  const { mediaAssets } = useFormBuilderStore()
+  const { mediaAssets, loadMediaAssets, isLoadingMedia } = useFormBuilderStore()
+  const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId)
+  
+  // Load media assets when component mounts or workspace changes
+  useEffect(() => {
+    if (currentWorkspaceId) {
+      loadMediaAssets(currentWorkspaceId)
+    }
+  }, [currentWorkspaceId, loadMediaAssets])
+  
   const mediaAssetsList = Object.values(mediaAssets)
   
+  // Show loading state
+  if (isLoadingMedia) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+        <p>Loading media assets...</p>
+      </div>
+    )
+  }
+  
+  // Show empty state
   if (mediaAssetsList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">

@@ -4,10 +4,12 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PlusCircle, Upload } from 'lucide-react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MediaAsset } from '@/types/media-types'
 import { CloudinaryWidgetOptions, CloudinaryWidgetResult } from '@/types/common-types'
 import { v4 as uuidv4 } from 'uuid'
 import Script from 'next/script'
+import { getCloudinaryConfig } from '@/services/media-service'
 
 interface MediaUploadWidgetProps {
   onSelect?: (mediaId: string) => void
@@ -28,9 +30,11 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
   const { addMediaAsset } = useFormBuilderStore()
   const [isLoading, setIsLoading] = useState(false)
   const [scriptLoaded, setScriptLoaded] = useState(false)
+  const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId)
   const [cloudinaryConfig, setCloudinaryConfig] = useState<{
     cloudName: string;
     uploadPreset: string;
+    workspaceId: string;
   } | null>(null)
 
   // Handle script load event
@@ -40,21 +44,26 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
 
   // Fetch Cloudinary configuration
   useEffect(() => {
-    const fetchCloudinaryConfig = async () => {
+    const fetchConfig = async () => {
+      if (!currentWorkspaceId) {
+        console.error('No workspace selected, cannot fetch Cloudinary config')
+        return
+      }
+      
       try {
-        const response = await fetch('/api/media/cloudinary-config')
-        if (!response.ok) {
-          throw new Error('Failed to fetch Cloudinary configuration')
+        const config = await getCloudinaryConfig(currentWorkspaceId)
+        if (config) {
+          setCloudinaryConfig(config)
         }
-        const config = await response.json()
-        setCloudinaryConfig(config)
       } catch (error) {
         console.error('Error fetching Cloudinary config:', error)
       }
     }
 
-    fetchCloudinaryConfig()
-  }, [])
+    if (currentWorkspaceId) {
+      fetchConfig()
+    }
+  }, [currentWorkspaceId])
 
   const openCloudinaryWidget = useCallback(() => {
     // Make sure everything is loaded
@@ -105,7 +114,8 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
             height: info.height,
             duration: info.duration,
             createdAt: new Date(),
-            tags: info.tags || []
+            tags: info.tags || [],
+            workspaceId: cloudinaryConfig?.workspaceId
           }
           
           // Add to store

@@ -3,12 +3,20 @@ import { getCloudinary } from '@/services/cloudinary-server';
 
 export async function DELETE(request: Request) {
   try {
-    const { publicId } = await request.json();
+    const { publicId, workspaceId } = await request.json();
     
-    if (!publicId) {
+    if (!publicId || !workspaceId) {
       return NextResponse.json(
-        { error: 'Missing publicId parameter' },
+        { error: 'Missing required parameters (publicId, workspaceId)' },
         { status: 400 }
+      );
+    }
+    
+    // Verify media belongs to the specified workspace
+    if (!publicId.includes(`flowform_media/${workspaceId}/`)) {
+      return NextResponse.json(
+        { error: 'Media asset does not belong to this workspace' },
+        { status: 403 }
       );
     }
     

@@ -15,6 +15,7 @@ export interface MediaAsset {
   duration?: number; // For videos
   createdAt: Date;
   tags?: string[];
+  workspaceId?: string; // Workspace this media belongs to
 }
 
 // For mock/demo purposes until Cloudinary integration
@@ -28,7 +29,8 @@ export const mockMediaAssets: MediaAsset[] = [
     width: 2670,
     height: 4000,
     createdAt: new Date(),
-    tags: ['nature', 'landscape']
+    tags: ['nature', 'landscape'],
+    workspaceId: 'mock-workspace-id'
   },
   {
     id: 'mock-img-2',
@@ -39,7 +41,8 @@ export const mockMediaAssets: MediaAsset[] = [
     width: 2670,
     height: 1503,
     createdAt: new Date(),
-    tags: ['gradient', 'design']
+    tags: ['gradient', 'design'],
+    workspaceId: 'mock-workspace-id'
   },
   {
     id: 'mock-vid-1',
@@ -51,6 +54,7 @@ export const mockMediaAssets: MediaAsset[] = [
     height: 720,
     duration: 10,
     createdAt: new Date(),
-    tags: ['video', 'sample']
+    tags: ['video', 'sample'],
+    workspaceId: 'mock-workspace-id'
   }
 ];

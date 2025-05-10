@@ -5,7 +5,7 @@ import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormMediaSlice } from '@/types/form-store-slices-types-media'
 import { MediaAsset, mockMediaAssets } from '@/types/media-types'
-import { deleteMediaAsset as deleteMediaFromCloudinary } from '@/services/media-service'
+import { deleteMediaAsset as deleteMediaFromCloudinary, fetchWorkspaceMediaAssets } from '@/services/media-service'
 
 export const createFormMediaSlice: StateCreator<
   FormBuilderState,
@@ -65,21 +65,21 @@ export const createFormMediaSlice: StateCreator<
       return assets.find(asset => asset.mediaId === mediaId);
     },
     
-    loadMediaAssets: async () => {
+    loadMediaAssets: async (workspaceId: string) => {
+      // Validate workspaceId
+      if (!workspaceId) {
+        console.error('Workspace ID is required to load media assets');
+        return [];
+      }
+      
       // Set loading state
       set(produce((state) => {
         state.isLoadingMedia = true;
       }));
       
       try {
-        // Call the API to get media assets from Cloudinary
-        const response = await fetch('/api/media/list');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch media assets');
-        }
-        
-        const mediaAssets: MediaAsset[] = await response.json();
+        // Call the API to get media assets from Cloudinary for the workspace
+        const mediaAssets = await fetchWorkspaceMediaAssets(workspaceId);
         
         // Add all media assets to the store
         set(produce((state) => {
@@ -109,7 +109,13 @@ export const createFormMediaSlice: StateCreator<
       }
     },
     
-    deleteMediaAsset: async (mediaId: string) => {
+    deleteMediaAsset: async (mediaId: string, workspaceId: string) => {
+      // Validate workspaceId
+      if (!workspaceId) {
+        console.error('Workspace ID is required to delete media assets');
+        return false;
+      }
+      
       const asset = get().getMediaAssetByMediaId(mediaId);
       
       if (!asset) {
@@ -130,7 +136,7 @@ export const createFormMediaSlice: StateCreator<
       
       // Then, delete from Cloudinary
       try {
-        const success = await deleteMediaFromCloudinary(mediaId);
+        const success = await deleteMediaFromCloudinary(mediaId, workspaceId);
         return success;
       } catch (error) {
         console.error('Error deleting media asset:', error);

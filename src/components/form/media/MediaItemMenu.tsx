@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useToast } from '@/components/ui/use-toast';
 import { DeleteMediaDialog } from './DeleteMediaDialog';
 
@@ -18,6 +19,7 @@ interface MediaItemMenuProps {
 
 export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
   const { deleteMediaAsset } = useFormBuilderStore();
+  const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -28,12 +30,12 @@ export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
   };
   
   const confirmDelete = async () => {
-    if (isDeleting) return;
+    if (isDeleting || !currentWorkspaceId) return;
     
     setIsDeleting(true);
     
     try {
-      const success = await deleteMediaAsset(mediaId);
+      const success = await deleteMediaAsset(mediaId, currentWorkspaceId);
       
       if (success) {
         toast({
