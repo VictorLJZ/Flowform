@@ -232,7 +232,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const selectWorkspace = useWorkspaceStore.getState().selectWorkspace;
       selectWorkspace(firstWorkspace.id);
     }
-  }, [workspaceData, workspaceData.workspaces, currentWorkspaceId]); // Added dependency array
+  }, [workspaceData, currentWorkspaceId]); // Simplified dependency array
 
   // Update global Zustand store when workspaces change (separate concern)
   useEffect(() => {

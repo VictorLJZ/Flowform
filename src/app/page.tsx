@@ -15,33 +15,27 @@ export default function Home() {
   const { user, isLoading } = useAuthSession();
   const [showContent, setShowContent] = useState(false);
   
-  // Handle authenticated user redirect
+  // Handle page visibility
   useEffect(() => {
     // Skip during loading state
     if (isLoading) return;
     
-    if (user) {
-      // Check if we're in a redirect loop
-      const isRecentRedirect = sessionStorage.getItem('last_redirect');
-      const now = Date.now();
+    // Only redirect on first login or if coming directly from auth flow
+    const isFirstLogin = sessionStorage.getItem('just_logged_in') === 'true';
+    const comingFromAuth = document.referrer.includes('/login') || 
+                          document.referrer.includes('/auth') || 
+                          document.referrer.includes('/signup');
+    
+    if (user && (isFirstLogin || comingFromAuth)) {
+      // Clear the first login flag
+      sessionStorage.removeItem('just_logged_in');
       
-      if (isRecentRedirect && now - parseInt(isRecentRedirect) < 2000) {
-        // Likely in a redirect loop, stay on homepage
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Home] Potential loop detected, showing homepage');
-        }
-        setShowContent(true);
-        return;
-      }
-      
-      // Remember when we redirected
-      sessionStorage.setItem('last_redirect', now.toString());
-      sessionStorage.setItem('redirect_source', 'home');
+      // Redirect to dashboard
       router.push('/dashboard');
       return;
     }
     
-    // User is not authenticated, show homepage
+    // In all other cases, show the homepage content
     setShowContent(true);
   }, [user, isLoading, router]);
   

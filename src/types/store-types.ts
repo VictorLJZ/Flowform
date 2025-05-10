@@ -15,6 +15,7 @@ import type {
   FormWorkflowSlice,
   FormPersistenceSlice
 } from './form-store-slices-types';
+import type { UIAlertsSlice } from './form-store-slices-types-alerts';
 import type { FormMediaSlice } from './form-store-slices-types-media';
 
 /**
@@ -56,7 +57,8 @@ export interface FormBuilderState extends
   FormUISlice,
   FormWorkflowSlice,
   FormPersistenceSlice,
-  FormMediaSlice {
+  FormMediaSlice,
+  UIAlertsSlice {
   // This interface combines all the slice interfaces
   // These property definitions ensure the imported types are used and not flagged as unused
   // They're never actually used at runtime since the slices provide the actual implementation

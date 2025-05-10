@@ -97,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ...item,
         items: recentForms.map(form => ({
           title: form.title || 'Untitled Form',
-          url: `/dashboard/forms/builder/${form.form_id}`,
+          url: `/dashboard/builder/${form.form_id}`,
         })),
       };
     }
@@ -145,7 +145,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       
       // Navigate to the newly created form using router for better client-side navigation
       // Note: We're preserving the existing method of navigation to ensure consistency
-      window.location.href = `/dashboard/forms/builder/${form_id}`;
+      window.location.href = `/dashboard/builder/${form_id}`;
     } catch (error) {
       console.error('Failed to create form:', error);
       toast({

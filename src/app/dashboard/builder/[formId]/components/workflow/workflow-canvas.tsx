@@ -23,6 +23,7 @@ import WorkflowNode from './workflow-node'
 import WorkflowEdge from './workflow-edge'
 import WorkflowSidebar from './workflow-sidebar'
 import WorkflowControls from './workflow-controls'
+import { OrphanedNodeAlert } from '@/components/workflow/orphaned-node-alert'
 // Import workflow handlers
 import { 
   useEdgeClickHandler, 
@@ -337,6 +338,9 @@ export default function WorkflowCanvas() {
       
       {/* Sidebar for editing selected elements */}
       <WorkflowSidebar />
+      
+      {/* Orphaned Node Alert Dialog */}
+      <OrphanedNodeAlert />
     </div>
   )
 }

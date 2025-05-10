@@ -63,7 +63,7 @@ export function NavMain({
           return;
         }
         const { form_id } = await response.json();
-        router.push(`/dashboard/forms/builder/${form_id}`);
+        router.push(`/dashboard/builder/${form_id}`);
       } catch (error) {
         console.error('Failed to create form:', error);
         toast({ title: "Error", description: "Failed to create form", variant: "destructive" });

@@ -156,7 +156,9 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            // Set a cookie to indicate fresh login that our client-side code can read
+            'Set-Cookie': `just_logged_in=true; Path=/; Max-Age=60; SameSite=Strict; Secure`
           }
         });
       }
@@ -174,7 +176,7 @@ export async function GET(request: Request) {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure`
+            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure; just_logged_in=true; Path=/; Max-Age=60; SameSite=Strict; Secure`
           }
         });
       } catch (error) {
@@ -185,7 +187,7 @@ export async function GET(request: Request) {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure`
+            'Set-Cookie': `auth_redirect=true; Path=/; Max-Age=5; SameSite=Strict; Secure; just_logged_in=true; Path=/; Max-Age=60; SameSite=Strict; Secure`
           }
         });
       }

@@ -151,7 +151,22 @@ export const createFormWorkflowSlice: StateCreator<
     
     // If the old target would be orphaned by this change, prevent it
     if (oldTargetIncoming === 0 && oldTargetOutgoing === 0 && !oldTargetInRules) {
-      console.error('Cannot update connection target: would create an orphaned node');
+      console.log('Warning: Updating connection target would create an orphaned node');
+      
+      // Get the setOrphanedNodeDetails and setShowOrphanedNodeAlert functions from the store
+      const setOrphanedNodeDetails = get().setOrphanedNodeDetails;
+      const setShowOrphanedNodeAlert = get().setShowOrphanedNodeAlert;
+      
+      // Set the orphaned node details
+      setOrphanedNodeDetails({
+        connectionId,
+        oldTargetId: oldTargetId || '', // Ensure oldTargetId is not null
+        newTargetId
+      });
+      
+      // Show the orphaned node alert
+      setShowOrphanedNodeAlert(true);
+      
       return false;
     }
     

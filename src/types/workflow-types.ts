@@ -56,4 +56,5 @@ export interface WorkflowEdgeData {
   rule?: Rule;
   hasConditions?: boolean;
   conditionOperator?: ConditionOperator | null;
+  inCycle?: boolean;
 }

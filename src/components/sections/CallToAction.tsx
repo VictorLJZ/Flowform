@@ -24,8 +24,7 @@ const CallToAction = () => {
             <Link href="/contact">
               <Button
                 size="lg"
-                variant="outline"
-                className="text-white border-white hover:bg-white/10 text-lg px-8"
+                className="bg-white text-primary hover:bg-white/90 text-lg px-8"
               >
                 Contact sales
               </Button>

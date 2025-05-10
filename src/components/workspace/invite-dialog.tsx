@@ -34,7 +34,7 @@ type InviteDialogProps = {
 
 type InviteInput = {
   email: string
-  role: 'owner' | 'admin' | 'editor' | 'viewer'
+  role: 'admin' | 'editor' | 'viewer'
 }
 
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
@@ -97,7 +97,7 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
   const handleInviteChange = (index: number, field: keyof InviteInput, value: string) => {
     const newInvites = [...invites]
     
-    if (field === 'role' && (value === 'owner' || value === 'admin' || value === 'editor' || value === 'viewer')) {
+    if (field === 'role' && (value === 'admin' || value === 'editor' || value === 'viewer')) {
       newInvites[index].role = value
     } else if (field === 'email') {
       newInvites[index].email = value
@@ -236,7 +236,6 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="owner">Owner</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="editor">Editor</SelectItem>
                           <SelectItem value="viewer">Viewer</SelectItem>

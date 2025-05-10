@@ -121,19 +121,7 @@ export function useFormWorkflowNavigation({
     console.log('🔄🧭🔍 [FORM_WORKFLOW] Navigation result:', result ? 'SUCCESS' : 'FAILED');
     
     // Check if we reached the end of the form
-    // This happens when:
-    // 1. Navigation fails (result is false) - could be due to cycle detection or no valid next block
-    // 2. We're at the last question (no more outgoing connections)
     if (!result || isLastQuestion) {
-      // If navigation failed due to cycle detection, log this special case
-      if (!result && !isLastQuestion) {
-        console.log('🔄🏁 [FORM_WORKFLOW] Form completed due to cycle detection');
-      } else if (isLastQuestion) {
-        console.log('🔄🏁 [FORM_WORKFLOW] Form completed - reached last question');
-      } else {
-        console.log('🔄🏁 [FORM_WORKFLOW] Form completed - no valid navigation path');
-      }
-      
       setIsComplete(true);
     }
     

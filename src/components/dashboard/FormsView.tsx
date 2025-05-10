@@ -121,7 +121,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
       }
 
       // Navigate to the newly created form
-      router.push(`/dashboard/forms/builder/${form_id}`);
+      router.push(`/dashboard/builder/${form_id}`);
     } catch (error) {
       console.error('Failed to create form:', error);
       // Show error notification in production
@@ -162,7 +162,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                     // Check if click is on or within dropdown menu or buttons
                     const isOnDropdown = e.target.closest('[data-dropdown-trigger], [data-dropdown-content], button');
                     if (!isOnDropdown) {
-                      router.push(`/dashboard/forms/builder/${form.form_id}`);
+                      router.push(`/dashboard/builder/${form.form_id}`);
                     }
                   }
                 }}
@@ -215,7 +215,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem key="edit" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/forms/builder/${form.form_id}`);
+                            router.push(`/dashboard/builder/${form.form_id}`);
                           }}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
@@ -244,7 +244,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
 
                           <DropdownMenuItem key="analytics" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/forms/${form.form_id}/analytics`);
+                            router.push(`/dashboard/${form.form_id}/analytics`);
                           }}>
                             <BarChart className="mr-2 h-4 w-4" /> Analytics
                           </DropdownMenuItem>

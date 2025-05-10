@@ -22,7 +22,7 @@ export function ViewAnalyticsButton({
     <Button
       variant={variant}
       size={size}
-      onClick={() => router.push(`/dashboard/forms/${formId}/analytics`)}
+      onClick={() => router.push(`/dashboard/${formId}/analytics`)}
       className={className}
       aria-label="View form analytics"
     >
