@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CopyField } from "@/components/ui/copy-button"
-import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText, Grid, List } from "lucide-react"
+import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
 import { usePublishForm } from "@/hooks/usePublishForm"
@@ -27,16 +27,16 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 interface FormsViewProps {
   workspaceId?: string | null;
   className?: string;
+  viewMode: 'grid' | 'list';
 }
 
-export function FormsView({ workspaceId, className = '' }: FormsViewProps) {
+export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewProps) {
   const router = useRouter()
   const { forms, isLoading, error, mutate } = useForms(workspaceId)
   const { toast } = useToast()
   
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
   const { publishFormWithBlocks } = usePublishForm()
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   // Handle form publishing
   const handlePublishForm = async (formId: string) => {
@@ -146,29 +146,7 @@ export function FormsView({ workspaceId, className = '' }: FormsViewProps) {
   return (
     <div className={`flex flex-1 flex-col ${className}`}>
       <div className="flex flex-1 flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">My Forms</h1>
-          <div className="flex items-center space-x-2">
-            <div className="border rounded-md overflow-hidden flex">
-              <Button 
-                variant={viewMode === 'grid' ? "default" : "ghost"} 
-                size="sm" 
-                className="rounded-none px-3 h-9" 
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant={viewMode === 'list' ? "default" : "ghost"} 
-                size="sm" 
-                className="rounded-none px-3 h-9" 
-                onClick={() => setViewMode('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        {/* View controls moved to dashboard page */}
 
         {forms.length > 0 ? (
           <div className={viewMode === 'grid' 

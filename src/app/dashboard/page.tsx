@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { checkAuthStatus } from "@/lib/debug/authCheck"
+import { useRouter } from "next/navigation"
 import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Users, Edit, LogOut, Trash2, MoreHorizontal } from "lucide-react"
+import { Users, Edit, LogOut, Trash2, MoreHorizontal, Grid, List, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ import { WorkspaceRole } from "@/types/workspace-types"
 import { FormsView } from "@/components/dashboard/FormsView"
 
 export default function Page() {
+  const router = useRouter()
   // Get workspace ID, converting null to undefined for hooks
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId) ?? undefined;
   
@@ -49,6 +51,9 @@ export default function Page() {
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  
+  // View mode state for forms display
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   // First effect: Prevent reload loops and handle cleanup
   useEffect(() => {
@@ -133,32 +138,71 @@ export default function Page() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto">
-                <MoreHorizontal className="h-5 w-5" />
-                <span className="sr-only">Workspace Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
-                <>
-                  <DropdownMenuItem onClick={handleRenameWorkspace}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleInviteToWorkspace}><Users className="mr-2 h-4 w-4" /> Invite Members</DropdownMenuItem>
-                </>
-              )}
-              {(currentUserRole === 'owner' || currentUserRole === 'admin') && <DropdownMenuSeparator />}
-              <DropdownMenuItem onClick={handleLeaveWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><LogOut className="mr-2 h-4 w-4" /> Leave Workspace</DropdownMenuItem>
-              {(currentUserRole === 'owner') && (
-                <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Workspace</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="ml-auto" 
+            onClick={() => router.push('/dashboard/settings')}
+          >
+            <Settings className="h-5 w-5" />
+            <span className="sr-only">Settings</span>
+          </Button>
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Custom heading with workspace name and rename button */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-semibold">{workspace?.name || "My Workspace"}</h1>
+              {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="ml-2">
+                      <MoreHorizontal className="h-5 w-5" />
+                      <span className="sr-only">Workspace Actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={handleRenameWorkspace}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleInviteToWorkspace}><Users className="mr-2 h-4 w-4" /> Invite Members</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLeaveWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><LogOut className="mr-2 h-4 w-4" /> Leave Workspace</DropdownMenuItem>
+                    {(currentUserRole === 'owner') && (
+                      <DropdownMenuItem onClick={handleDeleteWorkspace} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Workspace</DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            
+            {/* View mode controls */}
+            <div className="flex items-center space-x-2">
+              <div className="border rounded-md overflow-hidden flex">
+                <Button 
+                  variant={viewMode === 'grid' ? "default" : "ghost"} 
+                  size="sm" 
+                  className="rounded-none px-3 h-9" 
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant={viewMode === 'list' ? "default" : "ghost"} 
+                  size="sm" 
+                  className="rounded-none px-3 h-9" 
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Divider between header and content */}
+          <Separator className="mb-6" />
+          
           {/* Integrated FormsView component */}
-          <FormsView workspaceId={currentWorkspaceId} />
+          <FormsView workspaceId={currentWorkspaceId} viewMode={viewMode} />
         </div>
       </div>
       

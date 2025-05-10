@@ -5,7 +5,6 @@ import {
   FileText,
   ClipboardList,
   LayoutDashboard,
-  Settings,
   FolderPlus,
   Image,
   Plus
@@ -63,12 +62,7 @@ const data = {
       icon: Image,
       items: [], // Empty array means no dropdown menu
     },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings,
-      items: [], // No dropdown, direct link to settings page
-    },
+    // Settings removed - now accessible from header gear icon
   ],
 }
 
