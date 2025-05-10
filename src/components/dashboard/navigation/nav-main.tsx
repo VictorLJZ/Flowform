@@ -32,10 +32,11 @@ export function NavMain({
     icon?: LucideIcon
     isActive?: boolean
     action?: string
+    isDynamicDropdown?: boolean
     items?: {
-      title: string
-      url: string
-    }[]
+      title: string;
+      url: string;
+    }[];
   }[]
 }) {
   const router = useRouter();
@@ -75,22 +76,51 @@ export function NavMain({
       <SidebarGroupLabel>FlowForm</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          // Check if the item has subitems
           const hasSubItems = item.items && item.items.length > 0;
-          
-          // We always use the Collapsible component for consistency
-          // but use different content inside based on whether it has subitems
+          // Ensure this is true if it's the dashboard item, regardless of current sub-items
+          const isCombinedLinkDropdown = !!(item.url && item.isDynamicDropdown);
+
           return (
             <Collapsible
               key={item.title}
               asChild
-              defaultOpen={item.isActive}
+              // If it's the dashboard style, open if active. Otherwise, open if active and has subitems.
+              defaultOpen={item.isActive && (isCombinedLinkDropdown || hasSubItems)}
               className="group/collapsible"
             >
-              <SidebarMenuItem>
-                {!hasSubItems ? (
-                  // Direct link but wrapped in CollapsibleTrigger for consistency
-                  <CollapsibleTrigger asChild>
+              <SidebarMenuItem className="flex flex-col items-start p-0"> {/* Ensure full width for children */}
+                {isCombinedLinkDropdown ? (
+                  <>
+                    {/* Dashboard link - now full width */}
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      className="w-full" // Occupy full width, standard styling
+                    >
+                      <Link href={item.url} className="flex items-center gap-2 px-3 py-2">
+                        {item.icon && <item.icon className="h-4 w-4" />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+
+                    {/* Recent forms list, always visible if items exist */}
+                    <CollapsibleContent className="w-full">
+                      <SidebarMenuSub>
+                        {item.items?.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.url + subItem.title}> {/* Ensure unique key */}
+                            <SidebarMenuSubButton asChild>
+                              <Link href={subItem.url}>
+                                <span>{subItem.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </>
+                ) : !hasSubItems ? (
+                  // Direct link or action item (no sub-items)
+                  <div className="w-full">
                     {item.action === 'create-form' ? (
                       <div className="w-full px-3 py-2">
                         <Button 
@@ -103,7 +133,7 @@ export function NavMain({
                       </div>
                     ) : item.action ? (
                       <SidebarMenuButton 
-                        className="cursor-pointer"
+                        className="cursor-pointer w-full"
                         tooltip={item.title}
                         onClick={() => handleAction(item.action!)}
                       >
@@ -111,28 +141,28 @@ export function NavMain({
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                     ) : (
-                      <SidebarMenuButton asChild tooltip={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title} className="w-full">
                         <Link href={item.url} className="flex w-full items-center gap-2">
                           {item.icon && <item.icon />}
                           <span>{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     )}
-                  </CollapsibleTrigger>
+                  </div>
                 ) : (
-                  // Regular dropdown trigger
+                  // Regular dropdown trigger (main item not a link)
                   <>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
+                    <CollapsibleTrigger asChild className="w-full">
+                      <SidebarMenuButton tooltip={item.title} className="w-full">
                         {item.icon && <item.icon />}
                         <span>{item.title}</span>
                         <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <CollapsibleContent>
+                    <CollapsibleContent className="w-full">
                       <SidebarMenuSub>
                         {item.items?.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubItem key={subItem.url + subItem.title}> {/* Ensure unique key */}
                             <SidebarMenuSubButton asChild>
                               <Link href={subItem.url}>
                                 <span>{subItem.title}</span>

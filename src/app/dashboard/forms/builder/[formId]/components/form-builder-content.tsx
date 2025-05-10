@@ -31,17 +31,20 @@ export default function FormBuilderContent() {
     setBlockSelectorOpen,
     viewportMode,
     setViewportMode,
-    loadMediaAssets
+    loadMediaAssets,
+    formData
     // isLoadingMedia - Not currently used
   } = useFormBuilderStore()
   
   // Load media assets from Cloudinary when the component initializes
   useEffect(() => {
-    // Load media assets from Cloudinary
-    loadMediaAssets().catch(error => {
-      console.error('Error loading media assets:', error);
-    });
-  }, [loadMediaAssets]);
+    // Only load media assets if we have form data with workspace_id
+    if (formData?.workspace_id) {
+      loadMediaAssets(formData.workspace_id).catch(error => {
+        console.error('Error loading media assets:', error);
+      });
+    }
+  }, [loadMediaAssets, formData?.workspace_id]);
   
   const currentBlock = getCurrentBlock()
   

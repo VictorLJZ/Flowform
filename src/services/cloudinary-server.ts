@@ -37,9 +37,12 @@ async function getCloudinary(): Promise<typeof CloudinaryType> {
 }
 
 // Create upload preset if it doesn't exist
-export async function createUploadPreset() {
+export async function createUploadPreset(workspaceId?: string) {
   try {
-    const presetName = 'flowform_media_upload';
+    // Create a workspace-specific preset name if workspaceId is provided
+    const presetName = workspaceId
+      ? `flowform_media_${workspaceId.substring(0, 8)}`
+      : 'flowform_media_upload';
     
     // First check if credentials are properly configured
     if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -63,7 +66,7 @@ export async function createUploadPreset() {
         await cloudinary.api.create_upload_preset({
           name: presetName,
           unsigned: true,
-          folder: 'flowform_media',
+          folder: workspaceId ? `flowform_media/${workspaceId}` : 'flowform_media',
           allowed_formats: 'jpg,png,gif,webp,mp4,webm',
           transformation: { quality: 'auto' },
           // Add more settings to make uploads more user-friendly
@@ -105,6 +108,31 @@ export async function listMediaAssets() {
     return result.resources;
   } catch (error) {
     console.error('Error listing media assets:', error);
+    return [];
+  }
+}
+
+// List media assets for a specific workspace
+export async function listWorkspaceMediaAssets(workspaceId: string) {
+  try {
+    if (!workspaceId) {
+      console.error('Workspace ID is required');
+      return [];
+    }
+    
+    // Get the initialized cloudinary instance
+    const cloudinary = await getCloudinary();
+    
+    // Fetch media assets from the workspace-specific folder
+    const result = await cloudinary.search
+      .expression(`folder:flowform_media/${workspaceId}`)
+      .sort_by('created_at', 'desc')
+      .max_results(100)
+      .execute();
+      
+    return result.resources;
+  } catch (error) {
+    console.error(`Error listing media assets for workspace ${workspaceId}:`, error);
     return [];
   }
 }

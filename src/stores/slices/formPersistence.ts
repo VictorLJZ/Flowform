@@ -29,12 +29,6 @@ export const createFormPersistenceSlice: StateCreator<
   saveFormAndBlocks: async () => {
     const { formData, blocks } = get()
     
-    // Skip empty forms
-    if (!formData.form_id || blocks?.length === 0) {
-      console.error('Cannot save form: missing form_id or blocks')
-      return null
-    }
-
     try {
       console.log('⏱️ Saving form and blocks...', {
         formId: formData.form_id,
@@ -234,8 +228,8 @@ export const createFormPersistenceSlice: StateCreator<
         return
       }
 
-      // Skip auto-save if form has no ID or blocks
-      if (!state.formData?.form_id || !state.blocks || state.blocks.length === 0) {
+      // Skip auto-save if form has no ID
+      if (!state.formData?.form_id) {
         return
       }
 
@@ -252,14 +246,8 @@ export const createFormPersistenceSlice: StateCreator<
   // Save form - orchestrates the entire form saving process
   // Must return Promise<void> per interface definition
   saveForm: async () => {
-    // Skip empty forms
     const state = get()
-    const { formData, blocks } = state
-
-    if (!formData.form_id || blocks?.length === 0) {
-      console.error('Cannot save form: missing form_id or blocks')
-      return
-    }
+    const { formData } = state
 
     if (state.isSaving) {
       console.log('Already saving, skipping this save request')

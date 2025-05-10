@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getCloudinary } from '@/services/cloudinary-server';
+import { listWorkspaceMediaAssets } from '@/services/cloudinary-server';
 import { v4 as uuidv4 } from 'uuid';
 import { MediaAsset } from '@/types/media-types';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Get workspaceId from URL params
+  const url = new URL(request.url);
+  const workspaceId = url.searchParams.get('workspaceId');
+  
+  if (!workspaceId) {
+    return NextResponse.json(
+      { error: 'Missing workspaceId parameter' },
+      { status: 400 }
+    );
+  }
   try {
-    // Fetch media assets from Cloudinary
-    const cloudinary = await getCloudinary();
-    const result = await cloudinary.search
-      .expression('folder:flowform_media')
-      .sort_by('created_at', 'desc')
-      .max_results(100)
-      .execute();
+    // Fetch media assets from Cloudinary for the specific workspace
+    const result = { resources: await listWorkspaceMediaAssets(workspaceId) };
 
     // Format the response
     interface CloudinaryResource {
@@ -39,7 +44,8 @@ export async function GET() {
       height: resource.height,
       duration: resource.duration,
       createdAt: resource.created_at ? new Date(resource.created_at) : new Date(),
-      tags: resource.tags || []
+      tags: resource.tags || [],
+      workspaceId: workspaceId // Add workspace ID to each media asset
     }));
 
     return NextResponse.json(formattedResults);

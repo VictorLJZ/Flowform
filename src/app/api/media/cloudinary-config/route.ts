@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createUploadPreset } from '@/services/cloudinary-server';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Create or verify the upload preset exists
-    const presetName = await createUploadPreset();
+    // Get workspaceId from URL params
+    const url = new URL(request.url);
+    const workspaceId = url.searchParams.get('workspaceId');
+    
+    if (!workspaceId) {
+      return NextResponse.json(
+        { error: 'Missing workspaceId parameter' },
+        { status: 400 }
+      );
+    }
+    
+    // Create or verify the upload preset exists for this workspace
+    const presetName = await createUploadPreset(workspaceId);
     
     if (!presetName) {
       return NextResponse.json(
@@ -16,7 +27,8 @@ export async function GET() {
     // Return the cloudinary configuration needed by the client
     return NextResponse.json({
       cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-      uploadPreset: presetName
+      uploadPreset: presetName,
+      workspaceId // Include workspace ID for client-side reference
     });
     
   } catch (error) {

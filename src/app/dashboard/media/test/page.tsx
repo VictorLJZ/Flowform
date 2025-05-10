@@ -7,20 +7,24 @@ import { MediaUploadWidget } from '@/components/form/media/MediaUploadWidget'
 import { MediaBrowser } from '@/components/form/media/MediaBrowser'
 import { MediaRenderer } from '@/components/form/media/MediaRenderer'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function MediaTestPage() {
   const { mediaAssets, loadMediaAssets, isLoadingMedia } = useFormBuilderStore()
+  const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId)
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null)
   const [sizingMode, setSizingMode] = useState<'contain' | 'cover' | 'fill'>('cover')
   const [opacity, setOpacity] = useState<number>(100)
   
   // Load media assets when the component mounts
   useEffect(() => {
-    loadMediaAssets().catch(error => {
-      console.error('Error loading media assets:', error)
-    })
-  }, [loadMediaAssets])
+    if (currentWorkspaceId) {
+      loadMediaAssets(currentWorkspaceId).catch(error => {
+        console.error('Error loading media assets:', error)
+      })
+    }
+  }, [loadMediaAssets, currentWorkspaceId])
   
   const mediaAssetsList = Object.values(mediaAssets)
   
@@ -66,8 +70,8 @@ export default function MediaTestPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => loadMediaAssets()}
-                      disabled={isLoadingMedia}
+                      onClick={() => currentWorkspaceId && loadMediaAssets(currentWorkspaceId)}
+                      disabled={isLoadingMedia || !currentWorkspaceId}
                     >
                       {isLoadingMedia ? 'Refreshing...' : 'Refresh Media Library'}
                     </Button>
