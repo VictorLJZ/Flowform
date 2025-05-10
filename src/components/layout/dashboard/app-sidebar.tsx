@@ -6,11 +6,11 @@ import {
   ClipboardList,
   LayoutDashboard,
   FolderPlus,
-  Image,
   Plus
 } from "lucide-react"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { toast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils";
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
 import { NavUser } from "@/components/dashboard/navigation/nav-user"
@@ -28,6 +28,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar"
 import { useAuthSession } from "@/hooks/useAuthSession"
+import { useRecentForms } from "@/hooks/useRecentForms"
 
 // FlowForm application data
 const data = {
@@ -54,23 +55,9 @@ const data = {
       url: "/dashboard",
       icon: LayoutDashboard,
       isActive: true,
-      items: [], // No dropdown, direct link to dashboard overview
+      items: [],
+      isDynamicDropdown: true,
     },
-    {
-      title: "Recent Forms",
-      url: "#", // No direct URL, this will be a dropdown
-      icon: FileText,
-      isActive: true, // Set to true to expand by default
-      items: [], // This will be populated dynamically
-      isDynamic: true, // Flag to indicate this needs dynamic population
-    },
-    {
-      title: "Media Management",
-      url: "/dashboard/media/test",
-      icon: Image,
-      items: [], // Empty array means no dropdown menu
-    },
-    // Settings removed - now accessible from header gear icon
   ],
 }
 
@@ -78,6 +65,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isLoading, error } = useAuthSession();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
+  const { recentForms } = useRecentForms();
 
   if (isLoading) {
      return null;
@@ -101,6 +89,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: "",
     avatar: undefined
   };
+
+  // Prepare dynamic items for NavMain
+  const processedNavMain = data.navMain.map(item => {
+    if (item.isDynamicDropdown && item.title === "Dashboard") {
+      return {
+        ...item,
+        items: recentForms.map(form => ({
+          title: form.title || 'Untitled Form',
+          url: `/dashboard/forms/builder/${form.form_id}`,
+        })),
+      };
+    }
+    return item;
+  });
 
   // Handle form creation
   const handleCreateForm = async () => {
@@ -161,7 +163,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="flex flex-col gap-0">
         {/* Create Form section */}
-        <SidebarGroup>
+        <SidebarGroup
+          className={cn(
+            !isCollapsed && "px-4"
+          )}
+        >
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -180,7 +186,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
         
         {/* Main Navigation */}
-        <NavMain items={data.navMain} />
+        <NavMain items={processedNavMain} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
