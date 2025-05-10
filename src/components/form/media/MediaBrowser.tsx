@@ -72,9 +72,6 @@ export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
                   </div>
                 )}
                 
-                {/* Media item menu for actions like delete */}
-                <MediaItemMenu mediaId={asset.mediaId} />
-                
                 {/* Selection indicator */}
                 {isSelected && (
                   <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
@@ -89,6 +86,9 @@ export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
                     : <VideoIcon className="h-3 w-3" />
                   }
                 </div>
+                
+                {/* Media item menu */}
+                <MediaItemMenu mediaId={asset.mediaId} />
               </div>
               
               <CardContent className="p-2">

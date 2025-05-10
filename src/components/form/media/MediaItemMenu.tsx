@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { DeleteMediaDialog } from './DeleteMediaDialog';
 
 interface MediaItemMenuProps {
@@ -18,16 +18,15 @@ interface MediaItemMenuProps {
 
 export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
   const { deleteMediaAsset } = useFormBuilderStore();
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  // Open the delete confirmation dialog
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent item selection when clicking delete
     setShowDeleteDialog(true);
   };
   
-  // Handle delete confirmation
   const confirmDelete = async () => {
     if (isDeleting) return;
     
@@ -40,7 +39,6 @@ export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
         toast({
           title: "Media deleted",
           description: "The media asset has been removed",
-          variant: "default",
         });
       } else {
         throw new Error('Failed to delete media');
@@ -68,7 +66,8 @@ export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem 
             className="text-destructive focus:text-destructive flex items-center" 
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
+            disabled={isDeleting}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete

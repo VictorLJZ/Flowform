@@ -1,11 +1,10 @@
 /**
- * Media service functions
- * Contains client-side functions for interacting with media API endpoints
+ * Client-side media service functions
  */
 
 /**
  * Deletes a media asset from Cloudinary
- * @param publicId The public ID of the media asset to delete
+ * @param publicId The Cloudinary public ID of the media asset to delete
  * @returns Promise resolving to a boolean indicating success
  */
 export async function deleteMediaAsset(publicId: string): Promise<boolean> {

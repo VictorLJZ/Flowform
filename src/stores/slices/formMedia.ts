@@ -5,7 +5,7 @@ import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormMediaSlice } from '@/types/form-store-slices-types-media'
 import { MediaAsset, mockMediaAssets } from '@/types/media-types'
-import { deleteMediaAsset as deleteMediaAssetService } from '@/services/media-service'
+import { deleteMediaAsset as deleteMediaFromCloudinary } from '@/services/media-service'
 
 export const createFormMediaSlice: StateCreator<
   FormBuilderState,
@@ -130,7 +130,7 @@ export const createFormMediaSlice: StateCreator<
       
       // Then, delete from Cloudinary
       try {
-        const success = await deleteMediaAssetService(mediaId);
+        const success = await deleteMediaFromCloudinary(mediaId);
         return success;
       } catch (error) {
         console.error('Error deleting media asset:', error);
