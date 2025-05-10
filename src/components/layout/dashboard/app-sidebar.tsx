@@ -28,7 +28,8 @@ import {
   SidebarGroup,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton
+  SidebarMenuButton,
+  useSidebar
 } from "@/components/ui/sidebar"
 import { useAuthSession } from "@/hooks/useAuthSession"
 
@@ -130,6 +131,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   };
   
+  // Get sidebar state
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
+  
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -145,8 +150,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 tooltip="Create Form"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground justify-center"
               >
-                <Plus className="hidden h-4 w-4 mx-auto group-data-[collapsible=icon]/sidebar:block" />
-                <span className="block group-data-[collapsible=icon]/sidebar:hidden">Create Form</span>
+                {isCollapsed ? (
+                  <Plus className="h-4 w-4 mx-auto" />
+                ) : (
+                  <span>Create Form</span>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

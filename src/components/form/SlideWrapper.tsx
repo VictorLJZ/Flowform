@@ -174,26 +174,30 @@ export function SlideWrapper({
       )}
       
       {/* Block title with editing capabilities in builder mode */}
-      <div className="block-title mb-4">
+      <div className="block-title mb-4 flex items-start">
         {isBuilder ? (
-          <div 
-            ref={titleRef}
-            contentEditable={isBuilder}
-            onInput={handleTitleUpdate}
-            onBlur={handleBlur}
-            className="text-2xl font-bold leading-tight outline-none focus:ring-1 focus:ring-primary/50 pb-1 transition-all duration-200"
-            data-layout-type={layoutType} /* Add data attribute to help with debugging */
-            data-viewmode={viewportMode}
-          />
+          <div className="flex items-start">
+            <div 
+              ref={titleRef}
+              contentEditable={isBuilder}
+              onInput={handleTitleUpdate}
+              onBlur={handleBlur}
+              className="text-2xl font-bold leading-tight outline-none focus:outline-none pb-1 transition-all duration-200"
+              data-layout-type={layoutType}
+              data-viewmode={viewportMode}
+            />
+            {/* Required asterisk placed directly next to the editable content */}
+            {required && (
+              <span className="text-black ml-1 text-2xl font-bold leading-tight">
+                *
+              </span>
+            )}
+          </div>
         ) : (
-          <h2 className="text-2xl font-bold leading-tight">{title}</h2>
-        )}
-        
-        {/* Required label - shown in builder mode or when required */}
-        {(isBuilder || required) && (
-          <span className="text-red-500 ml-1 text-sm">
-            {required ? "*" : ""}
-          </span>
+          <h2 className="text-2xl font-bold leading-tight flex items-start">
+            {title}
+            {required && <span className="text-black ml-1">*</span>}
+          </h2>
         )}
       </div>
       
