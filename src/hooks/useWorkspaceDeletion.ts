@@ -4,7 +4,6 @@ import { deleteWorkspace } from '@/services/workspace/deleteWorkspace';
 import { initializeDefaultWorkspace } from '@/services/workspace/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuthSession } from './useAuthSession';
-import { useRouter } from 'next/navigation';
 
 /**
  * Custom hook that encapsulates workspace deletion logic
@@ -14,9 +13,9 @@ import { useRouter } from 'next/navigation';
  */
 export function useWorkspaceDeletion() {
   const { user } = useAuthSession();
-  const router = useRouter();
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   const selectWorkspace = useWorkspaceStore(state => state.selectWorkspace);
+  const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
   const addWorkspace = useWorkspaceStore(state => state.addWorkspace);
   
   const handleDeleteWorkspace = useCallback(async (workspaceId: string) => {
@@ -41,7 +40,6 @@ export function useWorkspaceDeletion() {
       
       // Step 2: Update the workspaces in the store first before selection
       // This prevents the "not found in workspace list" error
-      const setWorkspaces = useWorkspaceStore.getState().setWorkspaces;
       if (remainingWorkspaces) {
         // Update the store with the latest workspaces from the database
         setWorkspaces(remainingWorkspaces);
@@ -52,16 +50,23 @@ export function useWorkspaceDeletion() {
         // If there are remaining workspaces, select the first one
         const nextWorkspace = remainingWorkspaces[0];
         
-        // Use force option to bypass the workspace list validation
-        selectWorkspace(nextWorkspace.id, { force: true });
+        // Use URL-based forced workspace selection mechanism to ensure a clean state
+        // This is the most reliable approach for handling post-deletion selection
+        console.log('[useWorkspaceDeletion] Setting up redirect to new workspace:', nextWorkspace.id);
         
-        // Store in sessionStorage to ensure the selection persists
+        // Set session storage to prevent immediate overrides
         sessionStorage.setItem('manual_workspace_switch', 'true');
         sessionStorage.setItem('workspace_last_switched', Date.now().toString());
         
-        // Hard reset to dashboard with the new workspace forced in URL
-        // This ensures a complete UI refresh with the new workspace
-        window.location.href = `/dashboard?force_workspace=${nextWorkspace.id}`;
+        // Create the redirect URL
+        const currentUrl = new URL(window.location.href);
+        const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+        const redirectUrl = `${baseUrl}/dashboard?force_workspace=${nextWorkspace.id}&t=${Date.now()}`;
+        
+        // Use setTimeout to allow the toast to display before redirecting
+        setTimeout(() => {
+          window.location.href = redirectUrl;
+        }, 1000);
         
         toast({
           title: "Workspace deleted",
@@ -80,17 +85,27 @@ export function useWorkspaceDeletion() {
             // Add the new workspace to the store and select it
             addWorkspace(newWorkspace);
             
-            // Force selection to bypass validation
-            selectWorkspace(newWorkspace.id, { force: true });
+            // Use URL-based forced workspace selection mechanism to ensure a clean state
+            // This is the most reliable approach for handling post-deletion selection
+            console.log('[useWorkspaceDeletion] Setting up redirect to new default workspace:', newWorkspace.id);
             
-            // Store in sessionStorage to ensure the selection persists
+            // Store the newly created workspace ID in localStorage for the redirect to pick up
+            localStorage.setItem('new_workspace_id', newWorkspace.id);
+            localStorage.setItem('new_workspace_redirect_time', Date.now().toString());
+            
+            // Set session storage to prevent immediate overrides
             sessionStorage.setItem('manual_workspace_switch', 'true');
             sessionStorage.setItem('workspace_last_switched', Date.now().toString());
-            sessionStorage.setItem('new_workspace_id', newWorkspace.id);
             
-            // Hard reset to dashboard with the new workspace forced in URL
-            // This ensures a complete UI refresh with the new workspace
-            window.location.href = `/dashboard?force_workspace=${newWorkspace.id}`;
+            // Create the redirect URL
+            const currentUrl = new URL(window.location.href);
+            const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+            const redirectUrl = `${baseUrl}/dashboard?force_workspace=${newWorkspace.id}&t=${Date.now()}`;
+            
+            // Use setTimeout to allow the toast to display before redirecting
+            setTimeout(() => {
+              window.location.href = redirectUrl;
+            }, 1000);
             
             toast({
               title: "Workspace deleted",
@@ -121,7 +136,7 @@ export function useWorkspaceDeletion() {
       });
       return { success: false };
     }
-  }, [user, currentWorkspaceId, selectWorkspace, addWorkspace]);
+  }, [user, currentWorkspaceId, selectWorkspace, setWorkspaces, addWorkspace]);
   
   return { deleteWorkspace: handleDeleteWorkspace };
 }
