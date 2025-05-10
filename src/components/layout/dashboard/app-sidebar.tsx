@@ -55,12 +55,6 @@ const data = {
       items: [], // No dropdown, direct link to dashboard overview
     },
     {
-      title: "My Forms",
-      url: "/dashboard/forms",
-      icon: FileText,
-      items: [], // Empty array means no dropdown menu
-    },
-    {
       title: "Create a Form",
       url: "#create-form", // Special URL that will be handled via client action
       icon: PlusCircle,

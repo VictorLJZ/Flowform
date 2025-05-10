@@ -1,23 +1,17 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CopyField } from "@/components/ui/copy-button"
 import { Plus, Edit, MoreHorizontal, Copy, ExternalLink, Trash, FileText, Grid, List } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useForms } from "@/hooks/useForms"
-import { useWorkspaces } from "@/hooks/useWorkspaces"
-import { useAuthSession } from "@/hooks/useAuthSession"
 import { usePublishForm } from "@/hooks/usePublishForm"
 import { getFormWithBlocksClient } from "@/services/form/getFormWithBlocksClient"
 import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
 import type { FormBlock, BlockType } from "@/types/block-types"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,32 +24,19 @@ import { ViewAnalyticsButton } from "@/components/ui/view-analytics-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
-export default function FormsPage() {
+interface FormsViewProps {
+  workspaceId?: string | null;
+  className?: string;
+}
+
+export function FormsView({ workspaceId, className = '' }: FormsViewProps) {
   const router = useRouter()
-  // Get workspaces and current workspace ID from store
-  const { workspaces } = useWorkspaces()
-  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId)
-  
-  // Use selected workspace if available, otherwise fallback to first workspace
-  const workspaceId = currentWorkspaceId || workspaces?.[0]?.id
-  const { forms, isLoading: isFormsLoading, error: formsError, mutate } = useForms(workspaceId)
-  const { isLoading: isAuthLoading } = useAuthSession()
+  const { forms, isLoading, error, mutate } = useForms(workspaceId)
   const { toast } = useToast()
   
-  // Combine loading states
-  const isLoading = isFormsLoading || isAuthLoading
-  const error = formsError
   const [publishingFormId, setPublishingFormId] = useState<string | null>(null)
   const { publishFormWithBlocks } = usePublishForm()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  
-  // Refresh forms when workspace changes
-  useEffect(() => {
-    console.log("[FormsPage] Workspace changed, refreshing forms for:", workspaceId)
-    if (workspaceId) {
-      mutate()
-    }
-  }, [workspaceId, mutate])
 
   // Handle form publishing
   const handlePublishForm = async (formId: string) => {
@@ -73,50 +54,44 @@ export default function FormsPage() {
       
       // Convert database blocks to the format expected by our publishing function
       // Using type assertion to handle the complex mapping between DB and form blocks
-      const convertedBlocks: FormBlock[] = form.blocks.map((dbBlock) => {
+      const convertedBlocks = form.blocks.map((dbBlock) => {
         const blockTypeId = mapFromDbBlockType(dbBlock.type || 'static', dbBlock.subtype || 'short_text');
         // Determine block type based on db type
         const blockType: BlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
                                      dbBlock.type === 'integration' ? 'integration' : 
                                      dbBlock.type === 'layout' ? 'layout' : 'static';
         
+        // Create the block using the properties that exist in the FormBlock type
         return {
           id: dbBlock.id,
           blockTypeId: blockTypeId,
           type: blockType,
           title: dbBlock.title || '',
-          description: dbBlock.description || '',
-          required: !!dbBlock.required,
           order_index: dbBlock.order_index || 0,
+          required: dbBlock.required || false,
           settings: dbBlock.settings || {}
         };
       });
       
-      // Publish via our centralized hook
-      const { version } = await publishFormWithBlocks(formId, convertedBlocks)
-      // refresh list
-      await mutate()
+      // Publish the form with its blocks
+      await publishFormWithBlocks(formId, convertedBlocks);
       
-      // Show version information in the success toast
-      const versionInfo = version ? ` (Version ${version.version_number})` : '';
+      // Update the UI to reflect the published status
+      await mutate();
       
       toast({
-        title: `Form published${versionInfo}`,
-        description: "Your form is now publicly accessible via the share link.",
-        action: (
-          <Button variant="outline" size="sm" onClick={() => {
-            navigator.clipboard.writeText(`${window.location.origin}/f/${formId}`)
-            toast({ description: "Share link copied to clipboard" })
-          }}>
-            Copy Link
-          </Button>
-        ),
-      })
+        title: "Form published!",
+        description: "Your form is now available to the public."
+      });
     } catch (error) {
-      console.error("Error publishing form:", error)
-      toast({ variant: "destructive", title: "Publishing failed", description: "There was an unexpected error publishing your form." })
+      console.error('Error publishing form:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to publish form",
+        description: error instanceof Error ? error.message : "Unknown error occurred"
+      });
     } finally {
-      setPublishingFormId(null)
+      setPublishingFormId(null);
     }
   };
 
@@ -156,11 +131,12 @@ export default function FormsPage() {
   }
 
   if (isLoading) {
-    return <div className="flex-1"><Skeleton className="h-48 w-full" /></div>
+    return <div className={`flex-1 ${className}`}><Skeleton className="h-48 w-full" /></div>
   }
+  
   if (error) {
     return (
-      <Alert variant="destructive" className="m-4">
+      <Alert variant="destructive" className={`m-4 ${className}`}>
         <AlertTitle>Error loading forms</AlertTitle>
         <AlertDescription>{error?.message || 'An unexpected error occurred'}</AlertDescription>
       </Alert>
@@ -168,30 +144,8 @@ export default function FormsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b">
-        <div className="flex items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem key="dashboard" className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">
-                  Dashboard
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator key="separator" className="hidden md:block" />
-              <BreadcrumbItem key="forms">
-                <BreadcrumbPage>My Forms</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </header>
-      <div className="flex flex-1 flex-col gap-6 p-6 pb-6 pt-3">
+    <div className={`flex flex-1 flex-col ${className}`}>
+      <div className="flex flex-1 flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">My Forms</h1>
           <div className="flex items-center space-x-2">
