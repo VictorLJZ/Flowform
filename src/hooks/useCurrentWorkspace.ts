@@ -1,4 +1,5 @@
 import { getWorkspaceClient, updateWorkspace, leaveWorkspace } from '@/services/workspace/client';
+import { toast } from '@/components/ui/use-toast';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAuth } from '@/providers/auth-provider';
 import type { Workspace } from '@/types/supabase-types';
@@ -61,7 +62,7 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
   };
   
   // Use the enhanced workspace deletion hook
-  const { deleteWorkspace } = useWorkspaceDeletion();
+  const { deleteWorkspace: deleteWorkspaceWithUI } = useWorkspaceDeletion();
   
   const remove = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
@@ -72,7 +73,7 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
       // This handles all the logic for selecting a new workspace or creating a default one
       // NOTE: Our implementation in useWorkspaceDeletion will handle the redirect
       // and workspace selection through a page refresh with URL parameters
-      const result = await deleteWorkspace(workspaceId);
+      const result = await deleteWorkspaceWithUI(workspaceId);
       
       // These mutations won't actually complete in most cases since the page will refresh,
       // but we include them for completeness in case the redirect is delayed
@@ -91,19 +92,57 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
     if (!supabase) throw new Error('Supabase client is not available');
     
     try {
-      // Leave the workspace
-      await leaveWorkspace(workspaceId);
+      // Leave the workspace - the updated function now returns whether the workspace was deleted or has a message
+      const result = await leaveWorkspace(workspaceId);
       
-      // Force refresh the workspaces list to get updated memberships
-      await mutateWorkspacesList();
+      // If operation was not successful and has a message, display it
+      if (!result.success && result.message) {
+        toast({
+          variant: "destructive",
+          title: "Action Required",
+          description: result.message,
+        });
+        
+        return { success: false, message: result.message };
+      }
       
-      // Force mutation of the current workspace data (will return error since no longer a member)
-      // This is important for the UI to update properly
-      await mutate(null);
-      
-      return { success: true };
+      // Check if the workspace should be deleted (user is sole member)
+      if (result.isWorkspaceDeleted) {
+        console.log('Workspace needs to be deleted as user is the sole member'); 
+        
+        // Display toast before deletion to ensure user sees the message
+        toast({
+          title: "Workspace deleted",
+          description: "The workspace was deleted because you were the only member.",
+        });
+        
+        // Use the deleteWorkspace function from useWorkspaceDeletion 
+        // which handles redirects and workspace selection properly
+        // This will trigger the page reload
+        return await deleteWorkspaceWithUI(workspaceId);
+      } else {
+        // Normal leave workflow - we're still a multi-member workspace
+        // Force refresh the workspaces list to get updated memberships
+        await mutateWorkspacesList();
+        
+        // Force mutation of the current workspace data (will return error since no longer a member)
+        // This is important for the UI to update properly
+        await mutate(null);
+        
+        toast({
+          title: "Left workspace",
+          description: "You have successfully left the workspace.",
+        });
+        
+        return { success: true, workspaceDeleted: false };
+      }
     } catch (error) {
       console.error('Error leaving workspace:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to leave workspace.",
+      });
       throw error;
     }
   };

@@ -7,7 +7,11 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
  * @param workspaceId - The ID of the workspace to leave
  * @returns Success status
  */
-export async function leaveWorkspace(workspaceId: string): Promise<{ success: boolean }> {
+export async function leaveWorkspace(workspaceId: string): Promise<{ 
+  success: boolean; 
+  isWorkspaceDeleted?: boolean;
+  message?: string; 
+}> {
   const supabase = createClient();
 
   // Get the current user
@@ -30,23 +34,37 @@ export async function leaveWorkspace(workspaceId: string): Promise<{ success: bo
     throw new Error('User is not a member of this workspace');
   }
 
+  // First, check total number of members in the workspace
+  const { data: allMembersData, error: allMembersError } = await supabase
+    .from('workspace_members')
+    .select('user_id, role')
+    .eq('workspace_id', workspaceId);
+
+  if (allMembersError) {
+    console.error('Error checking workspace members:', allMembersError);
+    throw allMembersError;
+  }
+
+  // If user is the sole member of the workspace
+  if (!allMembersData || allMembersData.length <= 1) {
+    console.log('User is the sole member of this workspace - signaling for workspace deletion');
+    
+    // Instead of deleting here, just signal that the workspace should be deleted
+    // The calling component will handle the actual deletion with UI updates
+    return { success: true, isWorkspaceDeleted: true };
+  }
+
   // Different checks based on role
   if (memberData.role === 'owner') {
     // If the user is an owner, check if they're the only owner
-    const { data: ownersData, error: ownersError } = await supabase
-      .from('workspace_members')
-      .select('user_id')
-      .eq('workspace_id', workspaceId)
-      .eq('role', 'owner');
-
-    if (ownersError) {
-      console.error('Error checking workspace owners:', ownersError);
-      throw ownersError;
-    }
-
-    // If this is the only owner, prevent leaving
-    if (!ownersData || ownersData.length <= 1) {
-      throw new Error('Cannot leave workspace as the only owner. Transfer ownership or delete workspace instead.');
+    const ownersData = allMembersData.filter(member => member.role === 'owner');
+    
+    // If this is the only owner and there are other members, prevent leaving but don't throw an error
+    if (ownersData.length <= 1 && allMembersData.length > 1) {
+      return { 
+        success: false, 
+        message: 'Cannot leave workspace as the only owner when other members exist. Transfer ownership first.' 
+      };
     }
   } else if (memberData.role === 'admin') {
     // If the user is an admin, check if they're the only admin AND there are no owners
@@ -110,5 +128,5 @@ export async function leaveWorkspace(workspaceId: string): Promise<{ success: bo
     }
   }
 
-  return { success: true };
+  return { success: true, isWorkspaceDeleted: false };
 }
