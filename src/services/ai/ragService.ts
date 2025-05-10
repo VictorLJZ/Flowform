@@ -1,11 +1,16 @@
 import { createClient } from '@/lib/supabase/client';
 import OpenAI from 'openai';
 import { searchSimilarConversations, ConversationResult } from './searchVectorDb';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Initialize Google AI client
+const googleAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+const geminiModel = googleAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
 
 /**
  * RAG System Prompt template for analytics insights
@@ -56,16 +61,12 @@ export async function generateRagResponse(
     // Format context from retrieved conversations
     const context = formatContextFromConversations(conversations);
     
-    // Generate response using OpenAI Responses API with the context
-    const response = await openai.responses.create({
-      model: "gpt-4o",
-      input: [
-        { role: "developer", content: RAG_SYSTEM_PROMPT },
-        { role: "user", content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}` }
-      ]
-    });
+    // Generate response using Google's Gemini model
+    const prompt = `${RAG_SYSTEM_PROMPT}\n\nCONTEXT:\n${context}\n\nQUESTION:\n${query}`;
+    const result = await geminiModel.generateContent(prompt);
+    const response = result.response;
+    return response.text();
     
-    return response.output_text;
   } catch (error) {
     console.error('Error generating RAG response:', error);
     throw new Error('Failed to generate insights from form responses');

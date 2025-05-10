@@ -4,6 +4,7 @@ import { OpenAI } from 'openai';
 import { OpenAIMessage } from '@/types/ai-types';
 import { generateRagResponse } from '@/services/ai/ragService';
 import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Define a type for individual conversation entries
 interface ConversationEntry {
@@ -16,6 +17,10 @@ interface ConversationEntry {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+// Initialize Google AI client
+const googleAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+const geminiModel = googleAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
 
 /**
  * RAG System Prompt template for analytics insights
@@ -163,39 +168,25 @@ export async function POST(request: NextRequest) {
         if (!conversations || conversations.length === 0) {
           aiResponse = "I couldn't find any relevant form responses to answer your question. This might be because there aren't enough responses yet, or the responses don't contain information related to your question.";
         } else {
-          // Format messages for OpenAI following the Responses API format
-          const inputMessages: OpenAIMessage[] = [];
-          
-          // Add developer message (system message in the new format)
-          inputMessages.push({
-            role: "developer", 
-            content: RAG_SYSTEM_PROMPT
-          });
+          // Format conversation history and context for Gemini
+          let prompt = RAG_SYSTEM_PROMPT + "\n\n";
           
           // Add conversation history for context
-          for (const msg of previousMessages) {
-            // Ensure role is one of the accepted types
-            const role = msg.role === 'user' ? 'user' : 'assistant';
-            inputMessages.push({
-              role,
-              content: msg.content
-            });
+          if (previousMessages && previousMessages.length > 0) {
+            prompt += "Previous conversation:\n";
+            for (const msg of previousMessages) {
+              prompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
+            }
+            prompt += "\n";
           }
           
           // Add the context and current query
           const context = formatContextFromConversations(conversations);
-          inputMessages.push({
-            role: 'user',
-            content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}`
-          });
+          prompt += `CONTEXT:\n${context}\n\nQUESTION:\n${query}`;
           
-          // Generate response using OpenAI Responses API
-          const response = await openai.responses.create({
-            model: "gpt-4o", 
-            input: inputMessages as { role: 'user' | 'assistant' | 'developer'; content: string }[], 
-            store: true
-          });
-          aiResponse = response.output_text;
+          // Generate response using Google's Gemini model
+          const result = await geminiModel.generateContent(prompt);
+          aiResponse = result.response.text();
         }
       } catch (fallbackError) {
         console.error('Fallback RAG implementation failed:', fallbackError);
