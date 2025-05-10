@@ -72,25 +72,66 @@ export function WorkspaceSwitcher() {
     }
     try {
       setIsCreating(true)
-      const created = await createWorkspace({ name: newWorkspace.name, description: newWorkspace.description, created_by: userId, logo_url: "", settings: {} })
+      
+      // Create the workspace in the database
+      const created = await createWorkspace({ 
+        name: newWorkspace.name, 
+        description: newWorkspace.description, 
+        created_by: userId, 
+        logo_url: "", 
+        settings: {} 
+      })
+      
+      // Close dialog and reset form
       setCreateDialogOpen(false)
       setNewWorkspace({ name: "", description: "" })
-      toast({ title: "Success", description: "Workspace created successfully" })
       
       if (created && 'id' in created && created.id) {
-        console.log("[WorkspaceSwitcher] Adding new workspace to store:", created.id);
-        // Directly update the workspace store with the new workspace
-        addWorkspace(created);
+        console.log("🔴🔴 [WorkspaceSwitcher] Successfully created workspace:", created.id);
         
-        // Also refresh the SWR cache to keep it in sync
-        await mutateWorkspaces();
+        // Show success toast
+        toast({ 
+          title: "Success", 
+          description: "Workspace created successfully. Redirecting..." 
+        })
         
-        // Switch to the newly created workspace
-        console.log("[WorkspaceSwitcher] Setting newly created workspace as current:", created.id);
-        switchToWorkspace(created.id);
+        // EXTREME SOLUTION: Use URL-based workspace selection
+        // This completely bypasses all the normal workspace selection mechanisms
+        // and forces the workspace selection through a URL parameter
+        
+        // Store the newly created workspace ID in localStorage for the redirect to pick up
+        localStorage.setItem('new_workspace_id', created.id);
+        localStorage.setItem('new_workspace_redirect_time', Date.now().toString());
+        
+        // Update SWR cache to show the new workspace in the list
+        await mutateWorkspaces(prev => {
+          if (!prev) return [created];
+          return [...prev, created];
+        }, false);
+        
+        // Delay to show the toast
+        setTimeout(() => {
+          // Redirect to a special workspace selection URL
+          // This will trigger a special handler in the workspace provider
+          const currentUrl = new URL(window.location.href);
+          const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+          
+          // Use a query parameter to force workspace selection
+          const redirectUrl = `${baseUrl}/dashboard?force_workspace=${created.id}&t=${Date.now()}`;
+          
+          console.log("🔴🔴 [WorkspaceSwitcher] Redirecting to force workspace:", redirectUrl);
+          
+          // Redirect to the URL that will force the workspace selection
+          window.location.href = redirectUrl;
+        }, 1500);
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create workspace" })
+      console.error("[WorkspaceSwitcher] Error creating workspace:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to create workspace" 
+      })
     } finally {
       setIsCreating(false)
     }

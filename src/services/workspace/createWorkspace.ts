@@ -79,6 +79,13 @@ export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Wo
       throw memberError;
     }
 
+    // Set a flag to ensure this workspace remains selected
+    if (typeof window !== 'undefined') {
+      console.log('[createWorkspace] Setting manual workspace switch flag for new workspace:', newWorkspace.id);
+      window.sessionStorage.setItem('manual_workspace_switch', 'true');
+      window.sessionStorage.setItem('workspace_last_switched', Date.now().toString());
+    }
+
     console.log('[createWorkspace] Successfully created workspace:', newWorkspace.id);
     return newWorkspace;
   } catch (error) {

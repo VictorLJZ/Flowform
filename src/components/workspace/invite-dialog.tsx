@@ -40,29 +40,24 @@ type InviteInput = {
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
   
-  // Get both the passed workspace and the store workspace
-  const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId)
-  const storeWorkspaces = useWorkspaceStore(state => state.workspaces)
+  // IMPORTANT: Only use the workspace from props for initialization
+  // This avoids competing with the store for workspace selection
+  const workspaceId = currentWorkspace?.id || null;
   
-  // CRITICAL: Define workspaceId directly (not through an object) to avoid null issues
-  // Priority: 1. currentWorkspace.id from props, 2. storeWorkspaceId
-  const workspaceId = currentWorkspace?.id || storeWorkspaceId || null
+  // Get store information only for debugging and fallback
+  const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
+  const storeWorkspaces = useWorkspaceStore(state => state.workspaces);
   
-  // Get the full workspace object if needed for other purposes (but use workspaceId for the hook)
-  const effectiveWorkspace = currentWorkspace || 
-    (storeWorkspaceId ? storeWorkspaces.find(w => w.id === storeWorkspaceId) : null)
-  
-  // Add extra logging for debugging
+  // Logging for debugging
   console.log('[InviteDialog] Workspace details:', {
     fromProps: currentWorkspace?.id || 'null',
     fromStore: storeWorkspaceId || 'null',
-    finalWorkspaceId: workspaceId || 'null',
-    hasEffectiveWorkspace: !!effectiveWorkspace,
-    isOpen: open,
-    workspacesInStore: storeWorkspaces.length
-  })
+    workspacesInStore: storeWorkspaces.length,
+    isOpen: open
+  });
   
-  // Use the direct workspaceId for the hook instead of the object
+  // Use only the workspace ID from props for the invitations hook
+  // This prevents this component from creating unwanted dependencies on the store
   const {
     invitations: sentInvitations,
     send,

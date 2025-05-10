@@ -33,12 +33,33 @@ export function useWorkspaceInitialization() {
       keepPreviousData: true, 
       loadingTimeout: 3000,
       onSuccess: (data) => {
-
+        console.log('[useWorkspaceInitialization] Successfully fetched workspaces:', {
+          count: data?.length || 0,
+          currentWorkspaceId: workspaceStore.currentWorkspaceId,
+        });
         
-        // Update the workspace store with fetched workspaces
+        // CRITICAL FIX: DON'T automatically refresh workspaces in the onSuccess handler
+        // This was causing a race condition that would reset the workspace selection
+        
         if (data && Array.isArray(data)) {
-          // Use refreshWorkspaces to properly handle workspace selection logic
-          workspaceStore.refreshWorkspaces(() => Promise.resolve(data));
+          // Instead of using refreshWorkspaces (which can change selection),
+          // we'll update just the workspace list while preserving the selection
+          
+          // Check if manual selection is active
+          const manualSelectionActive = workspaceStore.manualSelectionActive;
+          const currentId = workspaceStore.currentWorkspaceId;
+          
+          // If we have a manual selection, respect it
+          if (manualSelectionActive && currentId) {
+            console.log('[useWorkspaceInitialization] Respecting manual workspace selection:', currentId);
+            
+            // Only update the workspaces array, not the current selection
+            workspaceStore.setWorkspaces(data);
+          } else {
+            // For auto-selection or when no manual selection is active
+            console.log('[useWorkspaceInitialization] No manual selection, using refreshWorkspaces');
+            workspaceStore.refreshWorkspaces(() => Promise.resolve(data));
+          }
         }
       }
     }
