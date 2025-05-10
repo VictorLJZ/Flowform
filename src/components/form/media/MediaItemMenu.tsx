@@ -45,7 +45,7 @@ export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
       } else {
         throw new Error('Failed to delete media');
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Delete failed",
         description: "There was a problem deleting the media asset",
