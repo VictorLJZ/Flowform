@@ -5,13 +5,16 @@ import { useWorkspaceInitialization } from '@/hooks/useWorkspaceInitialization';
 import { Workspace } from '@/types/supabase-types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { initializeDefaultWorkspace } from '@/services/workspace/client';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 type WorkspaceContextType = {
   workspaces: Workspace[] | undefined;
   isLoading: boolean;
   error: Error | null;
   mutate: () => Promise<Workspace[] | undefined>;
-  isProcessingForceSelection: boolean; // New flag for force selection loading state
+  isProcessingForceSelection: boolean; // Flag for force selection loading state
+  isCreatingDefaultWorkspace: boolean; // Flag for default workspace creation state
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -23,9 +26,12 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Add state for tracking force selection loading
   const [isProcessingForceSelection, setIsProcessingForceSelection] = useState(false);
+  const [isCreatingDefaultWorkspace, setIsCreatingDefaultWorkspace] = useState(false);
   
   const workspaceData = useWorkspaceInitialization();
+  const { user } = useAuthSession();
   const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
+  const needsDefaultWorkspace = useWorkspaceStore(state => state.needsDefaultWorkspace);
   
   // Get the setter for current workspace ID
   const setCurrentWorkspaceId = useWorkspaceStore(state => state.setCurrentWorkspaceId);
@@ -241,10 +247,49 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [workspaceData.workspaces, setWorkspaces]);
   
+  // Handle default workspace creation when needed (after deletion of last workspace)
+  useEffect(() => {
+    if (needsDefaultWorkspace && user && !isCreatingDefaultWorkspace) {
+      const createDefaultWorkspace = async () => {
+        console.log('[WorkspaceProvider] Creating default workspace after deletion');
+        setIsCreatingDefaultWorkspace(true);
+        
+        try {
+          // Create a new default workspace
+          const newWorkspace = await initializeDefaultWorkspace(user.id);
+          
+          if (newWorkspace) {
+            // Add to workspace store and select it
+            const addWorkspace = useWorkspaceStore.getState().addWorkspace;
+            const selectWorkspace = useWorkspaceStore.getState().selectWorkspace;
+            
+            addWorkspace(newWorkspace);
+            selectWorkspace(newWorkspace.id);
+            
+            // Clear the flag
+            useWorkspaceStore.setState({ needsDefaultWorkspace: false });
+            
+            // Refresh workspace data
+            await workspaceData.mutate();
+            
+            console.log('[WorkspaceProvider] Successfully created default workspace after deletion');
+          }
+        } catch (error) {
+          console.error('[WorkspaceProvider] Error creating default workspace:', error);
+        } finally {
+          setIsCreatingDefaultWorkspace(false);
+        }
+      };
+      
+      createDefaultWorkspace();
+    }
+  }, [needsDefaultWorkspace, user, workspaceData.mutate, isCreatingDefaultWorkspace]);
+  
   // Create a context value with our combined state
   const workspaceContextValue = {
     ...workspaceData,
-    isProcessingForceSelection
+    isProcessingForceSelection,
+    isCreatingDefaultWorkspace
   };
   
   // Add an effect for timeout safety - never block UI for more than 5 seconds
@@ -262,12 +307,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   return (
     <WorkspaceContext.Provider value={workspaceContextValue}>
       {/* Improved condition: Show content after a short delay regardless of processing state */}
-      {!isProcessingForceSelection ? 
+      {!isProcessingForceSelection && !isCreatingDefaultWorkspace ? 
         children : 
         <div className="flex h-screen w-full items-center justify-center">
           <div className="text-center">
-            <h2 className="text-xl font-semibold mb-2">Loading New Workspace...</h2>
-            <p className="text-muted-foreground">Please wait while we set up your new workspace</p>
+            <h2 className="text-xl font-semibold mb-2">
+              {isCreatingDefaultWorkspace ? 'Creating Default Workspace...' : 'Loading New Workspace...'}
+            </h2>
+            <p className="text-muted-foreground">
+              {isCreatingDefaultWorkspace 
+                ? 'Please wait while we create a new workspace for you' 
+                : 'Please wait while we set up your new workspace'}
+            </p>
           </div>
         </div>
       }

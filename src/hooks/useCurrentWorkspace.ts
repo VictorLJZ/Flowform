@@ -1,10 +1,11 @@
-import { getWorkspaceClient, updateWorkspace, deleteWorkspace, leaveWorkspace } from '@/services/workspace/client';
+import { getWorkspaceClient, updateWorkspace, leaveWorkspace } from '@/services/workspace/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAuth } from '@/providers/auth-provider';
 import type { Workspace } from '@/types/supabase-types';
 import { createWorkspaceFetcher, useWorkspaceSWR } from './swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useWorkspaces } from './useWorkspaces';
+import { useWorkspaceDeletion } from './useWorkspaceDeletion';
 
 /**
  * Hook to fetch and manage a single workspace via SWR, dependent on auth session.
@@ -58,28 +59,26 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
     return mutate(); // Revalidate after update
   };
   
+  // Use the enhanced workspace deletion hook
+  const { deleteWorkspace } = useWorkspaceDeletion();
+  
   const remove = async () => {
     if (!workspaceId) throw new Error('Workspace ID is required');
     if (!supabase) throw new Error('Supabase client is not available');
     
     try {
-      // Delete the workspace
-      await deleteWorkspace(workspaceId);
+      // Use the enhanced deleteWorkspace function from the hook
+      // This handles all the logic for selecting a new workspace or creating a default one
+      // NOTE: Our implementation in useWorkspaceDeletion will handle the redirect
+      // and workspace selection through a page refresh with URL parameters
+      const result = await deleteWorkspace(workspaceId);
       
-      // Update workspace store by removing the deleted workspace
-      const currentWorkspaces = workspaceStore.workspaces;
-      const updatedWorkspaces = currentWorkspaces.filter(w => w.id !== workspaceId);
-      
-      // Force refresh the workspaces list to get updated list
+      // These mutations won't actually complete in most cases since the page will refresh,
+      // but we include them for completeness in case the redirect is delayed
       await mutateWorkspacesList();
-      
-      // Update the store with the filtered list
-      workspaceStore.setWorkspaces(updatedWorkspaces);
-      
-      // Force mutation of the current workspace data to null
       await mutate(null);
       
-      return { success: true };
+      return result;
     } catch (error) {
       console.error('Error deleting workspace:', error);
       throw error;

@@ -12,6 +12,8 @@ interface WorkspaceState {
   manualSelectionActive: boolean;
   // Last timestamp when a manual selection was made
   lastManualSelectionTime: number;
+  // Flag to indicate a default workspace needs to be created
+  needsDefaultWorkspace: boolean;
   // Actions
   setCurrentWorkspaceId: (workspaceId: string | null) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
@@ -33,6 +35,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       workspaces: [],
       manualSelectionActive: false,
       lastManualSelectionTime: 0,
+      needsDefaultWorkspace: false,
       syncWorkspaceAfterInvitation: async (workspaceId, fetchWorkspaceFn) => {
         // Validate the workspace ID to prevent errors during login
         if (!workspaceId) {
@@ -277,27 +280,42 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               
               set({ 
                 workspaces: freshWorkspaces,
-                currentWorkspaceId: currentId 
+                currentWorkspaceId: currentId,
+                manualSelectionActive: false
               });
             } 
             else {
-              // CASE 3: Current workspace doesn't exist, select the first one
-              console.log(`[workspaceStore:refreshWorkspaces] Current workspace not found, selecting first one`);
-              
-              set({ 
-                workspaces: freshWorkspaces,
-                currentWorkspaceId: freshWorkspaces[0].id,
-                manualSelectionActive: false
-              });
+              // CASE 3: Current workspace doesn't exist, select the first one or mark for default creation
+              if (freshWorkspaces.length > 0) {
+                console.log(`[workspaceStore:refreshWorkspaces] Current workspace not found, selecting first one`);
+                
+                set({ 
+                  workspaces: freshWorkspaces,
+                  currentWorkspaceId: freshWorkspaces[0].id,
+                  manualSelectionActive: false,
+                  needsDefaultWorkspace: false
+                });
+              } else {
+                // If no workspaces available, clear selection but set flag for default workspace creation
+                console.log(`[workspaceStore:refreshWorkspaces] No workspaces available, marking for default creation`);
+                
+                set({ 
+                  workspaces: [],
+                  currentWorkspaceId: null,
+                  manualSelectionActive: false,
+                  needsDefaultWorkspace: true // Flag to indicate a default workspace needs to be created
+                });
+              }
             }
           } else {
-            // CASE 4: No workspaces available, clear selection
-            console.log(`[workspaceStore:refreshWorkspaces] No workspaces available, clearing selection`);
+            // CASE 4: No workspaces available, mark for default creation
+            console.log(`[workspaceStore:refreshWorkspaces] No workspaces available, marking for default creation`);
             
             set({ 
-              workspaces: freshWorkspaces,
+              workspaces: [],
               currentWorkspaceId: null,
-              manualSelectionActive: false
+              manualSelectionActive: false,
+              needsDefaultWorkspace: true
             });
           }
           
@@ -315,7 +333,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         currentWorkspaceId: state.currentWorkspaceId,
         workspaces: state.workspaces, // Now persist the workspace list too for consistency
         manualSelectionActive: state.manualSelectionActive,
-        lastManualSelectionTime: state.lastManualSelectionTime
+        lastManualSelectionTime: state.lastManualSelectionTime,
+        needsDefaultWorkspace: state.needsDefaultWorkspace
       }),
       // Setup proper rehydration with improved error handling
       onRehydrateStorage: () => (state) => {

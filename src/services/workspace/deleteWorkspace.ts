@@ -1,12 +1,16 @@
 import { createClient } from '@/lib/supabase/client';
+import type { Workspace } from '@/types/supabase-types';
 
 /**
  * Delete a workspace and all associated data
  * 
  * @param workspaceId - The ID of the workspace to delete
- * @returns Success status
+ * @returns Success status and remaining workspaces
  */
-export async function deleteWorkspace(workspaceId: string): Promise<{ success: boolean }> {
+export async function deleteWorkspace(workspaceId: string): Promise<{ 
+  success: boolean;
+  remainingWorkspaces?: Workspace[];
+}> {
   const supabase = createClient();
 
   // Get the current user to verify ownership
@@ -63,5 +67,26 @@ export async function deleteWorkspace(workspaceId: string): Promise<{ success: b
     throw new Error('Failed to delete workspace - it still exists in the database');
   }
 
-  return { success: true };
+  // After successful deletion, fetch the remaining workspaces for the user
+  // This will be used for client-side workspace selection
+  const { data: remainingWorkspaces, error: fetchError } = await supabase
+    .from('workspaces')
+    .select('*')
+    .in(
+      'id', 
+      (await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', userData.user.id)
+      ).data?.map(m => m.workspace_id) || []
+    );
+      
+  if (fetchError) {
+    console.error('Error fetching remaining workspaces after deletion:', fetchError);
+  }
+  
+  return { 
+    success: true,
+    remainingWorkspaces: remainingWorkspaces || []
+  };
 }
