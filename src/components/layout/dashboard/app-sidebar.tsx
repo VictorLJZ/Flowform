@@ -14,6 +14,8 @@ import {
   Image,
   Plus
 } from "lucide-react"
+import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
@@ -104,30 +106,53 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Handle form creation
   const handleCreateForm = async () => {
-    const workspaceId = user?.user_metadata?.current_workspace_id;
-    if (!workspaceId) {
+    // Get current workspace ID from the workspace store
+    const currentWorkspaceId = useWorkspaceStore.getState().currentWorkspaceId;
+    
+    if (!currentWorkspaceId) {
       console.error('No current workspace selected');
+      toast({
+        variant: "destructive",
+        title: "No workspace selected",
+        description: "Please select a workspace to create a form."
+      });
       return;
     }
+    
     try {
+      // Show loading state (if needed)
+      
+      // Authorization will be handled by the API using the session
       const response = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspace_id: workspaceId
+          workspace_id: currentWorkspaceId
         })
       });
 
       const { form_id, error } = await response.json();
+      
       if (error) {
         console.error('Error creating form:', error);
+        toast({
+          variant: "destructive",
+          title: "Error creating form",
+          description: error || "An unexpected error occurred"
+        });
         return;
       }
       
-      // Navigate to the newly created form
+      // Navigate to the newly created form using router for better client-side navigation
+      // Note: We're preserving the existing method of navigation to ensure consistency
       window.location.href = `/dashboard/forms/builder/${form_id}`;
     } catch (error) {
       console.error('Failed to create form:', error);
+      toast({
+        variant: "destructive",
+        title: "Error creating form",
+        description: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
     }
   };
   
@@ -148,7 +173,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton
                 onClick={handleCreateForm}
                 tooltip="Create Form"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground justify-center"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground justify-center"
               >
                 {isCollapsed ? (
                   <Plus className="h-4 w-4 mx-auto" />
