@@ -149,9 +149,6 @@ export function FormsView({ workspaceId, className = '' }: FormsViewProps) {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">My Forms</h1>
           <div className="flex items-center space-x-2">
-            <Button onClick={handleCreateForm} className="mr-2">
-              <Plus className="mr-2 h-4 w-4" /> Create Form
-            </Button>
             <div className="border rounded-md overflow-hidden flex">
               <Button 
                 variant={viewMode === 'grid' ? "default" : "ghost"} 

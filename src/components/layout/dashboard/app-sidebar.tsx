@@ -11,11 +11,12 @@ import {
   FolderPlus,
   Database,
   Users,
-  Image
+  Image,
+  Plus
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
-import { NavProjects } from "@/components/dashboard/navigation/nav-projects"
 import { NavUser } from "@/components/dashboard/navigation/nav-user"
 import { WorkspaceSwitcher } from "@/components/dashboard/navigation/workspace-switcher"
 import {
@@ -24,6 +25,10 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton
 } from "@/components/ui/sidebar"
 import { useAuthSession } from "@/hooks/useAuthSession"
 
@@ -55,19 +60,6 @@ const data = {
       items: [], // No dropdown, direct link to dashboard overview
     },
     {
-      title: "Create a Form",
-      url: "#create-form", // Special URL that will be handled via client action
-      icon: PlusCircle,
-      action: "create-form", // Flag to indicate this should trigger an action, not navigation
-      items: [], // Empty array means no dropdown menu
-    },
-    {
-      title: "Data Analysis",
-      url: "/dashboard/data-analysis",
-      icon: BarChart,
-      items: [], // Empty array means no dropdown menu
-    },
-    {
       title: "Media Management",
       url: "/dashboard/media/test",
       icon: Image,
@@ -78,23 +70,6 @@ const data = {
       url: "/dashboard/settings",
       icon: Settings,
       items: [], // No dropdown, direct link to settings page
-    },
-  ],
-  projects: [
-    {
-      name: "Recent Forms",
-      url: "/dashboard/forms/recent",
-      icon: FileText,
-    },
-    {
-      name: "Shared With Me",
-      url: "/dashboard/forms/shared",
-      icon: Users,
-    },
-    {
-      name: "Form Library",
-      url: "/dashboard/forms/library",
-      icon: Database,
     },
   ],
 }
@@ -126,14 +101,59 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
 
+  // Handle form creation
+  const handleCreateForm = async () => {
+    const workspaceId = user?.user_metadata?.current_workspace_id;
+    if (!workspaceId) {
+      console.error('No current workspace selected');
+      return;
+    }
+    try {
+      const response = await fetch('/api/forms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId
+        })
+      });
+
+      const { form_id, error } = await response.json();
+      if (error) {
+        console.error('Error creating form:', error);
+        return;
+      }
+      
+      // Navigate to the newly created form
+      window.location.href = `/dashboard/forms/builder/${form_id}`;
+    } catch (error) {
+      console.error('Failed to create form:', error);
+    }
+  };
+  
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <WorkspaceSwitcher />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="flex flex-col gap-0">
+        {/* Create Form section */}
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleCreateForm}
+                tooltip="Create Form"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground justify-center"
+              >
+                <Plus className="hidden h-4 w-4 mx-auto group-data-[collapsible=icon]/sidebar:block" />
+                <span className="block group-data-[collapsible=icon]/sidebar:hidden">Create Form</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+        
+        {/* Main Navigation */}
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

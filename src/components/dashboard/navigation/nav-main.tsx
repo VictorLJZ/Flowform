@@ -3,6 +3,7 @@
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
+import { Button } from "@/components/ui/button"
 
 import {
   Collapsible,
@@ -90,7 +91,17 @@ export function NavMain({
                 {!hasSubItems ? (
                   // Direct link but wrapped in CollapsibleTrigger for consistency
                   <CollapsibleTrigger asChild>
-                    {item.action ? (
+                    {item.action === 'create-form' ? (
+                      <div className="w-full px-3 py-2">
+                        <Button 
+                          className="w-full justify-start"
+                          onClick={() => handleAction(item.action!)}
+                        >
+                          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                          {item.title}
+                        </Button>
+                      </div>
+                    ) : item.action ? (
                       <SidebarMenuButton 
                         className="cursor-pointer"
                         tooltip={item.title}
