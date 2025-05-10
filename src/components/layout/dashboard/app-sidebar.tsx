@@ -6,17 +6,12 @@ import {
   ClipboardList,
   LayoutDashboard,
   Settings,
-  PlusCircle,
-  BarChart,
   FolderPlus,
-  Database,
-  Users,
   Image,
   Plus
 } from "lucide-react"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { toast } from "@/components/ui/use-toast"
-import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/dashboard/navigation/nav-main"
 import { NavUser } from "@/components/dashboard/navigation/nav-user"
@@ -79,6 +74,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isLoading, error } = useAuthSession();
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
 
   if (isLoading) {
      return null;
@@ -102,7 +99,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: "",
     avatar: undefined
   };
-
 
   // Handle form creation
   const handleCreateForm = async () => {
@@ -155,10 +151,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       });
     }
   };
-  
-  // Get sidebar state
-  const { state: sidebarState } = useSidebar();
-  const isCollapsed = sidebarState === "collapsed";
   
   return (
     <Sidebar collapsible="icon" {...props}>

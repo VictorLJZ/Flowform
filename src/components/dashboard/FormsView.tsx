@@ -11,7 +11,7 @@ import { useForms } from "@/hooks/useForms"
 import { usePublishForm } from "@/hooks/usePublishForm"
 import { getFormWithBlocksClient } from "@/services/form/getFormWithBlocksClient"
 import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
-import type { FormBlock, BlockType } from "@/types/block-types"
+import type { BlockType } from "@/types/block-types"
 import {
   DropdownMenu,
   DropdownMenuContent,

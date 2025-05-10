@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { DynamicBlockConfig } from '@/types/supabase-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,8 +65,7 @@ export async function GET(request: Request) {
         }));
       
       const dynamicBlocksFormatted = dynamicBlocks.map(block => {
-        // Extract starter question from title or settings
-        const settings = block.settings || {};
+        // Extract starter question from title
         const starterQuestion = block.title || '';
         
         return {

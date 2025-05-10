@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { checkAuthStatus } from "@/lib/debug/authCheck"
-import { useRouter } from "next/navigation"
 import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 import {
@@ -33,7 +32,6 @@ import { WorkspaceRole } from "@/types/workspace-types"
 import { FormsView } from "@/components/dashboard/FormsView"
 
 export default function Page() {
-  const router = useRouter()
   // Get workspace ID, converting null to undefined for hooks
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId) ?? undefined;
   

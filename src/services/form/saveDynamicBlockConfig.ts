@@ -41,7 +41,7 @@ export async function saveDynamicBlockConfig(
     };
     
     // Update the form_blocks table directly
-    const { data: updatedBlock, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('form_blocks')
       .update({ settings: updatedSettings })
       .eq('id', blockId)
