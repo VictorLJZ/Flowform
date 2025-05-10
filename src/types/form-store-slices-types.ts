@@ -88,6 +88,7 @@ export interface FormWorkflowSlice {
   // Core data
   connections: Connection[];
   nodePositions: Record<string, { x: number; y: number }>;
+  cyclicConnections: Record<string, boolean>; // Tracks connections that form infinite loops
   
   // UI state
   selectedElementId: string | null;
@@ -128,6 +129,7 @@ export interface FormWorkflowSlice {
   onBlockRemoved: (blockId: string) => void; // Called when a block is removed to clean up connections
   onBlocksReordered: (movedBlockId: string) => void; // Called when blocks are reordered with ID of moved block
   validateConnections: () => boolean; // Validates connections against blocks, returns true if all valid
+  detectWorkflowCycles: () => void; // Detects cycles (infinite loops) in the workflow graph
   
   // Sync actions
   syncBlockOrderWithConnections: () => void; // Synchronizes block order with workflow connections

@@ -4,6 +4,7 @@ import React from 'react';
 import { getBezierPath, EdgeProps } from 'reactflow';
 import { memo } from 'react';
 import { WorkflowEdgeData } from '@/types/workflow-types'; 
+import { AlertTriangle } from 'lucide-react';
 
 const WorkflowEdge = ({
   id,
@@ -71,6 +72,13 @@ const WorkflowEdge = ({
 
   if (!connection) return null; 
 
+  // Check if this edge is part of a cycle (infinite loop) in the workflow
+  const isInCycle = data?.inCycle || false;
+  
+  // Calculate midpoint of the path for placing the warning icon
+  const midX = (sourceX + targetX) / 2;
+  const midY = (sourceY + targetY) / 2;
+  
   return (
     <>
       {/* Define a unique marker for this edge */}
@@ -86,34 +94,45 @@ const WorkflowEdge = ({
         >
           <path 
             d="M 0 0 L 10 5 L 0 10 z" 
-            fill="#000000" 
+            fill={isInCycle ? '#ef4444' : '#000000'} 
           />
         </marker>
       </defs>
 
-      {/* Edge wrapper - completely non-interactive */}
+      {/* Edge wrapper */}
       <g className="edge-wrapper">
-        {/* Simple edge path without interaction elements */}
-        
         {/* Main visible edge path with arrow */}
         <path
           id={id}
           d={edgePath}
           fill="none"
           markerEnd={`url(#arrow-${id})`}
-          strokeDasharray="0" // Always solid line
+          strokeDasharray={isInCycle ? '5,3' : '0'} // Dashed line for cycles
           className="transition-colors duration-200"
           style={{
-            strokeWidth: 1, // Consistent width
-            stroke: '#000000', // Black for all paths
+            strokeWidth: isInCycle ? 2 : 1, // Thicker line for cycles
+            stroke: isInCycle ? '#ef4444' : '#000000', // Red for cycles
             strokeOpacity: 1,
             visibility: 'visible',
-            pointerEvents: 'none' // Make non-interactive
+            pointerEvents: 'none'
           }}
         />
+        
+        {/* Warning icon for cycle detection */}
+        {isInCycle && (
+          <foreignObject
+            width={22}
+            height={22}
+            x={midX - 11}
+            y={midY - 11}
+            className="overflow-visible pointer-events-none"
+          >
+            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white border border-red-500 shadow-sm">
+              <AlertTriangle size={14} className="text-red-500" />
+            </div>
+          </foreignObject>
+        )}
       </g>
-      
-      {/* Labels removed as requested */}
     </>
   )
 }

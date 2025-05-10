@@ -213,14 +213,20 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem key="edit" onClick={() => router.push(`/dashboard/forms/builder/${form.form_id}`)}>
+                          <DropdownMenuItem key="edit" onClick={(e) => {
+                            e.stopPropagation(); // Stop event from bubbling up to the Card
+                            router.push(`/dashboard/forms/builder/${form.form_id}`);
+                          }}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
 
                           {form.status !== 'published' && (
                             <DropdownMenuItem 
                               key="publish"
-                              onClick={() => handlePublishForm(form.form_id)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Stop event from bubbling up to the Card
+                                handlePublishForm(form.form_id);
+                              }}
                               disabled={publishingFormId === form.form_id}
                             >
                               {publishingFormId === form.form_id ? (
@@ -236,11 +242,15 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                             </DropdownMenuItem>
                           )}
 
-                          <DropdownMenuItem key="analytics" onClick={() => router.push(`/dashboard/forms/analytics/${form.form_id}`)}>
+                          <DropdownMenuItem key="analytics" onClick={(e) => {
+                            e.stopPropagation(); // Stop event from bubbling up to the Card
+                            router.push(`/dashboard/forms/${form.form_id}/analytics`);
+                          }}>
                             <BarChart className="mr-2 h-4 w-4" /> Analytics
                           </DropdownMenuItem>
 
-                          <DropdownMenuItem key="copyLink" onClick={async () => {
+                          <DropdownMenuItem key="copyLink" onClick={async (e) => {
+                            e.stopPropagation(); // Stop event from bubbling up to the Card
                             // Reverted to dynamic link construction
                             const shareableLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`;
                             try {
@@ -262,7 +272,11 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                             <Link className="mr-2 h-4 w-4" /> Copy link
                           </DropdownMenuItem>
                           <DropdownMenuSeparator key="separator" />
-                          <DropdownMenuItem key="delete" className="text-destructive" onClick={() => {/* TODO: Implement delete form functionality */ toast({ title: 'Delete clicked (not implemented)', description: `Form ID: ${form.form_id}`}) }}>
+                          <DropdownMenuItem key="delete" className="text-destructive" onClick={(e) => {
+                            e.stopPropagation(); // Stop event from bubbling up to the Card
+                            /* TODO: Implement delete form functionality */ 
+                            toast({ title: 'Delete clicked (not implemented)', description: `Form ID: ${form.form_id}`});
+                          }}>
                             <Trash className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

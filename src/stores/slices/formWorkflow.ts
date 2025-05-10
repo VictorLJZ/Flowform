@@ -7,6 +7,7 @@ import type { Connection } from '@/types/workflow-types'
 import type { Node, Edge } from 'reactflow'
 import { v4 as uuidv4 } from 'uuid'
 import { createDefaultConnections } from '../../utils/workflow/autoConnectBlocks';
+import { detectCycles } from '../../utils/workflow/detectCycles';
 
 export const createFormWorkflowSlice: StateCreator<
   FormBuilderState,
@@ -17,6 +18,9 @@ export const createFormWorkflowSlice: StateCreator<
   // Core data
   connections: [],
   nodePositions: {},
+  
+  // Connection validation
+  cyclicConnections: {},
   
   // UI state
   selectedElementId: null,
@@ -61,7 +65,11 @@ export const createFormWorkflowSlice: StateCreator<
   setEdges: (edges: Edge[]) => set({ edges }),
   
   // Connection actions
-  setConnections: (connections: Connection[]) => set({ connections }),
+  setConnections: (connections: Connection[]) => {
+    set({ connections })
+    // Detect cycles after setting connections
+    get().detectWorkflowCycles()
+  },
   
   addConnection: (connection: Connection) => {
     // Ensure connection has required fields
@@ -73,6 +81,10 @@ export const createFormWorkflowSlice: StateCreator<
     set((state) => ({
       connections: [...state.connections, validConnection]
     }))
+    
+    // Detect cycles after adding a connection
+    get().detectWorkflowCycles()
+    
     return validConnection.id;
   },
   
@@ -89,11 +101,19 @@ export const createFormWorkflowSlice: StateCreator<
       )
     }));
     get().validateConnections();
+    
+    // Detect cycles after updating connection
+    get().detectWorkflowCycles();
   },
   
-  removeConnection: (connectionId: string) => set((state) => ({
-    connections: state.connections.filter(conn => conn.id !== connectionId)
-  })),
+  removeConnection: (connectionId: string) => {
+    set((state) => ({
+      connections: state.connections.filter(conn => conn.id !== connectionId)
+    }));
+    
+    // Detect cycles after removing connection
+    get().detectWorkflowCycles();
+  },
   
   updateConnectionTarget: (connectionId: string, newTargetId: string) => {
     // Get current state
@@ -233,37 +253,88 @@ export const createFormWorkflowSlice: StateCreator<
 
   // Utility method to validate all connections
   validateConnections: () => {
-    const { connections } = get()
-    const { blocks } = get() as unknown as FormBuilderState
-    
-    // Check for connections with missing blocks
-    const validConnections = connections.filter(conn => {
-      const sourceExists = blocks.some(block => block.id === conn.sourceId);
-      const defaultTargetExists = blocks.some(block => block.id === conn.defaultTargetId);
-      
-      // If source or default target doesn't exist, the connection is invalid
-      if (!sourceExists || !defaultTargetExists) {
-        return false;
-      }
-      
-      // Validate rule targets if there are any rules
-      if (conn.rules && conn.rules.length > 0) {
-        // Filter rules: keep if target is empty (new) OR target exists
-        conn.rules = conn.rules.filter(rule => 
-          rule.target_block_id === '' || blocks.some(block => block.id === rule.target_block_id)
-        );
-      }
-      
-      return true;
-    });
-    
+    const { connections } = get();
+    const { blocks } = get() as unknown as FormBuilderState;
+
+    // Build a new connections array immutably
+    const validConnections = connections
+      .filter(conn =>
+        blocks.some(b => b.id === conn.sourceId) &&
+        blocks.some(b => b.id === conn.defaultTargetId)
+      )
+      .map(conn => ({
+        ...conn,
+        rules: conn.rules
+          ? conn.rules.filter(rule =>
+              rule.target_block_id === '' ||
+              blocks.some(b => b.id === rule.target_block_id)
+            )
+          : conn.rules
+      }));
+
     // Only update if connections changed
     if (validConnections.length !== connections.length) {
-      console.log(`Removed ${connections.length - validConnections.length} invalid connections`)
-      set({ connections: validConnections })
+      console.log(`Removed ${connections.length - validConnections.length} invalid connections`);
+      set({ connections: validConnections });
+    }
+
+    return validConnections.length === connections.length;
+  },
+  
+  // Utility method to detect workflow cycles
+  detectWorkflowCycles: () => {
+    const { connections } = get();
+    const { blocks } = get() as unknown as FormBuilderState;
+    
+    if (!connections.length || !blocks.length) {
+      // No cycles possible with empty connections or blocks
+      set({ cyclicConnections: {} });
+      return;
     }
     
-    return validConnections.length === connections.length
+    try {
+      const { cycleConnections, hasCycles } = detectCycles(blocks, connections);
+      
+      if (hasCycles) {
+        console.log('🚨 [Workflow] Cycle detection found infinite loops in workflow!')
+      } else {
+        console.log('✅ [Workflow] No cycles detected in current workflow.')
+      }
+      
+      // Update cycle connections in state
+      set({ cyclicConnections: cycleConnections });
+      
+      // Update the edge data to reflect cycles
+      const { edges } = get();
+      const updatedEdges = edges.map(edge => {
+        const edgeData = edge.data || {};
+        const connId = edgeData.connection?.id;
+        
+        if (connId && cycleConnections[connId]) {
+          return {
+            ...edge,
+            data: {
+              ...edgeData,
+              inCycle: true
+            }
+          };
+        } else {
+          return {
+            ...edge,
+            data: {
+              ...edgeData,
+              inCycle: false
+            }
+          };
+        }
+      });
+      
+      if (JSON.stringify(edges) !== JSON.stringify(updatedEdges)) {
+        set({ edges: updatedEdges });
+      }
+    } catch (error) {
+      console.error('Error detecting workflow cycles:', error);
+    }
   },
   
   // Sync actions

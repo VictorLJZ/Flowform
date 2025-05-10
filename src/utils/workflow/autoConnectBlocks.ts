@@ -178,14 +178,15 @@ export function createDefaultConnections({
 
     console.log(`🔗🔎 [AutoConnect] Checking for new default connection: ${currentBlock.id} -> ${nextBlock.id}`);
 
-    // Check if this exact default connection already exists (it shouldn't if removal was correct, but good for safety)
+    // Check if currentBlock already has a connection to nextBlock,
     // OR if currentBlock already has a rule-based outgoing connection (we don't want to override that with a default)
-    const connectionAlreadyExistsOrHasRules = updatedConnections.some(conn => 
+    // OR if currentBlock already has an explicit outgoing connection.
+    const sourceHasSignificantOutgoingConnection = updatedConnections.some(conn => 
         conn.sourceId === currentBlock.id && 
-        (conn.defaultTargetId === nextBlock.id || conn.rules.length > 0)
+        (conn.defaultTargetId === nextBlock.id || conn.rules.length > 0 || conn.is_explicit === true)
     );
 
-    if (!connectionAlreadyExistsOrHasRules) {
+    if (!sourceHasSignificantOutgoingConnection) {
       const newConnection: Connection = {
         id: uuidv4(),
         sourceId: currentBlock.id,
@@ -197,7 +198,7 @@ export function createDefaultConnections({
       newDefaultConnectionsToAdd.push(newConnection);
       console.log(`🔗✅ [AutoConnect] Creating new default connection: ${currentBlock.id} -> ${nextBlock.id}`);
     } else {
-      console.log(`🔗ℹ️ [AutoConnect] Skipping default connection creation for ${currentBlock.id} -> ${nextBlock.id}: already exists or source has rule-based outgoing.`);
+      console.log(`🔗ℹ️ [AutoConnect] Skipping default connection creation for ${currentBlock.id} -> ${nextBlock.id}: already exists or source has rule-based/explicit outgoing.`);
     }
   }
 

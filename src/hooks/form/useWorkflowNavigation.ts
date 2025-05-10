@@ -70,6 +70,10 @@ export function useWorkflowNavigation({
   const [navigationHistory, setNavigationHistory] = useState<number[]>([initialBlockIndex]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
+  
+  // Track the sequence of blocks visited through forward navigation
+  // This is used to detect cycles in the workflow
+  const [navigationSequence, setNavigationSequence] = useState<string[]>([blocks[initialBlockIndex]?.id].filter(Boolean));
 
   // Current block for convenience
   const currentBlock = useMemo(() => {
@@ -409,6 +413,42 @@ export function useWorkflowNavigation({
     return -1; // No next block found
   }, [currentBlock, workflowConnections, blocks, currentIndex, findBlockIndex, evaluateRuleConditionGroup, setNavigationPath]);
 
+  // Helper function to detect cycles in a sequence of block IDs
+  const detectCycleInSequence = useCallback((sequence: string[]): boolean => {
+    // Need at least 3 blocks to have a meaningful cycle
+    if (sequence.length < 3) return false;
+    
+    // Look for patterns that repeat at least twice
+    // We'll check for patterns of different lengths
+    for (let patternLength = 1; patternLength <= Math.floor(sequence.length / 3); patternLength++) {
+      // Get the most recent pattern
+      const recentPattern = sequence.slice(sequence.length - patternLength);
+      
+      // Check if this pattern appears twice in succession at the end
+      const previousPattern = sequence.slice(
+        sequence.length - (patternLength * 2), 
+        sequence.length - patternLength
+      );
+      
+      // Check if the patterns are identical
+      let patternsMatch = true;
+      for (let i = 0; i < patternLength; i++) {
+        if (recentPattern[i] !== previousPattern[i]) {
+          patternsMatch = false;
+          break;
+        }
+      }
+      
+      if (patternsMatch) {
+        // We found a repeating pattern - this is a cycle
+        console.log(`🔄🔍 [CYCLE_DETECTION] Found repeating pattern: ${recentPattern.join(' → ')}`);
+        return true;
+      }
+    }
+    
+    return false;
+  }, []);
+  
   // Navigate to the next block based on the current answer and conditions
   const goToNext = useCallback((currentAnswer: Answer) => {
     console.log('🚀⚡️🔄 [NAVIGATION] goToNext called with answer:', currentAnswer);
@@ -416,6 +456,23 @@ export function useWorkflowNavigation({
     const nextIndex = findNextBlockIndex(currentAnswer);
     
     if (nextIndex >= 0) {
+      const nextBlockId = blocks[nextIndex]?.id;
+      
+      if (nextBlockId) {
+        // Add this block to our navigation sequence for cycle detection
+        const newSequence = [...navigationSequence, nextBlockId];
+        setNavigationSequence(newSequence);
+        
+        // Check for cycles by looking for repeating patterns in the sequence
+        const isCycleDetected = detectCycleInSequence(newSequence);
+        
+        if (isCycleDetected) {
+          console.log(`🔄⚠️ [CYCLE_DETECTION] Detected a complete cycle in navigation path. Ending form.`);
+          // Return false to trigger form completion in the parent component
+          return false;
+        }
+      }
+      
       setDirection(1);
       setCurrentIndex(nextIndex);
       
@@ -430,19 +487,31 @@ export function useWorkflowNavigation({
     
     console.log('🚀⚡️🔄 [NAVIGATION] Failed to navigate: no valid next block found');
     return false;
-  }, [findNextBlockIndex, navigationHistory, historyIndex, blocks]);
+  }, [findNextBlockIndex, navigationHistory, historyIndex, blocks, navigationSequence, detectCycleInSequence]);
 
   // Go back to the previous block in history
   const goToPrevious = useCallback(() => {
     if (historyIndex > 0) {
       setDirection(-1);
       const prevIndex = navigationHistory[historyIndex - 1];
+      const prevBlockId = blocks[prevIndex]?.id;
+      
+      if (prevBlockId) {
+        // When going back, truncate our navigation sequence to the previous block
+        // This ensures back-and-forth navigation doesn't trigger cycle detection
+        const blockPosition = navigationSequence.lastIndexOf(prevBlockId);
+        if (blockPosition >= 0) {
+          // Keep sequence up to and including this block
+          setNavigationSequence(navigationSequence.slice(0, blockPosition + 1));
+        }
+      }
+      
       setCurrentIndex(prevIndex);
       setHistoryIndex(historyIndex - 1);
       return true;
     }
     return false;
-  }, [navigationHistory, historyIndex]);
+  }, [navigationHistory, historyIndex, blocks, navigationSequence]);
 
   // Reset the navigation
   const resetNavigation = useCallback(() => {
@@ -451,7 +520,9 @@ export function useWorkflowNavigation({
     setNavigationHistory([initialBlockIndex]);
     setHistoryIndex(0);
     setNavigationPath([]);
-  }, [initialBlockIndex]);
+    // Reset the navigation sequence for cycle detection
+    setNavigationSequence([blocks[initialBlockIndex]?.id].filter(Boolean));
+  }, [initialBlockIndex, blocks]);
 
   // Check if we're at the last question (no more connections)
   const isLastQuestion = useMemo(() => {
