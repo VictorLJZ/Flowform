@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 // Using our new workflow-based navigation hook instead of the simple index-based navigation
 import { useFormWorkflowNavigation } from '@/hooks/form/useFormWorkflowNavigation';
+import { loadFormMedia } from '@/services/form/loadFormMedia';
 import { useFormAnswers, FormAnswersState } from '@/hooks/form/useFormAnswers'; 
 import { useFormSubmission, AnalyticsSubmitHandler, AnalyticsErrorHandler, AnalyticsCompletionHandler } from '@/hooks/form/useFormSubmission';
 import { useFormAbandonment } from '@/hooks/form/useFormAbandonment'; 
@@ -410,6 +411,15 @@ export default function FormViewerPage() {
   const handlePrevious = useCallback(() => { 
       goToPrevious(); 
   }, [goToPrevious]); 
+
+  // Load media assets if the form has blocks
+  useEffect(() => {
+    if (!isLoading && blocks.length > 0) {
+      // Only load media assets once when blocks are available
+      loadFormMedia(blocks);
+      console.log('[FormViewerPage] Loaded media assets for form blocks');
+    }
+  }, [isLoading, blocks]);
 
   // Initial load check - show loader if form data is not yet loaded
   if (isLoading || blocks.length === 0) {

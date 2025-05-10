@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import Image from 'next/image'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { cn } from '@/lib/utils'
@@ -25,8 +25,22 @@ export function MediaRenderer({
   // Find the media asset by its mediaId
   const mediaAsset = mediaId ? getMediaAssetByMediaId(mediaId) : undefined
   
+  // Determine media type based on mediaId or mediaAsset
+  const mediaType = useMemo(() => {
+    // If we have the media asset from the store, use its type
+    if (mediaAsset) return mediaAsset.type;
+    
+    // If we only have the mediaId, try to determine type from extension
+    if (mediaId) {
+      const fileName = mediaId.split('/').pop() || '';
+      return /\.(mp4|webm|mov|avi)$/i.test(fileName) ? 'video' : 'image';
+    }
+    
+    return null; // No media type could be determined
+  }, [mediaAsset, mediaId]);
+  
   // Placeholder for when no media is set
-  if (!mediaId || !mediaAsset) {
+  if (!mediaId) {
     return (
       <div 
         className={cn(
@@ -42,11 +56,11 @@ export function MediaRenderer({
   }
   
   // Render based on media type
-  if (mediaAsset.type === 'image') {
-    // Generate optimized Cloudinary URL if it's a Cloudinary asset
-    const imageUrl = mediaAsset.mediaId?.startsWith('http') 
+  if (mediaType === 'image') {
+    // Generate optimized Cloudinary URL based on available data
+    const imageUrl = mediaAsset?.url && mediaAsset.mediaId?.startsWith('http') 
       ? mediaAsset.url 
-      : getCloudinaryUrl(mediaAsset.mediaId, {
+      : getCloudinaryUrl(mediaId || '', {
           type: 'image',
           quality: 'auto',
           crop: sizingMode === 'contain' ? 'fit' : 'fill'
@@ -67,11 +81,11 @@ export function MediaRenderer({
         />
       </div>
     )
-  } else if (mediaAsset.type === 'video') {
-    // Generate optimized Cloudinary URL if it's a Cloudinary asset
-    const videoUrl = mediaAsset.mediaId?.startsWith('http')
+  } else if (mediaType === 'video') {
+    // Generate optimized Cloudinary URL based on available data
+    const videoUrl = mediaAsset?.url && mediaAsset.mediaId?.startsWith('http')
       ? mediaAsset.url
-      : getCloudinaryUrl(mediaAsset.mediaId, { type: 'video' });
+      : getCloudinaryUrl(mediaId || '', { type: 'video' });
       
     return (
       <div className={cn("w-full h-full relative overflow-hidden rounded-md", className)}>
