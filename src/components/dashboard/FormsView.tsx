@@ -301,15 +301,6 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                           </span>
                         )}
                       </p>
-                      {form.status === 'published' && (
-                        <Link
-                          href={`/dashboard/forms/submissions/${form.form_id}`}
-                          className="text-[10px] text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()} // Prevent card click
-                        >
-                          View Submissions
-                        </Link>
-                      )}
                     </div>
                   )}
                 </CardContent>
