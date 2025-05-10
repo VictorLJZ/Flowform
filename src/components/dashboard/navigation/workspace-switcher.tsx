@@ -42,6 +42,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore"
 export function WorkspaceSwitcher() {
   const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
   const { currentWorkspaceId, switchToWorkspace } = useWorkspaceSwitcher()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const addWorkspace = useWorkspaceStore(state => state.addWorkspace)
 
   const { user, isLoading: isLoadingAuth } = useAuthSession()

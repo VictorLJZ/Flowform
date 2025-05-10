@@ -47,6 +47,7 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
   const isLoading = isLoadingAuth || isLoadingWorkspace;
 
   // Get access to the shared stores and mutation methods
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const workspaceStore = useWorkspaceStore();
   const { mutate: mutateWorkspacesList } = useWorkspaces();
   

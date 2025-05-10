@@ -13,7 +13,9 @@ import { useAuthSession } from './useAuthSession';
  */
 export function useWorkspaceDeletion() {
   const { user } = useAuthSession();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const selectWorkspace = useWorkspaceStore(state => state.selectWorkspace);
   const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
   const addWorkspace = useWorkspaceStore(state => state.addWorkspace);
@@ -136,7 +138,7 @@ export function useWorkspaceDeletion() {
       });
       return { success: false };
     }
-  }, [user, currentWorkspaceId, selectWorkspace, setWorkspaces, addWorkspace]);
+  }, [user, setWorkspaces, addWorkspace]);
   
   return { deleteWorkspace: handleDeleteWorkspace };
 }

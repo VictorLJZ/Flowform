@@ -129,7 +129,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         
         // Proceed with normal update logic
         const currentId = get().currentWorkspaceId;
-        const { manualSelectionActive, lastManualSelectionTime } = get();
+        const { manualSelectionActive } = get();
         
         console.log(`[workspaceStore:setWorkspaces] Running with:`, { 
           currentId, 
@@ -233,8 +233,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // Capture current state before refresh
           const { 
             currentWorkspaceId: currentId, 
-            manualSelectionActive,
-            lastManualSelectionTime
+            manualSelectionActive
           } = get();
           
           // Check for manual selection status

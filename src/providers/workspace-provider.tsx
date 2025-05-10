@@ -4,7 +4,7 @@ import { createContext, useContext, ReactNode, useEffect, useState } from 'react
 import { useWorkspaceInitialization } from '@/hooks/useWorkspaceInitialization';
 import { Workspace } from '@/types/supabase-types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { initializeDefaultWorkspace } from '@/services/workspace/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 
@@ -54,7 +54,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     
     // Get the newly created workspace ID and time from localStorage
     const newWorkspaceId = localStorage.getItem('new_workspace_id');
-    const newWorkspaceTimeStr = localStorage.getItem('new_workspace_redirect_time');
     const isNewlyCreatedWorkspace = newWorkspaceId === forceWorkspaceId;
     
     // Function to set the workspace when it's found
@@ -237,7 +236,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const selectWorkspace = useWorkspaceStore.getState().selectWorkspace;
       selectWorkspace(firstWorkspace.id);
     }
-  }, [workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
+  }, [workspaceData, workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
   
   // Update global Zustand store when workspaces change (separate concern)
   useEffect(() => {
@@ -283,7 +282,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       
       createDefaultWorkspace();
     }
-  }, [needsDefaultWorkspace, user, workspaceData.mutate, isCreatingDefaultWorkspace]);
+  }, [needsDefaultWorkspace, user, workspaceData, workspaceData.mutate, isCreatingDefaultWorkspace]);
   
   // Create a context value with our combined state
   const workspaceContextValue = {
