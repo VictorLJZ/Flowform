@@ -27,26 +27,20 @@ export async function getDynamicBlockQuestion(blockId: string): Promise<GetQuest
       return { success: false, error: 'Not a dynamic block' };
     }
     
-    // Get the dynamic block configuration
-    const { data: config, error: configError } = await supabase
-      .from('dynamic_block_configs')
-      .select('*')
-      .eq('block_id', blockId)
-      .single();
-      
-    if (configError) {
-      console.error('Error fetching dynamic block config:', configError);
-      return { success: false, error: 'Failed to retrieve block configuration' };
-    }
+    // Use settings from the block itself instead of dynamic_block_configs
+    // Extract settings from block data
+    const temperature = block.settings?.temperature || 0.7;
+    const maxQuestions = block.settings?.maxQuestions || 3;
+    const contextInstructions = block.settings?.contextInstructions || '';
     
     return {
       success: true,
       data: {
-        question: config.starter_question,
+        question: block.title, // Use block title as the starter question
         blockId,
-        temperature: config.temperature,
-        maxQuestions: config.max_questions,
-        aiInstructions: config.ai_instructions
+        temperature,
+        maxQuestions,
+        aiInstructions: contextInstructions
       }
     };
     

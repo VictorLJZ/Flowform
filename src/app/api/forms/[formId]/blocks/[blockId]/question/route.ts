@@ -22,28 +22,33 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the dynamic block configuration
+    // Get the block directly from form_blocks instead of using dynamic_block_configs
     const supabase = createClient()
-    const { data: blockConfig, error: configError } = await supabase
-      .from("dynamic_block_configs")
+    const { data: blockData, error: blockError } = await supabase
+      .from("form_blocks")
       .select("*")
-      .eq("block_id", blockId)
+      .eq("id", blockId)
       .single()
 
-    if (configError) {
-      console.error("[API] Error fetching block config:", configError)
+    if (blockError) {
+      console.error("[API] Error fetching block data:", blockError)
       return NextResponse.json(
-        { error: "Failed to fetch block configuration" },
+        { error: "Failed to fetch block data" },
         { status: 500 }
       )
     }
 
-    if (!blockConfig) {
+    if (!blockData) {
       return NextResponse.json(
-        { error: "Block configuration not found" },
+        { error: "Block not found" },
         { status: 404 }
       )
     }
+
+    // Extract settings from block data
+    const temperature = blockData.settings?.temperature || 0.7;
+    const maxQuestions = blockData.settings?.maxQuestions || 5;
+    const contextInstructions = blockData.settings?.contextInstructions || '';
 
     // Format the conversation for OpenAI
     const aiConversation = conversation.map((qa: QAPair) => [
@@ -52,18 +57,18 @@ export async function POST(request: Request) {
     ]).flat()
 
     // Add context instructions if available
-    if (blockConfig.ai_instructions) {
+    if (contextInstructions) {
       aiConversation.unshift({
         role: "developer",
-        content: blockConfig.ai_instructions,
+        content: contextInstructions,
       })
     }
 
     // Generate the next question
     const result = await generateQuestion(
       aiConversation,
-      blockConfig.ai_instructions || "",
-      blockConfig.temperature || 0.7,
+      contextInstructions,
+      temperature,
       previousResponseId
     )
 
@@ -77,7 +82,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       question: result.data,
       responseId: result.responseId,
-      isComplete: conversation.length >= blockConfig.max_questions,
+      isComplete: conversation.length >= maxQuestions,
     })
   } catch (error) {
     console.error("[API] Error generating AI question:", error)

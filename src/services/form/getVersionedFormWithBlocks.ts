@@ -79,18 +79,19 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
   
   let dynamicConfigs: DynamicBlockConfig[] = [];
   if (dynamicBlocks.length > 0) {
-    const dynamicBlockIds = dynamicBlocks.map(block => block.id);
-    const { data: configs, error: configsError } = await supabase
-      .from('dynamic_block_configs')
-      .select('*')
-      .in('block_id', dynamicBlockIds);
-
-    if (configsError) {
-      console.error('Error fetching dynamic block configs:', configsError);
-      throw configsError;
-    }
-
-    dynamicConfigs = configs || [];
+    // Instead of querying a separate table, extract config from block settings
+    dynamicConfigs = dynamicBlocks.map(block => {
+      const settings = block.settings || {};
+      return {
+        block_id: block.id,
+        starter_question: block.title || '',
+        temperature: settings.temperature || 0.7,
+        max_questions: settings.maxQuestions || 5,
+        ai_instructions: settings.contextInstructions || '',
+        created_at: block.created_at,
+        updated_at: block.updated_at
+      } as DynamicBlockConfig;
+    });
   }
   
   // Fetch block options for blocks with options

@@ -51,29 +51,8 @@ export async function GET(request: Request) {
         );
       }
       
-      // 3. Get dynamic block configs for all dynamic blocks
-      const dynamicBlockIds = blocks
-        .filter(block => block.type === 'dynamic')
-        .map(block => block.id);
-      
-      let dynamicConfigs: DynamicBlockConfig[] = [];
-      
-      if (dynamicBlockIds.length > 0) {
-        const { data: configs, error: configsError } = await supabase
-          .from('dynamic_block_configs')
-          .select('*')
-          .in('block_id', dynamicBlockIds);
-        
-        if (configsError) {
-          console.error('[API] Error fetching dynamic block configs:', configsError);
-          return NextResponse.json(
-            { error: configsError.message },
-            { status: 500 }
-          );
-        }
-        
-        dynamicConfigs = configs || [];
-      }
+      // 3. Extract dynamic block information directly from the blocks
+      const dynamicBlocks = blocks.filter(block => block.type === 'dynamic');
       
       // 4. Format data
       const staticQuestions = blocks
@@ -86,25 +65,26 @@ export async function GET(request: Request) {
           subtype: block.subtype
         }));
       
-      const dynamicBlocks = blocks
-        .filter(block => block.type === 'dynamic')
-        .map(block => {
-          const config = dynamicConfigs.find(c => c.block_id === block.id);
-          return {
-            id: block.id,
-            title: block.title,
-            description: block.description,
-            type: 'dynamic' as const,
-            starter_question: config?.starter_question || ''
-          };
-        });
+      const dynamicBlocksFormatted = dynamicBlocks.map(block => {
+        // Extract starter question from title or settings
+        const settings = block.settings || {};
+        const starterQuestion = block.title || '';
+        
+        return {
+          id: block.id,
+          title: block.title,
+          description: block.description,
+          type: 'dynamic' as const,
+          starter_question: starterQuestion
+        };
+      });
       
       // 5. Construct complete form context
       const formContext = {
         formId,
         formTitle: form.title,
         staticQuestions,
-        dynamicBlocks
+        dynamicBlocks: dynamicBlocksFormatted
       };
       
       // 6. Filter out the current block if specified

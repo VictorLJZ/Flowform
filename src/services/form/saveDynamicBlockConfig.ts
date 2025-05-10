@@ -3,7 +3,7 @@ import { mapToDynamicBlockConfig } from '@/utils/dynamicBlockMapping';
 import { SaveDynamicConfigResult } from '@/types/form-service-types';
 
 /**
- * Save dynamic block configuration after a form block is saved
+ * Save dynamic block configuration directly to the form_blocks table settings
  * This should be called when a dynamic block is created or updated
  * 
  * @param blockId The ID of the dynamic block
@@ -17,58 +17,54 @@ export async function saveDynamicBlockConfig(
   const supabase = createClient();
   
   try {
-    // Convert frontend settings to database format
+    // Convert frontend settings to the appropriate format
     const dynamicConfig = mapToDynamicBlockConfig(settings);
     
-    // Check if config already exists for this block
-    const { data: existingConfig, error: fetchError } = await supabase
-      .from('dynamic_block_configs')
-      .select('*')
-      .eq('block_id', blockId)
+    // Get existing block to update its settings
+    const { data: existingBlock, error: blockError } = await supabase
+      .from('form_blocks')
+      .select('settings')
+      .eq('id', blockId)
       .single();
     
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found, which is fine
-      console.error('Error checking for existing dynamic block config:', fetchError);
-      throw fetchError;
+    if (blockError) {
+      console.error('Error fetching block:', blockError);
+      throw blockError;
     }
     
-    // Update or insert config
-    if (existingConfig) {
-      // Update existing config
-      const { error: updateError } = await supabase
-        .from('dynamic_block_configs')
-        .update({
-          starter_question: dynamicConfig.starter_question,
-          temperature: dynamicConfig.temperature,
-          max_questions: dynamicConfig.max_questions,
-          ai_instructions: dynamicConfig.ai_instructions,
-          updated_at: new Date().toISOString()
-        })
-        .eq('block_id', blockId);
-      
-      if (updateError) {
-        console.error('Error updating dynamic block config:', updateError);
-        throw updateError;
-      }
-    } else {
-      // Insert new config
-      const { error: insertError } = await supabase
-        .from('dynamic_block_configs')
-        .insert({
-          block_id: blockId,
-          starter_question: dynamicConfig.starter_question,
-          temperature: dynamicConfig.temperature,
-          max_questions: dynamicConfig.max_questions,
-          ai_instructions: dynamicConfig.ai_instructions
-        });
-      
-      if (insertError) {
-        console.error('Error creating dynamic block config:', insertError);
-        throw insertError;
-      }
+    // Create updated settings by merging with existing settings
+    const updatedSettings = {
+      ...(existingBlock.settings || {}),
+      temperature: dynamicConfig.temperature,
+      maxQuestions: dynamicConfig.max_questions,
+      contextInstructions: dynamicConfig.starter_question
+    };
+    
+    // Update the form_blocks table directly
+    const { data: updatedBlock, error: updateError } = await supabase
+      .from('form_blocks')
+      .update({ settings: updatedSettings })
+      .eq('id', blockId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating block settings:', updateError);
+      throw updateError;
     }
     
-    return { success: true, data: existingConfig || dynamicConfig };
+    return { 
+      success: true, 
+      data: {
+        block_id: blockId,
+        starter_question: dynamicConfig.starter_question,
+        temperature: dynamicConfig.temperature,
+        max_questions: dynamicConfig.max_questions,
+        ai_instructions: dynamicConfig.ai_instructions,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } 
+    };
   } catch (error) {
     console.error('Failed to save dynamic block config:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
