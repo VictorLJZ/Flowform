@@ -152,7 +152,9 @@ export default function WorkflowConnectionsCard({ blockId }: WorkflowConnections
                             id: uuidv4(),
                             sourceId: block.id,
                             defaultTargetId: targetBlockId, // Set as default target initially
-                            rules: []
+                            rules: [],
+                            is_explicit: false,
+                            order_index: 0
                           };
                           
                           addConnection(newConnection);

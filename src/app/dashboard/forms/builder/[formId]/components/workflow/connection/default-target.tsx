@@ -29,7 +29,14 @@ export function DefaultTarget({
   onPendingChange 
 }: DefaultTargetProps) {
   const blocks = useFormBuilderStore(state => state.blocks)
-  const updateConnection = useFormBuilderStore(state => state.updateConnection)
+  const updateConnectionTarget = useFormBuilderStore(state => state.updateConnectionTarget)
+  const connections = useFormBuilderStore(state => state.connections); // Get all connections
+  
+  // Find the specific connection object to check its is_explicit flag
+  const currentConnection = useMemo(() => 
+    connections.find(c => c.id === connectionId), 
+    [connections, connectionId]
+  );
   
   // All blocks except the source block
   const availableBlocks = useMemo(() => 
@@ -39,21 +46,23 @@ export function DefaultTarget({
   
   // Handle changing the default target
   const handleTargetChange = (newTargetId: string) => {
-    updateConnection(connectionId, { defaultTargetId: newTargetId })
+    updateConnectionTarget(connectionId, newTargetId)
     onPendingChange()
   }
   
-  // Find the current default target block
+  // Find the current default target block (based on the prop)
   const defaultTargetBlock = useMemo(() => 
     blocks.find(block => block.id === defaultTargetId),
     [blocks, defaultTargetId]
-  )
+  );
   
-  // Check if there are rules in the connection
-  const formBuilderStore = useFormBuilderStore();
-  const connection = formBuilderStore.connections.find(c => c.id === connectionId);
-  const hasRules = connection?.rules && connection.rules.length > 0;
-  
+  // Determine the value to display in the Select input
+  // If the connection is explicit, show its target. Otherwise, show empty to force placeholder.
+  const displayValue = currentConnection?.is_explicit ? defaultTargetId || '' : '';
+
+  // Check if there are rules in the connection (using currentConnection from store)
+  const hasRules = currentConnection?.rules && currentConnection.rules.length > 0;
+
   return (
     <div className="space-y-2">
       <div>
@@ -63,15 +72,16 @@ export function DefaultTarget({
       </div>
       
       <Select
-        value={defaultTargetId || ''}
+        value={displayValue} // Use the conditional displayValue for the Select's actual state
         onValueChange={handleTargetChange}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select fallback block...">
-            {defaultTargetBlock ? (
+          <SelectValue placeholder="Select block...">
+            {/* If connection is explicit and defaultTargetBlock exists, show BlockPill. Otherwise, placeholder. */}
+            {currentConnection?.is_explicit && defaultTargetBlock ? (
               <BlockPill block={defaultTargetBlock} />
             ) : (
-              "Select fallback block..."
+              "Select block..."
             )}
           </SelectValue>
         </SelectTrigger>

@@ -102,7 +102,9 @@ export default function ConnectionSidebar({ blockId }: ConnectionSidebarProps = 
                     id: uuidv4(),
                     sourceId: blockId,
                     defaultTargetId: null,
-                    rules: []
+                    rules: [],
+                    is_explicit: false,
+                    order_index: 0 // Default order_index for a new connection
                   };
                   
                   addConnection(newConnection);

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Connection, Rule, ConditionOperator, DbWorkflowEdgeWithOldConditions } from '@/types/workflow-types';
-import { v4 as uuidv4 } from 'uuid';
+import type { Connection } from '@/types/workflow-types';
+import type { WorkflowEdge } from '@/types/supabase-types';
+import { transformConnections } from '@/services/connection/transformConnections';
 
 /**
  * Fetch workflow edges from the database for a specific form
@@ -25,7 +26,7 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
       .eq('form_id', formId)
       .order('order_index', { ascending: true });
     
-    const edges = edgesData as DbWorkflowEdgeWithOldConditions[] | null;
+    const workflowEdges = edgesData as WorkflowEdge[] | null;
 
     if (error) {
       console.error('[getWorkflowEdges] Error fetching workflow edges:', error);
@@ -33,50 +34,12 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
     }
     
     // If no edges found, return empty array
-    if (!edges || edges.length === 0) {
+    if (!workflowEdges || workflowEdges.length === 0) {
       return [];
     }
     
-    // Map database records to frontend Connection objects
-    const connections: Connection[] = edges
-      .filter(edge => edge.source_block_id && edge.target_block_id) // Ensure essential IDs are present
-      .map(edge => {
-        let defaultTargetId: string | null = null;
-        const rules: Rule[] = [];
-
-        if (edge.condition_field && edge.condition_operator) {
-          // This edge represents a conditional path, forming a rule
-          rules.push({
-            id: uuidv4(), // Rule gets its own ID
-            target_block_id: edge.target_block_id,
-            condition_group: {
-              logical_operator: 'AND', // Assuming AND for single condition, adjust if DB supports OR
-              conditions: [
-                {
-                  id: edge.condition_id || uuidv4(), // Condition gets its own ID
-                  field: edge.condition_field!, // Assert non-null as it's checked in the if condition
-                  operator: edge.condition_operator! as ConditionOperator, // Assert non-null and cast
-                  value: edge.condition_value! // Assert non-null
-                }
-              ]
-            }
-          });
-          // For a conditional rule, defaultTargetId is typically null unless a specific fallback is defined elsewhere
-          // Assuming no separate fallback mechanism in the current DB structure for this edge row.
-          defaultTargetId = null; 
-        } else {
-          // This edge represents an "always" path or a fallback
-          defaultTargetId = edge.target_block_id;
-        }
-        
-        return {
-          id: edge.id || uuidv4(),
-          sourceId: edge.source_block_id,
-          defaultTargetId: defaultTargetId,
-          rules: rules,
-          order_index: edge.order_index === null || edge.order_index === undefined ? undefined : edge.order_index,
-        };
-      });
+    // Use the centralized transformConnections function
+    const connections: Connection[] = transformConnections(workflowEdges);
     
     return connections;
   } catch (error) {
@@ -84,5 +47,3 @@ export async function getWorkflowEdges(formId: string): Promise<Connection[]> {
     return [];
   }
 }
-
-// Note: The DbWorkflowEdgeWithOldConditions interface is now defined in workflow-types.ts

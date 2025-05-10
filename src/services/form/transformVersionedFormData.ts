@@ -62,6 +62,7 @@ export function transformVersionedFormData(formData: CompleteForm): {
         defaultTargetId: edge.default_target_id, 
         rules: parsedRules, 
         order_index: edge.order_index || 0,
+        is_explicit: edge.is_explicit || false,
       };
     })
     : [];

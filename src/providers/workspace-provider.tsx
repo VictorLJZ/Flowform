@@ -33,16 +33,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
   const needsDefaultWorkspace = useWorkspaceStore(state => state.needsDefaultWorkspace);
   
-  // Get the setter for current workspace ID
-  const setCurrentWorkspaceId = useWorkspaceStore(state => state.setCurrentWorkspaceId);
+  // Get the current workspace ID
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   
   // Access Next.js routing to read URL parameters
   const searchParams = useSearchParams();
   const forceWorkspaceId = searchParams.get('force_workspace');
-  
-  // Always debug in dev mode
-  const isDev = process.env.NODE_ENV === 'development';
   
   // Handle the force_workspace query parameter with retry logic
   useEffect(() => {
@@ -168,7 +164,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Turn off loading state after warning
       setIsProcessingForceSelection(false);
     }
-  }, [forceWorkspaceId, workspaceData.workspaces, workspaceData.mutate]); // Run when URL changes or workspace data loads
+  }, [forceWorkspaceId, workspaceData.workspaces, workspaceData.mutate, workspaceData.isLoading]); // Run when URL changes or workspace data loads
 
   // Handle workspace selection logic
   useEffect(() => {
@@ -236,8 +232,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const selectWorkspace = useWorkspaceStore.getState().selectWorkspace;
       selectWorkspace(firstWorkspace.id);
     }
-  }, [workspaceData, workspaceData.workspaces, setCurrentWorkspaceId, isDev, currentWorkspaceId]);
-  
+  }, [workspaceData, workspaceData.workspaces, currentWorkspaceId]); // Added dependency array
+
   // Update global Zustand store when workspaces change (separate concern)
   useEffect(() => {
     if (workspaceData.workspaces && workspaceData.workspaces.length > 0) {

@@ -22,6 +22,7 @@ export interface Connection {
   defaultTargetId: string | null;
   rules: Rule[];
   order_index?: number;
+  is_explicit: boolean; // Added for distinguishing user-defined vs auto-generated connections
 }
 
 export interface ConditionRule {
@@ -55,25 +56,4 @@ export interface WorkflowEdgeData {
   rule?: Rule;
   hasConditions?: boolean;
   conditionOperator?: ConditionOperator | null;
-}
-
-/**
- * Represents the database structure for workflow edges with the old condition format
- * This is used for backward compatibility with the existing database structure
- * while the application transitions to the new rules-based approach.
- */
-export interface DbWorkflowEdgeWithOldConditions {
-  id: string;
-  form_id: string;
-  source_block_id: string;
-  target_block_id: string; // Used as default or in rule target
-  default_target_id?: string | null; // For newer schema
-  condition_field?: string | null;
-  condition_operator?: ConditionOperator | null;
-  condition_value?: string | number | boolean | null;
-  condition_id?: string | null;
-  order_index?: number | null;
-  rules?: string | Rule[] | null; // Rules can be stored as a JSON string or already parsed
-  condition_type?: 'always' | 'conditional' | 'fallback';
-  [key: string]: unknown; // Allow for additional properties
 }

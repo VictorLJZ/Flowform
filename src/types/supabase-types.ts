@@ -127,6 +127,7 @@ export interface WorkflowEdge {
   
   rules?: string; // New field for storing complex rules as JSON string
   order_index: number;
+  is_explicit: boolean; // Added is_explicit field to match database schema
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }

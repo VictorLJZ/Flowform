@@ -154,6 +154,9 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     condition_json?: string;
     created_at?: string;
     updated_at?: string;
+    default_target_id?: string | null;
+    rules?: string;
+    is_explicit: boolean;
   }
   
   // Fetch workflow connections for this form

@@ -52,7 +52,8 @@ function createDefaultConnections(blocks: FormBlock[]): Connection[] {
       sourceId: block.id,
       defaultTargetId: nextBlock.id,
       rules: [], // Add empty rules array to satisfy the Connection type
-      order_index: i
+      order_index: i,
+      is_explicit: false // Mark as auto-generated
     });
   }
   

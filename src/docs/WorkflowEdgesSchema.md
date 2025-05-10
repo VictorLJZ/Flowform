@@ -12,6 +12,7 @@ This table stores the connections between form blocks in the workflow, including
 | default_target_id | UUID                     | Default target when no rules match    | NOT NULL, REFERENCES form_blocks(id)    |
 | rules             | JSONB                    | Array of complex conditional rules    | DEFAULT '[]'::jsonb                    |
 | order_index       | INTEGER                  | Order of the edge in the workflow     | NOT NULL                                |
+| is_explicit       | BOOLEAN                  | True if user-defined, false if auto   | NOT NULL, DEFAULT FALSE                |
 | created_at        | TIMESTAMP WITH TIME ZONE | Creation timestamp                    | DEFAULT now()                           |
 | updated_at        | TIMESTAMP WITH TIME ZONE | Last update timestamp                 | DEFAULT now()                           |
 
@@ -40,6 +41,7 @@ The workflow_edges table enables:
 - Supporting complex AND/OR logic within each rule
 - Preserving the exact order and relationships between form blocks
 - Rebuilding the entire form workflow when loading forms
+- Distinguishing between user-defined explicit connections and auto-generated default connections
 
 ## SQL Creation Script
 
@@ -51,6 +53,7 @@ CREATE TABLE workflow_edges (
   default_target_id UUID NOT NULL REFERENCES form_blocks(id) ON DELETE CASCADE,
   rules JSONB DEFAULT '[]'::jsonb,
   order_index INTEGER NOT NULL,
+  is_explicit BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );

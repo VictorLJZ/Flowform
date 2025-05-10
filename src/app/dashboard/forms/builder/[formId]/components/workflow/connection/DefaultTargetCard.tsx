@@ -26,7 +26,7 @@ export function DefaultTargetCard({ connection, blocks, onTargetChange, onPendin
     onTargetChange(newTargetId);
     onPendingChange();
   };
-  
+
   return (
     <Card className="overflow-hidden border shadow-sm">
       <CardHeader className="bg-slate-50 text-slate-800 p-3 space-y-0">
@@ -44,10 +44,12 @@ export function DefaultTargetCard({ connection, blocks, onTargetChange, onPendin
               onValueChange={handleDefaultTargetChange}
             >
               <SelectTrigger id="all-other-cases-target-select" className="flex-grow">
-                <SelectValue placeholder="Select fallback block...">
-                  {blocks.find(b => b.id === connection.defaultTargetId) ? (
-                    <BlockPill block={blocks.find(b => b.id === connection.defaultTargetId)} />
-                  ) : "Select fallback block..."}
+                <SelectValue placeholder="Select block...">
+                  {connection.is_explicit && blocks.find(b => b.id === connection.defaultTargetId) ? (
+                    <BlockPill block={blocks.find(b => b.id === connection.defaultTargetId)!} />
+                  ) : (
+                    "Select block..."
+                  )}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

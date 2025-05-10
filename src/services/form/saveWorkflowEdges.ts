@@ -64,7 +64,8 @@ export async function saveWorkflowEdges(
           source_block_id: connection.sourceId,
           default_target_id: connection.defaultTargetId, // This is now string | null, matching the global type
           rules: rulesJson,
-          order_index: connection.order_index || index
+          order_index: connection.order_index || index,
+          is_explicit: connection.is_explicit
           // created_at and updated_at will be handled by Supabase
         };
       });

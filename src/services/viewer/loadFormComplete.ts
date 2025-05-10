@@ -46,17 +46,7 @@ interface DbForm {
  * Extracted from formPersistence.ts
  */
 function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
-  // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Begin converting blocks
-  console.log(`🌟🔧📊🛠️🔍 CONVERSION DIAGNOSTIC: Processing ${backendBlocks.length} blocks from database to UI model`);
-  
   return backendBlocks.map((block) => {
-    // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Individual block input
-    console.log(`🌟🔧📊🛠️🔍 INPUT BLOCK ${block.id}: type=${block.type}, subtype=${block.subtype}, title=${block.title}`);
-    
-    if (block.settings) {
-      console.log(`🌟🔧📊🛠️🔍 BLOCK SETTINGS KEYS for ${block.id}: ${Object.keys(block.settings).join(', ')}`);
-    }
-    
     // Map database type/subtype to frontend blockTypeId
     // This is critical - blockTypeId must match exactly what the registry expects
     let blockTypeId = block.subtype;
@@ -64,7 +54,6 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
     // Special case for dynamic blocks
     if (block.type === 'dynamic' && block.subtype === 'dynamic') {
       blockTypeId = 'ai_conversation';
-      console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping dynamic block to ai_conversation`);
     }
     
     // Special case for layout blocks
@@ -74,14 +63,11 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
         if (block.settings && typeof block.settings === 'object') {
           if ('url' in block.settings) {
             blockTypeId = 'redirect';
-            console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to redirect based on url setting`);
           } else {
             blockTypeId = 'page_break';
-            console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to page_break`);
           }
         } else {
           blockTypeId = 'page_break'; // Default for layout blocks
-          console.log(`🌟🔧📊🛠️🔍 SPECIAL CASE: Mapping layout block to page_break (default)`);
         }
       }
     }
@@ -89,12 +75,8 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
     // For other cases where block.subtype might be different from what registry expects
     // Use our mapFromDbBlockType utility as a backup
     if (!blockTypeId || blockTypeId === '') {
-      console.log(`🌟🔧📊🛠️🔍 USING FALLBACK: blockTypeId empty, calling mapFromDbBlockType`);
       blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
     }
-    
-    // Log the mapping result
-    console.log(`🌟🔧📊🛠️🔍 MAPPING RESULT: Block ${block.id} mapped to blockTypeId=${blockTypeId}`);
     
     // Determine block type (static, dynamic, etc)
     // This is the database "type" value, not to be confused with blockTypeId
@@ -102,16 +84,10 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
     
     // Ensure blockType is valid (defensive programming)
     if (!['static', 'dynamic', 'layout', 'integration'].includes(blockType)) {
-      console.warn(`🌟🔧📊🛠️🔍 VALIDATION WARNING: Invalid block type: ${blockType} for block ${block.id}, defaulting to 'static'`);
       blockType = 'static';
     }
     
     // Create the transformed block with correct typing
-    // 🌟🔧📊🛠️🔍 DIAGNOSTIC LOG: Final blockTypeId and type values
-    console.log(`🌟🔧📊🛠️🔍 OUTPUT BLOCK ${block.id}: blockTypeId=${blockTypeId}, type=${blockType}`);
-    
-    // CRITICAL FIX: Create a new block object where the blockTypeId is explicitly set
-    // and forced to be a string type to prevent any type coercion issues
     const transformedBlock: FormBlock = {
       id: block.id,
       blockTypeId: String(blockTypeId), // Ensure blockTypeId is the mapped value from subtype and is a string
@@ -125,11 +101,8 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
     
     // Extra validation to ensure we NEVER set blockTypeId to the block's type
     if (transformedBlock.blockTypeId === transformedBlock.type && ['static', 'dynamic', 'layout', 'integration'].includes(transformedBlock.blockTypeId)) {
-      console.error(`🔥 CRITICAL ERROR: blockTypeId is same as type (${transformedBlock.blockTypeId}). This will cause render issues. Original subtype was ${block.subtype}`);
-      
       // Emergency fallback: If for some reason blockTypeId ended up as 'static', use the subtype as a fallback
       if (block.subtype && block.subtype !== transformedBlock.type) {
-        console.log(`🔥 CRITICAL FIX: Forced blockTypeId to subtype value: ${block.subtype}`);
         transformedBlock.blockTypeId = String(block.subtype);
       }
     }
@@ -238,15 +211,16 @@ export async function loadFormComplete(formId: string): Promise<{
       .select('*')
       .eq('form_id', formId)
       .order('order_index', { ascending: true });
-    
+
     if (error) {
-      console.error(`❌ WORKFLOW LOAD ERROR: Failed to fetch workflow edges:`, error);
+      console.error('Error loading workflow connections:', error);
       throw error;
     }
     
     if (data && data.length > 0) {
-      // Transform connections from DB format to app format
-      workflowConnections = transformConnections(data);
+      const sbData = data || []; // Use empty array if data is null
+
+      workflowConnections = transformConnections(sbData);
       
       // Validate connections to remove those with invalid block references
       workflowConnections = validateConnections(workflowConnections, blocks);

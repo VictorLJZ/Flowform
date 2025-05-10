@@ -12,7 +12,8 @@ import {
   User,
   ArrowUpRight,
   Bookmark,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getBlockDefinition } from '@/registry/blockRegistry'
@@ -44,23 +45,59 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
   }
   
   // FIX FOR BLOCK TYPE PERSISTENCE ISSUE
-  // If blockTypeId is a generic type (like "static"), use block.subtype instead if available
-  let blockTypeId = '';
-  
-  // Check for invalid/generic blockTypeId values that should be substituted with subtype
-  if (block.blockTypeId && ['static', 'dynamic', 'layout', 'integration'].includes(block.blockTypeId) && block.subtype) {
-    // This is a critical fix: the blockTypeId is incorrectly set to the block type instead of subtype
-    console.log(`🔥 CRITICAL FIX: BlockPill received invalid blockTypeId=${block.blockTypeId}, using block.subtype=${block.subtype} instead`);
-    blockTypeId = block.subtype;
-  } else {
-    // Use the blockTypeId normally
-    blockTypeId = block.blockTypeId || '';
+  // If block.subtype exists and block.blockTypeId is not in blockDefinitions, use subtype
+  // This handles cases where a new block type (subtype) was created based on an existing blockTypeId
+  // but the blockTypeId itself hasn't been updated yet, or was reverted during development.
+  let effectiveBlockTypeId = block.blockTypeId;
+  if (block.subtype && (!block.blockTypeId || !getBlockDefinition(block.blockTypeId))) {
+    effectiveBlockTypeId = block.subtype as string;
   }
+
+  // If effectiveBlockTypeId is still undefined, it's an unknown block
+  if (effectiveBlockTypeId === undefined) {
+    return (
+      <div className="flex items-center space-x-2">
+        <div className={cn(
+          "flex items-center justify-center rounded-full bg-destructive text-destructive-foreground",
+          compact ? "h-6 w-6" : "h-7 w-7"
+        )}>
+          <AlertTriangle size={compact ? 14 : 16} />
+        </div>
+        <span className={cn(
+          "font-medium text-destructive",
+          compact ? "text-xs" : "text-sm"
+        )}>
+          Unknown Block (No ID)
+        </span>
+      </div>
+    );
+  }
+
+  const blockTypeId = effectiveBlockTypeId; // Now guaranteed to be a string
   
   const blockDef = getBlockDefinition(blockTypeId);
-  
-  // Console log for debugging
-  console.log(`BlockPill rendering for blockTypeId: ${blockTypeId}, found definition:`, !!blockDef);
+
+  // If block definition is not found, display a fallback or error state
+  if (!blockDef) {
+    return (
+      <div className="flex items-center space-x-2">
+        <div className={cn(
+          "flex items-center justify-center rounded-full bg-destructive text-destructive-foreground",
+          compact ? "h-6 w-6" : "h-7 w-7"
+        )}>
+          <AlertTriangle size={compact ? 14 : 16} />
+        </div>
+        <span className={cn(
+          "font-medium text-destructive",
+          compact ? "text-xs" : "text-sm"
+        )}>
+          Unknown Block
+        </span>
+      </div>
+    );
+  }
+
+  const coreType = blockTypeId.split('/').pop() as string;
   
   // Get colors using the utility function from block-utils
   // This is more consistent than the inline logic and will work even without a blockDef
@@ -68,18 +105,6 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
   const bgColor = colorScheme.bg;
   const textColor = colorScheme.text;
   
-  // Extract the core block type (in case there's a prefix/path)
-  let coreType = blockTypeId;
-  if (blockTypeId && blockTypeId.includes('/')) {
-    const parts = blockTypeId.split('/');
-    coreType = parts[parts.length - 1];
-  }
-  
-  // Log the block type for debugging
-  console.log(`BlockPill: Finding icon for type ${blockTypeId}, core: ${coreType}`);
-  
-  // Instead of dynamically assigning different icon components to a variable,
-  // we'll use a function that renders the appropriate icon based on the type
   const renderIcon = (size: number) => {
     // Check block definition icon first (highest priority)
     if (blockDef?.icon) {
@@ -128,7 +153,6 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
         if (coreType?.includes('dynamic')) {
           return <Sparkles size={size} style={{ color: textColor }} />;
         } else {
-          console.log(`No icon mapping for ${coreType}, using default`);
           return <FileText size={size} style={{ color: textColor }} />;
         }
     }

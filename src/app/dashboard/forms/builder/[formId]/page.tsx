@@ -73,7 +73,6 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       saveTimer = setTimeout(() => {
         // Only save if we're still in workflow view
         if (viewMode === "workflow") {
-          console.log(`Auto-saving workflow state: ${connections.length} connections`);
           saveForm();
         }
       }, 30000); // Only save after 30 seconds of inactivity
@@ -87,7 +86,6 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
   // Load form data from API
   useEffect(() => {
     if (form) {
-      console.log('🔄 FORM LOAD: Loading form data from API');
       
       // Helper function to ensure we have a valid FormTheme
       const ensureValidTheme = (themeData: Record<string, unknown> | null): FormTheme => {
@@ -123,7 +121,6 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       const parsedBlocks = (form.blocks || []).map((block: FormBlock) => {
         // CRITICAL FIX: BlockTypeId should be the SUBTYPE, not the type
         // The previous implementation incorrectly mapped blockTypeId to block.type
-        console.log(`🔄 BLOCK MAPPING: id=${block.id}, type=${block.type}, subtype=${block.subtype}`);
         
         // Get the block definition based on subtype, not type
         const blockDef = getBlockDefinition(block.subtype);
@@ -151,7 +148,6 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       
       // Process workflow connections from API response
       if (form.workflow_edges && Array.isArray(form.workflow_edges)) {
-        console.log(`🔄 FORM LOAD: Processing ${form.workflow_edges.length} workflow connections from API`);
         
         // Transform workflow edges to our internal Connection format
         const connections = form.workflow_edges.map(edge => {
@@ -177,25 +173,16 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
             id: edge.id,
             sourceId: edge.source_block_id,
             defaultTargetId: edge.default_target_id,
+            is_explicit: edge.is_explicit, // Added is_explicit here
             rules: parsedRules, 
             order_index: edge.order_index || 0
           };
         });
         
-        // === ADDED LOGGING START (After Mapping in page.tsx) ===
-        if (connections.length > 0) {
-          console.log(`🔎 [page.tsx - AFTER MAPPING] Mapped appConnections for form ${formId}:`);
-          connections.forEach(conn => {
-            console.log(`  Connection ID: ${conn.id}, mapped defaultTargetId: ${conn.defaultTargetId}, type: ${typeof conn.defaultTargetId}, rules_count: ${conn.rules?.length}`);
-          });
-        }
-        // === ADDED LOGGING END (After Mapping in page.tsx) ===
-        
         // Set connections in the store
         setConnections(connections);
-        console.log(`🔄 FORM LOAD: Set ${connections.length} connections in store`);
       } else {
-        console.log('🔄 FORM LOAD: No workflow connections found in API response');
+        
       }
     }
   }, [form, setFormData, setBlocks, setCurrentBlockId, setConnections, formId])

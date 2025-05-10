@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Edge } from 'reactflow'
@@ -19,21 +19,43 @@ export default function WorkflowConnectionSidebar() {
   const connections = useFormBuilderStore(state => state.connections)
   const selectedElementId = useFormBuilderStore(state => state.selectedElementId)
   const updateConnection = useFormBuilderStore(state => state.updateConnection)
+  const updateConnectionTarget = useFormBuilderStore(state => state.updateConnectionTarget);
   const saveForm = useFormBuilderStore(state => state.saveForm)
   
   const [hasPendingSave, setHasPendingSave] = useState(false)
-  
-  const connection = useMemo(() => connections.find(conn => conn.id === selectedElementId), [connections, selectedElementId]);
-  
-  const sourceBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.sourceId) : null, [blocks, connection]);
-  // We don't need targetBlock in this component currently
-  // const targetBlock = useMemo(() => connection ? blocks.find(b => b.id === connection.defaultTargetId) : null, [blocks, connection]);
-  const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
+  const [saveFormTimer] = useState<NodeJS.Timeout | null>(null);
+  useState(false)
+  useState<Rule | null | undefined>(null)
 
-  // Using the shared getBlockTypeColors function from block-utils.ts for consistent styling
+  const sourceBlock = useMemo(() => {
+    if (selectedElementId && blocks.find(b => b.id === selectedElementId)) {
+      return blocks.find(b => b.id === selectedElementId)
+    }
+    // If selected element is a connection, find its source block
+    const conn = connections.find(c => c.id === selectedElementId)
+    if (conn) {
+      return blocks.find(b => b.id === conn.sourceId)
+    }
+    return undefined
+  }, [selectedElementId, blocks, connections])
 
-  // We're now using the shared BlockPill component
+  const connection = useMemo(() => {
+    if (sourceBlock) {
+      return connections.find(c => c.sourceId === sourceBlock.id)
+    }
+    // if selected element is a connection ID directly
+    if (connections.find(c => c.id === selectedElementId)){
+      return connections.find(c => c.id === selectedElementId)
+    }
+    return undefined
+  }, [sourceBlock, connections, selectedElementId])
   
+  useEffect(() => {
+    if (saveFormTimer) {
+      // ... rest of the code remains the same ...
+    }
+  }, [saveFormTimer])
+
   const element = useMemo(() => connection ? {
     id: connection.id,
     source: connection.sourceId,
@@ -93,7 +115,7 @@ export default function WorkflowConnectionSidebar() {
         updatedCondition.operator = 'equals';
         if (typeof value === 'string' && value.startsWith('choice:')) {
           updatedCondition.value = true;
-        } else if (value === 'rating' || (value === 'answer' && sourceBlockType === 'number')) {
+        } else if (value === 'rating' || (value === 'answer' && sourceBlock?.blockTypeId === 'number')) {
           updatedCondition.value = 0;
         } else if (value === 'selected') {
           updatedCondition.value = true;
@@ -116,7 +138,7 @@ export default function WorkflowConnectionSidebar() {
       updateConnection(connection.id, { rules: currentRules });
       setHasPendingSave(true);
     }
-  }, [connection, sourceBlockType, updateConnection]);
+  }, [connection, sourceBlock, updateConnection]);
   
   const handleAddCondition = useCallback(() => {
     if (!connection) return;
@@ -526,7 +548,7 @@ export default function WorkflowConnectionSidebar() {
           <ConditionCard
             element={element} 
             sourceBlock={sourceBlock}
-            sourceBlockType={sourceBlockType}
+            sourceBlockType={sourceBlock?.blockTypeId || 'unknown'}
             currentConnection={connection} 
             onConditionTypeChange={(type) => handleSetConditionalOrAlways(type === 'conditional')} 
             onConditionChange={adaptedConditionChangeHandler} 
@@ -558,16 +580,18 @@ export default function WorkflowConnectionSidebar() {
                 value={connection.defaultTargetId || ''}
                 onValueChange={(newTargetId) => {
                   if (connection) {
-                    updateConnection(connection.id, { defaultTargetId: newTargetId });
+                    updateConnectionTarget(connection.id, newTargetId);
                     setHasPendingSave(true);
                   }
                 }}
               >
                 <SelectTrigger id="all-other-cases-target-select" className="flex-grow">
-                  <SelectValue placeholder="Select fallback block...">
-                    {blocks.find(b => b.id === connection.defaultTargetId) ? (
-                      <BlockPill block={blocks.find(b => b.id === connection.defaultTargetId)} />
-                    ) : "Select fallback block..."}
+                  <SelectValue placeholder="Select block...">
+                    {connection.is_explicit && blocks.find(b => b.id === connection.defaultTargetId) ? (
+                      <BlockPill block={blocks.find(b => b.id === connection.defaultTargetId)!} />
+                    ) : (
+                      "Select block..."
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>

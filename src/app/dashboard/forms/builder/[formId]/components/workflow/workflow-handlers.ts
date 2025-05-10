@@ -189,6 +189,7 @@ export const useConnectionHandler = (): OnConnect => {
         sourceId: params.source,
         defaultTargetId: params.target, // For an "always" connection, this is the main target
         rules: [], // No specific rules for an "always" connection
+        is_explicit: true, // Explicitly set this as a user-created connection
       };
 
       addConnection(newConnection);

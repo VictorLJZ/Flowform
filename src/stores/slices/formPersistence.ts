@@ -281,29 +281,6 @@ export const createFormPersistenceSlice: StateCreator<
       const { formData, blocks, connections, nodePositions } = 
         await loadVersionedFormComplete(formId);
       
-      // Log key information for debugging
-      console.log('\ud83c\udf4d [VERSIONED FORM] Loaded form with:', {
-        blockCount: blocks.length,
-        connectionCount: connections.length,
-        rulesCount: connections.reduce((acc, conn) => acc + (conn.rules?.length || 0), 0)
-      });
-      
-      // When we have connections with rules, log them in detail for debugging
-      const connectionsWithRules = connections.filter(c => c.rules && c.rules.length > 0);
-      if (connectionsWithRules.length > 0) {
-        console.log('\ud83d\udd17\u2696\ufe0f [VERSIONED FORM] Connections with rules:', connectionsWithRules.map(c => ({
-          id: c.id,
-          sourceId: c.sourceId,
-          targetId: c.defaultTargetId,
-          rules: c.rules.map(r => ({
-            id: r.id,
-            target_block_id: r.target_block_id,
-            hasConditionGroup: !!r.condition_group,
-            conditionCount: r.condition_group?.conditions?.length || 0
-          }))
-        })));
-      }
-      
       // Update the state with all form data
       set({
         formData,
@@ -326,7 +303,6 @@ export const createFormPersistenceSlice: StateCreator<
     set({ isLoading: true });
     
     try {
-      // Use our new modular service to load everything
       const { formData, blocks, connections, nodePositions } = 
         await loadFormComplete(formId);
       
@@ -354,12 +330,6 @@ export const createFormPersistenceSlice: StateCreator<
         theme: formData.theme as FormTheme,
       };
       
-      // Diagnostic logs for blocks before setting in store
-      console.log(`🚀🔍🧪🧩💾 STORE DIAGNOSTIC: Checking ${blocks.length} blocks before setting in store`);
-      blocks.forEach(block => {
-        console.log(`🚀🔍🧪🧩💾 STORE BLOCK ${block.id}: blockTypeId=${block.blockTypeId}, type=${block.type}, title=${block.title}`);
-      });
-      
       // Update form state
       set({
         formData: formDataWithFormId,
@@ -370,60 +340,6 @@ export const createFormPersistenceSlice: StateCreator<
         currentBlockId: blocks.length > 0 ? blocks[0].id : null
       });
       
-      // Add more diagnostic logs to verify blocks in store after setting
-      setTimeout(() => {
-        const storeState = get();
-        console.log(`🚀🔍🧪🧩💾 STORE AFTER SET: Checking ${storeState.blocks.length} blocks in store`);
-        storeState.blocks.forEach(block => {
-          console.log(`🚀🔍🧪🧩💾 STORE AFTER SET BLOCK ${block.id}: blockTypeId=${block.blockTypeId}, type=${block.type}, title=${block.title}`);
-        });
-      }, 0);
-      
-      // Add a temporary subscription to watch for connection changes during initial load
-      // Using a more specific type for the store with subscribe functionality
-      // This is just for debugging purposes 
-      const storeWithSubscribe = get() as { subscribe?: (listener: (state: FormBuilderState, prevState: FormBuilderState) => void) => () => void };
-      if (storeWithSubscribe.subscribe) {
-        const unsubscribe = storeWithSubscribe.subscribe(
-          (state: FormBuilderState, prevState: FormBuilderState) => {
-            // Only check if connections changed
-            if (state.connections !== prevState.connections) {
-              const prev = prevState.connections || [];
-              const curr = state.connections || [];
-              
-              // Check if array length changed - could indicate regeneration
-              if (prev.length !== curr.length) {
-                console.warn(`\u26a0\ufe0f CONNECTION TRACKING: Connection count changed from ${prev.length} to ${curr.length}`);
-              }
-              
-              // Check specifically for ID changes in connections that maintain the same source/target
-              // This would indicate regeneration of connection IDs
-              const sourceTargetMap = new Map<string, string>();
-              
-              // Map source->target to connection ID in previous state
-              prev.forEach((conn: Connection) => {
-                const key = `${conn.sourceId}->${conn.defaultTargetId}`;
-                sourceTargetMap.set(key, conn.id);
-              });
-              
-              // Check current connections against the map
-              curr.forEach((conn: Connection) => {
-                const key = `${conn.sourceId}->${conn.defaultTargetId}`;
-                const prevId = sourceTargetMap.get(key);
-                
-                if (prevId && prevId !== conn.id) {
-                  console.warn(`\u26a0\ufe0f CONNECTION TRACKING: Connection ID changed for ${key}: ${prevId} -> ${conn.id}`);
-                }
-              });
-            }
-          }
-        );
-        
-        // Only track for a short time after loading
-        setTimeout(() => {
-          unsubscribe();
-        }, 10000); // 10 seconds
-      }
     } catch (error) {
       console.error('Error loading form:', error);
     } finally {

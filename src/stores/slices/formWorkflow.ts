@@ -6,6 +6,7 @@ import type { FormBuilderState } from '@/types/store-types'
 import type { Connection } from '@/types/workflow-types'
 import type { Node, Edge } from 'reactflow'
 import { v4 as uuidv4 } from 'uuid'
+import { createDefaultConnections } from '../../utils/workflow/autoConnectBlocks';
 
 export const createFormWorkflowSlice: StateCreator<
   FormBuilderState,
@@ -75,11 +76,20 @@ export const createFormWorkflowSlice: StateCreator<
     return validConnection.id;
   },
   
-  updateConnection: (connectionId: string, updates: Partial<Connection>) => set((state) => ({
-    connections: state.connections.map(conn => 
-      conn.id === connectionId ? { ...conn, ...updates } : conn
-    )
-  })),
+  updateConnection: (connectionId: string, updates: Partial<Connection>) => {
+    const finalUpdates = { ...updates };
+    // If rules are being updated and they are not empty, ensure the connection is marked as explicit.
+    if (updates.rules && updates.rules.length > 0) {
+      finalUpdates.is_explicit = true;
+    }
+
+    set((state) => ({
+      connections: state.connections.map(conn => 
+        conn.id === connectionId ? { ...conn, ...finalUpdates } : conn
+      )
+    }));
+    get().validateConnections();
+  },
   
   removeConnection: (connectionId: string) => set((state) => ({
     connections: state.connections.filter(conn => conn.id !== connectionId)
@@ -102,7 +112,7 @@ export const createFormWorkflowSlice: StateCreator<
     
     // Create a preview of the new connections state after the update
     const updatedConnections = connections.map(conn => 
-      conn.id === connectionId ? { ...conn, defaultTargetId: newTargetId } : conn
+      conn.id === connectionId ? { ...conn, defaultTargetId: newTargetId, is_explicit: true } : conn
     );
     
     // Check if this change would orphan the old target
@@ -168,7 +178,8 @@ export const createFormWorkflowSlice: StateCreator<
               sourceId: prevBlock.id,
               defaultTargetId: blockId,
               rules: [],
-              order_index: connections.length
+              order_index: connections.length,
+              is_explicit: false // Auto-generated connection for new block
             };
             addConnection(newConnection);
           }
@@ -197,52 +208,26 @@ export const createFormWorkflowSlice: StateCreator<
   
   onBlocksReordered: (movedBlockId: string) => {
     console.log(`[onBlocksReordered] Reordered block ${movedBlockId}`);
-    const { connections, blocks, addConnection } = get();
-    const movedBlock = blocks.find(block => block.id === movedBlockId);
-
-    if (!movedBlock) {
-      console.error(`[onBlocksReordered] Block with id ${movedBlockId} not found!`);
-      return;
-    }
-
+    const { blocks, connections: currentConnections } = get(); // Get current blocks and connections
+    
+    // Ensure blocks are sorted by order_index before passing to the utility, 
+    // as createDefaultConnections expects this for its logic.
+    // The utility itself also sorts, but doing it here ensures consistency if that changes.
     const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-    const movedBlockIndex = sortedBlocks.findIndex(b => b.id === movedBlockId);
 
-    // 1. Connect from PREVIOUS block to MOVED block
-    if (movedBlockIndex > 0) {
-      const prevBlockInOrder = sortedBlocks[movedBlockIndex - 1];
-      if (prevBlockInOrder && prevBlockInOrder.id !== movedBlock.id) {
-        const existingConnection = connections.find(conn => conn.sourceId === prevBlockInOrder.id && conn.defaultTargetId === movedBlock.id);
-        if (!existingConnection) {
-          console.log(`[onBlocksReordered] Auto-connecting ${prevBlockInOrder.id} to ${movedBlock.id}`);
-          addConnection({
-            id: uuidv4(),
-            sourceId: prevBlockInOrder.id,
-            defaultTargetId: movedBlock.id,
-            rules: [],
-            order_index: connections.length
-          });
-        }
-      }
-    }
+    // Call the utility function to get the new state of all connections.
+    // We pass all current blocks and their connections. 
+    // Not passing targetBlockId signals it to handle reordering for the entire set.
+    const updatedConnections = createDefaultConnections({
+      blocks: sortedBlocks, // Pass all blocks currently in the store
+      connections: currentConnections, // Pass all current connections
+      // targetBlockId is omitted to trigger bulk processing logic suitable for reordering
+    });
 
-    // 2. Connect from MOVED block to NEXT block
-    if (movedBlockIndex < sortedBlocks.length - 1) {
-      const nextBlockInOrder = sortedBlocks[movedBlockIndex + 1];
-      if (nextBlockInOrder && nextBlockInOrder.id !== movedBlock.id) {
-        const existingConnection = connections.find(conn => conn.sourceId === movedBlock.id && conn.defaultTargetId === nextBlockInOrder.id);
-        if (!existingConnection) {
-          console.log(`[onBlocksReordered] Auto-connecting ${movedBlock.id} to ${nextBlockInOrder.id}`);
-          addConnection({
-            id: uuidv4(),
-            sourceId: movedBlock.id,
-            defaultTargetId: nextBlockInOrder.id,
-            rules: [],
-            order_index: connections.length
-          });
-        }
-      }
-    }
+    // Update the store with the new, complete set of connections
+    set({ connections: updatedConnections });
+    
+    console.log(`[onBlocksReordered] Connections updated. New count: ${updatedConnections.length}`);
     get().validateConnections(); // Validate after potential changes
   },
 
@@ -263,9 +248,9 @@ export const createFormWorkflowSlice: StateCreator<
       
       // Validate rule targets if there are any rules
       if (conn.rules && conn.rules.length > 0) {
-        // Filter rules with valid targets
+        // Filter rules: keep if target is empty (new) OR target exists
         conn.rules = conn.rules.filter(rule => 
-          blocks.some(block => block.id === rule.target_block_id)
+          rule.target_block_id === '' || blocks.some(block => block.id === rule.target_block_id)
         );
       }
       
