@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useWorkspaceInitialization } from '@/hooks/useWorkspaceInitialization';
 import { Workspace } from '@/types/supabase-types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -11,6 +11,7 @@ type WorkspaceContextType = {
   isLoading: boolean;
   error: Error | null;
   mutate: () => Promise<Workspace[] | undefined>;
+  isProcessingForceSelection: boolean; // New flag for force selection loading state
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -20,6 +21,9 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
  * Ensures workspace initialization happens for authenticated users
  */
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  // Add state for tracking force selection loading
+  const [isProcessingForceSelection, setIsProcessingForceSelection] = useState(false);
+  
   const workspaceData = useWorkspaceInitialization();
   const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
   
@@ -38,6 +42,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!forceWorkspaceId) return;
     
+    // Set loading state while processing
+    setIsProcessingForceSelection(true);
     console.log('🚨🚨 [WorkspaceProvider] FORCED WORKSPACE SELECTION from URL:', forceWorkspaceId);
     
     // Get the newly created workspace ID and time from localStorage
@@ -82,6 +88,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('new_workspace_id');
         localStorage.removeItem('new_workspace_redirect_time');
       }
+      
+      // Turn off loading state after successful selection
+      setIsProcessingForceSelection(false);
     };
     
     // First check if the workspace already exists in our data
@@ -91,9 +100,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
     
     // If this is a newly created workspace and it's not in the list yet,
-    // we need to trigger a refetch and retry
+    // we need to manually add it to the workspaces list and then select it
     if (isNewlyCreatedWorkspace) {
-      console.log('🕐 [WorkspaceProvider] Newly created workspace not found yet, will retry after refetching');
+      console.log('🕐 [WorkspaceProvider] Newly created workspace not found yet, adding it manually');
+      
+      // Attempt to load workspace details from localStorage
+      try {
+        const workspaceJson = localStorage.getItem('new_workspace_details');
+        if (workspaceJson) {
+          const workspaceDetails = JSON.parse(workspaceJson);
+          console.log('🕐 [WorkspaceProvider] Found workspace details in localStorage:', workspaceDetails);
+          
+          // Manually add the workspace to the SWR cache
+          // This ensures it's immediately available in the UI
+          workspaceData.mutate(currentWorkspaces => {
+            if (!currentWorkspaces) return [workspaceDetails];
+            
+            // Don't add duplicates
+            if (currentWorkspaces.some(w => w.id === workspaceDetails.id)) {
+              return currentWorkspaces;
+            }
+            
+            console.log('🕐 [WorkspaceProvider] Manually adding workspace to SWR cache:', workspaceDetails.id);
+            return [...currentWorkspaces, workspaceDetails];
+          }, false); // false = don't revalidate
+          
+          // Now select the workspace
+          console.log('🕐 [WorkspaceProvider] Selecting manually added workspace');
+          setWorkspaceWhenFound();
+          return;
+        }
+      } catch (e) {
+        console.error('[WorkspaceProvider] Error adding workspace manually:', e);
+      }
+      
+      // Fallback to standard refetch if we couldn't find local details
+      console.log('🕐 [WorkspaceProvider] No local details found, using standard refetch');
       
       // Force a refetch of workspaces
       workspaceData.mutate();
@@ -105,10 +147,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.log('🕐 [WorkspaceProvider] Found workspace after refetch!');
           setWorkspaceWhenFound();
         } else {
-          console.log('🕐 [WorkspaceProvider] Still couldn\'t find workspace, continuing with normal initialization');
-          // Instead of showing error, we'll just let the normal initialization process happen
+          console.log('🕐 [WorkspaceProvider] Still couldn\'t find workspace after retry, forcing UI display');
+          // Turn off loading state even if we can't find the workspace
+          setIsProcessingForceSelection(false);
         }
-      }, 2000); // Wait for refetch to complete
+      }, 3000); // Increased wait time for refetch to complete
       
       return () => clearTimeout(retryTimeout);
     } else {
@@ -116,6 +159,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // then it's truly an error situation
       console.warn('⚠️ [WorkspaceProvider] Could not find workspace with ID:', forceWorkspaceId, 
         'This is expected if the workspace was just created and not yet loaded.');
+        
+      // Turn off loading state after warning
+      setIsProcessingForceSelection(false);
     }
   }, [forceWorkspaceId, workspaceData.workspaces, workspaceData.mutate]); // Run when URL changes or workspace data loads
 
@@ -195,9 +241,36 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [workspaceData.workspaces, setWorkspaces]);
   
+  // Create a context value with our combined state
+  const workspaceContextValue = {
+    ...workspaceData,
+    isProcessingForceSelection
+  };
+  
+  // Add an effect for timeout safety - never block UI for more than 5 seconds
+  useEffect(() => {
+    if (isProcessingForceSelection) {
+      const safetyTimeout = setTimeout(() => {
+        console.log('⚠️ [WorkspaceProvider] Force selection safety timeout reached, showing UI anyway');
+        setIsProcessingForceSelection(false);
+      }, 5000); // 5 second maximum wait time
+      
+      return () => clearTimeout(safetyTimeout);
+    }
+  }, [isProcessingForceSelection]);
+  
   return (
-    <WorkspaceContext.Provider value={workspaceData}>
-      {children}
+    <WorkspaceContext.Provider value={workspaceContextValue}>
+      {/* Improved condition: Show content after a short delay regardless of processing state */}
+      {!isProcessingForceSelection ? 
+        children : 
+        <div className="flex h-screen w-full items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Loading New Workspace...</h2>
+            <p className="text-muted-foreground">Please wait while we set up your new workspace</p>
+          </div>
+        </div>
+      }
     </WorkspaceContext.Provider>
   );
 }

@@ -99,9 +99,14 @@ export function WorkspaceSwitcher() {
         // This completely bypasses all the normal workspace selection mechanisms
         // and forces the workspace selection through a URL parameter
         
-        // Store the newly created workspace ID in localStorage for the redirect to pick up
+        // Store the newly created workspace details in localStorage for the redirect to pick up
         localStorage.setItem('new_workspace_id', created.id);
         localStorage.setItem('new_workspace_redirect_time', Date.now().toString());
+        
+        // Store the complete workspace details to avoid race conditions
+        // This ensures the provider can access the complete workspace data
+        // even if the SWR cache hasn't been updated yet
+        localStorage.setItem('new_workspace_details', JSON.stringify(created));
         
         // Update SWR cache to show the new workspace in the list
         await mutateWorkspaces(prev => {
