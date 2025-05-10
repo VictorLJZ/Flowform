@@ -131,7 +131,7 @@ export async function POST(request: Request) {
             overflow: hidden;
           }
           .email-header {
-            background-color: #221C35; /* --primary */
+            background-color: #0f172b; /* --primary */
             color: #F8F8FA; /* --primary-foreground */
             padding: 24px;
             text-align: center;
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
           }
           .button {
             display: inline-block;
-            background-color: #4f46e5; /* Keep distinct interactive color */
+            background-color: #0f172b; /* Keep distinct interactive color */
             color: #ffffff !important; /* Ensure text is white */
             padding: 14px 28px;
             text-decoration: none;
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
             transition: background-color 0.2s ease-in-out;
           }
           .button:hover {
-            background-color: #4338ca; /* Darker shade of button color */
+            background-color: #080f1f; /* Darker shade of button color */
           }
           .details {
             font-size: 14px;
