@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Trash2, PlusCircle, XCircle } from 'lucide-react';
-import { BlockPill } from '../block-pill';
+import { BlockPill } from '@/components/form/builder/block-pill';
 
 export default function WorkflowConnectionSidebar() {
   const blocks = useFormBuilderStore(state => state.blocks)

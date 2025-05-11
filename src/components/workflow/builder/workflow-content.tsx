@@ -1,9 +1,8 @@
-// src/app/dashboard/forms/builder/[formId]/components/workflow-content.tsx
 "use client"
 
 import { ReactFlowProvider } from 'reactflow'
 import 'reactflow/dist/style.css'
-import WorkflowCanvas from './workflow/workflow-canvas'
+import WorkflowCanvas from './workflow-canvas'
 
 export default function WorkflowContent() {
   return (

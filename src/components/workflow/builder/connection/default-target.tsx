@@ -9,7 +9,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
-import { BlockPill } from '../../block-pill'
+import { BlockPill } from '@/components/form/builder/block-pill'
 
 interface DefaultTargetProps {
   connectionId: string;

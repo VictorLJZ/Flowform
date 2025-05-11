@@ -9,7 +9,7 @@ import { Plus } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { Connection } from '@/types/workflow-types'
-import { BlockPill } from '../../block-pill'
+import { BlockPill } from '@/components/form/builder/block-pill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface WorkflowConnectionsCardProps {

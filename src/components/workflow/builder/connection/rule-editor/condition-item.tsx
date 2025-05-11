@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Trash2 } from 'lucide-react'
-import { BlockPill } from '../../../block-pill'
+import { BlockPill } from '@/components/form/builder/block-pill'
 import { useMemo } from 'react'
 
 interface ConditionItemProps {

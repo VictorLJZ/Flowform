@@ -1,9 +1,8 @@
-// src/app/dashboard/forms/builder/[formId]/components/workflow/workflow-node.tsx
 "use client"
 
 import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { BlockPill } from '../block-pill';
+import { BlockPill } from '@/components/form/builder/block-pill';
 import { WorkflowNodeData } from '@/types/workflow-types';
 import { cn } from '@/lib/utils';
 

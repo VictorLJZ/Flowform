@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormBlock } from '@/types/block-types'
 import { Connection } from '@/types/workflow-types'
-import { BlockPill } from '../../block-pill'
+import { BlockPill } from '@/components/form/builder/block-pill'
 import { ArrowRight } from 'lucide-react'
 // import { getBlockTypeColors } from '@/utils/block-utils' // Not currently used
 

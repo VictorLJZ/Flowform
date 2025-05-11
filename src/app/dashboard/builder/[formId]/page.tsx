@@ -23,13 +23,13 @@ import { cn } from "@/lib/utils"
 import { CustomFormData } from "@/types/form-builder-types"
 import { FormTheme, defaultFormTheme } from "@/types/theme-types"
 import { FormBlock } from '@/types/supabase-types';
-import FormBuilderSidebar from "./components/form-builder-sidebar"
-import FormBuilderContent from "./components/form-builder-content"
-import FormBuilderSettings from "./components/form-builder-settings"
-import FormBuilderBlockSelector from "./components/form-builder-block-selector"
-import WorkflowContent from "./components/workflow-content"
+import FormBuilderSidebar from "@/components/form/builder/form-builder-sidebar"
+import FormBuilderContent from "@/components/form/builder/form-builder-content"
+import FormBuilderSettings from "@/components/form/builder/form-builder-settings"
+import FormBuilderBlockSelector from "@/components/form/builder/form-builder-block-selector"
+import WorkflowContent from "@/components/workflow/builder/workflow-content"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import ConnectContent from "./components/connect-content"
+import ConnectContent from "@/components/form/connect/connect-content"
 import { Rule } from '@/types/workflow-types';
 import { ToastAction } from "@/components/ui/toast"; // Added ToastAction import
 

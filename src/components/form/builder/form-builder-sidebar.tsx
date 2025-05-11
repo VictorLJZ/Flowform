@@ -26,7 +26,7 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { BlockPill } from "./block-pill"
+import { BlockPill } from "@/components/form/builder/block-pill"
 
 // Using centralized block colors from block-utils.ts instead of local definition
 

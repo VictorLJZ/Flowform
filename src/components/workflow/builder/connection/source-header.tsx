@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
-import { BlockPill } from '../../block-pill'
+import { BlockPill } from '@/components/form/builder/block-pill'
 
 interface SourceHeaderProps {
   connectionId: string;
