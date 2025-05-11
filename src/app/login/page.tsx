@@ -26,11 +26,12 @@ export default function LoginPage() {
       </div>
       <div className="relative hidden bg-muted lg:block">
         <Image
-          src="/placeholder.svg"
-          alt="Image"
-          layout="fill"
-          objectFit="cover"
-          className="dark:brightness-[0.2] dark:grayscale"
+          src="/images/zip.webp"
+          alt="Form builder illustration"
+          fill
+          style={{ objectFit: 'cover' }}
+          className="dark:brightness-[0.3] dark:contrast-125"
+          priority
         />
       </div>
     </div>
