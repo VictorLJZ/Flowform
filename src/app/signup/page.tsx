@@ -1,7 +1,7 @@
 import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { SignupForm } from "@/components/auth/signup-form"
+import { SignupForm } from "@/components/auth"
 import { Suspense } from "react"
 
 export default function SignupPage() {

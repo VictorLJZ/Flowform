@@ -164,7 +164,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Turn off loading state after warning
       setIsProcessingForceSelection(false);
     }
-  }, [forceWorkspaceId, workspaceData.workspaces, workspaceData.mutate, workspaceData.isLoading]); // Run when URL changes or workspace data loads
+  }, [forceWorkspaceId, workspaceData]); // Run when URL changes or workspace data object changes
 
   // Handle workspace selection logic
   useEffect(() => {

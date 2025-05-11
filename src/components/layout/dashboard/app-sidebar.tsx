@@ -12,9 +12,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils";
 
-import { NavMain } from "@/components/dashboard/navigation/nav-main"
-import { NavUser } from "@/components/dashboard/navigation/nav-user"
-import { WorkspaceSwitcher } from "@/components/dashboard/navigation/workspace-switcher"
+import { NavMain, NavUser, WorkspaceSwitcher } from "@/components/dashboard"
 import {
   Sidebar,
   SidebarContent,

@@ -1,6 +1,6 @@
 import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
-import { ResetPasswordForm } from "@/components/auth/reset-password-form"
+import { ResetPasswordForm } from "@/components/auth"
 
 export default function ResetPasswordPage() {
   return (

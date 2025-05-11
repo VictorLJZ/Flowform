@@ -3,7 +3,6 @@ export { ChatSessions } from './ChatSessions';
 export { default as EmbeddingProcessor } from './EmbeddingProcessor';
 export { FormInsightsChatbot } from './FormInsightsChatbot';
 export { ProcessEmbeddingsButton } from './ProcessEmbeddingsButton';
-export { BasicMetricsCard } from './BasicMetricsCard';
 export { BlockPerformanceChart } from './BlockPerformanceChart';
 export { DateRangeSelector } from './DateRangeSelector';
 export { DistributionChart } from './DistributionChart';

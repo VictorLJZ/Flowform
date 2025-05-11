@@ -30,7 +30,7 @@ import { InviteDialog } from "@/components/workspace/invite-dialog"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { useAuthSession } from "@/hooks/useAuthSession"
 import { WorkspaceRole } from "@/types/workspace-types"
-import { FormsView } from "@/components/dashboard/FormsView"
+import { FormsView } from "@/components/dashboard"
 
 export default function Page() {
   const router = useRouter()
