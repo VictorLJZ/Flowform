@@ -1,6 +1,5 @@
 import { BlockPresentation, SlideLayout } from "@/types/form-presentation-types";
 import { QAPair } from '@/types/supabase-types';
-// import { AIConversationHandle } from '@/types/form-types'; // Not currently used
 import React from "react";
 
 /**
