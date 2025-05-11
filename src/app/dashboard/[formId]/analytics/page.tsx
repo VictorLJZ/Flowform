@@ -11,12 +11,14 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FormInsightsChatbot } from '@/components/analytics/FormInsightsChatbot';
-import { FormInsights } from '@/components/analytics/form-insights';
-import { QuestionMetrics } from '@/components/analytics/question-metrics';
-import { VersionedResponsesTable } from '@/components/analytics';
+import {
+  FormInsightsChatbot,
+  FormInsights,
+  QuestionMetrics,
+  VersionedResponsesTable,
+  FormAnalyticsDashboard
+} from '@/components/analytics';
 import { useVersionedFormResponses } from '@/hooks/useVersionedAnalyticsData';
-import { FormAnalyticsDashboard } from '@/components/analytics/form-analytics-dashboard';
 
 export default function FormAnalyticsPage() {
   const params = useParams()

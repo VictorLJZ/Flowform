@@ -1,5 +1,6 @@
 import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
 
 export default function ForgotPasswordPage() {
@@ -21,7 +22,14 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
       <div className="relative hidden bg-muted lg:block">
-        <div className="absolute inset-0 bg-muted" />
+        <Image
+          src="/images/zip.webp"
+          alt="Form builder illustration"
+          fill
+          style={{ objectFit: 'cover' }}
+          className="dark:brightness-[0.3] dark:contrast-125"
+          priority
+        />
       </div>
     </div>
   )

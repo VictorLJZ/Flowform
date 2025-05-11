@@ -1,10 +1,7 @@
 "use client"
 
-// Session import removed as it's no longer needed
 import { AuthProvider } from "@/providers/auth-provider"
-// Import only what we actually use
 import { Toaster } from "@/components/ui/toaster"
-// NetworkTracerProvider import removed
 import { SWRConfig } from "swr"
 import { fetcher } from "@/lib/swr"
 
