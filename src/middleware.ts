@@ -41,6 +41,15 @@ export async function middleware(request: NextRequest) {
   // Path is the pathname of the URL
   const path = request.nextUrl.pathname
   
+  // Extract workspace ID from path for authorization checks
+  let workspaceId: string | null = null
+  
+  // Match workspace path-based routes
+  const workspaceMatch = path.match(/\/dashboard\/workspace\/([^/]+)(?:\/.*)?$/)
+  if (workspaceMatch && workspaceMatch[1]) {
+    workspaceId = workspaceMatch[1]
+  }
+  
   // Handle OAuth callback redirects
   if (path === '/' && request.nextUrl.searchParams.get('code')) {
     const url = request.nextUrl.clone()
@@ -51,6 +60,22 @@ export async function middleware(request: NextRequest) {
         'Cache-Control': 'no-store, no-cache'
       }
     })
+  }
+  
+  // Handle redirection from query parameter URLs to path-based URLs
+  if (path === '/dashboard' && request.nextUrl.searchParams.has('workspace')) {
+    const workspaceId = request.nextUrl.searchParams.get('workspace')
+    if (workspaceId) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/dashboard/workspace/${workspaceId}`
+      url.searchParams.delete('workspace')
+      
+      return NextResponse.redirect(url, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache'
+        }
+      })
+    }
   }
 
   // Handle API routes
@@ -95,6 +120,9 @@ export async function middleware(request: NextRequest) {
         { status: 401 }
       )
     }
+    
+    // For API routes that specify a workspace, check workspace access authorization
+    // This would be added in a future implementation
   } 
   // Handle regular page routes
   else {
@@ -123,6 +151,39 @@ export async function middleware(request: NextRequest) {
           'Cache-Control': 'no-store, no-cache'
         }
       })
+    }
+    
+    // If this is a workspace path, check if the user has access to this workspace
+    if (workspaceId) {
+      try {
+        // Check if the user has access to the workspace
+        const { data: workspaceMembers, error } = await supabase
+          .from('workspace_members')
+          .select('user_id, workspace_id, role')
+          .eq('workspace_id', workspaceId)
+          .eq('user_id', user?.id)
+        
+        // If there's an error or no data (user isn't a member), redirect to dashboard
+        if (error || !workspaceMembers || workspaceMembers.length === 0) {
+          console.log(`[Middleware] User ${user?.id} unauthorized for workspace ${workspaceId}`);
+          
+          const url = request.nextUrl.clone();
+          url.pathname = '/dashboard';
+          url.searchParams.delete('workspace');
+          
+          return NextResponse.redirect(url, {
+            headers: {
+              'Cache-Control': 'no-store, no-cache'
+            }
+          });
+        }
+        
+        // If we get here, user has access to the workspace
+        console.log(`[Middleware] User ${user?.id} authorized for workspace ${workspaceId}`);
+      } catch (error) {
+        console.error('[Middleware] Error checking workspace access:', error);
+        // Fall through - we'll let the request proceed and let the error be handled by the page
+      }
     }
   }
 

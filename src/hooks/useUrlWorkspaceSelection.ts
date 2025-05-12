@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { ApiWorkspace } from '@/types/workspace';
 
 /**
@@ -17,8 +17,15 @@ export function useUrlWorkspaceSelection(
   
   // Access Next.js routing to read URL parameters
   const searchParams = useSearchParams();
+  const params = useParams();
   const forceWorkspaceId = searchParams.get('force_workspace');
-  const urlWorkspaceId = searchParams.get('workspace');
+  const queryWorkspaceId = searchParams.get('workspace');
+  
+  // Check for workspace ID in path parameters (new format)
+  const pathWorkspaceId = params?.workspaceId as string | undefined;
+  
+  // Prioritize path-based parameter over query parameter
+  const urlWorkspaceId = pathWorkspaceId || queryWorkspaceId;
   
   // Get router for URL manipulation
   const router = useRouter();
@@ -35,9 +42,23 @@ export function useUrlWorkspaceSelection(
       if (workspace) {
         console.log('[useUrlWorkspaceSelection] Using workspace from URL:', workspace.name);
         selectWorkspace(urlWorkspaceId);
+        
+        // If using old query parameter format, migrate to path-based URL
+        if (queryWorkspaceId && !pathWorkspaceId && typeof window !== 'undefined') {
+          // Don't replace immediately if this is an initial page load
+          // This avoids unnecessary navigation events during page initialization
+          const isInitialLoad = !sessionStorage.getItem('workspace_url_migrated');
+          
+          if (!isInitialLoad) {
+            console.log('[useUrlWorkspaceSelection] Migrating to path-based URL');
+            router.replace(`/dashboard/workspace/${queryWorkspaceId}`);
+          } else {
+            sessionStorage.setItem('workspace_url_migrated', 'true');
+          }
+        }
       }
     }
-  }, [urlWorkspaceId, workspaces, isProcessing, selectWorkspace]);
+  }, [urlWorkspaceId, pathWorkspaceId, queryWorkspaceId, workspaces, isProcessing, selectWorkspace, router]);
   
   // Handle temporary forced workspace selection
   useEffect(() => {
@@ -46,13 +67,8 @@ export function useUrlWorkspaceSelection(
     setIsProcessing(true);
     console.log('[useUrlWorkspaceSelection] Processing URL-forced selection:', forceWorkspaceId);
     
-    // We'll update to the forced workspace as the persistent one
-    const url = new URL(window.location.href);
-    url.searchParams.delete('force_workspace');
-    url.searchParams.set('workspace', forceWorkspaceId);
-    
-    // Update URL without reload
-    router.replace(url.pathname + url.search);
+    // Update to the forced workspace using the new path-based format
+    router.replace(`/dashboard/workspace/${forceWorkspaceId}`);
     
     // If workspaces are loaded, check if target exists
     if (workspaces) {

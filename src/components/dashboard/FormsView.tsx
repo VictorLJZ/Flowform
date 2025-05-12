@@ -104,6 +104,10 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
         });
         return;
       }
+      
+      // Get the current path to determine if we're in a workspace route
+      const path = window.location.pathname;
+      const isWorkspacePath = path.match(/\/dashboard\/workspace\/[^/]+(?:\/.*)?$/);
       // Authorization will be handled by the API using the session
       const response = await fetch('/api/forms', {
         method: 'POST',
@@ -120,8 +124,8 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
         return; // Add proper error handling/toast in production
       }
 
-      // Navigate to the newly created form
-      router.push(`/dashboard/builder/${form_id}`);
+      // Navigate directly to the builder
+      router.push(`/dashboard/form/${form_id}/builder`);
     } catch (error) {
       console.error('Failed to create form:', error);
       // Show error notification in production
@@ -162,7 +166,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                     // Check if click is on or within dropdown menu or buttons
                     const isOnDropdown = e.target.closest('[data-dropdown-trigger], [data-dropdown-content], button');
                     if (!isOnDropdown) {
-                      router.push(`/dashboard/builder/${form.form_id}`);
+                      router.push(`/dashboard/form/${form.form_id}/builder`);
                     }
                   }
                 }}
@@ -215,7 +219,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem key="edit" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/builder/${form.form_id}`);
+                            router.push(`/dashboard/form/${form.form_id}/builder`);
                           }}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
@@ -244,7 +248,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
 
                           <DropdownMenuItem key="analytics" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/${form.form_id}/analytics`);
+                            router.push(`/dashboard/form/${form.form_id}/analytics`);
                           }}>
                             <BarChart className="mr-2 h-4 w-4" /> Analytics
                           </DropdownMenuItem>

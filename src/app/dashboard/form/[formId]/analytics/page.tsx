@@ -39,15 +39,11 @@ export default function FormAnalyticsPage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard/workspace">Workspaces</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Forms</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/dashboard/builder/${formId}`}>
+                  <BreadcrumbLink href={`/dashboard/form/${formId}/builder`}>
                     {form?.title || "Form"}
                   </BreadcrumbLink>
                 </BreadcrumbItem>

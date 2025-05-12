@@ -45,7 +45,19 @@ export function NavMain({
   // Handle action items like form creation
   const handleAction = async (action: string) => {
     if (action === 'create-form') {
-      const workspaceId = workspaces?.[0]?.id;
+      // Get current workspace ID from the URL first, falling back to the first workspace in the list
+      let workspaceId: string | null = null;
+      
+      // Try to extract workspace ID from the current URL if it's a workspace path
+      const path = window.location.pathname;
+      const workspaceMatch = path.match(/\/dashboard\/workspace\/([^/]+)(?:\/.*)?$/);
+      if (workspaceMatch && workspaceMatch[1]) {
+        workspaceId = workspaceMatch[1];
+      } else {
+        // Fall back to the first workspace
+        workspaceId = workspaces?.[0]?.id;
+      }
+      
       if (!workspaceId) {
         toast({ title: "No workspace selected", description: "Please select a workspace first.", variant: "destructive" });
         return;

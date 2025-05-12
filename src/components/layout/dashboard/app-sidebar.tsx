@@ -50,7 +50,7 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard",
+      url: "/dashboard/workspace",
       icon: LayoutDashboard,
       isActive: true,
       items: [],
@@ -90,12 +90,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Prepare dynamic items for NavMain
   const processedNavMain = data.navMain.map(item => {
-    if (item.isDynamicDropdown && item.title === "Dashboard") {
+    // Check if the item should have a dropdown (regardless of title value)
+    // This ensures compatibility if the title gets renamed again
+    if (item.isDynamicDropdown) {
       return {
         ...item,
         items: recentForms.map(form => ({
           title: form.title || 'Untitled Form',
-          url: `/dashboard/builder/${form.form_id}`,
+          url: `/dashboard/form/${form.form_id}/builder`,
         })),
       };
     }
@@ -143,7 +145,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       
       // Navigate to the newly created form using router for better client-side navigation
       // Note: We're preserving the existing method of navigation to ensure consistency
-      window.location.href = `/dashboard/builder/${form_id}`;
+      window.location.href = `/dashboard/form/${form_id}/builder`;
     } catch (error) {
       console.error('Failed to create form:', error);
       toast({

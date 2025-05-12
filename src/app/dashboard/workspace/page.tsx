@@ -6,7 +6,7 @@ import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function DashboardPage() {
+export default function WorkspaceIndexPage() {
   const router = useRouter();
   const { workspaces, isLoading } = useWorkspaces();
   
@@ -20,9 +20,9 @@ export default function DashboardPage() {
           // Redirect to the first workspace
           router.replace(`/dashboard/workspace/${workspaces[0].id}`);
         } else {
-          // If there are no workspaces, show the workspace page
-          // which will handle creating a default workspace
-          router.replace('/dashboard/workspace');
+          // If there are no workspaces, redirect to workspace creation
+          // This would typically be handled elsewhere in the app
+          router.replace('/dashboard/workspace/create');
         }
       }, 100);
       
@@ -36,7 +36,7 @@ export default function DashboardPage() {
         <Loader2 className={cn(
           "animate-spin text-primary w-10 h-10 mx-auto mb-4"
         )} />
-        <p className="text-muted-foreground">Loading dashboard...</p>
+        <p className="text-muted-foreground">Loading workspace...</p>
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 "use client"
 
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -21,9 +21,20 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 
-export default function GeneralSettings() {
-  const { currentWorkspaceId } = useWorkspaceStore()
-  const { workspace, isLoading, rename } = useCurrentWorkspace(currentWorkspaceId)
+interface WorkspaceParams {
+  workspaceId: string
+}
+
+interface WorkspaceSettingsPageProps {
+  params: Promise<WorkspaceParams>
+}
+
+export default function WorkspaceSettingsPage({ params: paramsPromise }: WorkspaceSettingsPageProps) {
+  // Use React.use() to unwrap the params Promise
+  const params = use(paramsPromise) as WorkspaceParams
+  const { workspaceId } = params
+  const router = useRouter()
+  const { workspace, isLoading, rename } = useCurrentWorkspace(workspaceId)
   const { deleteWorkspace } = useWorkspaceDeletion()
   const [name, setName] = useState<string>(workspace?.name || "")
   const [description, setDescription] = useState<string>(workspace?.description || "")
@@ -60,17 +71,18 @@ export default function GeneralSettings() {
   }
   
   const handleDeleteWorkspace = async () => {
-    if (!currentWorkspaceId || !workspace) return;
+    if (!workspaceId || !workspace) return;
     
     try {
       setIsDeleting(true);
       
       // Use our enhanced deleteWorkspace function
-      const result = await deleteWorkspace(currentWorkspaceId);
+      const result = await deleteWorkspace(workspaceId);
       
       if (result.success) {
-        // The workspace provider will handle the creation of a default workspace if needed
-        // and the workspace store will handle selecting the next workspace
+        // Navigate to the workspace index after deletion
+        router.push('/dashboard/workspace');
+        
         toast({
           title: "Organization deleted",
           description: "Your organization has been permanently deleted."

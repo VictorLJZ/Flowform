@@ -287,7 +287,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard">Forms</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard/workspace">Workspaces</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>

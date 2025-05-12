@@ -20,18 +20,26 @@ interface SettingsLayoutProps {
   children: React.ReactNode
 }
 
-const tabs = [
-  { name: "General", href: "/dashboard/settings" },
-  { name: "Team", href: "/dashboard/settings/team" },
-  { name: "Integrations", href: "/dashboard/settings/integrations" },
-  { name: "Billing", href: "/dashboard/settings/billing" },
-  { name: "Usage", href: "/dashboard/settings/usage" },
-  { name: "Audit Logs", href: "/dashboard/settings/audit" },
-  { name: "Legal Documents", href: "/dashboard/settings/legal" },
+// Generate tab links dynamically based on workspaceId
+const generateTabs = (workspaceId: string) => [
+  { name: "General", href: `/dashboard/workspace/${workspaceId}/settings` },
+  { name: "Team", href: `/dashboard/workspace/${workspaceId}/settings/team` },
+  { name: "Integrations", href: `/dashboard/workspace/${workspaceId}/settings/integrations` },
+  { name: "Billing", href: `/dashboard/workspace/${workspaceId}/settings/billing` },
+  { name: "Usage", href: `/dashboard/workspace/${workspaceId}/settings/usage` },
+  { name: "Audit Logs", href: `/dashboard/workspace/${workspaceId}/settings/audit` },
+  { name: "Legal Documents", href: `/dashboard/workspace/${workspaceId}/settings/legal` },
 ]
 
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const pathname = usePathname()
+  
+  // Extract workspaceId from the pathname
+  const workspaceIdMatch = pathname.match(/\/dashboard\/workspace\/([^\/]+)\/settings/)
+  const workspaceId = workspaceIdMatch ? workspaceIdMatch[1] : ''
+  
+  // Generate tabs with the current workspaceId
+  const tabs = generateTabs(workspaceId)
   
   return (
     <div className="flex flex-1 flex-col">
@@ -45,14 +53,14 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">
-                  Dashboard
+                <BreadcrumbLink href={`/dashboard/workspace/${workspaceId}`}>
+                  Workspace
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
                 <BreadcrumbPage className="truncate font-medium">
-                  Organization Settings
+                  Settings
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
@@ -65,7 +73,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
           <nav className="flex px-6 overflow-x-auto">
             {tabs.map((tab) => {
               const isActive = pathname === tab.href || 
-                (tab.href !== "/dashboard/settings" && pathname.startsWith(tab.href))
+                (tab.href !== `/dashboard/workspace/${workspaceId}/settings` && pathname.startsWith(tab.href))
                 
               return (
                 <Link

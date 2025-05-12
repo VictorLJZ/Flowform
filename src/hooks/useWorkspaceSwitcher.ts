@@ -44,13 +44,22 @@ export function useWorkspaceSwitcher() {
       // Zustand persist middleware will handle localStorage
       selectWorkspace(workspaceId);
       
-      // Update the URL to include the workspace ID
-      // This ensures the workspace selection is persisted in the URL
-      const url = new URL(window.location.href);
-      url.searchParams.set('workspace', workspaceId);
+      // Update the URL to use the new path-based format
+      // Instead of query parameters, use the path structure
+      const currentPath = window.location.pathname;
       
-      // Use router.replace to update the URL without a page reload
-      router.replace(url.pathname + url.search);
+      // Check if we're already on a workspace path
+      const isWorkspacePath = currentPath.match(/\/dashboard\/workspace\/[^/]+(?:\/.*)?$/);
+      const isRootDashboard = currentPath === '/dashboard';
+      
+      if (isRootDashboard || isWorkspacePath) {
+        // Navigate to the new workspace path
+        router.replace(`/dashboard/workspace/${workspaceId}`);
+      } else {
+        // For other paths (like form pages), just update the store and don't navigate
+        // This maintains context while viewing forms
+        console.log(`[useWorkspaceSwitcher] Updating workspace context only (no navigation):`, workspaceId);
+      }
       
       // Log success
       console.log(`[useWorkspaceSwitcher] Successfully switched to workspace: ${workspaceId}`);
