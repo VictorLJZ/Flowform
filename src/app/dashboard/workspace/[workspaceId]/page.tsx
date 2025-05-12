@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Users, Edit, LogOut, Trash2, MoreHorizontal, Grid, List, Settings, Loader2 } from "lucide-react";
+import { Users, Edit, LogOut, Trash2, MoreHorizontal, Grid, List, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +31,6 @@ import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiWorkspaceRole } from "@/types/workspace";
 import { FormsView } from "@/components/dashboard";
-import { cn } from "@/lib/utils";
 
 export default function WorkspacePage() {
   const router = useRouter();

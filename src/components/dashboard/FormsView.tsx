@@ -105,9 +105,6 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
         return;
       }
       
-      // Get the current path to determine if we're in a workspace route
-      const path = window.location.pathname;
-      const isWorkspacePath = path.match(/\/dashboard\/workspace\/[^/]+(?:\/.*)?$/);
       // Authorization will be handled by the API using the session
       const response = await fetch('/api/forms', {
         method: 'POST',
