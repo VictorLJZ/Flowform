@@ -1,7 +1,7 @@
 "use client"
 
 import { getBlockDefinition } from '@/registry/blockRegistry'
-import { useFormBuilderStore } from '../formBuilderStore'
+import { useFormBuilderStore } from '@/stores/formBuilderStore'
 
 /**
  * Hook to get block definition for the current block

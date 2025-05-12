@@ -27,5 +27,4 @@ export const useFormBuilderStore = create<FormBuilderState>()(
   })
 )
 
-// Export the hook for block definitions
-export { useCurrentBlockDefinition } from './hooks/useCurrentBlockDefinition'
+

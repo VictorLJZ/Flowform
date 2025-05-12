@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { useEffect } from "react"
 import { PlusCircle, ChevronLeft, ChevronRight, Smartphone, Monitor } from "lucide-react"
-import { useFormBuilderStore, useCurrentBlockDefinition } from "@/stores/formBuilderStore"
+import { useFormBuilderStore } from "@/stores/formBuilderStore"
+import { useCurrentBlockDefinition } from "@/hooks/useCurrentBlockDefinition"
 import type { FormBlock } from '@/types/block-types'
 import type { BlockPresentation } from '@/types/theme-types'
 import type { SlideLayout } from '@/types/layout-types'
