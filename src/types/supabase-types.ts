@@ -6,6 +6,7 @@ import type { SaveDynamicResponseInput } from './form-service-types';
 
 /**
  * Database Tables - Workspace Management
+ * Note: Workspace-related types have been moved to src/types/workspace/*
  */
 
 export interface Profile {
@@ -15,36 +16,6 @@ export interface Profile {
   avatar_url: string | null;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
-}
-
-export interface Workspace {
-  id: string; // UUID
-  name: string;
-  description: string | null;
-  created_at: string; // ISO date string
-  created_by: string; // UUID, references auth.users.id
-  updated_at: string; // ISO date string
-  logo_url: string | null;
-  settings: Record<string, unknown> | null; // JSONB
-}
-
-export interface WorkspaceInvitation {
-  id: string; // UUID
-  workspace_id: string; // UUID, references workspaces.id
-  email: string;
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
-  invited_by: string; // UUID, references auth.users.id
-  invited_at: string; // ISO date string
-  expires_at: string; // ISO date string
-  token: string;
-}
-
-export interface WorkspaceMember {
-  workspace_id: string; // UUID, references workspaces.id
-  user_id: string; // UUID, references auth.users.id
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
-  joined_at: string; // ISO date string
 }
 
 /**

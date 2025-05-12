@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation } from '@/types/supabase-types';
+import { DbWorkspaceInvitation } from '@/types/workspace';
 
 /**
  * Get all invitations sent from a specific workspace
@@ -7,7 +7,7 @@ import { WorkspaceInvitation } from '@/types/supabase-types';
  * @param workspaceId - The ID of the workspace
  * @returns Array of workspace invitations sent from the workspace
  */
-export async function getSentInvitations(workspaceId: string): Promise<WorkspaceInvitation[]> {
+export async function getSentInvitations(workspaceId: string): Promise<DbWorkspaceInvitation[]> {
   console.log('[getSentInvitations] Starting with workspaceId:', workspaceId);
   const supabase = createClient();
   

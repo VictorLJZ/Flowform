@@ -1,8 +1,8 @@
-import { Workspace } from "@/types/supabase-types";
+import { DbWorkspace, ApiWorkspaceUpdateInput } from "@/types/workspace";
 import { checkWorkspacePermissionClient } from "@/services/permissions/checkWorkspacePermissionClient";
 import { networkLog } from "@/lib/debug-logger";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { WorkspaceUpdateInput } from "@/types/workspace-types";
+import { workspaceUpdateInputToDb } from "@/utils/type-utils";
 
 /**
  * Update an existing workspace using an authenticated Supabase client
@@ -16,8 +16,8 @@ import { WorkspaceUpdateInput } from "@/types/workspace-types";
 export async function updateWorkspace(
   supabase: SupabaseClient,
   workspaceId: string,
-  workspaceData: WorkspaceUpdateInput
-): Promise<Workspace> {
+  workspaceData: ApiWorkspaceUpdateInput
+): Promise<DbWorkspace> {
   networkLog('Initializing workspace update request', { workspaceId, updates: workspaceData });
   
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,10 +32,8 @@ export async function updateWorkspace(
     throw new Error('User does not have permission to update this workspace');
   }
 
-  const updateData = {
-    ...workspaceData,
-    updated_at: new Date().toISOString()
-  };
+  // Transform API data to DB format
+  const updateData = workspaceUpdateInputToDb(workspaceData);
 
   const { data, error } = await supabase
     .from('workspaces')

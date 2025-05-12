@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { deleteWorkspace } from '@/services/workspace/deleteWorkspace';
 import { initializeDefaultWorkspace } from '@/services/workspace/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuthSession } from './useAuthSession';
+import { useWorkspaceInitialization } from './useWorkspaceInitialization';
 
 /**
  * Custom hook that encapsulates workspace deletion logic
@@ -13,12 +13,7 @@ import { useAuthSession } from './useAuthSession';
  */
 export function useWorkspaceDeletion() {
   const { user } = useAuthSession();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectWorkspace = useWorkspaceStore(state => state.selectWorkspace);
-  const setWorkspaces = useWorkspaceStore(state => state.setWorkspaces);
-  const addWorkspace = useWorkspaceStore(state => state.addWorkspace);
+  const { mutate: mutateWorkspaces } = useWorkspaceInitialization();
   
   const handleDeleteWorkspace = useCallback(async (workspaceId: string) => {
     try {
@@ -40,11 +35,11 @@ export function useWorkspaceDeletion() {
         remainingCount: remainingWorkspaces?.length || 0
       });
       
-      // Step 2: Update the workspaces in the store first before selection
+      // Step 2: Update the workspaces in the SWR cache first before selection
       // This prevents the "not found in workspace list" error
       if (remainingWorkspaces) {
-        // Update the store with the latest workspaces from the database
-        setWorkspaces(remainingWorkspaces);
+        // Update the SWR cache with the latest workspaces from the database
+        await mutateWorkspaces(() => remainingWorkspaces);
       }
       
       // Step 3: Handle the post-deletion workspace selection
@@ -84,8 +79,11 @@ export function useWorkspaceDeletion() {
           const newWorkspace = await initializeDefaultWorkspace(user.id);
           
           if (newWorkspace) {
-            // Add the new workspace to the store and select it
-            addWorkspace(newWorkspace);
+            // Add the new workspace to the SWR cache and select it
+            await mutateWorkspaces(prev => {
+              const current = prev || [];
+              return [...current, newWorkspace];
+            });
             
             // Use URL-based forced workspace selection mechanism to ensure a clean state
             // This is the most reliable approach for handling post-deletion selection
@@ -138,7 +136,7 @@ export function useWorkspaceDeletion() {
       });
       return { success: false };
     }
-  }, [user, setWorkspaces, addWorkspace]);
+  }, [user, mutateWorkspaces]);
   
   return { deleteWorkspace: handleDeleteWorkspace };
 }

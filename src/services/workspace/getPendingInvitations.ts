@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation } from '@/types/supabase-types';
+import { DbWorkspaceInvitation } from '@/types/workspace';
 
 /**
  * Get all pending invitations for a user by their email address
@@ -7,7 +7,7 @@ import { WorkspaceInvitation } from '@/types/supabase-types';
  * @param email - The email address of the user
  * @returns Array of pending workspace invitations
  */
-export async function getPendingInvitations(email: string): Promise<WorkspaceInvitation[]> {
+export async function getPendingInvitations(email: string): Promise<DbWorkspaceInvitation[]> {
   const supabase = createClient();
   
   // Simplified query to avoid foreign key relationship issues

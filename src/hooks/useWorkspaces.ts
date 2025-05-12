@@ -1,7 +1,7 @@
 import { getUserWorkspacesClient } from '@/services/workspace/client'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import useSWR from 'swr'
-import { Workspace } from '@/types/supabase-types'
+import { ApiWorkspace } from '@/types/workspace'
 
 /**
  * Fetches the current user's workspaces using the authenticated user from useAuthSession.
@@ -19,7 +19,7 @@ export function useWorkspaces() {
   const key = userId ? ['userWorkspaces', userId] : null;
 
   // Fetcher function defined with explicit typing
-  const fetcher = async ([, uid]: [string, string]): Promise<Workspace[]> => {
+  const fetcher = async ([, uid]: [string, string]): Promise<ApiWorkspace[]> => {
 
     return await getUserWorkspacesClient(uid);
   };
@@ -29,7 +29,7 @@ export function useWorkspaces() {
     error,
     isLoading: isLoadingWorkspaces,
     mutate
-  } = useSWR<Workspace[]>(key, fetcher, {
+  } = useSWR<ApiWorkspace[]>(key, fetcher, {
      // Keep previous data while revalidating
      keepPreviousData: true,
      // Deduplicate requests within 5 seconds

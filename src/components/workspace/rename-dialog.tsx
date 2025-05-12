@@ -12,13 +12,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Workspace } from "@/types/supabase-types"
+import { ApiWorkspace } from "@/types/workspace"
 import { Edit, Save, X } from "lucide-react"
 
 interface RenameDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  workspace: Workspace | null
+  workspace: ApiWorkspace | null
   onRename: (workspaceId: string, name: string) => Promise<void>
 }
 

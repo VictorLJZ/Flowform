@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Plus, Trash2, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
-import { Workspace } from "@/types/supabase-types"
+import { ApiWorkspace } from "@/types/workspace"
 import { useWorkspaceStore } from "@/stores/workspaceStore"
 
 import {
@@ -29,7 +29,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 type InviteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentWorkspace: Workspace | null | undefined
+  currentWorkspace: ApiWorkspace | null | undefined
 }
 
 type InviteInput = {
@@ -40,24 +40,20 @@ type InviteInput = {
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
   
-  // IMPORTANT: Only use the workspace from props for initialization
-  // This avoids competing with the store for workspace selection
-  const workspaceId = currentWorkspace?.id || null;
+  // CARMACK-IAN ARCHITECTURE: Single source of truth
+  // Zustand store is the only authoritative source for which workspace is selected
+  const workspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   
-  // Get store information only for debugging and fallback
-  const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
-  const storeWorkspaces = useWorkspaceStore(state => state.workspaces);
+  // If no selection in store but we have a workspace from props, use that as fallback
+  // This should rarely happen with our improved architecture
+  const effectiveWorkspaceId = workspaceId || currentWorkspace?.id || null;
   
-  // Logging for debugging
-  console.log('[InviteDialog] Workspace details:', {
-    fromProps: currentWorkspace?.id || 'null',
-    fromStore: storeWorkspaceId || 'null',
-    workspacesInStore: storeWorkspaces.length,
-    isOpen: open
+  // Simple logging for debugging
+  console.log('[InviteDialog] Using workspace ID:', effectiveWorkspaceId, {
+    source: workspaceId ? 'zustand' : 'props'
   });
   
-  // Use only the workspace ID from props for the invitations hook
-  // This prevents this component from creating unwanted dependencies on the store
+  // Use the hook to fetch invitations and manage them
   const {
     invitations: sentInvitations,
     send,

@@ -1,4 +1,4 @@
-import { WorkspaceRole } from '@/types/workspace-types';
+import { DbWorkspaceRole } from '@/types/workspace';
 
 /**
  * Change the role of a workspace member - Client-side implementation
@@ -12,7 +12,7 @@ import { WorkspaceRole } from '@/types/workspace-types';
 export async function changeUserRoleClient(
   workspaceId: string,
   userId: string,
-  role: WorkspaceRole
+  role: DbWorkspaceRole
 ): Promise<boolean> {
   try {
     // Make the API request

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { networkLog } from '@/lib/debug-logger';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { ApiWorkspaceRole } from '@/types/workspace';
 
 /**
  * Check if user has permission to perform operations on a workspace
@@ -13,7 +13,7 @@ import { WorkspaceRole } from '@/types/workspace-types';
 export async function checkWorkspacePermission(
   workspaceId: string,
   userId: string,
-  requiredRoles: WorkspaceRole[] = ['owner', 'admin']
+  requiredRoles: ApiWorkspaceRole[] = ['owner', 'admin']
 ): Promise<{hasPermission: boolean, role?: string}> {
   const supabase = await createClient();
   
@@ -35,7 +35,7 @@ export async function checkWorkspacePermission(
   }
   
   return { 
-    hasPermission: requiredRoles.includes(data.role as WorkspaceRole),
+    hasPermission: requiredRoles.includes(data.role as ApiWorkspaceRole),
     role: data.role
   };
 }

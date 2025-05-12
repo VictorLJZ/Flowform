@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
-import { Workspace } from '@/types/supabase-types';
+import { ApiWorkspace, ApiWorkspaceInput } from '@/types/workspace';
 import { getUserWorkspacesClient } from './getUserWorkspacesClient';
 import { createWorkspace } from './createWorkspace';
 
 // Keep track of initialization in progress
-const initializationInProgress: Record<string, Promise<Workspace | null>> = {};
+const initializationInProgress: Record<string, Promise<ApiWorkspace | null>> = {};
 
 /**
  * Ensures a user has at least one workspace by creating a default one if none exists
@@ -12,7 +12,7 @@ const initializationInProgress: Record<string, Promise<Workspace | null>> = {};
  * @param userId - The ID of the user to initialize a workspace for
  * @returns The user's default workspace (either existing or newly created)
  */
-export async function initializeDefaultWorkspace(userId: string): Promise<Workspace | null> {
+export async function initializeDefaultWorkspace(userId: string): Promise<ApiWorkspace | null> {
   // If initialization is already in progress for this user, wait for it to complete
   if (userId in initializationInProgress) {
     console.log('Initialization already in progress for user:', userId, 'waiting for it to complete');
@@ -30,10 +30,10 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
   }
 
   // Create a promise for this initialization
-  let promiseResolve!: (value: Workspace | null) => void;
+  let promiseResolve!: (value: ApiWorkspace | null) => void;
   let promiseReject!: (reason?: Error) => void;
   
-  const initPromise = new Promise<Workspace | null>((resolve, reject) => {
+  const initPromise = new Promise<ApiWorkspace | null>((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
   });
@@ -87,15 +87,18 @@ export async function initializeDefaultWorkspace(userId: string): Promise<Worksp
     // Create the default workspace
     console.log('Creating default workspace with name:', defaultWorkspaceName);
     try {
-      const newWorkspace = await createWorkspace({
+      const workspaceInput: ApiWorkspaceInput = {
         name: defaultWorkspaceName,
         description: 'My default workspace',
-        created_by: userId,
-        logo_url: null,
-        settings: null
-      });
+        createdBy: userId,
+        logoUrl: undefined,
+        settings: undefined
+      };
+      
+      const newWorkspace = await createWorkspace(workspaceInput);
       
       console.log('Successfully created workspace:', newWorkspace);
+      // newWorkspace is already in API format from createWorkspace
       promiseResolve(newWorkspace);
       return newWorkspace;
     } catch (createError) {

@@ -1,6 +1,6 @@
 "use client"
 
-import type { WorkspaceInvitation } from "@/types/supabase-types"
+import type { UiWorkspaceInvitation } from "@/types/workspace"
 import { useState } from "react"
 import { format } from "date-fns"
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
@@ -19,21 +19,21 @@ import {
 import { RefreshCw, X, Copy, CheckCircle } from "lucide-react"
 
 interface InvitationRowProps {
-  invitation: WorkspaceInvitation
+  invitation: UiWorkspaceInvitation
 }
 
 export function InvitationRow({ invitation }: InvitationRowProps) {
   const { toast } = useToast()
-  const { resend, revoke, isLoading } = useWorkspaceInvitations(invitation.workspace_id)
+  const { resend, revoke, isLoading } = useWorkspaceInvitations(invitation.workspaceId)
   const [isResending, setIsResending] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   
   // Format dates
-  const invitedDate = format(new Date(invitation.invited_at), 'MMM d, yyyy')
-  const expiresDate = format(new Date(invitation.expires_at), 'MMM d, yyyy')
+  const invitedDate = format(new Date(invitation.invitedAt), 'MMM d, yyyy')
+  const expiresDate = format(new Date(invitation.expiresAt), 'MMM d, yyyy')
   const isPending = invitation.status === 'pending'
-  const isExpired = new Date(invitation.expires_at) < new Date()
+  const isExpired = new Date(invitation.expiresAt) < new Date()
   
   // Role colors
   const getRoleColor = (role: string) => {

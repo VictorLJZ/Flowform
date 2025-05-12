@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { DbWorkspaceRole } from '@/types/workspace';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -16,9 +16,9 @@ async function checkChangeRolePermissions(
   workspaceId: string,
   initiatorUserId: string,
   targetUserId: string
-): Promise<{ initiatorRole: WorkspaceRole; targetRole: WorkspaceRole }> {
+): Promise<{ initiatorRole: DbWorkspaceRole; targetRole: DbWorkspaceRole }> {
   // Define expected shape inline
-  type MemberRoleInfo = { user_id: string; role: string };
+  type MemberRoleInfo = { user_id: string; role: DbWorkspaceRole };
   
   const { data: members, error } = await supabase
     .from('workspace_members')
@@ -40,8 +40,8 @@ async function checkChangeRolePermissions(
     throw new Error('Initiator or target member not found in workspace.');
   }
 
-  const initiatorRole = initiator.role as WorkspaceRole;
-  const targetRole = target.role as WorkspaceRole;
+  const initiatorRole = initiator.role as DbWorkspaceRole;
+  const targetRole = target.role as DbWorkspaceRole;
 
   // Permission Logic
   if (initiatorRole === 'owner') {
@@ -69,7 +69,7 @@ async function checkChangeRolePermissions(
 export async function changeUserRole(
   workspaceId: string,
   userId: string,
-  role: WorkspaceRole
+  role: DbWorkspaceRole
 ): Promise<boolean> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

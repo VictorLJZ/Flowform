@@ -1,13 +1,13 @@
 "use client"
 
 import { useAuthSession } from "@/hooks/useAuthSession"
-import { WorkspaceMemberWithProfile, WorkspaceRole } from "@/types/workspace-types"
+import { UiWorkspaceMemberWithProfile, ApiWorkspaceRole } from "@/types/workspace"
 import { MemberItem } from "@/components/workspace/members/member-item"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface MembersListProps {
-  members: WorkspaceMemberWithProfile[]
-  currentUserRole?: WorkspaceRole
+  members: UiWorkspaceMemberWithProfile[]
+  currentUserRole?: ApiWorkspaceRole
   currentUserId?: string | null
 }
 
@@ -54,14 +54,14 @@ export function MembersList({
           ) : (
             members.map((member) => (
               <MemberItem
-                key={member.user_id}
+                key={member.userId}
                 member={member}
-                joinedDate={formatJoinDate(member.joined_at)}
+                joinedDate={formatJoinDate(member.joinedAt)}
                 currentUserRole={currentUserRole}
-                isCurrentUser={member.user_id === currentUserId}
+                isCurrentUser={member.userId === currentUserId}
                 isLastOwner={
                   member.role === 'owner' && 
-                  members.filter(m => m.role === ('owner' as WorkspaceRole)).length === 1
+                  members.filter(m => m.role === ('owner' as ApiWorkspaceRole)).length === 1
                 }
               />
             ))

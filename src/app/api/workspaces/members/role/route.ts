@@ -3,7 +3,7 @@ import { isPostgrestError } from '@/types';
 import { changeUserRole } from '@/services/workspace/changeUserRole';
 import { transferWorkspaceOwnership } from '@/services/workspace/transferWorkspaceOwnership';
 import { createClient } from '@/lib/supabase/server';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { ApiWorkspaceRole } from '@/types/workspace';
 
 // Change a workspace member's role or transfer ownership
 export async function PATCH(request: Request) {
@@ -65,7 +65,7 @@ export async function PATCH(request: Request) {
       console.log(`[API] Initiated ownership transfer in workspace ${workspaceId} to user ${targetUserId}`);
     } else {
       // Call the standard role change service function
-      await changeUserRole(workspaceId, targetUserId, requestedRole as WorkspaceRole);
+      await changeUserRole(workspaceId, targetUserId, requestedRole as ApiWorkspaceRole);
       console.log(`[API] Changed role for user ${targetUserId} in workspace ${workspaceId} to ${requestedRole}`);
     }
     

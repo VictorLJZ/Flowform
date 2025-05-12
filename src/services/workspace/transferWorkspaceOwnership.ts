@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { DbWorkspaceRole } from '@/types/workspace';
 
 /**
  * Transfers workspace ownership from the initiating user (current owner) to the target user.
@@ -62,7 +62,7 @@ export async function transferWorkspaceOwnership(
   // 1. Promote target user to 'owner'
   const { error: promoteError } = await supabase
     .from('workspace_members')
-    .update({ role: 'owner' as WorkspaceRole })
+    .update({ role: 'owner' as DbWorkspaceRole })
     .eq('workspace_id', workspaceId)
     .eq('user_id', targetUserId);
 
@@ -75,7 +75,7 @@ export async function transferWorkspaceOwnership(
   // 2. Demote initiator user to 'admin'
   const { error: demoteError } = await supabase
     .from('workspace_members')
-    .update({ role: 'admin' as WorkspaceRole })
+    .update({ role: 'admin' as DbWorkspaceRole })
     .eq('workspace_id', workspaceId)
     .eq('user_id', initiatorUserId);
 

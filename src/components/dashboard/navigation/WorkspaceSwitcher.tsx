@@ -37,13 +37,11 @@ import { toast } from "@/components/ui/use-toast"
 import { useAuthSession } from "@/hooks/useAuthSession"
 import { useWorkspaceSwitcher } from "@/hooks/useWorkspaceSwitcher"
 import { createWorkspace } from "@/services/workspace/client"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { ApiWorkspaceInput } from "@/types/workspace"
 
 export function WorkspaceSwitcher() {
   const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
   const { currentWorkspaceId, switchToWorkspace } = useWorkspaceSwitcher()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const addWorkspace = useWorkspaceStore(state => state.addWorkspace)
 
   const { user, isLoading: isLoadingAuth } = useAuthSession()
   const userId = user?.id
@@ -75,13 +73,14 @@ export function WorkspaceSwitcher() {
       setIsCreating(true)
       
       // Create the workspace in the database
-      const created = await createWorkspace({ 
+      const workspaceInput: ApiWorkspaceInput = { 
         name: newWorkspace.name, 
         description: newWorkspace.description, 
-        created_by: userId, 
-        logo_url: "", 
+        createdBy: userId, 
+        logoUrl: "", 
         settings: {} 
-      })
+      };
+      const created = await createWorkspace(workspaceInput)
       
       // Close dialog and reset form
       setCreateDialogOpen(false)
@@ -93,43 +92,31 @@ export function WorkspaceSwitcher() {
         // Show success toast
         toast({ 
           title: "Success", 
-          description: "Workspace created successfully. Redirecting..." 
-        })
+          description: "Workspace created successfully!" 
+        });
         
-        // EXTREME SOLUTION: Use URL-based workspace selection
-        // This completely bypasses all the normal workspace selection mechanisms
-        // and forces the workspace selection through a URL parameter
+        // Simple, clean approach following Carmack principles
+        console.log("[WorkspaceSwitcher] Workspace created, updating state:", created.id);
         
-        // Store the newly created workspace details in localStorage for the redirect to pick up
-        localStorage.setItem('new_workspace_id', created.id);
-        localStorage.setItem('new_workspace_redirect_time', Date.now().toString());
-        
-        // Store the complete workspace details to avoid race conditions
-        // This ensures the provider can access the complete workspace data
-        // even if the SWR cache hasn't been updated yet
-        localStorage.setItem('new_workspace_details', JSON.stringify(created));
-        
-        // Update SWR cache to show the new workspace in the list
+        // 1. Update SWR cache first (data layer)
         await mutateWorkspaces(prev => {
           if (!prev) return [created];
+          if (prev.some(w => w.id === created.id)) return prev;
           return [...prev, created];
         }, false);
         
-        // Delay to show the toast
+        // 2. Select the workspace using Zustand (UI state)
+        // This is the only place we need to update selection state
+        console.log("[WorkspaceSwitcher] Selecting new workspace:", created.id);
+        switchToWorkspace(created.id);
+        
+        // That's it! No session storage, no extra state management needed.
+        
+        // Delay closing the dialog slightly to show the success message
         setTimeout(() => {
-          // Redirect to a special workspace selection URL
-          // This will trigger a special handler in the workspace provider
-          const currentUrl = new URL(window.location.href);
-          const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
-          
-          // Use a query parameter to force workspace selection
-          const redirectUrl = `${baseUrl}/dashboard?force_workspace=${created.id}&t=${Date.now()}`;
-          
-          console.log("🔴🔴 [WorkspaceSwitcher] Redirecting to force workspace:", redirectUrl);
-          
-          // Redirect to the URL that will force the workspace selection
-          window.location.href = redirectUrl;
-        }, 1500);
+          // Close the modal with a slight delay for better UX
+          setCreateDialogOpen(false);
+        }, 500);
       }
     } catch (error) {
       console.error("[WorkspaceSwitcher] Error creating workspace:", error);
@@ -156,9 +143,9 @@ export function WorkspaceSwitcher() {
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   {isLoadingCurrentWorkspace ? (
                     <Loader2 className="size-4 animate-spin" />
-                  ) : currentWorkspace?.logo_url ? (
+                  ) : currentWorkspace?.logoUrl ? (
                     <Image 
-                      src={currentWorkspace.logo_url} 
+                      src={currentWorkspace.logoUrl} 
                       alt={currentWorkspace.name} 
                       width={16}
                       height={16}
@@ -215,9 +202,9 @@ export function WorkspaceSwitcher() {
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border">
-                      {workspace.logo_url ? (
+                      {workspace.logoUrl ? (
                         <Image 
-                          src={workspace.logo_url} 
+                          src={workspace.logoUrl} 
                           alt={workspace.name} 
                           width={14}
                           height={14}

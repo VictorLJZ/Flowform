@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Filter, SortAsc, SortDesc, Users, Search } from "lucide-react"
-import { WorkspaceRole } from "@/types/workspace-types"
+import { ApiWorkspaceRole } from "@/types/workspace"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -24,7 +24,7 @@ interface MembersHeaderProps {
   onSearchChange: (query: string) => void
   onInviteClick: () => void
   isAdmin: boolean
-  currentFilter: WorkspaceRole | null
+  currentFilter: ApiWorkspaceRole | null
   currentSort: string
   currentSortDirection: "asc" | "desc"
   searchQuery: string
@@ -44,7 +44,7 @@ export function MembersHeader({
   const [showSearch, setShowSearch] = useState(false)
   
   // Map role values to display names
-  const roleLabels: Record<WorkspaceRole, string> = {
+  const roleLabels: Record<ApiWorkspaceRole, string> = {
     owner: "Owners",
     admin: "Admins",
     editor: "Editors",
@@ -116,16 +116,16 @@ export function MembersHeader({
               <DropdownMenuItem onClick={() => onFilterChange(null)}>
                 <span className={!currentFilter ? "font-medium" : ""}>All Members</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange("owner" as WorkspaceRole)}>
+              <DropdownMenuItem onClick={() => onFilterChange("owner" as ApiWorkspaceRole)}>
                 <span className={currentFilter === "owner" ? "font-medium" : ""}>Owners</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange("admin" as WorkspaceRole)}>
+              <DropdownMenuItem onClick={() => onFilterChange("admin" as ApiWorkspaceRole)}>
                 <span className={currentFilter === "admin" ? "font-medium" : ""}>Admins</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange("editor" as WorkspaceRole)}>
+              <DropdownMenuItem onClick={() => onFilterChange("editor" as ApiWorkspaceRole)}>
                 <span className={currentFilter === "editor" ? "font-medium" : ""}>Editors</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange("viewer" as WorkspaceRole)}>
+              <DropdownMenuItem onClick={() => onFilterChange("viewer" as ApiWorkspaceRole)}>
                 <span className={currentFilter === "viewer" ? "font-medium" : ""}>Viewers</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>

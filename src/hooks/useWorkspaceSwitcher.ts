@@ -1,57 +1,56 @@
 import { useCallback } from 'react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { toast } from '@/components/ui/use-toast';
+import { useWorkspace } from '@/providers/workspace-provider';
+import { useRouter } from 'next/navigation';
 
 /**
- * Custom hook that provides a reliable way to switch between workspaces
- * Ensures proper state updates and handles edge cases
+ * Custom hook for switching between workspaces
+ * 
+ * Following Carmack principles:
+ * - Simple, focused functionality
+ * - Clean separation of concerns
+ * - No duplicated state management
  */
 export function useWorkspaceSwitcher() {
-  // Get the workspace store state and actions
+  // Get router for URL manipulation
+  const router = useRouter();
+
+  // Get the current workspace ID from Zustand
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
-  const workspaces = useWorkspaceStore(state => state.workspaces);
-  const setCurrentWorkspaceId = useWorkspaceStore(state => state.setCurrentWorkspaceId);
+  
+  // Get the workspace list from SWR (via context)
+  const { workspaces } = useWorkspace();
   
   /**
    * Switch to a specific workspace by ID
+   * 
+   * Simply updates the Zustand store, which is the single source of truth
+   * for workspace selection
    */
   const switchToWorkspace = useCallback((workspaceId: string) => {
     // Debug info
     console.log(`[useWorkspaceSwitcher] Switching workspace:`, { 
       from: currentWorkspaceId || 'none',
       to: workspaceId,
-      workspaceCount: workspaces.length
+      availableCount: workspaces?.length || 0
     });
     
     try {
-      // STEP 1: First remove the workspace provider effect by setting a flag
-      // This prevents the WorkspaceProvider from overriding our selection
-      window.sessionStorage.setItem('manual_workspace_switch', 'true');
+      // Get the selectWorkspace action from the store
+      const selectWorkspace = useWorkspaceStore.getState().selectWorkspace;
       
-      // STEP 2: Direct update to avoid any state synchronization issues
-      setCurrentWorkspaceId(workspaceId);
+      // Call the action to select the workspace
+      // Zustand persist middleware will handle localStorage
+      selectWorkspace(workspaceId);
       
-      // STEP 3: Force update to localStorage to ensure persistence
-      // We use a direct approach to avoid any potential issues with Zustand persist
-      const storageKey = 'workspace-state-storage';
-      const currentStorage = window.localStorage.getItem(storageKey) || '{}';
-      let storageObj;
+      // Update the URL to include the workspace ID
+      // This ensures the workspace selection is persisted in the URL
+      const url = new URL(window.location.href);
+      url.searchParams.set('workspace', workspaceId);
       
-      try {
-        storageObj = JSON.parse(currentStorage);
-      } catch {
-        storageObj = {};
-      }
-      
-      // Update the currentWorkspaceId in the stored state
-      if (!storageObj.state) storageObj.state = {};
-      storageObj.state.currentWorkspaceId = workspaceId;
-      
-      // Write back to localStorage
-      window.localStorage.setItem(storageKey, JSON.stringify(storageObj));
-      
-      // STEP 4: Set a flag to prevent overrides from other components
-      window.sessionStorage.setItem('workspace_last_switched', Date.now().toString());
+      // Use router.replace to update the URL without a page reload
+      router.replace(url.pathname + url.search);
       
       // Log success
       console.log(`[useWorkspaceSwitcher] Successfully switched to workspace: ${workspaceId}`);
@@ -63,7 +62,7 @@ export function useWorkspaceSwitcher() {
         description: "Failed to switch workspace. Please try again." 
       });
     }
-  }, [currentWorkspaceId, workspaces, setCurrentWorkspaceId]);
+  }, [currentWorkspaceId, workspaces, router]);
   
   return {
     currentWorkspaceId,

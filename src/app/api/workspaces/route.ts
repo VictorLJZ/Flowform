@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { Workspace } from '@/types/supabase-types';
+import { DbWorkspace } from '@/types/workspace';
+import { dbToApiWorkspace } from '@/utils/type-utils';
 
 // Get all workspaces for the current user
 export async function GET(request: Request) {
@@ -62,11 +63,14 @@ export async function GET(request: Request) {
     // Log success
     console.log('[API] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map((w: Workspace) => w.name) || []
+      names: workspaces?.map((w: DbWorkspace) => w.name) || []
     });
 
-    // Return workspaces
-    return NextResponse.json(workspaces || []);
+    // Transform DB workspaces to API format
+    const apiWorkspaces = workspaces?.map(dbToApiWorkspace) || [];
+
+    // Return API-formatted workspaces
+    return NextResponse.json(apiWorkspaces);
   } catch (error: unknown) {
     console.error('[API] ERROR in workspace fetch:', error);
     return NextResponse.json(

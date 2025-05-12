@@ -2,7 +2,7 @@ import { getWorkspaceClient, updateWorkspace, leaveWorkspace } from '@/services/
 import { toast } from '@/components/ui/use-toast';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAuth } from '@/providers/auth-provider';
-import type { Workspace } from '@/types/supabase-types';
+import type { ApiWorkspace } from '@/types/workspace';
 import { createWorkspaceFetcher, useWorkspaceSWR } from './swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useWorkspaces } from './useWorkspaces';
@@ -33,7 +33,7 @@ export function useCurrentWorkspace(workspaceId: string | null | undefined) {
     error,
     isLoading: isLoadingWorkspace,
     mutate
-  } = useWorkspaceSWR<Workspace | null>(
+  } = useWorkspaceSWR<ApiWorkspace | null>(
     'currentWorkspace',
     workspaceFetcher,
     {

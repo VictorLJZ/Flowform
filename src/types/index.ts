@@ -58,14 +58,11 @@ export * from './supabase-types';
 // Theme types
 export * from './theme-types';
 
-// User types
-export * from './user-types';
-
 // Workflow types
 export * from './workflow-types';
 
 // Workspace types
-export * from './workspace-types';
+export * from './workspace';
 
 // Re-export specific types that might be needed directly
 // to maintain backward compatibility with existing code

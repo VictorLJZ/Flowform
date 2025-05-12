@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { WorkspaceMemberWithProfile } from '@/types/workspace-types';
+import { DbWorkspaceMember, DbWorkspaceMemberWithProfile } from '@/types/workspace';
 
 /**
  * Get all members of a workspace with their profile information
@@ -9,7 +9,7 @@ import { WorkspaceMemberWithProfile } from '@/types/workspace-types';
  */
 export async function getWorkspaceMembers(
   workspaceId: string
-): Promise<WorkspaceMemberWithProfile[]> {
+): Promise<DbWorkspaceMemberWithProfile[]> {
   const supabase = await createClient();
 
   try {
@@ -56,13 +56,17 @@ export async function getWorkspaceMembers(
         title: null
       };
       
-      return {
-        workspace_id: member.workspace_id,
-        user_id: member.user_id,
-        role: member.role,
-        joined_at: member.joined_at,
-        profile
+      // Create a properly typed DbWorkspaceMemberWithProfile
+      const memberWithProfile: DbWorkspaceMemberWithProfile = {
+        ...member as DbWorkspaceMember,
+        profile: {
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url,
+          email: profile.email || null
+        }
       };
+      
+      return memberWithProfile;
     });
     
     return membersWithProfiles;

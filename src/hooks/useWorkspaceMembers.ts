@@ -1,9 +1,8 @@
 import { getWorkspaceMembersClient } from '@/services/workspace/getWorkspaceMembersClient'
 import { useAuthSession } from '@/hooks/useAuthSession'
-import { WorkspaceRole } from '@/types/workspace-types'
+import { ApiWorkspaceRole, ApiWorkspaceMemberWithProfile } from '@/types/workspace'
 import { changeUserRoleClient, removeWorkspaceMemberClient } from '@/services/workspace/client'
 import { useWorkspaceSWR, createWorkspaceFetcher } from './swr'
-import { WorkspaceMemberWithProfile } from '@/types/workspace-types'
 
 /**
  * Hook for fetching and managing workspace members
@@ -26,7 +25,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     error, 
     isLoading, 
     mutate 
-  } = useWorkspaceSWR<WorkspaceMemberWithProfile[]>(
+  } = useWorkspaceSWR<ApiWorkspaceMemberWithProfile[]>(
     'workspaceMembers',
     membersFetcher,
     {
@@ -41,7 +40,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   /**
    * Change the role of a workspace member
    */
-  const changeRole = async (memberId: string, role: WorkspaceRole) => {
+  const changeRole = async (memberId: string, role: ApiWorkspaceRole) => {
     if (!workspaceId) return
     
     try {
@@ -71,11 +70,11 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   /**
    * Get the current user's role in this workspace
    */
-  const getCurrentUserRole = (): WorkspaceRole | null => {
+  const getCurrentUserRole = (): ApiWorkspaceRole | null => {
     if (!data || !userId) return null
     
-    const currentUserMember = data.find(member => member.user_id === userId)
-    return currentUserMember?.role as WorkspaceRole || null
+    const currentUserMember = data.find(member => member.userId === userId)
+    return currentUserMember?.role as ApiWorkspaceRole || null
   }
   
   /**
@@ -83,7 +82,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
    */
   const isCurrentUserAdmin = (): boolean => {
     const role = getCurrentUserRole()
-    return role === ('owner' as WorkspaceRole) || role === ('admin' as WorkspaceRole)
+    return role === ('owner' as ApiWorkspaceRole) || role === ('admin' as ApiWorkspaceRole)
   }
   
   return {

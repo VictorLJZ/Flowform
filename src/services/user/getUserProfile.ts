@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Profile } from '@/types/supabase-types';
+import { DbProfile } from '@/types/user';
 
 /**
  * Get a user's profile
@@ -7,7 +7,7 @@ import { Profile } from '@/types/supabase-types';
  * @param userId - Optional user ID (uses authenticated user if not provided)
  * @returns The user profile or null if not found
  */
-export async function getUserProfile(userId?: string): Promise<Profile | null> {
+export async function getUserProfile(userId?: string): Promise<DbProfile | null> {
   const supabase = await createClient();
   
   // If no userId is provided, get the current user

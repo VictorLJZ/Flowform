@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
+import { createClient } from "@/lib/supabase/client"
 import { changeUserRoleClient, removeWorkspaceMemberClient } from "@/services/workspace/client"
-import { WorkspaceMemberWithProfile } from "@/types/workspace-types"
-import { WorkspaceRole } from "@/types/workspace-types"
+import { UiWorkspaceMemberWithProfile, ApiWorkspaceRole } from "@/types/workspace"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MoreVertical, UserMinus, Shield, AlertTriangle } from "lucide-react"
 import {
@@ -40,11 +40,11 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface MemberItemProps {
-  member: WorkspaceMemberWithProfile
+  member: UiWorkspaceMemberWithProfile
   joinedDate: string
   isCurrentUser: boolean
   isLastOwner: boolean
-  currentUserRole?: WorkspaceRole
+  currentUserRole?: ApiWorkspaceRole
 }
 
 export function MemberItem({ 
@@ -55,16 +55,16 @@ export function MemberItem({
   currentUserRole,
 }: MemberItemProps) {
   const { toast } = useToast()
-  const { mutate } = useWorkspaceMembers(member.workspace_id)
+  const { mutate } = useWorkspaceMembers(member.workspaceId)
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const targetMemberRole = member.role as WorkspaceRole;
+  const targetMemberRole = member.role as ApiWorkspaceRole;
 
   const canManageRole = (
-    initiator?: WorkspaceRole,
-    target?: WorkspaceRole
+    initiator?: ApiWorkspaceRole,
+    target?: ApiWorkspaceRole
   ): boolean => {
     if (!initiator || !target || isCurrentUser) return false; 
     if (initiator === 'owner') return true; 
@@ -73,8 +73,8 @@ export function MemberItem({
   };
 
   const canAssignRole = (
-    initiator?: WorkspaceRole,
-    roleToAssign?: WorkspaceRole
+    initiator?: ApiWorkspaceRole,
+    roleToAssign?: ApiWorkspaceRole
   ): boolean => {
       if (!initiator || !roleToAssign) return false;
       if (initiator === 'owner') return true; 
@@ -83,8 +83,8 @@ export function MemberItem({
   };
   
   const canRemoveMember = (
-    initiator?: WorkspaceRole,
-    target?: WorkspaceRole
+    initiator?: ApiWorkspaceRole,
+    target?: ApiWorkspaceRole
   ): boolean => {
     if (!initiator || !target || isCurrentUser) return false; 
     if (initiator === 'owner') return target !== 'owner'; 
@@ -121,13 +121,13 @@ export function MemberItem({
     setIsLoading(true)
     
     try {
-      await changeUserRoleClient(member.workspace_id, member.user_id, newRole as WorkspaceRole)
+      await changeUserRoleClient(member.workspaceId, member.userId, newRole as ApiWorkspaceRole)
       
       await mutate()
       
       toast({
         title: "Role updated",
-        description: `${member.profile.full_name} is now a ${newRole}.`,
+        description: `${member.profile.fullName || 'User'} is now a ${newRole}.`,
       })
     } catch (error) {
       toast({
@@ -143,11 +143,18 @@ export function MemberItem({
   const confirmOwnershipTransfer = async () => {
     setIsLoading(true)
     try {
-      await changeUserRoleClient(member.workspace_id, member.user_id, 'owner') 
-      await mutate() 
+      // First make the target user an owner
+      await changeUserRoleClient(member.workspaceId, member.userId, 'owner')
+      // Then demote the current user to admin
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        await changeUserRoleClient(member.workspaceId, user.id, 'admin')
+      }
+      await mutate()
       toast({
         title: "Ownership Transferred",
-        description: `${member.profile.full_name} is now the workspace owner. You are now an Admin.`,
+        description: `${member.profile.fullName} is now the workspace owner. You are now an Admin.`,
       })
     } catch (error) {
       toast({
@@ -165,13 +172,13 @@ export function MemberItem({
     setIsLoading(true)
     
     try {
-      await removeWorkspaceMemberClient(member.workspace_id, member.user_id)
+      await removeWorkspaceMemberClient(member.workspaceId, member.userId)
       
       await mutate()
       
       toast({
         title: "Member removed",
-        description: `${member.profile.full_name} has been removed from the workspace.`,
+        description: `${member.profile.fullName || 'User'} has been removed from the workspace.`,
       })
     } catch (error) {
       toast({
@@ -188,15 +195,15 @@ export function MemberItem({
   return (
     <div className="grid grid-cols-[auto_1fr_120px_150px_48px] items-center p-3 hover:bg-secondary/20 border-b gap-3">
       <div>
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name} />
-          <AvatarFallback>{getInitials(member.profile.full_name)}</AvatarFallback>
-        </Avatar>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={member.profile.avatarUrl || undefined} alt={member.profile.fullName || 'User'} />
+            <AvatarFallback>{getInitials(member.profile.fullName || '')}</AvatarFallback>
+          </Avatar>
       </div>
       
       <div>
         <div className="text-sm">
-          {member.profile.full_name}
+          {member.profile.fullName}
         </div>
         <div className="text-xs text-muted-foreground">
           {member.profile.email} 
@@ -277,7 +284,7 @@ export function MemberItem({
           <DialogHeader>
             <DialogTitle>Remove workspace member</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove <strong>{member.profile.full_name}</strong> from this workspace?
+              Are you sure you want to remove <strong>{member.profile.fullName}</strong> from this workspace?
               They will lose access to all workspace resources immediately.
             </DialogDescription>
           </DialogHeader>
@@ -309,7 +316,7 @@ export function MemberItem({
             </AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
               Are you sure you want to make{' '}
-              <strong className="font-semibold">{member.profile.full_name}</strong>{' '}
+              <strong className="font-semibold">{member.profile.fullName}</strong>{' '}
               the new workspace owner? You will be demoted to an{' '}
               <strong className="font-semibold">Admin</strong>{' '}
               role and will lose owner privileges. This action cannot be undone easily.

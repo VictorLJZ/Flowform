@@ -2,6 +2,8 @@
 
 import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
 import { InvitationRow } from "@/components/workspace/invitation-row"
+import { dbToApiWorkspaceInvitation } from "@/utils/type-utils"
+import { UiWorkspaceInvitation } from "@/types/workspace"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mail, LoaderCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,14 +21,22 @@ export function InvitationList({ workspaceId }: InvitationListProps) {
     error: invitationError
   } = useWorkspaceInvitations(workspaceId)
   
+  // Convert DB invitations to UI format
+  const uiInvitations = sentInvitations.map(dbInvitation => {
+    // First convert to API format
+    const apiInvitation = dbToApiWorkspaceInvitation(dbInvitation);
+    // For this simple case, API and UI formats are the same
+    return apiInvitation as UiWorkspaceInvitation;
+  });
+  
   // Filter invitations to show pending ones first, then others
-  const sortedInvitations = [...sentInvitations].sort((a, b) => {
+  const sortedInvitations = [...uiInvitations].sort((a, b) => {
     // First sort by status (pending first)
     if (a.status === 'pending' && b.status !== 'pending') return -1
     if (a.status !== 'pending' && b.status === 'pending') return 1
     
-    // Then sort by invited_at date (newest first)
-    return new Date(b.invited_at).getTime() - new Date(a.invited_at).getTime()
+    // Then sort by invitedAt date (newest first)
+    return new Date(b.invitedAt).getTime() - new Date(a.invitedAt).getTime()
   })
   
   const pendingInvitations = sortedInvitations.filter(inv => inv.status === 'pending')

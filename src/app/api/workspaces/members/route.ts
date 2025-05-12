@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { removeMember } from '@/services/workspace/removeMember';
+import { DbWorkspaceMember, DbWorkspaceMemberWithProfile } from '@/types/workspace';
+import { dbToApiWorkspaceMemberWithProfile } from '@/utils/type-utils/workspace/DbToApiWorkspace';
 
 // Get all members of a workspace with their profile information
 // Get all members of a workspace with their profile information
@@ -60,7 +62,7 @@ export async function GET(request: Request) {
       profileMap.set(profile.id, profile);
     });
     
-    // Combine member data with profile data
+    // Combine member data with profile data using our transformation utility
     const membersWithProfiles = membersData.map(member => {
       const profile = profileMap.get(member.user_id) || {
         full_name: 'Unknown User',
@@ -68,13 +70,18 @@ export async function GET(request: Request) {
         avatar_url: null
       };
       
-      return {
-        workspace_id: member.workspace_id,
-        user_id: member.user_id,
-        role: member.role,
-        joined_at: member.joined_at,
-        profile
+      // Create a properly typed DbWorkspaceMemberWithProfile
+      const dbMemberWithProfile: DbWorkspaceMemberWithProfile = {
+        ...member as DbWorkspaceMember,
+        profile: {
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url,
+          email: profile.email
+        }
       };
+      
+      // Convert to API format using our new transformation utility
+      return dbToApiWorkspaceMemberWithProfile(dbMemberWithProfile);
     });
 
     return NextResponse.json(membersWithProfiles);

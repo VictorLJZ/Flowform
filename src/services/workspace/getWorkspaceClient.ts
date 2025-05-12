@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Workspace } from '@/types/supabase-types';
+import type { ApiWorkspace } from '@/types/workspace';
+import { dbToApiWorkspace } from '@/utils/type-utils';
 
 /**
  * Get a single workspace by ID - client-side implementation
@@ -7,7 +8,7 @@ import type { Workspace } from '@/types/supabase-types';
  * @param workspaceId - ID of the workspace
  * @returns The workspace or null if not found
  */
-export async function getWorkspaceClient(workspaceId: string): Promise<Workspace | null> {
+export async function getWorkspaceClient(workspaceId: string): Promise<ApiWorkspace | null> {
   if (!workspaceId) {
     console.warn('[getWorkspaceClient] No workspace ID provided');
     return null;
@@ -40,7 +41,7 @@ export async function getWorkspaceClient(workspaceId: string): Promise<Workspace
       }
       throw error;
     }
-    return data;
+    return data ? dbToApiWorkspace(data) : null;
   } catch (error) {
     console.error('[getWorkspaceClient] Error fetching workspace:', error);
     return null;

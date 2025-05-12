@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Workspace } from '@/types/supabase-types';
-import { WorkspaceMemberBasic } from '@/types/workspace-types';
+import { DbWorkspace} from '@/types/workspace';
 
 /**
  * Get all workspaces where the user is a member
@@ -8,7 +7,7 @@ import { WorkspaceMemberBasic } from '@/types/workspace-types';
  * @param userId - The ID of the user
  * @returns An array of workspaces
  */
-export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
+export async function getUserWorkspaces(userId: string): Promise<DbWorkspace[]> {
   console.log('[getUserWorkspaces] Starting with userId:', userId);
   
   try {
@@ -62,7 +61,8 @@ export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
     }
     
     // Get workspace IDs from memberships
-    const workspaceIds = memberships.map((m: WorkspaceMemberBasic) => m.workspace_id);
+    // Transform snake_case DB response to API format if needed
+    const workspaceIds = memberships.map((m) => m.workspace_id);
     console.log('[getUserWorkspaces] Found workspace IDs:', workspaceIds);
     
     // SECOND QUERY: Get workspaces with timeout protection
@@ -106,7 +106,7 @@ export async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
     // Log success
     console.log('[getUserWorkspaces] Successfully fetched workspaces:', {
       count: workspaces?.length || 0,
-      names: workspaces?.map((w: Workspace) => w.name) || []
+      names: workspaces?.map((w: DbWorkspace) => w.name) || []
     });
     
     // Return workspaces or empty array

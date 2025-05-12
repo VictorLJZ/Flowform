@@ -1,32 +1,31 @@
 "use client"
 
 import { useState } from "react"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
-import { WorkspaceRole } from "@/types/workspace-types"
+import { ApiWorkspaceRole } from "@/types/workspace"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useAuthSession } from "@/hooks/useAuthSession"
+import { useCurrentWorkspace } from "@/providers/workspace-provider"
 
 // Import the existing components to maintain functionality
 import { MembersHeader } from "@/components/workspace/members/members-header"
 import { MembersList } from "@/components/workspace/members/members-list"
 
 export default function TeamSettings() {
-  const { currentWorkspaceId, workspaces } = useWorkspaceStore()
-  const currentWorkspace = workspaces.find(w => w.id === currentWorkspaceId)
+  // Get the current workspace from our provider
+  const { currentWorkspace, selectedId: currentWorkspaceId } = useCurrentWorkspace()
   
   // Debug logging to see what we're working with
   console.log('[TeamSettings] Workspace context:', {
-    currentWorkspaceId: currentWorkspaceId || 'null',
-    workspacesCount: workspaces.length,
+    currentWorkspaceId: currentWorkspaceId || 'null', 
     hasCurrentWorkspace: !!currentWorkspace,
   })
   
-  const [filterRole, setFilterRole] = useState<WorkspaceRole | null>(null)
+  const [filterRole, setFilterRole] = useState<ApiWorkspaceRole | null>(null)
   const [sortBy, setSortBy] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -43,7 +42,7 @@ export default function TeamSettings() {
   } = useWorkspaceMembers(currentWorkspaceId)
   
   // Find current user's role
-  const currentUserRole = members?.find(m => m.user_id === currentUserId)?.role as WorkspaceRole | undefined;
+  const currentUserRole = members?.find(m => m.userId === currentUserId)?.role as ApiWorkspaceRole | undefined;
   
   // Filter members based on role and search query
   const filteredMembers = members.filter(member => {
@@ -55,7 +54,7 @@ export default function TeamSettings() {
     // Search query filter (check name or email)
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      const name = member.profile?.full_name?.toLowerCase() || ""
+      const name = member.profile?.fullName?.toLowerCase() || ""
       return name.includes(query)
     }
     
@@ -66,8 +65,8 @@ export default function TeamSettings() {
   const sortedMembers = [...filteredMembers].sort((a, b) => {
     // Prioritize the current user
     if (currentUserId) {
-      if (a.user_id === currentUserId) return -1 // Current user 'a' comes first
-      if (b.user_id === currentUserId) return 1  // Current user 'b' comes first (so 'a' comes after)
+      if (a.userId === currentUserId) return -1 // Current user 'a' comes first
+      if (b.userId === currentUserId) return 1  // Current user 'b' comes first (so 'a' comes after)
     }
     
     // Existing sorting logic for other members
@@ -75,20 +74,20 @@ export default function TeamSettings() {
     
     switch (sortBy) {
       case "name":
-        valueA = a.profile?.full_name?.toLowerCase() || ""
-        valueB = b.profile?.full_name?.toLowerCase() || ""
+        valueA = a.profile?.fullName?.toLowerCase() || ""
+        valueB = b.profile?.fullName?.toLowerCase() || ""
         break
       case "role":
         valueA = a.role as string
         valueB = b.role as string
         break
       case "joined":
-        valueA = a.joined_at
-        valueB = b.joined_at
+        valueA = a.joinedAt
+        valueB = b.joinedAt
         break
       default:
-        valueA = a.profile?.full_name?.toLowerCase() || ""
-        valueB = b.profile?.full_name?.toLowerCase() || ""
+        valueA = a.profile?.fullName?.toLowerCase() || ""
+        valueB = b.profile?.fullName?.toLowerCase() || ""
     }
     
     // Handle sorting direction
@@ -122,7 +121,7 @@ export default function TeamSettings() {
           
           <MembersHeader
             memberCount={sortedMembers.length}
-            onFilterChange={(role: string | null) => setFilterRole(role as WorkspaceRole | null)}
+            onFilterChange={(role: string | null) => setFilterRole(role as ApiWorkspaceRole | null)}
             onSortChange={setSortBy}
             onSortDirectionChange={setSortDirection}
             onSearchChange={setSearchQuery}
@@ -159,7 +158,7 @@ export default function TeamSettings() {
       <InviteDialog
         open={showInviteDialog}
         onOpenChange={setShowInviteDialog}
-        currentWorkspace={currentWorkspace}
+        currentWorkspace={currentWorkspace || null}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { WorkspaceRole } from '@/types/workspace-types';
+import { ApiWorkspaceRole } from '@/types/workspace';
 import { networkLog } from '@/lib/debug-logger';
 
 /**
@@ -13,7 +13,7 @@ import { networkLog } from '@/lib/debug-logger';
 export async function checkWorkspacePermissionClient(
   workspaceId: string,
   userId: string,
-  requiredRoles: WorkspaceRole[] = ['owner', 'admin']
+  requiredRoles: ApiWorkspaceRole[] = ['owner', 'admin']
 ): Promise<{hasPermission: boolean, role?: string}> {
   if (!userId) {
     networkLog('Permission check failed - no userId provided', { workspaceId });

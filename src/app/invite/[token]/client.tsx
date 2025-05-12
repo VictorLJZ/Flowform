@@ -13,7 +13,7 @@ import { useAuthSession } from "@/hooks/useAuthSession"
 import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
 import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
 import { getWorkspaceById } from "@/services/workspace/getWorkspaceById"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useWorkspaceInitialization } from "@/hooks/useWorkspaceInitialization"
 
 interface InvitePageClientProps {
   token: string
@@ -24,7 +24,8 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
   const { toast } = useToast()
   const { user, isLoading: isAuthLoading } = useAuthSession()
   const userId = user?.id
-  const syncWorkspaceAfterInvitation = useWorkspaceStore(state => state.syncWorkspaceAfterInvitation)
+  // Use SWR to mutate workspace data instead of the old Zustand sync method
+  const { mutate: mutateWorkspaces } = useWorkspaceInitialization()
   
   // Not using email state directly as it's handled by the invitation details
   // const [email, setEmail] = useState("")
@@ -115,19 +116,26 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
         })
         
-        // Important: Sync the workspace with our store to make it appear in the workspace switcher
-        await syncWorkspaceAfterInvitation(membership.workspace_id, getWorkspaceById)
-        
-        // Force refresh the SWR cache for workspaces
-        // This ensures all components using useWorkspaces() will get the updated data
+        // Important: Update SWR cache to make the workspace appear in the workspace switcher without a page refresh
         try {
-          const workspacesKey = '/api/workspaces'
-          await fetch(`${workspacesKey}?userId=${userId}`, { 
-            method: 'GET',
-            headers: { 'Cache-Control': 'no-cache' } 
-          })
+          // Get the workspace details
+          const newWorkspace = await getWorkspaceById(membership.workspace_id)
+          
+          if (newWorkspace) {
+            // Update the SWR cache with the new workspace
+            await mutateWorkspaces(prev => {
+              const safeWorkspaces = prev || [];
+              // Check if workspace already exists to avoid duplicates
+              if (safeWorkspaces.some(w => w.id === newWorkspace.id)) return safeWorkspaces;
+              return [...safeWorkspaces, newWorkspace];
+            });
+            
+            console.log('[InvitePage] Updated workspace cache with new workspace:', newWorkspace.name);
+          } else {
+            console.log('[InvitePage] Workspace not found after accepting invitation');
+          }
         } catch (fetchError) {
-          console.error('Error refreshing workspaces cache:', fetchError)
+          console.error('Error updating workspaces cache:', fetchError)
           // Non-blocking, still continue even if cache refresh fails
         }
         

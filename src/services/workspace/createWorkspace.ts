@@ -1,17 +1,17 @@
 import { createClient } from '@/lib/supabase/client';
-import { Workspace } from '@/types/supabase-types';
-import { WorkspaceInput } from '@/types/workspace-types';
+import { ApiWorkspace, ApiWorkspaceInput } from '@/types/workspace';
+import { dbToApiWorkspace, workspaceInputToDb } from '@/utils/type-utils';
 
 /**
  * Create a new workspace and automatically add the creator as an owner
  * 
- * @param workspaceData - The workspace data to create
- * @returns The newly created workspace
+ * @param workspaceData - The workspace data to create (API layer format)
+ * @returns The newly created workspace (API layer format)
  */
-export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Workspace> {
+export async function createWorkspace(workspaceData: ApiWorkspaceInput): Promise<ApiWorkspace> {
   console.log('[createWorkspace] Starting with data:', {
     name: workspaceData.name,
-    userId: workspaceData.created_by,
+    userId: workspaceData.createdBy,
   });
 
   // Create a fresh client for this operation
@@ -35,15 +35,12 @@ export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Wo
   // Start a transaction by using a single connection
   // Create the workspace
   try {
+    // Transform API input to DB format
+    const dbWorkspaceData = workspaceInputToDb(workspaceData);
+    
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
-      .insert({
-        name: workspaceData.name,
-        description: workspaceData.description,
-        created_by: workspaceData.created_by,
-        logo_url: workspaceData.logo_url || null,
-        settings: workspaceData.settings || null,
-      })
+      .insert(dbWorkspaceData)
       .select('*')
 
     if (workspaceError) {
@@ -62,14 +59,14 @@ export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Wo
     // Add the creator as an owner
     console.log('[createWorkspace] Adding creator as owner:', {
       workspaceId: newWorkspace.id,
-      userId: workspaceData.created_by
+      userId: workspaceData.createdBy
     });
     
     const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: newWorkspace.id,
-        user_id: workspaceData.created_by,
+        user_id: workspaceData.createdBy,
         role: 'owner',
       });
 
@@ -87,7 +84,9 @@ export async function createWorkspace(workspaceData: WorkspaceInput): Promise<Wo
     }
 
     console.log('[createWorkspace] Successfully created workspace:', newWorkspace.id);
-    return newWorkspace;
+    
+    // Transform DB workspace to API workspace before returning
+    return dbToApiWorkspace(newWorkspace);
   } catch (error) {
     console.error('[createWorkspace] Unexpected error:', error);
     

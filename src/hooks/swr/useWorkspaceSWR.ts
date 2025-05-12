@@ -1,5 +1,6 @@
 import useSWR, { SWRConfiguration, SWRResponse } from 'swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspace } from '@/providers/workspace-provider';
 import { toast } from '@/components/ui/use-toast';
 import { SWRErrorResponse, isSWRErrorResponse } from '@/types/workspace-swr-types';
 
@@ -77,9 +78,9 @@ export function useWorkspaceSWR<Data, Error = SWRErrorResponse>(
   options?: SWRConfiguration,
   explicitWorkspaceId?: string | null
 ): SWRResponse<Data, Error> & { workspaceId: string | null } {
-  // Get available workspaces from the store
-  const availableWorkspaces = useWorkspaceStore(state => state.workspaces);
-  const isInitialLoad = availableWorkspaces.length === 0;
+  // Get available workspaces from SWR
+  const { workspaces } = useWorkspace();
+  const isInitialLoad = !workspaces || workspaces.length === 0;
   
   // Use explicit workspace ID if provided, otherwise get from store
   const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
@@ -87,13 +88,13 @@ export function useWorkspaceSWR<Data, Error = SWRErrorResponse>(
   
   // Validate the workspace ID is valid before attempting to fetch
   const isWorkspaceValid = workspaceId && 
-    availableWorkspaces.some(w => w.id === workspaceId);
+    workspaces?.some(w => w.id === workspaceId);
   
   // Skip fetching in these cases:
   // 1. If we have a workspace ID but it's not in the available workspaces
   // 2. If we're in the initial loading state but trying to use a workspace ID from localStorage
   const shouldSkipFetch = 
-    (!!workspaceId && !isWorkspaceValid && availableWorkspaces.length > 0) || 
+    (!!workspaceId && !isWorkspaceValid && workspaces && workspaces.length > 0) || 
     (isInitialLoad && !!workspaceId && !explicitWorkspaceId);
   
   // Create the key with workspace context

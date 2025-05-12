@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation } from '@/types/supabase-types';
+import { DbWorkspaceInvitation } from '@/types/workspace';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
  * @param invitationId - The ID of the invitation to resend
  * @returns The updated invitation or null if not found
  */
-export async function resendInvitation(invitationId: string): Promise<WorkspaceInvitation | null> {
+export async function resendInvitation(invitationId: string): Promise<DbWorkspaceInvitation | null> {
   const supabase = createClient();
   
   // Check if the invitation exists and is still pending

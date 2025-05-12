@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceInvitation } from '@/types/supabase-types';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { DbWorkspaceInvitation } from '@/types/workspace';
+import { DbWorkspaceRole } from '@/types/workspace';
 import { v4 as uuidv4 } from 'uuid';
 import { sendInvitationEmail } from '@/services/workspace/sendInvitationEmail';
 import { resendInvitation } from '@/services/workspace/resendInvitation';
@@ -17,9 +17,9 @@ import { resendInvitation } from '@/services/workspace/resendInvitation';
 export async function inviteToWorkspace(
   workspaceId: string,
   email: string,
-  role: WorkspaceRole,
+  role: DbWorkspaceRole,
   invitedBy: string
-): Promise<WorkspaceInvitation> {
+): Promise<DbWorkspaceInvitation> {
   console.log('[inviteToWorkspace] Starting with params:', { workspaceId, email, role, invitedBy });
   const supabase = createClient();
   

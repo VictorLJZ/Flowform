@@ -1,6 +1,6 @@
-import { Workspace } from '@/types/supabase-types';
+import { ApiWorkspace } from '@/types/workspace';
 import { networkLog } from '@/lib/debug-logger';
-import { ApiErrorResponse } from '@/types/workspace-types';
+import { ApiErrorResponse } from '@/types/workspace';
 
 /**
  * Get all workspaces where the user is a member - Client-side implementation
@@ -9,7 +9,7 @@ import { ApiErrorResponse } from '@/types/workspace-types';
  * @param userId - The ID of the user
  * @returns An array of workspaces
  */
-export async function getUserWorkspacesClient(userId: string): Promise<Workspace[]> {
+export async function getUserWorkspacesClient(userId: string): Promise<ApiWorkspace[]> {
   
   // Maximum number of retries
   const maxRetries = 2;
@@ -60,7 +60,7 @@ export async function getUserWorkspacesClient(userId: string): Promise<Workspace
       }
       
       // Parse the response data
-      const workspaces = await response.json() as Workspace[];
+      const workspaces = await response.json() as ApiWorkspace[];
       
       // Log success
       

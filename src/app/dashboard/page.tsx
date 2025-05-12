@@ -29,7 +29,7 @@ import { ConfirmDialog } from "@/components/workspace/confirm-dialog"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { useAuthSession } from "@/hooks/useAuthSession"
-import { WorkspaceRole } from "@/types/workspace-types"
+import { ApiWorkspaceRole } from "@/types/workspace"
 import { FormsView } from "@/components/dashboard"
 
 export default function Page() {
@@ -43,7 +43,7 @@ export default function Page() {
   
   // Fetch members to determine current user's role
   const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId)
-  const currentUserRole = workspaceMembers?.find(m => m.user_id === currentUserId)?.role as WorkspaceRole | undefined
+  const currentUserRole = workspaceMembers?.find(m => m.userId === currentUserId)?.role as ApiWorkspaceRole | undefined
 
   const { workspace, rename, leave, remove } = useCurrentWorkspace(currentWorkspaceId)
 

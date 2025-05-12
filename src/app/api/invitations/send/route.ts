@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { ApiWorkspaceRole } from '@/types/workspace';
 
 // Get invitation URL using the token
 function getInvitationUrl(token: string): string {
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     }
     
     // Format role for display
-    const getRoleName = (role: WorkspaceRole): string => {
+    const getRoleName = (role: ApiWorkspaceRole): string => {
       switch (role) {
         case 'owner': return 'Owner';
         case 'admin': return 'Administrator';
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       }
     };
     
-    const roleName = getRoleName(invitation.role as WorkspaceRole);
+    const roleName = getRoleName(invitation.role as ApiWorkspaceRole);
     
     // Generate the invitation URL
     const invitationUrl = getInvitationUrl(invitation.token);

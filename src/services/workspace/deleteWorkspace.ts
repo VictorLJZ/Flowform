@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Workspace } from '@/types/supabase-types';
+import type { ApiWorkspace } from '@/types/workspace';
+import { dbToApiWorkspace } from '@/utils/type-utils';
 
 /**
  * Delete a workspace and all associated data
@@ -9,7 +10,7 @@ import type { Workspace } from '@/types/supabase-types';
  */
 export async function deleteWorkspace(workspaceId: string): Promise<{ 
   success: boolean;
-  remainingWorkspaces?: Workspace[];
+  remainingWorkspaces?: ApiWorkspace[];
 }> {
   const supabase = createClient();
 
@@ -85,8 +86,13 @@ export async function deleteWorkspace(workspaceId: string): Promise<{
     console.error('Error fetching remaining workspaces after deletion:', fetchError);
   }
   
+  // Transform DB workspaces to API format before returning
+  const apiWorkspaces = remainingWorkspaces ? 
+    remainingWorkspaces.map(dbToApiWorkspace) : 
+    [];
+    
   return { 
     success: true,
-    remainingWorkspaces: remainingWorkspaces || []
+    remainingWorkspaces: apiWorkspaces
   };
 }

@@ -2,24 +2,35 @@ import useSWR from 'swr'
 import { useEffect, useRef } from 'react'
 import { getSentInvitations, inviteToWorkspace, resendInvitation, revokeInvitation } from '@/services/workspace/client'
 import { useAuthSession } from '@/hooks/useAuthSession'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 const DEFAULT_INVITATION_LIMIT = 10
 
 /**
- * Hook to manage workspace invitations (sent invites) via SWR
+ * Hook to manage workspace invitations via SWR
+ * 
+ * Following Carmack principles:
+ * - Zustand is single source of truth for selection
+ * - SWR handles data fetching and caching
+ * - Simple, focused functionality
  */
-export function useWorkspaceInvitations(workspaceId: string | null | undefined) {
+export function useWorkspaceInvitations(propWorkspaceId?: string | null) {
   const { user, isLoading: isAuthLoading } = useAuthSession()
   const userId = user?.id
+  
+  // Use Zustand as the single source of truth for workspace selection
+  const storeWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
+  
+  // Prefer Zustand store over props (prop is only a fallback)
+  const workspaceId = storeWorkspaceId || propWorkspaceId;
   
   // Track previous workspaceId to detect changes
   const prevWorkspaceIdRef = useRef<string | null | undefined>(workspaceId)
   
-  // Log the params for debugging
-  console.log('[useWorkspaceInvitations] initialized with:', { 
-    workspaceId, 
-    userId: userId || 'undefined',
-    prevWorkspaceId: prevWorkspaceIdRef.current || 'undefined',
+  // Simple logging (Carmack preferred minimal logging)
+  console.log('[useWorkspaceInvitations]', { 
+    workspaceId: workspaceId || 'undefined',
+    source: storeWorkspaceId ? 'zustand' : 'props'
   });
   
   const key = workspaceId && userId ? ['workspaceInvitations', workspaceId] : null

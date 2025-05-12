@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { ApiWorkspaceRole } from '@/types/workspace';
 
 // API endpoint to check user permissions for a workspace
 export async function GET(request: Request) {
@@ -18,10 +18,10 @@ export async function GET(request: Request) {
     }
 
     // Parse required roles or use default
-    let roles: WorkspaceRole[] = ['owner', 'admin'];
+    let roles: ApiWorkspaceRole[] = ['owner', 'admin'];
     if (requiredRoles) {
       try {
-        roles = JSON.parse(requiredRoles) as WorkspaceRole[];
+        roles = JSON.parse(requiredRoles) as ApiWorkspaceRole[];
       } catch (e) {
         console.error('[API] Invalid roles format:', e);
       }
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     }
     
     return NextResponse.json({ 
-      hasPermission: roles.includes(data.role as WorkspaceRole),
+      hasPermission: roles.includes(data.role as ApiWorkspaceRole),
       role: data.role
     });
   } catch (error: unknown) {

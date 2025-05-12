@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
-import { WorkspaceMember } from '@/types/supabase-types';
+import { DbWorkspaceMember, ApiWorkspace } from '@/types/workspace';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { getWorkspaceClient } from './getWorkspaceClient';
+import { getWorkspaceById } from './getWorkspaceById';
 
 /**
  * Accept a workspace invitation using the invitation token
@@ -14,7 +14,7 @@ import { getWorkspaceClient } from './getWorkspaceClient';
 export async function acceptInvitation(
   token: string,
   userId: string
-): Promise<WorkspaceMember | null> {
+): Promise<DbWorkspaceMember | null> {
   console.log('[acceptInvitation] Starting with token and userId:', { token, userId });
   const supabase = createClient();
   
@@ -88,7 +88,7 @@ export async function acceptInvitation(
       });
       
     // Extract the membership from the RPC result
-    const membership = result as WorkspaceMember | null;
+    const membership = result as DbWorkspaceMember | null;
     
     if (membershipError) {
       console.error('[acceptInvitation] Error creating workspace membership:', membershipError);
@@ -109,21 +109,23 @@ export async function acceptInvitation(
     
     console.log('[acceptInvitation] Successfully accepted invitation');
     
-    // Sync the workspace in the global store and set it as the current workspace
+    // Select the workspace in Zustand (following our new architecture)  
     if (membership && invitation.workspace_id) {
       try {
-        // Get the workspace store
-        const workspaceStore = useWorkspaceStore.getState();
+        // Get the workspace details
+        const workspace: ApiWorkspace | null = await getWorkspaceById(invitation.workspace_id);
         
-        // Use the syncWorkspaceAfterInvitation function to add the workspace and select it
-        await workspaceStore.syncWorkspaceAfterInvitation(
-          invitation.workspace_id, 
-          getWorkspaceClient
-        );
-        
-        console.log('[acceptInvitation] Workspace synced and selected:', invitation.workspace_id);
+        if (workspace) {
+          // Get the workspace store and select the workspace
+          const workspaceStore = useWorkspaceStore.getState();
+          workspaceStore.selectWorkspace(invitation.workspace_id);
+          
+          console.log('[acceptInvitation] Workspace selected:', invitation.workspace_id);
+        } else {
+          console.error('[acceptInvitation] Could not find workspace details for:', invitation.workspace_id);
+        }
       } catch (syncError) {
-        console.error('[acceptInvitation] Error syncing workspace:', syncError);
+        console.error('[acceptInvitation] Error selecting workspace:', syncError);
         // Don't throw here, we still want to return the membership even if sync fails
       }
     }

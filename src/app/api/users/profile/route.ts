@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { dbToApiProfile } from '@/utils/type-utils/user';
 
 // Get a user's profile
 export async function GET(request: Request) {
@@ -41,7 +42,9 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json(data);
+    // Transform the database data to API format
+    const apiProfile = dbToApiProfile(data);
+    return NextResponse.json(apiProfile);
   } catch (error: unknown) {
     console.error('[API] Error in user profile API:', error);
     return NextResponse.json(

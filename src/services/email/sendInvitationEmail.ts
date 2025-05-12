@@ -1,7 +1,6 @@
 // src/services/email/sendInvitationEmail.ts
 import { sendEmail } from './sendEmail';
-import { WorkspaceInvitation } from '@/types/supabase-types';
-import { WorkspaceRole } from '@/types/workspace-types';
+import { DbWorkspaceInvitation, ApiWorkspaceRole } from '@/types/workspace';
 
 /**
  * Generate a URL for accepting a workspace invitation
@@ -21,7 +20,7 @@ function getInvitationUrl(token: string): string {
  * @param role - The workspace role
  * @returns A user-friendly role name
  */
-function getRoleName(role: WorkspaceRole): string {
+function getRoleName(role: ApiWorkspaceRole): string {
   switch (role) {
     case 'owner': return 'Owner';
     case 'admin': return 'Administrator';
@@ -40,12 +39,12 @@ function getRoleName(role: WorkspaceRole): string {
  * @returns A promise that resolves with the result of sending the email
  */
 export async function sendInvitationEmail(
-  invitation: WorkspaceInvitation,
+  invitation: DbWorkspaceInvitation,
   workspaceName: string,
   inviterName: string
 ): Promise<{success: boolean, messageId?: string, error?: string}> {
   const invitationUrl = getInvitationUrl(invitation.token);
-  const roleName = getRoleName(invitation.role as WorkspaceRole);
+  const roleName = getRoleName(invitation.role as ApiWorkspaceRole);
   const expirationDate = new Date(invitation.expires_at).toLocaleDateString();
   
   // HTML email template

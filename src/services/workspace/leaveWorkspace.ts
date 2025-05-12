@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { getUserWorkspacesClient } from './getUserWorkspacesClient';
 
 /**
  * Allows a user to leave a workspace
@@ -109,22 +110,27 @@ export async function leaveWorkspace(workspaceId: string): Promise<{
     throw deleteError;
   }
 
-  // Update workspace store
+  // Update selection state if needed
   const workspaceStore = useWorkspaceStore.getState();
   const currentWorkspaceId = workspaceStore.currentWorkspaceId;
-  const workspaces = workspaceStore.workspaces.filter(w => w.id !== workspaceId);
-  
-  // Set workspaces without the one we just left
-  workspaceStore.setWorkspaces(workspaces);
   
   // If we left the currently selected workspace, select a new one
   if (currentWorkspaceId === workspaceId) {
-    // If there are other workspaces, select the first one
-    if (workspaces.length > 0) {
-      workspaceStore.setCurrentWorkspaceId(workspaces[0].id);
-    } else {
-      // If no workspaces left, set to null
-      workspaceStore.setCurrentWorkspaceId(null);
+    // Get user's remaining workspaces from the database
+    try {
+      const remainingWorkspaces = await getUserWorkspacesClient(userId);
+      
+      // If there are other workspaces, select the first one
+      if (remainingWorkspaces && remainingWorkspaces.length > 0) {
+        workspaceStore.selectWorkspace(remainingWorkspaces[0].id);
+      } else {
+        // If no workspaces left, clear the selection
+        workspaceStore.selectWorkspace(null);
+      }
+    } catch (error) {
+      console.error('Error fetching remaining workspaces:', error);
+      // Clear the selection if we can't fetch workspaces
+      workspaceStore.selectWorkspace(null);
     }
   }
 

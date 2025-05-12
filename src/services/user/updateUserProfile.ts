@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
-import { Profile } from '@/types/supabase-types';
-import { ProfileUpdateInput } from '@/types/user-types';
+import { DbProfile } from '@/types/user';
+import { ApiProfileUpdateInput } from '@/types/user';
+import { profileUpdateInputToDb } from '@/utils/type-utils/user';
 
 /**
  * Update a user's profile
@@ -10,9 +11,9 @@ import { ProfileUpdateInput } from '@/types/user-types';
  * @returns The updated profile
  */
 export async function updateUserProfile(
-  profileData: ProfileUpdateInput,
+  profileData: ApiProfileUpdateInput,
   userId?: string
-): Promise<Profile> {
+): Promise<DbProfile> {
   const supabase = createClient();
   
   // If no userId is provided, get the current user
@@ -24,11 +25,8 @@ export async function updateUserProfile(
     userId = userData.user.id;
   }
 
-  // Add updated_at timestamp
-  const updateData = {
-    ...profileData,
-    updated_at: new Date().toISOString()
-  };
+  // Convert API input to DB format with proper naming conventions
+  const updateData = profileUpdateInputToDb(profileData);
 
   // Update the profile
   const { data, error } = await supabase

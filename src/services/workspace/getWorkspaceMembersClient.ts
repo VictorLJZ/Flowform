@@ -1,4 +1,4 @@
-import { WorkspaceMemberWithProfile } from '@/types/workspace-types';
+import { ApiWorkspaceMemberWithProfile } from '@/types/workspace';
 
 /**
  * Get all members of a workspace with their profile information - Client-side implementation
@@ -9,7 +9,7 @@ import { WorkspaceMemberWithProfile } from '@/types/workspace-types';
  */
 export async function getWorkspaceMembersClient(
   workspaceId: string
-): Promise<WorkspaceMemberWithProfile[]> {
+): Promise<ApiWorkspaceMemberWithProfile[]> {
   try {
     // Make the API request
     const response = await fetch(`/api/workspaces/members?workspaceId=${encodeURIComponent(workspaceId)}`);

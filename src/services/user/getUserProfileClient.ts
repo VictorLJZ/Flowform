@@ -1,4 +1,4 @@
-import { Profile } from '@/types/supabase-types';
+import { ApiProfile } from '@/types/user';
 
 /**
  * Get a user's profile - Client-side implementation
@@ -7,7 +7,7 @@ import { Profile } from '@/types/supabase-types';
  * @param userId - Optional user ID (uses authenticated user if not provided)
  * @returns The user profile or null if not found
  */
-export async function getUserProfileClient(userId?: string): Promise<Profile | null> {
+export async function getUserProfileClient(userId?: string): Promise<ApiProfile | null> {
   try {
     // Construct the query parameters
     const params = new URLSearchParams();
