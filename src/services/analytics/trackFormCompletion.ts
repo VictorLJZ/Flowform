@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormResponse } from '@/types/supabase-types';
+import { DbFormResponse, ApiFormResponse } from '@/types/response';
+import { dbToApiFormResponse } from '@/utils/type-utils/response';
 import { getVisitorId } from '@/lib/analytics/visitorId';
 import { queueEvent } from '@/lib/analytics/eventQueue';
 
@@ -17,7 +18,7 @@ export async function trackFormCompletion(
   responseId: string,
   totalTimeSeconds?: number,
   metadata: Record<string, unknown> = {}
-): Promise<FormResponse> {
+): Promise<ApiFormResponse> {
   const supabase = createClient();
   const visitorId = getVisitorId();
   const timestamp = new Date().toISOString();
@@ -88,5 +89,5 @@ export async function trackFormCompletion(
     console.warn('Error updating form completion metrics:', metricsError);
   }
   
-  return data;
+  return dbToApiFormResponse(data as DbFormResponse);
 }

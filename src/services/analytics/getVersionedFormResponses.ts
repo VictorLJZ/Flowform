@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { FormBlockVersion, VersionedResponse } from '@/types/form-version-types';
 import { DbFormVersion } from '@/types/form';
+import { DbFormResponse, DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
+import { dbToApiFormResponse, dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 
 // Type for simplified block version data used in the response
 interface SimpleBlockVersion {
@@ -174,6 +176,10 @@ export async function getVersionedFormResponses(
       const responseDynamicResponses = dynamicResponses
         ? dynamicResponses.filter(d => d.response_id === response.id)
         : [];
+        
+      // Convert DB types to API types
+      const apiStaticAnswers = dbToApiStaticBlockAnswers(responseStaticAnswers as DbStaticBlockAnswer[]);
+      const apiDynamicResponses = dbToApiDynamicBlockResponses(responseDynamicResponses as DbDynamicBlockResponse[]);
       
       if (DEBUG) {
         console.log(`[getVersionedFormResponses] Building response ${response.id}:`);
@@ -184,12 +190,17 @@ export async function getVersionedFormResponses(
         console.log(`  - dynamic_responses: ${responseDynamicResponses.length}`);
       }
         
+      // Convert DB response to API response and merge with versioned data
+      const apiResponse = dbToApiFormResponse(response as DbFormResponse);
+      
       return {
-        ...response,
+        ...apiResponse,
+        // Keep form_version_id for backward compatibility
+        form_version_id: response.form_version_id,
         form_version: formVersion,
         version_blocks: versionBlocks,
-        static_answers: responseStaticAnswers,
-        dynamic_responses: responseDynamicResponses
+        static_answers: apiStaticAnswers,
+        dynamic_responses: apiDynamicResponses
       };
     });
     

@@ -1,23 +1,25 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 import type { ChangeEvent, KeyboardEvent, MutableRefObject } from 'react';
 
 // Define the expected result structure for submitAnswer
 interface SubmitAnswerResult {
+  success: boolean;
+  error?: string;
+  conversation?: ApiQAPair[];
   nextQuestion?: string;
-  conversation?: QAPair[];
-  error?: string; // Added error as it's a common return property
+  isComplete?: boolean;
 }
 
 interface UseConversationInteractionProps {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   activeQuestionIndex: number;
   questionInputs: Record<number, string>;
   isFirstQuestion: boolean;
   starterPrompt: string;
   submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<SubmitAnswerResult>;
   onNext?: () => void;
-  onChange?: (value: QAPair[]) => void;
+  onChange?: (value: ApiQAPair[]) => void;
   onUpdate?: () => void;
   maxQuestions?: number;
 }
@@ -111,7 +113,14 @@ export function useConversationInteraction({
       if (isFirstQuestion) {
         currentQuestion = starterPrompt;
       } else if (activeQuestionIndex < conversation.length) {
-        currentQuestion = conversation[activeQuestionIndex].question;
+        // Find the current question in the conversation
+        const item = conversation[activeQuestionIndex];
+        if (item.type === 'question') {
+          currentQuestion = item.content;
+        } else {
+          console.error('Active index does not point to a question');
+          return;
+        }
       } else {
         console.error('No active question found for submission');
         return;
@@ -149,18 +158,38 @@ export function useConversationInteraction({
         const updatedConversation = [...conversation];
         
         if (activeQuestionIndex < updatedConversation.length) {
-          // Update existing question
-          updatedConversation[activeQuestionIndex] = {
-            ...updatedConversation[activeQuestionIndex],
-            answer: userInput
-          };
+          // Find the next answer after this question
+          const answerIndex = activeQuestionIndex + 1;
+          if (answerIndex < updatedConversation.length && updatedConversation[answerIndex].type === 'answer') {
+            // Update existing answer
+            updatedConversation[answerIndex] = {
+              ...updatedConversation[answerIndex],
+              content: userInput
+            };
+          } else {
+            // Add a new answer after the question
+            updatedConversation.push({
+              type: 'answer',
+              content: userInput,
+              timestamp: new Date().toISOString(),
+              isStarter: isFirstQuestion
+            });
+          }
         } else {
-          // Add a new QA pair
+          // Add a new question-answer pair
           updatedConversation.push({
-            question: currentQuestion,
-            answer: userInput,
+            type: 'question',
+            content: currentQuestion,
             timestamp: new Date().toISOString(),
-            is_starter: isFirstQuestion
+            isStarter: isFirstQuestion
+          });
+          
+          // Add the corresponding answer
+          updatedConversation.push({
+            type: 'answer',
+            content: userInput,
+            timestamp: new Date().toISOString(),
+            isStarter: isFirstQuestion
           });
         }
         

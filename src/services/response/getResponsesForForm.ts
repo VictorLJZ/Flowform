@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { FormResponse, StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
+import { DbFormResponse, DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
 
 /**
  * Get all responses for a specific form
@@ -16,9 +16,9 @@ export async function getResponsesForForm(
   limit: number = 50,
   offset: number = 0
 ): Promise<{
-  responses: FormResponse[];
-  static_answers?: Record<string, StaticBlockAnswer[]>;
-  dynamic_responses?: Record<string, DynamicBlockResponse[]>;
+  responses: DbFormResponse[];
+  static_answers?: Record<string, DbStaticBlockAnswer[]>;
+  dynamic_responses?: Record<string, DbDynamicBlockResponse[]>;
   total: number;
 }> {
   const supabase = await createClient();
@@ -71,8 +71,8 @@ export async function getResponsesForForm(
   }
 
   // Group answers by response ID for easier access
-  const staticAnswersByResponse: Record<string, StaticBlockAnswer[]> = {};
-  const dynamicResponsesByResponse: Record<string, DynamicBlockResponse[]> = {};
+  const staticAnswersByResponse: Record<string, DbStaticBlockAnswer[]> = {};
+  const dynamicResponsesByResponse: Record<string, DbDynamicBlockResponse[]> = {};
 
   // Group static answers
   if (staticAnswers) {

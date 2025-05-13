@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
+import { DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
+import { dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 
 // Get all responses for a specific form
 export async function GET(request: Request) {
@@ -77,8 +78,8 @@ export async function GET(request: Request) {
     }
 
     // Group answers by response ID for easier access
-    const staticAnswersByResponse: Record<string, StaticBlockAnswer[]> = {};
-    const dynamicResponsesByResponse: Record<string, DynamicBlockResponse[]> = {};
+    const staticAnswersByResponse: Record<string, DbStaticBlockAnswer[]> = {};
+    const dynamicResponsesByResponse: Record<string, DbDynamicBlockResponse[]> = {};
 
     // Group static answers
     if (staticAnswers) {
@@ -100,10 +101,24 @@ export async function GET(request: Request) {
       }
     }
 
+    // Convert DB types to API types for the response
+    const apiStaticAnswersByResponse: Record<string, any> = {};
+    const apiDynamicResponsesByResponse: Record<string, any> = {};
+    
+    // Transform static answers to API format
+    Object.entries(staticAnswersByResponse).forEach(([responseId, answers]) => {
+      apiStaticAnswersByResponse[responseId] = dbToApiStaticBlockAnswers(answers);
+    });
+    
+    // Transform dynamic responses to API format
+    Object.entries(dynamicResponsesByResponse).forEach(([responseId, responses]) => {
+      apiDynamicResponsesByResponse[responseId] = dbToApiDynamicBlockResponses(responses);
+    });
+    
     return NextResponse.json({
       responses,
-      static_answers: staticAnswersByResponse,
-      dynamic_responses: dynamicResponsesByResponse,
+      static_answers: apiStaticAnswersByResponse,
+      dynamic_responses: apiDynamicResponsesByResponse,
       total: count || responses.length
     });
   } catch (error: unknown) {

@@ -1,5 +1,5 @@
 // Form versioning type definitions
-import { FormResponse, StaticBlockAnswer, DynamicBlockResponse } from './supabase-types';
+import { ApiFormResponse, ApiStaticBlockAnswer, ApiDynamicBlockResponse } from './response';
 import { DbFormVersion } from './form';
 
 // FormVersion has been migrated to the new type system:
@@ -24,11 +24,13 @@ export interface FormBlockVersion {
 }
 
 // Enhanced response type that includes versioning information
-export interface VersionedResponse extends FormResponse {
+export interface VersionedResponse extends Omit<ApiFormResponse, 'formVersionId'> {
   form_version?: DbFormVersion;
   version_blocks?: FormBlockVersion[];
-  static_answers: StaticBlockAnswer[];
-  dynamic_responses: DynamicBlockResponse[];
+  static_answers: ApiStaticBlockAnswer[];
+  dynamic_responses: ApiDynamicBlockResponse[];
+  // Add back the renamed property as snake_case for backward compatibility
+  form_version_id?: string;
 }
 
 export interface FormVersionsResponse {

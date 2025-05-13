@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 
 interface UseConversationNavigationProps {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   nextQuestion: string;
   isComplete: boolean;
-  maxQuestions: number;
+  maxQuestions?: number;
   activeQuestionIndex: number;
   setActiveQuestionIndex: (index: number) => void;
   questionInputs: Record<number, string>;
@@ -44,8 +44,9 @@ export function useConversationNavigation({
 }: UseConversationNavigationProps): UseConversationNavigationReturn {
   // Calculate derived state for navigation logic
   const isFirstQuestion = activeQuestionIndex === 0 && conversation.length === 0;
-  const isFinalQuestion = isComplete || (maxQuestions > 0 && activeQuestionIndex >= maxQuestions - 1);
-  const hasReachedMaxQuestions = maxQuestions > 0 && activeQuestionIndex >= maxQuestions;
+  const effectiveMaxQuestions = maxQuestions || 5; // Default to 5 questions if not specified
+  const isFinalQuestion = isComplete || activeQuestionIndex >= effectiveMaxQuestions - 1;
+  const hasReachedMaxQuestions = activeQuestionIndex >= effectiveMaxQuestions;
   
   // Track whether the active question has been answered
   const [isLastAnswered, setIsLastAnswered] = useState(false);
@@ -106,8 +107,16 @@ export function useConversationNavigation({
   // Determine if we can move to the next question based on current state
   useEffect(() => {
     // Check if the current question has an answer
-    const isCurrentAnswered = activeQuestionIndex < conversation.length &&
-      !!conversation[activeQuestionIndex]?.answer;
+    // We need to look for an answer pair after this question
+    const questionItem = activeQuestionIndex < conversation.length ? 
+      conversation[activeQuestionIndex] : null;
+    
+    // Check if this is a question, and if the next item is an answer
+    const isCurrentAnswered = questionItem && 
+      questionItem.type === 'question' && 
+      activeQuestionIndex + 1 < conversation.length && 
+      conversation[activeQuestionIndex + 1].type === 'answer' && 
+      !!conversation[activeQuestionIndex + 1].content;
     
     // Check if we have a pending input for this question
     // Not currently used but kept for potential future implementation
@@ -118,8 +127,8 @@ export function useConversationNavigation({
       (activeQuestionIndex === conversation.length - 1 && !!nextQuestion);
     
     // Update state based on these conditions
-    setIsLastAnswered(isCurrentAnswered);
-    setCanMoveToNextQuestion(isCurrentAnswered && hasNextAvailable);
+    setIsLastAnswered(isCurrentAnswered || false); // Ensure boolean value
+    setCanMoveToNextQuestion((isCurrentAnswered && hasNextAvailable) || false); // Ensure boolean value
   }, [activeQuestionIndex, conversation, questionInputs, nextQuestion]);
   
   return {

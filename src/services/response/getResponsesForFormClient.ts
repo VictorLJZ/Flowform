@@ -1,4 +1,5 @@
-import { FormResponse, StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
+import { ApiFormResponse, ApiStaticBlockAnswer, ApiDynamicBlockResponse } from '@/types/response';
+import { dbToApiFormResponse, dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 
 /**
  * Get all responses for a specific form - Client-side implementation
@@ -16,9 +17,9 @@ export async function getResponsesForFormClient(
   limit: number = 50,
   offset: number = 0
 ): Promise<{
-  responses: FormResponse[];
-  static_answers?: Record<string, StaticBlockAnswer[]>;
-  dynamic_responses?: Record<string, DynamicBlockResponse[]>;
+  responses: ApiFormResponse[];
+  static_answers?: Record<string, ApiStaticBlockAnswer[]>;
+  dynamic_responses?: Record<string, ApiDynamicBlockResponse[]>;
   total: number;
 }> {
   try {

@@ -1,13 +1,32 @@
 // src/services/analytics/fetchers.ts
 import { createClient, SupabaseClient } from '@/lib/supabase/client';
-import { CompleteResponse, FormResponse, StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
+import { DbFormResponse, DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
+import { dbToApiFormResponse, dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 import { DbForm } from '@/types/form';
+
+// Temporary type to maintain compatibility during migration
+interface CompleteResponse {
+  // API form response fields
+  id: string;
+  formId: string;
+  formVersionId?: string;
+  respondentId: string;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  startedAt: string;
+  completedAt?: string;
+  metadata?: Record<string, unknown>;
+  
+  // Related data
+  static_answers: ReturnType<typeof dbToApiStaticBlockAnswers>;
+  dynamic_responses: ReturnType<typeof dbToApiDynamicBlockResponses>;
+  form: DbForm;
+}
 
 // Helper to fetch related data for a single response object
 const fetchRelatedDataForResponse = async (
-  response: FormResponse,
+  response: DbFormResponse,
   supabase: SupabaseClient
-): Promise<Omit<CompleteResponse, keyof FormResponse>> => {
+): Promise<Pick<CompleteResponse, 'static_answers' | 'dynamic_responses' | 'form'>> => {
   const responseId = response.id;
   const formId = response.form_id;
 
@@ -51,8 +70,8 @@ const fetchRelatedDataForResponse = async (
   }
 
   return {
-    static_answers: (staticAnswers as StaticBlockAnswer[] | null) || [],
-    dynamic_responses: (dynamicResponses as DynamicBlockResponse[] | null) || [],
+    static_answers: dbToApiStaticBlockAnswers((staticAnswers as DbStaticBlockAnswer[] | null) || []),
+    dynamic_responses: dbToApiDynamicBlockResponses((dynamicResponses as DbDynamicBlockResponse[] | null) || []),
     form: formData as DbForm, // Assert as DbForm, error is thrown if null
   };
 };
@@ -81,10 +100,10 @@ export const fetchFormResponses = async (formId: string): Promise<CompleteRespon
 
   // Step 2: Fetch related data for each response
   const completeResponses = await Promise.all(
-    (responseData as FormResponse[]).map(async (response) => {
+    (responseData as DbFormResponse[]).map(async (response) => {
       const relatedData = await fetchRelatedDataForResponse(response, supabase);
       return {
-        ...response,
+        ...dbToApiFormResponse(response),
         ...relatedData,
       } as CompleteResponse;
     })
@@ -121,10 +140,10 @@ export const fetchSingleFormResponse = async (responseId: string): Promise<Compl
   if (!response) return null; // Should be redundant due to error handling, but good practice
 
   // Fetch related data
-  const relatedData = await fetchRelatedDataForResponse(response as FormResponse, supabase);
+  const relatedData = await fetchRelatedDataForResponse(response as DbFormResponse, supabase);
 
   const completeResponse = {
-    ...response,
+    ...dbToApiFormResponse(response as DbFormResponse),
     ...relatedData,
   } as CompleteResponse;
 

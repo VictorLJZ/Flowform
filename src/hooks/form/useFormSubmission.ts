@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, MutableRefObject } from 'react';
 import type { FormBlock } from '@/types/block-types';
-import type { QAPair } from '@/types/supabase-types';
+import type { ApiQAPair } from '@/types/response';
 
 export type AnalyticsSubmitHandler = (data: { block_id: string; block_type: string }) => void;
 export type AnalyticsErrorHandler = (error: unknown, data: { block_id: string; block_type: string; response_id?: string }) => void;
@@ -12,7 +12,7 @@ interface UseFormSubmissionProps {
   onSubmitSuccessRef: MutableRefObject<AnalyticsSubmitHandler>;
   onSubmitErrorRef: MutableRefObject<AnalyticsErrorHandler>;
   onFormCompleteRef: MutableRefObject<AnalyticsCompletionHandler>;
-  saveCurrentAnswerRef: MutableRefObject<(blockId: string, answer: string | number | string[] | QAPair[]) => void>;
+  saveCurrentAnswerRef: MutableRefObject<(blockId: string, answer: string | number | string[] | ApiQAPair[]) => void>;
   goToNext: () => void;
   isLastQuestion: boolean;
 }
@@ -22,7 +22,7 @@ interface FormSubmissionState {
   submitting: boolean;
   submitError: string | null;
   completed: boolean;
-  submitAnswer: (block: FormBlock, answer: string | number | string[] | QAPair[]) => Promise<void>;
+  submitAnswer: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>;
   trackBlockSubmission: (block: FormBlock) => Promise<void>;
 }
 
@@ -138,7 +138,7 @@ export const useFormSubmission = ({
     }
   }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
 
-  const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | QAPair[]) => {
+  const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => {
     // DEBUG LOGGING: Track the answer at the start of submission
     console.log('[DEBUG][useFormSubmission] Starting submission for block:', {
       blockId: block.id,

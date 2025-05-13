@@ -4,6 +4,7 @@
 import type { BlockType } from './block-types';
 import type { SaveDynamicResponseInput } from './form-service-types';
 import { DbForm } from './form';
+import { DbQAPair } from './response';
 
 /**
  * Database Tables - Workspace Management
@@ -92,6 +93,13 @@ export interface FormResponse {
   metadata: Record<string, unknown> | null; // JSONB
 }
 
+/**
+ * @deprecated Use the new type system instead:
+ * - DbStaticBlockAnswer: Database layer (/types/response/DbResponse.ts)
+ * - ApiStaticBlockAnswer: API layer (/types/response/ApiResponse.ts)
+ * - UiStaticBlockAnswer: UI layer (/types/response/UiResponse.ts)
+ * Import these types from '@/types/response' instead
+ */
 export interface StaticBlockAnswer {
   id: string; // UUID
   response_id: string; // UUID, references form_responses.id
@@ -100,6 +108,13 @@ export interface StaticBlockAnswer {
   answered_at: string; // ISO date string
 }
 
+/**
+ * @deprecated Use the new type system instead:
+ * - DbQAPair: Database layer (/types/response/DbResponse.ts)
+ * - ApiQAPair: API layer (/types/response/ApiResponse.ts)
+ * - UiQAPair: UI layer (/types/response/UiResponse.ts)
+ * Import these types from '@/types/response' instead
+ */
 export interface QAPair {
   question: string;
   answer: string;
@@ -107,11 +122,18 @@ export interface QAPair {
   is_starter: boolean;
 }
 
+/**
+ * @deprecated Use the new type system instead:
+ * - DbDynamicBlockResponse: Database layer (/types/response/DbResponse.ts)
+ * - ApiDynamicBlockResponse: API layer (/types/response/ApiResponse.ts)
+ * - UiDynamicBlockResponse: UI layer (/types/response/UiResponse.ts)
+ * Import these types from '@/types/response' instead
+ */
 export interface DynamicBlockResponse {
   id: string; // UUID
   response_id: string; // UUID, references form_responses.id
   block_id: string; // UUID, references form_blocks.id
-  conversation: QAPair[]; // JSONB array
+  conversation: DbQAPair[]; // JSONB array
   next_question?: string; // Added field for the next question
   started_at: string; // ISO date string
   completed_at: string | null; // ISO date string
@@ -194,15 +216,39 @@ export interface CompleteForm extends DbForm {
 }
 
 // Type for joining tables and getting complete response data
-export interface CompleteResponse extends FormResponse {
-  static_answers: StaticBlockAnswer[];
-  dynamic_responses: DynamicBlockResponse[];
+// Note: This is being replaced by the new type system, use ApiFormResponse and related types instead
+export interface CompleteResponse {
+  // Use ApiFormResponse properties instead
+  id: string;
+  formId: string;
+  formVersionId?: string;
+  respondentId: string;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  startedAt: string;
+  completedAt?: string;
+  metadata?: Record<string, unknown>;
+  
+  // Related data
+  static_answers: import('./response').ApiStaticBlockAnswer[];
+  dynamic_responses: import('./response').ApiDynamicBlockResponse[];
   form: DbForm;
 }
 
 // Selection record types for session API routes
-export type StaticAnswerRecord = Pick<StaticBlockAnswer, 'block_id' | 'answer'>
-export type DynamicResponseRecord = Pick<DynamicBlockResponse, 'block_id' | 'conversation'>
+export type StaticAnswerRecord = {
+  block_id: string;
+  answer: string | null;
+}
+
+/**
+ * @deprecated Use the new type system instead:
+ * - Import DbQAPair from '@/types/response' and use:
+ * { block_id: string; conversation: DbQAPair[] }
+ */
+export type DynamicResponseRecord = {
+  block_id: string;
+  conversation: DbQAPair[];
+}
 
 // FormRecord has been removed - use Form + DynamicBlockConfig combination instead
 

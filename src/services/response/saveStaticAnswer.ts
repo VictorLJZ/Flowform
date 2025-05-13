@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
-import { StaticBlockAnswer } from '@/types/supabase-types';
+import { DbStaticBlockAnswer, ApiStaticBlockAnswer } from '@/types/response';
+import { dbToApiStaticBlockAnswer } from '@/utils/type-utils/response';
 
 /**
  * Save an answer to a static block question
@@ -16,7 +17,7 @@ export async function saveStaticAnswer(
   blockId: string,
   answer: string | number | string[] | Record<string, unknown> | unknown,
   mode: 'builder' | 'viewer' = 'viewer' // Default to viewer mode for backwards compatibility
-): Promise<StaticBlockAnswer> {
+): Promise<ApiStaticBlockAnswer> {
   // DEBUG LOGGING: Initial entry point to service function
   console.log('[DEBUG][saveStaticAnswer] Service function called with:', {
     responseId,
@@ -71,5 +72,5 @@ export async function saveStaticAnswer(
     throw error;
   }
 
-  return data;
+  return dbToApiStaticBlockAnswer(data as DbStaticBlockAnswer);
 }

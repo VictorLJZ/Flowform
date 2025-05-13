@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
-import { DynamicBlockResponse, QAPair } from '@/types/supabase-types';
+import { DbQAPair, ApiQAPair, DbDynamicBlockResponse } from '@/types/response';
 import { generateQuestion } from '@/services/ai/generateQuestion';
 
 /**
@@ -22,7 +22,7 @@ export async function saveDynamicResponse(
   isFirstQuestion = false,
   mode: 'builder' | 'viewer' = 'viewer' // Default to viewer mode for public access
 ): Promise<{ 
-  conversation: QAPair[]; 
+  conversation: ApiQAPair[]; 
   nextQuestion: string | null;
   isComplete: boolean;
 }> {
@@ -30,7 +30,7 @@ export async function saveDynamicResponse(
   const supabase = mode === 'viewer' ? createPublicClient() : createClient();
   
   // First, get the existing conversation or create a new one
-  let existingConversation: DynamicBlockResponse | null = null;
+  let existingConversation: DbDynamicBlockResponse | null = null;
   
   if (!isFirstQuestion) {
     // Try to fetch existing conversation
@@ -67,29 +67,72 @@ export async function saveDynamicResponse(
   const contextInstructions = blockData.settings?.contextInstructions || '';
   
   // Create the new Q&A pair
-  const newQAPair: QAPair = {
-    question: currentQuestion,
-    answer: answer,
+  const newQAPair: DbQAPair = {
+    type: 'question',
+    content: currentQuestion,
     timestamp: new Date().toISOString(),
     is_starter: isFirstQuestion
   };
   
+  // Create the corresponding answer pair
+  const newAnswerPair: DbQAPair = {
+    type: 'answer',
+    content: answer,
+    timestamp: new Date().toISOString(),
+    is_starter: isFirstQuestion
+  };
+  
+  // Helper function to convert old QAPair format to new DbQAPair format
+  const convertOldQAPairsToNew = (oldConversation: any[]): DbQAPair[] => {
+    const newConversation: DbQAPair[] = [];
+    
+    // Check if using old or new format
+    if (oldConversation.length > 0 && 'question' in oldConversation[0]) {
+      // Old format with {question, answer}
+      for (const oldPair of oldConversation) {
+        // Add question pair
+        newConversation.push({
+          type: 'question',
+          content: oldPair.question,
+          timestamp: oldPair.timestamp,
+          is_starter: oldPair.is_starter || false
+        });
+        
+        // Add answer pair
+        newConversation.push({
+          type: 'answer',
+          content: oldPair.answer,
+          timestamp: oldPair.timestamp,
+          is_starter: oldPair.is_starter || false
+        });
+      }
+    } else {
+      // Already in new format
+      return oldConversation as DbQAPair[];
+    }
+    
+    return newConversation;
+  };
+  
   // Prepare the conversation array
-  let conversation: QAPair[] = [];
+  let conversation: DbQAPair[] = [];
   
   if (existingConversation) {
     // Add to existing conversation - but check if answer is already a QAPair array
     if (Array.isArray(answer) && answer.length > 0 && 
-        typeof answer[0] === 'object' && 'question' in answer[0]) {
+        typeof answer[0] === 'object' && ('type' in answer[0] || 'question' in answer[0])) {
       console.log('Detected conversation being passed as answer, ignoring to prevent duplication');
-      conversation = [...existingConversation.conversation];
+      // Convert existing conversation to new format if needed
+      conversation = convertOldQAPairsToNew(existingConversation.conversation);
     } else {
-      // Normal case - add new QA pair to conversation
-      conversation = [...existingConversation.conversation, newQAPair];
+      // Normal case - add new QA pairs to conversation
+      // Convert existing conversation to new format if needed
+      const existingInNewFormat = convertOldQAPairsToNew(existingConversation.conversation);
+      conversation = [...existingInNewFormat, newQAPair, newAnswerPair];
     }
   } else {
     // Start new conversation
-    conversation = [newQAPair];
+    conversation = [newQAPair, newAnswerPair];
   }
   
   // Check if we've reached the maximum number of questions
@@ -100,10 +143,21 @@ export async function saveDynamicResponse(
   
   if (!isComplete) {
     // Format conversation for AI
-    const aiConversation = conversation.map(qa => [
-      { role: 'assistant', content: qa.question },
-      { role: 'user', content: qa.answer }
-    ]).flat();
+    const aiConversation = [];
+    
+    // Process pairs in order
+    for (let i = 0; i < conversation.length; i += 2) {
+      const questionPair = conversation[i];
+      const answerPair = conversation[i + 1];
+      
+      if (questionPair && questionPair.type === 'question') {
+        aiConversation.push({ role: 'assistant', content: questionPair.content });
+      }
+      
+      if (answerPair && answerPair.type === 'answer') {
+        aiConversation.push({ role: 'user', content: answerPair.content });
+      }
+    }
     
     // Add the AI instructions as a system message
     aiConversation.unshift({ 
@@ -162,8 +216,16 @@ export async function saveDynamicResponse(
     }
   }
   
+  // Convert DbQAPair[] to ApiQAPair[] for the return value
+  const apiConversation: ApiQAPair[] = conversation.map(dbPair => ({
+    type: dbPair.type,
+    content: dbPair.content,
+    timestamp: dbPair.timestamp,
+    isStarter: dbPair.is_starter
+  }));
+  
   return {
-    conversation,
+    conversation: apiConversation,
     nextQuestion,
     isComplete
   };

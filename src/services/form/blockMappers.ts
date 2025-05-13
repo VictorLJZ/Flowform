@@ -1,5 +1,5 @@
 import { FormBlock } from '@/types/block-types';
-import type { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 import type { AIConversationHandle } from '@/types/form-types';
 import type { useAnalytics } from '@/hooks/useAnalytics';
 import { BlockPresentation } from '@/types/theme-types';
@@ -9,15 +9,15 @@ import { BlockPresentation } from '@/types/theme-types';
  */
 export interface BaseBlockMapperProps {
   block: FormBlock;
-  currentAnswer: string | number | string[] | QAPair[];
-  onChange: (answer: string | number | string[] | QAPair[]) => void;
+  currentAnswer: string | number | string[] | ApiQAPair[];
+  onChange: (answer: string | number | string[] | ApiQAPair[]) => void;
   analytics: ReturnType<typeof useAnalytics>;
   isSubmitting: boolean;
   // Include refs or specific functions needed by certain mappers
   aiConversationRef?: React.RefObject<AIConversationHandle | null>;
   responseId?: string | null;
   formId?: string;
-  submitAnswer?: (block: FormBlock, answer: string | number | string[] | QAPair[]) => Promise<void>; 
+  submitAnswer?: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
 }
 
 /**
@@ -106,7 +106,7 @@ export const mapToPropsCheckboxGroup = (baseProps: BaseBlockMapperProps) => ({
  */
 export const mapToPropsAIConversation = (baseProps: BaseBlockMapperProps) => ({
   ...baseProps.block, // Spread block first
-  value: baseProps.currentAnswer as QAPair[],
+  value: baseProps.currentAnswer as ApiQAPair[],
   onChange: baseProps.onChange,
   analytics: baseProps.analytics,
   isSubmitting: baseProps.isSubmitting,

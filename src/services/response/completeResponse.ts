@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
-import { FormResponse } from '@/types/supabase-types';
+import { DbFormResponse, ApiFormResponse } from '@/types/response';
+import { dbToApiFormResponse } from '@/utils/type-utils/response';
 
 /**
  * Mark a form response as completed
@@ -9,7 +10,7 @@ import { FormResponse } from '@/types/supabase-types';
  * @param mode - Optional mode flag ('builder' or 'viewer') - uses public client when in viewer mode
  * @returns The updated form response
  */
-export async function completeResponse(responseId: string, mode: 'builder' | 'viewer' = 'viewer'): Promise<FormResponse> {
+export async function completeResponse(responseId: string, mode: 'builder' | 'viewer' = 'viewer'): Promise<ApiFormResponse> {
   // Use public client for viewer mode, standard client for builder mode
   const supabase = mode === 'viewer' ? createPublicClient() : createClient();
 
@@ -29,5 +30,5 @@ export async function completeResponse(responseId: string, mode: 'builder' | 'vi
     throw error;
   }
 
-  return data;
+  return dbToApiFormResponse(data as DbFormResponse);
 }

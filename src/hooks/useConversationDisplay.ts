@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 
 interface UseConversationDisplayProps {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   nextQuestion: string;
   activeQuestionIndex: number;
   isFirstQuestion: boolean;
@@ -31,7 +31,7 @@ export function useConversationDisplay({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   // ADDED: Use a stable ref for current conversation to prevent unnecessary recalculations
-  const currentConversationRef = useRef<QAPair[]>(conversation);
+  const currentConversationRef = useRef<ApiQAPair[]>(conversation);
   
   // Store the last valid nextQuestion to maintain it even if API resets it
   const lastValidNextQuestionRef = useRef<string>("");
@@ -67,10 +67,14 @@ export function useConversationDisplay({
       isFirstQuestion
     });
 
-    // Priority 1: If we're at a valid index in the conversation, always show that question first
+    // Priority 1: If we're at a valid index in the conversation, always show that question
     if (activeQuestionIndex < conversation.length) {
-      console.log('Using existing conversation question at index', activeQuestionIndex);
-      return { text: conversation[activeQuestionIndex].question, source: 'conversation' };
+      console.log('Using existing conversation item at index', activeQuestionIndex);
+      const item = conversation[activeQuestionIndex];
+      // Only use if it's a question type
+      if (item.type === 'question') {
+        return { text: item.content, source: 'conversation' };
+      }
     }
     
     // Priority 2: If this is the very first question and no conversation yet, use starter prompt

@@ -1,4 +1,5 @@
-import { FormBlock, DynamicBlockConfig, QAPair } from './supabase-types';
+import { FormBlock, DynamicBlockConfig } from './supabase-types';
+import { ApiQAPair } from './response';
 import { DbForm, ApiForm } from './form';
 import { Connection } from './workflow-types';
 
@@ -87,7 +88,7 @@ export interface SaveDynamicResponseInput {
  * Result data for dynamic block responses
  */
 export interface DynamicResponseData {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   nextQuestion?: string;
   isComplete: boolean;
 }

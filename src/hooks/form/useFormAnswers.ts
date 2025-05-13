@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 
 export interface FormAnswersState {
-  currentAnswer: string | number | string[] | QAPair[];
-  setCurrentAnswer: (value: string | number | string[] | QAPair[]) => void;
-  saveCurrentAnswer: (blockId: string, answer: string | number | string[] | QAPair[]) => void;
+  currentAnswer: string | number | string[] | ApiQAPair[];
+  setCurrentAnswer: (value: string | number | string[] | ApiQAPair[]) => void;
+  saveCurrentAnswer: (blockId: string, answer: string | number | string[] | ApiQAPair[]) => void;
   initializeAnswers: () => void;
   answersInitialized: boolean;
   loadAnswerForBlock: (blockId: string) => void;
@@ -30,10 +30,10 @@ export function useFormAnswers({
   storageKey
 }: UseFormAnswersProps): FormAnswersState {
   // State for the current answer
-  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | QAPair[]>('');
+  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | ApiQAPair[]>('');
   
   // Track all answers by block ID
-  const [answers, setAnswers] = useState<Record<string, string | number | string[] | QAPair[]>>({});
+  const [answers, setAnswers] = useState<Record<string, string | number | string[] | ApiQAPair[]>>({});
   
   // Track initialization status
   const [answersInitialized, setAnswersInitialized] = useState(false);
@@ -42,11 +42,11 @@ export function useFormAnswers({
   const initializeAnswers = useCallback(() => {
     try {
       // Try to load existing answers from localStorage
-      let parsedData: Record<string, string | number | string[] | QAPair[]> = {};
+      let parsedData: Record<string, string | number | string[] | ApiQAPair[]> = {};
       try {
         const savedData = localStorage.getItem(storageKey);
         if (savedData) {
-          parsedData = JSON.parse(savedData) as Record<string, string | number | string[] | QAPair[]>;
+          parsedData = JSON.parse(savedData) as Record<string, string | number | string[] | ApiQAPair[]>;
           setAnswers(parsedData);
           
           // If we have an active block, set its answer as current
@@ -67,7 +67,7 @@ export function useFormAnswers({
   }, [storageKey, blockId]);
 
   // Save the current answer for a specific block
-  const saveCurrentAnswer = useCallback((blockId: string, answer: string | number | string[] | QAPair[]) => {
+  const saveCurrentAnswer = useCallback((blockId: string, answer: string | number | string[] | ApiQAPair[]) => {
     // Update the answers object with the new value
     setAnswers(prev => {
       const newAnswers = { ...prev, [blockId]: answer };

@@ -8,12 +8,12 @@
 
 import { useCallback, useState, useMemo } from 'react';
 import { useWorkflowNavigation } from './useWorkflowNavigation';
-import { FormBlock } from '@/types/block-types';
 import { Connection, Rule } from '@/types/workflow-types';
-import { QAPair } from '@/types/supabase-types';
+import { FormBlock } from '@/types/block-types';
+import { ApiQAPair } from '@/types/response';
 
 // Answer types can be varied based on the block type
-type Answer = string | number | string[] | boolean | Record<string, unknown> | QAPair[];
+type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[];
 
 interface FormWorkflowNavigationProps {
   blocks: FormBlock[];

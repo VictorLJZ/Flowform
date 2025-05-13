@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/publicClient';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair, DbQAPair } from '@/types/response';
 import { SaveDynamicResponseInput, SaveDynamicResponseResult } from '@/types/form-service-types';
 import { processConversation } from '@/services/ai/processConversation';
 import { getFormContextClient } from './getFormContextClient';
 import { ProcessConversationParams } from '@/types/ai-types';
+import { dbToApiQAPair, dbToApiQAPairs } from '@/utils/type-utils/response/DbToApiResponse';
 
 /**
  * Save a response to a dynamic block and generate the next question if needed
@@ -78,7 +79,14 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     }
 
     // Use the existing conversation or initialize a new one
-    let conversation: QAPair[] = currentQAPairs?.conversation || [];
+    // Convert DB format to API format if necessary
+    let dbConversation: DbQAPair[] = currentQAPairs?.conversation || [];
+    let conversation: ApiQAPair[] = dbConversation.map(item => ({
+      type: item.type,
+      content: item.content,
+      timestamp: item.timestamp,
+      isStarter: item.is_starter
+    }));
     console.log(`[${requestId}] Current conversation length:`, conversation.length);
 
     // Initialize isComplete from input
@@ -120,22 +128,57 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
       // Only use the fallback if question is completely missing, not just empty
       const finalQuestion = question !== undefined ? question : "What's your starter question?";
       
-      conversation.push({
-        question: finalQuestion,
-        answer: answer,
-        timestamp: new Date().toISOString(),
-        is_starter: true
-      });
+      // Prepare the new QA pair
+      const isFirstQuestion = conversation.length === 0;
+      const timestamp = new Date().toISOString();
+      
+      // Create new question and answer pairs with the provided data
+      const newQuestion: ApiQAPair = {
+        type: 'question',
+        content: finalQuestion,
+        timestamp: timestamp,
+        isStarter: isFirstQuestion
+      };
+      
+      const newAnswer: ApiQAPair = {
+        type: 'answer',
+        content: answer,
+        timestamp: timestamp,
+        isStarter: isFirstQuestion
+      };
+      
+      // Add the new question and answer to the conversation
+      conversation.push(newQuestion);
+      conversation.push(newAnswer);
+      console.log(`[${requestId}] Added new Q&A pair, conversation now has ${conversation.length} entries`);
     } else {
       // For regular questions, there should be an existing question to respond to
       // This is typically the previous "nextQuestion" that was presented to the user
       console.log(`[${requestId}] Adding answer to existing conversation:`, { question });
-      conversation.push({
-        question: question || (conversation.length > 0 ? 'Follow-up question' : 'Initial question'),
-        answer: answer,
-        timestamp: new Date().toISOString(),
-        is_starter: false
-      });
+      
+      // Prepare the new QA pair
+      const isFirstQuestion = conversation.length === 0;
+      const timestamp = new Date().toISOString();
+      
+      // Create new question and answer pairs with the provided data
+      const newQuestion: ApiQAPair = {
+        type: 'question',
+        content: question || (conversation.length > 0 ? 'Follow-up question' : 'Initial question'),
+        timestamp: timestamp,
+        isStarter: isFirstQuestion
+      };
+      
+      const newAnswer: ApiQAPair = {
+        type: 'answer',
+        content: answer,
+        timestamp: timestamp,
+        isStarter: isFirstQuestion
+      };
+      
+      // Add the new question and answer to the conversation
+      conversation.push(newQuestion);
+      conversation.push(newAnswer);
+      console.log(`[${requestId}] Added new Q&A pair, conversation now has ${conversation.length} entries`);
     }
 
     let nextQuestion = '';
@@ -180,8 +223,17 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
         
         // Process the conversation to generate a next question
         // Extract questions and answers for the AI
-        const prevQuestions = conversation.map(qa => qa.question);
-        const prevAnswers = conversation.map(qa => qa.answer);
+        const prevQuestions: string[] = [];
+        const prevAnswers: string[] = [];
+        
+        // Process the conversation to extract questions and answers
+        for (let i = 0; i < conversation.length; i++) {
+          const item = conversation[i];
+          if (item.type === 'question' && i + 1 < conversation.length && conversation[i + 1].type === 'answer') {
+            prevQuestions.push(item.content);
+            prevAnswers.push(conversation[i + 1].content);
+          }
+        }
         
         const params: ProcessConversationParams = {
           prevQuestions,
@@ -215,6 +267,14 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     }
 
     // Update the database with the new conversation
+    // Convert the API format back to DB format for storage
+    const dbConversationToSave: DbQAPair[] = conversation.map(item => ({
+      type: item.type,
+      content: item.content,
+      timestamp: item.timestamp,
+      is_starter: item.isStarter
+    }));
+    
     console.log(`[${requestId}] Updating database with updated conversation`, {
       conversationLength: conversation.length,
       isComplete,
@@ -226,7 +286,7 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
       .upsert({
         response_id: responseId,
         block_id: blockId,
-        conversation: conversation,
+        conversation: dbConversationToSave,
         next_question: nextQuestion,
         updated_at: new Date().toISOString()
       }, { onConflict: 'response_id,block_id' });
@@ -244,7 +304,7 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
     return {
       success: true,
       data: {
-        conversation: conversation,
+        conversation: conversation, // This is now properly typed as ApiQAPair[]
         nextQuestion: nextQuestion || '',
         isComplete: Boolean(isComplete)
       }
