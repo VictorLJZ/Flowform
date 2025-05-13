@@ -59,7 +59,7 @@ export function transformVersionedFormData(formData: CompleteForm): {
       return {
         id: edge.id,
         sourceId: edge.source_block_id,
-        defaultTargetId: edge.default_target_id, 
+        defaultTargetId: edge.default_target_id || null, 
         rules: parsedRules, 
         order_index: edge.order_index || 0,
         is_explicit: edge.is_explicit || false,

@@ -180,12 +180,11 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     // Don't throw here to allow form to load without connections
   }
 
-  // Return the complete form with workflow edges
+  // Return the complete form with the version ID if available
   return {
     ...form,
-    version_id: formVersion.id,
-    version_number: formVersion.version_number,
     blocks: blocksWithDetails,
-    workflow_edges: workflowEdges
+    workflow_edges: workflowEdges,
+    version_id: formVersion.id
   };
 }

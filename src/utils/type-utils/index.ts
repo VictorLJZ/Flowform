@@ -8,6 +8,8 @@
 // Workspace type utilities
 export * from './workspace';
 
+// Form type utilities
+export * from './form';
+
 // Add other domain-specific type utilities as they are created
 // export * from './analytics';
-// export * from './form';

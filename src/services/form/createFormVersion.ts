@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
-import { FormVersion, FormBlockVersion } from '@/types/form-version-types';
+import { FormBlockVersion } from '@/types/form-version-types';
+import { DbFormVersion } from '@/types/form';
 
 /**
  * Create a new form version and associated block versions
@@ -14,7 +15,7 @@ export async function createFormVersion(
   formId: string,
   createdBy: string,
   blocks: FrontendFormBlock[]
-): Promise<FormVersion | null> {
+): Promise<DbFormVersion | null> {
   // SAFEGUARD: Prevent blocks from being incorrectly marked as deleted when an empty array is provided
   if (!blocks || blocks.length === 0) {
     console.error('Attempted to create a form version with an empty blocks array. This would mark all blocks as deleted.');

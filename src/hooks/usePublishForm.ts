@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useFormBuilderStore } from "@/stores/formBuilderStore";
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore";
-import { FormVersion } from "@/types/form-version-types";
-import { Form } from "@/types/supabase-types";
+import { ApiFormVersion } from "@/types/form";
+import { ApiForm } from "@/types/form";
 import { FormBlock } from "@/types/block-types";
 
 /**
@@ -26,8 +26,8 @@ export function usePublishForm() {
    * @returns Object containing the published form and version information
    */
   const publishCurrentForm = async (formId: string): Promise<{
-    form: Form;
-    version?: FormVersion | null;
+    form: ApiForm;
+    version?: ApiFormVersion | null;
   }> => {
     if (isPublishing) {
       throw new Error("Already publishing");
@@ -66,8 +66,8 @@ export function usePublishForm() {
     formId: string,
     blocksToPublish: FormBlock[]
   ): Promise<{
-    form: Form;
-    version?: FormVersion | null;
+    form: ApiForm;
+    version?: ApiFormVersion | null;
   }> => {
     if (isPublishing) {
       throw new Error("Already publishing");

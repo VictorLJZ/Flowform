@@ -1,17 +1,20 @@
-import { Form } from '@/types/supabase-types';
+import { DbForm, ApiForm, UiForm } from '@/types/form';
 import { createClient } from '@/lib/supabase/client';
 import { useWorkspaceSWR, createWorkspaceFetcher } from './swr';
+import { dbToApiForm } from '@/utils/type-utils';
+import { apiToUiForm } from '@/utils/type-utils';
 
 /**
  * Hook to fetch recent forms across all workspaces the user has access to.
  * Follows the workspace-aware pattern.
+ * Implements the new type system with proper layer separation.
  * 
  * @param limit Maximum number of forms to return
- * @returns Forms data, loading state, error, and mutate function
+ * @returns UI-formatted forms data, loading state, error, and mutate function
  */
 export function useRecentForms(limit = 5) {
   // Create a workspace-aware fetcher that handles workspace ID automatically
-  const recentFormsFetcher = createWorkspaceFetcher(async (wsId: string) => {
+  const recentFormsFetcher = createWorkspaceFetcher<ApiForm[]>(async (wsId: string) => {
     console.log(`[useRecentForms] Fetching recent forms for workspace: ${wsId}`);
     const supabase = createClient();
     
@@ -28,11 +31,14 @@ export function useRecentForms(limit = 5) {
     }
     
     console.log(`[useRecentForms] Fetched ${data?.length || 0} forms for workspace ${wsId}`);
-    return data || [];
+    
+    // Transform DB data to API format
+    const dbForms = (data || []) as DbForm[];
+    return dbForms.map(dbForm => dbToApiForm(dbForm));
   });
 
-  // Use our workspace-aware SWR hook
-  const { data, error, isLoading, mutate } = useWorkspaceSWR<Form[]>(
+  // Use our workspace-aware SWR hook with the API type
+  const { data, error, isLoading, mutate } = useWorkspaceSWR<ApiForm[]>(
     'recent-forms',
     recentFormsFetcher,
     {
@@ -42,8 +48,11 @@ export function useRecentForms(limit = 5) {
     }
   );
 
+  // Transform API forms to UI forms for component consumption
+  const uiForms: UiForm[] = data ? data.map(form => apiToUiForm(form)) : [];
+
   return { 
-    recentForms: data ? data.slice(0, limit) : [], 
+    recentForms: uiForms.slice(0, limit), 
     error, 
     isLoading, 
     refresh: mutate 

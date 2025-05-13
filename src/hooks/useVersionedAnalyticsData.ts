@@ -1,13 +1,14 @@
 import useSWR from 'swr';
 import { getVersionedFormResponses, getFormVersions } from '@/services/analytics/getVersionedFormResponses';
-import { VersionedResponse, FormVersion } from '@/types/form-version-types';
+import { VersionedResponse } from '@/types/form-version-types';
+import { DbFormVersion } from '@/types/form';
 
 // Define types for combined data
 interface VersionedFormData {
   responses: VersionedResponse[];
   totalCount: number;
-  versions: FormVersion[];
-  currentVersion: FormVersion | null;
+  versions: DbFormVersion[];
+  currentVersion: DbFormVersion | null;
 }
 
 /**

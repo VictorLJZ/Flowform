@@ -1,6 +1,7 @@
 // src/services/analytics/fetchers.ts
 import { createClient, SupabaseClient } from '@/lib/supabase/client';
-import { CompleteResponse, FormResponse, StaticBlockAnswer, DynamicBlockResponse, Form } from '@/types/supabase-types';
+import { CompleteResponse, FormResponse, StaticBlockAnswer, DynamicBlockResponse } from '@/types/supabase-types';
+import { DbForm } from '@/types/form';
 
 // Helper to fetch related data for a single response object
 const fetchRelatedDataForResponse = async (
@@ -52,7 +53,7 @@ const fetchRelatedDataForResponse = async (
   return {
     static_answers: (staticAnswers as StaticBlockAnswer[] | null) || [],
     dynamic_responses: (dynamicResponses as DynamicBlockResponse[] | null) || [],
-    form: formData as Form, // Assert as Form, error is thrown if null
+    form: formData as DbForm, // Assert as DbForm, error is thrown if null
   };
 };
 

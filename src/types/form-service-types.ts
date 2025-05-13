@@ -1,4 +1,5 @@
-import { FormBlock, DynamicBlockConfig, QAPair, Form } from './supabase-types';
+import { FormBlock, DynamicBlockConfig, QAPair } from './supabase-types';
+import { DbForm, ApiForm } from './form';
 import { Connection } from './workflow-types';
 
 /**
@@ -138,13 +139,15 @@ export interface FormSettings {
 
 /**
  * Input for creating a new form
+ * Uses DB format with snake_case fields
  */
-export type FormInput = Pick<Form, 'workspace_id' | 'title' | 'description' | 'created_by' | 'status' | 'theme' | 'settings'>;
+export type FormInput = Pick<DbForm, 'workspace_id' | 'title' | 'description' | 'created_by' | 'status' | 'theme' | 'settings'>;
 
 /**
  * Input for updating an existing form
+ * Uses DB format with snake_case fields
  */
-export type FormUpdateInput = Partial<Pick<Form, 
+export type FormUpdateInput = Partial<Pick<DbForm, 
   'title' | 
   'description' | 
   'status' | 
@@ -171,7 +174,7 @@ export interface SaveFormInput {
  * Output from saving a form with its blocks
  */
 export interface SaveFormOutput {
-  form: Form;
+  form: ApiForm;
   blocks: FormBlock[];
   success: boolean;
 }

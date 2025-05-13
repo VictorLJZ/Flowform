@@ -1,13 +1,12 @@
 // Form versioning type definitions
 import { FormResponse, StaticBlockAnswer, DynamicBlockResponse } from './supabase-types';
+import { DbFormVersion } from './form';
 
-export interface FormVersion {
-  id: string;
-  form_id: string;
-  version_number: number;
-  created_at: string;
-  created_by: string;
-}
+// FormVersion has been migrated to the new type system:
+// - DbFormVersion: Database layer (/types/form/DbFormVersion.ts)
+// - ApiFormVersion: API layer (/types/form/ApiFormVersion.ts)
+// - UiFormVersion: UI layer (/types/form/UiFormVersion.ts)
+// Import these types from '@/types/form' instead
 
 export interface FormBlockVersion {
   id: string;
@@ -26,13 +25,13 @@ export interface FormBlockVersion {
 
 // Enhanced response type that includes versioning information
 export interface VersionedResponse extends FormResponse {
-  form_version?: FormVersion;
+  form_version?: DbFormVersion;
   version_blocks?: FormBlockVersion[];
   static_answers: StaticBlockAnswer[];
   dynamic_responses: DynamicBlockResponse[];
 }
 
 export interface FormVersionsResponse {
-  versions: FormVersion[];
-  currentVersion: FormVersion | null;
+  versions: DbFormVersion[];
+  currentVersion: DbFormVersion | null;
 }

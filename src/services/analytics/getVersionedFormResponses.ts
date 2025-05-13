@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormVersion, FormBlockVersion, VersionedResponse } from '@/types/form-version-types';
+import { FormBlockVersion, VersionedResponse } from '@/types/form-version-types';
+import { DbFormVersion } from '@/types/form';
 
 // Type for simplified block version data used in the response
 interface SimpleBlockVersion {
@@ -71,7 +72,7 @@ export async function getVersionedFormResponses(
       
     if (DEBUG) console.log(`[getVersionedFormResponses] Unique form version IDs: ${versionIds.length}`, versionIds);
       
-    let formVersions: FormVersion[] = [];
+    let formVersions: DbFormVersion[] = [];
     
     if (versionIds.length > 0) {
       const { data: versions, error: versionError } = await supabase
@@ -220,8 +221,8 @@ export async function getVersionedFormResponses(
 export async function getFormVersions(
   formId: string
 ): Promise<{ 
-  versions: FormVersion[],
-  currentVersion: FormVersion | null 
+  versions: DbFormVersion[],
+  currentVersion: DbFormVersion | null 
 }> {
   if (!formId) {
     return { versions: [], currentVersion: null };

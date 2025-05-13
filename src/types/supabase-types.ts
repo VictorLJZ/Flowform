@@ -3,39 +3,18 @@
 
 import type { BlockType } from './block-types';
 import type { SaveDynamicResponseInput } from './form-service-types';
+import { DbForm } from './form';
 
 /**
  * Database Tables - Workspace Management
  * Note: Workspace-related types have been moved to src/types/workspace/*
  */
 
-export interface Profile {
-  id: string; // UUID, references auth.users.id
-  email: string;
-  full_name: string;
-  avatar_url: string | null;
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
-}
 
 /**
  * Database Tables - Form Management
+ * Note: The Form interface has been moved to src/types/form/DbForm.ts
  */
-
-export interface Form {
-  form_id: string; // UUID
-  workspace_id: string; // UUID, references workspaces.id
-  title: string;
-  description: string | null;
-  slug: string | null;
-  status: 'draft' | 'published' | 'archived';
-  theme: Record<string, unknown> | null; // JSONB
-  settings: Record<string, unknown> | null; // JSONB
-  created_at: string; // ISO date string
-  created_by: string; // UUID, references auth.users.id
-  updated_at: string; // ISO date string
-  published_at: string | null; // ISO date string
-}
 
 // BlockType definition moved to block-types.ts
 export type StaticBlockSubtype = 
@@ -201,7 +180,7 @@ export interface DynamicBlockAnalytics {
 }
 
 // Type for joining tables and getting complete form data
-export interface CompleteForm extends Form {
+export interface CompleteForm extends DbForm {
   blocks: (FormBlock & {
     dynamic_config?: DynamicBlockConfig;
     options?: BlockOption[];
@@ -218,7 +197,7 @@ export interface CompleteForm extends Form {
 export interface CompleteResponse extends FormResponse {
   static_answers: StaticBlockAnswer[];
   dynamic_responses: DynamicBlockResponse[];
-  form: Form;
+  form: DbForm;
 }
 
 // Selection record types for session API routes

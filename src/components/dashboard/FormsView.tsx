@@ -154,7 +154,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
           }>
             {forms.map((form, index) => (
               <Card 
-                key={form.form_id || `form-${index}`} 
+                key={form.formId || `form-${index}`} 
                 // List View: Added gap-x-4
                 className={`overflow-hidden flex ${viewMode === 'list' ? 'flex-row p-3 gap-x-4' : 'flex-col !p-0 gap-0'} h-full cursor-pointer hover:shadow-md transition-shadow`}
                 onClick={(e) => {
@@ -163,7 +163,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                     // Check if click is on or within dropdown menu or buttons
                     const isOnDropdown = e.target.closest('[data-dropdown-trigger], [data-dropdown-content], button');
                     if (!isOnDropdown) {
-                      router.push(`/dashboard/form/${form.form_id}/builder`);
+                      router.push(`/dashboard/form/${form.formId}/builder`);
                     }
                   }
                 }}
@@ -190,7 +190,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                       <CardTitle className="line-clamp-1">{form.title}</CardTitle>
                       {/* Badge moved here for list view, next to the title */}
                       {viewMode === 'list' && (
-                        <Badge variant="outline" className="text-xs flex-shrink-0">Last edited: {new Date(form.updated_at).toLocaleDateString()}</Badge>
+                        <Badge variant="outline" className="text-xs flex-shrink-0">Last edited: {new Date(form.updatedAt).toLocaleDateString()}</Badge>
                       )}
                     </div>
                     {/* Status Indicators - Moved into CardHeader for List View */} 
@@ -216,7 +216,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem key="edit" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/form/${form.form_id}/builder`);
+                            router.push(`/dashboard/form/${form.formId}/builder`);
                           }}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
@@ -226,11 +226,11 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                               key="publish"
                               onClick={(e) => {
                                 e.stopPropagation(); // Stop event from bubbling up to the Card
-                                handlePublishForm(form.form_id);
+                                handlePublishForm(form.formId);
                               }}
-                              disabled={publishingFormId === form.form_id}
+                              disabled={publishingFormId === form.formId}
                             >
-                              {publishingFormId === form.form_id ? (
+                              {publishingFormId === form.formId ? (
                                 <>
                                   <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
                                   Publishing...
@@ -245,7 +245,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
 
                           <DropdownMenuItem key="analytics" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
-                            router.push(`/dashboard/form/${form.form_id}/analytics`);
+                            router.push(`/dashboard/form/${form.formId}/analytics`);
                           }}>
                             <BarChart className="mr-2 h-4 w-4" /> Analytics
                           </DropdownMenuItem>
@@ -253,7 +253,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                           <DropdownMenuItem key="copyLink" onClick={async (e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
                             // Reverted to dynamic link construction
-                            const shareableLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.form_id}`;
+                            const shareableLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.formId}`;
                             try {
                               await navigator.clipboard.writeText(shareableLink);
                               toast({ 
@@ -276,7 +276,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
                           <DropdownMenuItem key="delete" className="text-destructive" onClick={(e) => {
                             e.stopPropagation(); // Stop event from bubbling up to the Card
                             /* TODO: Implement delete form functionality */ 
-                            toast({ title: 'Delete clicked (not implemented)', description: `Form ID: ${form.form_id}`});
+                            toast({ title: 'Delete clicked (not implemented)', description: `Form ID: ${form.formId}`});
                           }}>
                             <Trash className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -288,7 +288,7 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
 
                 {viewMode !== 'list' && (
                   <div className="px-[20px] pt-1 text-xs"> 
-                    <Badge variant="outline">Last edited: {new Date(form.updated_at).toLocaleDateString()}</Badge>
+                    <Badge variant="outline">Last edited: {new Date(form.updatedAt).toLocaleDateString()}</Badge>
                   </div>
                 )}
 

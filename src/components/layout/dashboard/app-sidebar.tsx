@@ -97,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ...item,
         items: recentForms.map(form => ({
           title: form.title || 'Untitled Form',
-          url: `/dashboard/form/${form.form_id}/builder`,
+          url: `/dashboard/form/${form.formId}/builder`,
         })),
       };
     }

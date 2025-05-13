@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormVersion } from '@/types/form-version-types';
-import { Form } from '@/types/supabase-types';
+import { ApiFormVersion, DbFormVersion } from '@/types/form';
+import { DbForm, ApiForm } from '@/types/form';
 import { invalidateFormCacheClient } from './invalidateCacheClient';
 import { createFormVersion } from './createFormVersion';
 import { updateFormVersion } from './updateFormVersion';
 import { getFormWithBlocksClient } from './getFormWithBlocksClient';
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
 import type { FormBlock, BlockType } from '@/types/block-types';
+import { dbToApiForm, dbToApiFormVersion } from '@/utils/type-utils/form';
 
 /**
  * Publish a form with proper versioning using blocks from the form builder store
@@ -16,12 +17,12 @@ import type { FormBlock, BlockType } from '@/types/block-types';
  * 
  * @param formId The ID of the form to publish
  * @param blocks Current blocks from the form builder store
- * @returns Object containing updated form and version information
+ * @returns Object containing updated form and version information in API format
  */
 export async function publishFormWithFormBuilderStore(
   formId: string,
   blocks: FormBlock[]
-): Promise<{ form: Form; version?: FormVersion | null }> {
+): Promise<{ form: ApiForm; version?: ApiFormVersion | null }> {
   const supabase = createClient();
 
   try {
@@ -83,7 +84,7 @@ export async function publishFormWithFormBuilderStore(
       throw versionError;
     }
 
-    let version: FormVersion | null | undefined;
+    let version: DbFormVersion | null | undefined;
     const isFirstPublish = !existingVersions || existingVersions.length === 0;
     
     // Step 3: Check if the CURRENT VERSION has responses (only matters for republishing)
@@ -181,9 +182,10 @@ export async function publishFormWithFormBuilderStore(
     // Invalidate form cache after successful update
     invalidateFormCacheClient(formId);
     
+    // Convert DB form and version to API format before returning
     return {
-      form: updatedForm,
-      version
+      form: dbToApiForm(updatedForm as DbForm),
+      version: version ? dbToApiFormVersion(version) : undefined
     };
   } catch (error) {
     console.error('Failed to publish form with form builder store blocks:', error);

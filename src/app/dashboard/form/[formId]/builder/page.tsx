@@ -201,7 +201,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       if (result.form) {
         setFormData({
           status: 'published',
-          published_at: result.form.published_at || undefined
+          published_at: result.form.publishedAt || undefined
         })
       }
       
@@ -213,7 +213,7 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       toast({
         title: "Form published!",
         description: result.version 
-          ? `Version ${result.version.version_number} created.` 
+          ? `Version ${result.version.versionNumber} created.` 
           : "Your form is now live.",
         action: (
           <ToastAction

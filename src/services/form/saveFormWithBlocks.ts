@@ -3,7 +3,8 @@ import { SaveFormInput, SaveFormOutput } from '@/types/form-service-types';
 import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
-import { Form } from '@/types/supabase-types';
+import { DbForm, ApiForm } from '@/types/form';
+import { dbToApiForm } from '@/utils/type-utils';
 import { mutate } from 'swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
@@ -163,29 +164,32 @@ export async function saveFormWithBlocks(
     if (currentWorkspaceId) {
       const swrKey = ['recent-forms', currentWorkspaceId];
       
+      // Convert DB form to API form
+      const apiUpdatedForm = dbToApiForm(updatedForm as DbForm);
+      
       // Optimistically update the recent forms list
       mutate(
         swrKey,
-        (currentData: Form[] | undefined): Form[] => {
-          let newData: Form[];
+        (currentData: ApiForm[] | undefined): ApiForm[] => {
+          let newData: ApiForm[];
           if (currentData) {
             // Check if the updated form is already in the list
-            const existingFormIndex = currentData.findIndex(form => form.form_id === updatedForm.form_id);
+            const existingFormIndex = currentData.findIndex(form => form.formId === apiUpdatedForm.formId);
             if (existingFormIndex !== -1) {
               // Replace existing form
               newData = [...currentData];
-              newData[existingFormIndex] = updatedForm;
+              newData[existingFormIndex] = apiUpdatedForm;
             } else {
               // Add new form to the beginning
-              newData = [updatedForm, ...currentData];
+              newData = [apiUpdatedForm, ...currentData];
             }
           } else {
             // If no current data, start with the updated form
-            newData = [updatedForm];
+            newData = [apiUpdatedForm];
           }
-          // Sort by updated_at (descending) and limit to 5 (consistent with useRecentForms)
+          // Sort by updatedAt (descending) and limit to 5 (consistent with useRecentForms)
           return newData
-            .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
             .slice(0, 5);
         },
         { revalidate: true } // Revalidate in the background to ensure consistency
@@ -196,9 +200,12 @@ export async function saveFormWithBlocks(
     }
     // --- END OF MODIFIED CODE FOR OPTIMISTIC UPDATE ---
 
+    // Convert DB form to API form for return value
+    const apiForm = dbToApiForm(updatedForm as DbForm);
+    
     return {
       success: true,
-      form: updatedForm as Form,
+      form: apiForm,
       blocks: savedBlocks || []
     };
   } catch (error) {
