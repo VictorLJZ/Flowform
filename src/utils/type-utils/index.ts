@@ -11,5 +11,7 @@ export * from './workspace';
 // Form type utilities
 export * from './form';
 
+export * from './user';
+
 // Add other domain-specific type utilities as they are created
 // export * from './analytics';
