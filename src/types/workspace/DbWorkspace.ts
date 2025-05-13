@@ -10,6 +10,8 @@
  * - Backend services that work with raw database data
  */
 
+import { DbProfile } from '@/types/user';
+
 /**
  * Database workspace table schema
  */
@@ -59,17 +61,7 @@ export interface DbWorkspaceInvitation {
   token: string;
 }
 
-/**
- * Database profiles table schema
- */
-export interface DbProfile {
-  id: string; // UUID, references auth.users.id
-  email: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
-}
+
 
 /**
  * Database workspace member joined with user profile information

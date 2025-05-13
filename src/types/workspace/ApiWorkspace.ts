@@ -11,6 +11,7 @@
  */
 
 import { DbWorkspaceRole } from './DbWorkspace';
+import { ApiProfile } from '@/types/user';
 
 /**
  * API role type - reexporting from DB layer for consistency
@@ -77,17 +78,7 @@ export interface ApiWorkspaceUpdateInput {
   settings?: Record<string, unknown>;
 }
 
-/**
- * API profile type with camelCase properties
- */
-export interface ApiProfile {
-  id: string;
-  email: string;
-  fullName?: string;
-  avatarUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 /**
  * API workspace member with profile information

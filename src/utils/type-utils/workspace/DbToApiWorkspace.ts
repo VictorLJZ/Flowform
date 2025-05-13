@@ -11,9 +11,9 @@ import {
   DbWorkspace, 
   DbWorkspaceMember, 
   DbWorkspaceInvitation,
-  DbWorkspaceMemberWithProfile,
-  DbProfile
+  DbWorkspaceMemberWithProfile
 } from '@/types/workspace';
+import { DbProfile } from '@/types/user';
 
 import { 
   ApiWorkspace,

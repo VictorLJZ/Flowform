@@ -16,20 +16,9 @@ import {
   ApiWorkspaceMember,
   ApiWorkspaceRole
 } from './ApiWorkspace';
+import { UiProfile } from '@/types/user';
 
-/**
- * UI profile type with potentially enhanced display properties
- */
-export interface UiProfile {
-  id: string;
-  email: string;
-  fullName?: string;
-  avatarUrl?: string;
-  displayName?: string; // Computed display name (fallback to email if name is null)
-  initials?: string;   // Computed initials for avatar fallback
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 /**
  * UI workspace member with profile information and enhanced display properties
