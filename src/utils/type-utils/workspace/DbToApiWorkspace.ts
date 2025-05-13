@@ -116,7 +116,7 @@ export function dbToApiWorkspaceInvitations(dbInvitations: DbWorkspaceInvitation
  */
 export function dbToApiWorkspaceMemberWithProfileFromParts(
   dbMember: DbWorkspaceMember, 
-  profileData: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>
+  profileData: Pick<DbProfile, 'full_name' | 'avatar_url'> & { email?: string | null }
 ): ApiWorkspaceMemberWithProfile {
   return {
     workspaceId: dbMember.workspace_id,
@@ -127,7 +127,7 @@ export function dbToApiWorkspaceMemberWithProfileFromParts(
       // Convert null to undefined for all optional profile fields
       fullName: profileData.full_name === null ? undefined : profileData.full_name,
       avatarUrl: profileData.avatar_url === null ? undefined : profileData.avatar_url,
-      email: profileData.email === null ? undefined : profileData.email
+      email: profileData.email === null || profileData.email === undefined ? undefined : profileData.email
     }
   };
 }
@@ -150,7 +150,7 @@ export function dbToApiWorkspaceMemberWithProfile(
       // Convert null to undefined for all optional profile fields
       fullName: dbMemberWithProfile.profile.full_name === null ? undefined : dbMemberWithProfile.profile.full_name,
       avatarUrl: dbMemberWithProfile.profile.avatar_url === null ? undefined : dbMemberWithProfile.profile.avatar_url,
-      email: dbMemberWithProfile.profile.email === null ? undefined : dbMemberWithProfile.profile.email
+      email: dbMemberWithProfile.profile.email === null || dbMemberWithProfile.profile.email === undefined ? undefined : dbMemberWithProfile.profile.email
     }
   };
 }

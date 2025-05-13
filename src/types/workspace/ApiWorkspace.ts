@@ -11,7 +11,6 @@
  */
 
 import { DbWorkspaceRole } from './DbWorkspace';
-import { ApiProfile } from '@/types/user';
 
 /**
  * API role type - reexporting from DB layer for consistency

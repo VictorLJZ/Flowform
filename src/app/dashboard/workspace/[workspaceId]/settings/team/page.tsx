@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { ApiWorkspaceRole } from "@/types/workspace"
+import { UiWorkspaceMemberWithProfile } from "@/types/workspace"
+import { apiToUiWorkspaceMemberWithProfile } from "@/utils/type-utils/workspace/ApiToUiWorkspace"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -61,8 +63,15 @@ export default function TeamSettings() {
     return true
   })
   
+  // Transform members from API to UI type
+  const uiMembers = filteredMembers.map(member => {
+    // Mark if this is the current user
+    const isCurrentUser = member.userId === currentUserId;
+    return apiToUiWorkspaceMemberWithProfile(member, isCurrentUser);
+  });
+
   // Sort members
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
+  const sortedMembers = [...uiMembers].sort((a, b) => {
     // Prioritize the current user
     if (currentUserId) {
       if (a.userId === currentUserId) return -1 // Current user 'a' comes first
@@ -148,7 +157,7 @@ export default function TeamSettings() {
             </div>
           ) : (
             <MembersList 
-              members={sortedMembers}
+              members={sortedMembers as UiWorkspaceMemberWithProfile[]}
               currentUserRole={currentUserRole} 
               currentUserId={currentUserId} 
             />

@@ -16,7 +16,6 @@ import {
   ApiWorkspaceMember,
   ApiWorkspaceRole
 } from './ApiWorkspace';
-import { UiProfile } from '@/types/user';
 
 
 

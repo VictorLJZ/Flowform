@@ -14,7 +14,6 @@ import {
   ApiWorkspaceMember, 
   ApiWorkspaceMemberWithProfile,
 } from '@/types/workspace';
-import { UiProfile } from '@/types/user';
 
 /**
  * Transform an API workspace member to UI-specific format

@@ -67,9 +67,5 @@ export interface DbWorkspaceInvitation {
  * Database workspace member joined with user profile information
  */
 export interface DbWorkspaceMemberWithProfile extends DbWorkspaceMember {
-  profile: {
-    full_name: string | null;
-    avatar_url: string | null;
-    email?: string | null;
-  };
+  profile: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>;
 }
