@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 import { BlockMetrics } from '@/types/supabase-types';
+import { BlockPerformance } from '@/types/AggregateApiCleanup';
 
 // Get performance analytics for a specific block or all blocks in a form
 export async function GET(request: Request) {
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     const { data: blocks, error: blocksError } = await blocksQuery;
 
     if (blocksError) {
-      console.error('[API] Error getting form blocks:', blocksError);
+      // Error getting form blocks
       return NextResponse.json(
         { error: blocksError.message },
         { status: 500 }
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
       .in('block_id', blockIds);
 
     if (metricsError) {
-      console.error('[API] Error getting block metrics:', metricsError);
+      // Error getting block metrics
       return NextResponse.json(
         { error: metricsError.message },
         { status: 500 }
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
         .lte('created_at', endDate);
       
       if (responseError) {
-        console.error('[API] Error getting form responses:', responseError);
+        // Error getting form responses
         return NextResponse.json(
           { error: responseError.message },
           { status: 500 }
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
         });
       
       if (staticError) {
-        console.error('[API] Error getting static block answers:', staticError);
+        // Error getting static block answers
         return NextResponse.json(
           { error: staticError.message },
           { status: 500 }
@@ -129,12 +130,12 @@ export async function GET(request: Request) {
         average_time_spent: blockMetrics?.average_time_seconds || 0,
         skip_rate: skipRate,
         metrics: blockMetrics || null
-      };
+      } as BlockPerformance;
     });
     
     return NextResponse.json(blockPerformance);
   } catch (error: unknown) {
-    console.error('[API] Error in block performance API:', error);
+    // Error in block performance API
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
       { error: errorMessage },

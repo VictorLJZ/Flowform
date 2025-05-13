@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ChatSessionCreateData, DbChatSession } from '@/types/AggregateApiCleanup';
 
 // GET endpoint to fetch all sessions for a form
 export async function GET(request: NextRequest) {
@@ -30,12 +31,12 @@ export async function GET(request: NextRequest) {
       .order('updated_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching chat sessions:', error);
+      // Error fetching chat sessions
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     // Map to SessionInfo format
-    const formattedSessions = sessions.map((session: { id: string; title: string; created_at: string; updated_at: string; last_message?: string }) => ({
+    const formattedSessions = sessions.map((session: DbChatSession) => ({
       id: session.id,
       title: session.title || new Date(session.created_at).toLocaleDateString(),
       created_at: session.created_at,
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ sessions: formattedSessions });
   } catch (error) {
-    console.error('Error fetching chat sessions:', error);
+    // Error handling for fetch sessions
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to load chat sessions' 
     }, { status: 500 });
@@ -81,24 +82,26 @@ export async function POST(request: NextRequest) {
     });
     
     // Create a new chat session
+    const sessionData: ChatSessionCreateData = {
+      form_id: formId,
+      user_id: user.id,
+      title: defaultTitle
+    };
+    
     const { data: session, error } = await supabase
       .from('chat_sessions')
-      .insert({
-        form_id: formId,
-        user_id: user.id,
-        title: defaultTitle
-      })
+      .insert(sessionData)
       .select('id')
       .single();
     
     if (error) {
-      console.error('Error creating chat session:', error);
+      // Error creating chat session
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     return NextResponse.json({ sessionId: session.id });
   } catch (error) {
-    console.error('Error creating chat session:', error);
+    // Error handling for create session
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to create chat session' 
     }, { status: 500 });

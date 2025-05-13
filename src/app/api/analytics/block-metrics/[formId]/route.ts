@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { FormattedBlockMetrics } from '@/types';
+import { BlockMetric } from '@/types/AggregateApiCleanup';
 
 // Enable CORS for this route
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    console.log('[API DEBUG] Fetching block metrics for form:', formId);
+    // Fetch block metrics for form
     const supabase = createServiceClient();
     
     // First get all blocks for this form (for metadata like title and type)
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .order('order_index', { ascending: true });
     
     if (formError) {
-      console.error('[API] Error fetching form blocks:', formError);
+      // Error fetching form blocks
       return NextResponse.json({
         success: false, 
         error: 'Failed to fetch form blocks',
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
     
-    console.log('[API] Successfully fetched form blocks:', formBlocks.length);
+    // Successfully fetched form blocks
     
     // Get metrics for all blocks in this form from the block_metrics table
     const { data: blockMetrics, error: metricsError } = await supabase
@@ -62,20 +63,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('form_id', formId);
       
     if (metricsError) {
-      console.error('[API] Error fetching block metrics:', metricsError);
+      // Error fetching block metrics
       // Continue anyway, we'll use default values for metrics
     }
     
-    // Define a proper interface for the block metrics
-    interface BlockMetric {
-      block_id?: string;
-      views: number;
-      submissions: number;
-      skips: number;
-      average_time_seconds: number;
-      drop_off_count: number;
-      drop_off_rate: number;
-    }
+    // Use BlockMetric interface imported from types
     
     // Create a map of block metrics for easy lookup
     const metricsMap: Record<string, BlockMetric> = {};
@@ -129,7 +121,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     return response;
   } catch (error) {
-    console.error('Error processing block metrics request:', error);
+    // Error processing block metrics request
     return NextResponse.json({
       success: false, 
       error: 'Internal server error',

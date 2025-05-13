@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import type { ViewRequestBody, ViewResponseData, TrackingResponse } from '../../../../../types/AggregateApiCleanup';
+import { ViewRequestBodySchema } from '../../../../../types/AggregateApiCleanup';
 
 /**
  * API route for tracking form views
@@ -7,24 +9,38 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
  */
 export async function POST(request: Request) {
   try {
-    const { 
-      formId, 
-      visitorId, 
-      deviceType, 
-      browser, 
-      source, 
-      timestamp, 
-      isUnique, 
-      metadata 
-    } = await request.json();
+    const body = await request.json();
+    const validationResult = ViewRequestBodySchema.safeParse(body);
 
-    // Validate required fields
-    if (!formId || !visitorId) {
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: formId and visitorId are required' },
+        { 
+          success: false, 
+          error: 'Invalid request data', 
+          details: validationResult.error.errors 
+        } as TrackingResponse,
         { status: 400 }
       );
     }
+
+    const {
+      formId,
+      visitorId,
+      deviceType,
+      browser,
+      source,
+      timestamp,
+      isUnique,
+      metadata
+    } = validationResult.data as ViewRequestBody;
+
+    // Validate required fields - Handled by Zod schema
+    // if (!formId || !visitorId) {
+    //   return NextResponse.json(
+    //     { error: 'Missing required fields: formId and visitorId are required' },
+    //     { status: 400 }
+    //   );
+    // }
 
     // Create the Supabase service client for trusted server operations
     const supabase = createServiceClient();
@@ -38,7 +54,7 @@ export async function POST(request: Request) {
         device_type: deviceType,
         browser,
         source,
-        timestamp,
+        timestamp: timestamp || new Date().toISOString(), // Ensure timestamp is provided
         is_unique: isUnique,
         metadata
       })
@@ -46,18 +62,18 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('Error tracking form view:', error);
+      // console.error('Error tracking form view:', error);
       return NextResponse.json(
-        { error: error.message },
+        { success: false, error: error.message } as TrackingResponse,
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: data as ViewResponseData } as TrackingResponse);
   } catch (error) {
-    console.error('Error processing form view tracking:', error);
+    // console.error('Error processing form view tracking:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error' } as TrackingResponse,
       { status: 500 }
     );
   }

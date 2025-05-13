@@ -53,7 +53,7 @@ export async function GET(
       .single();
     
     if (metricsError) {
-      console.warn('Error fetching form metrics:', metricsError);
+      // Error fetching form metrics - falling back to defaults
       // If metrics don't exist yet, return defaults
       return NextResponse.json({ 
         success: true, 
@@ -85,7 +85,7 @@ export async function GET(
     });
     
   } catch (error) {
-    console.error('Error fetching form insights:', error);
+    // Error fetching form insights
     return NextResponse.json(
       { success: false, error: 'Failed to fetch insights', data: null },
       { status: 500 }

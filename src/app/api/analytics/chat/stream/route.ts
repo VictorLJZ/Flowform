@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { RagStatus } from '@/types/chat-types';
 import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
+import { RagStreamEvent } from '@/types/AggregateApiCleanup';
 
 /**
  * Performs a simple check to see if a query is likely to need RAG
@@ -127,9 +128,9 @@ export async function GET(request: NextRequest) {
       let isClosed = false;
       
       // Helper function to safely send SSE events
-      function sendEvent(data: Record<string, unknown>) {
+      function sendEvent(data: Record<string, unknown> | RagStreamEvent) {
         if (isClosed) {
-          console.log("Skipping sendEvent - controller already closed");
+          // Skip sending event - controller already closed
           return; // Don't try to send if already closed
         }
         
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
           const event = `data: ${JSON.stringify(data)}\n\n`;
           controller.enqueue(new TextEncoder().encode(event));
         } catch (err) {
-          console.error('Error sending event:', err);
+          // Error sending event
           isClosed = true; // Mark as closed if sending fails
         }
       }
@@ -226,11 +227,12 @@ export async function GET(request: NextRequest) {
           
           // This could take time, send an interim update as well
           if (!isClosed) { // Check before sending
-            sendEvent({ type: 'rag_status', status: {
+            const statusEvent: RagStreamEvent = { type: 'rag_status', status: {
               stage: 'searching',
               query,
               timestamp: Date.now() + 100
-            }});
+            }};
+            sendEvent(statusEvent);
           }
           
           const conversations = await searchSimilarConversations(query, formId, maxResults);
@@ -247,7 +249,7 @@ export async function GET(request: NextRequest) {
               resultsCount,
               timestamp: Date.now()
             };
-            sendEvent({ type: 'rag_status', status: processingStatus });
+            sendEvent({ type: 'rag_status', status: processingStatus } as RagStreamEvent);
             
             // Add another processing event with slight delay to ensure it's received
             await safeWait(200);
@@ -269,7 +271,6 @@ export async function GET(request: NextRequest) {
           clearTimeout(maxStreamTimeout);
           
           if (isClosed) {
-            console.log("Stream already closed, skipping final events");
             return;
           }
           
@@ -280,17 +281,18 @@ export async function GET(request: NextRequest) {
             resultsCount,
             timestamp: Date.now()
           };
-          sendEvent({ type: 'rag_status', status: completeStatus });
+          sendEvent({ type: 'rag_status', status: completeStatus } as RagStreamEvent);
           
           // Send an event with the total time taken
           if (!isClosed) {
-            sendEvent({ 
+            const metricsEvent: RagStreamEvent = { 
               type: 'rag_metrics', 
               metrics: {
                 totalTime: Date.now() - startTime,
                 resultsCount
               }
-            });
+            };
+            sendEvent(metricsEvent);
           }
           
           // Add a small delay before closing to ensure client receives the events
@@ -303,11 +305,11 @@ export async function GET(request: NextRequest) {
           clearTimeout(maxStreamTimeout);
           
           if (!isClosed) {
-            console.error('Error in RAG search:', searchError);
+            // Error in RAG search
             sendEvent({ 
               type: 'rag_error', 
               error: 'Error searching form responses' 
-            });
+            } as RagStreamEvent);
             await safeWait(100);
             safeClose();
           }
@@ -315,8 +317,8 @@ export async function GET(request: NextRequest) {
 
       } catch (error) {
         if (!isClosed) {
-          console.error('Error in stream handler:', error);
-          sendEvent({ error: 'Internal server error' });
+          // Error in stream handler
+          sendEvent({ type: 'rag_error', error: 'Internal server error' } as RagStreamEvent);
           await safeWait(100);
           safeClose();
         }

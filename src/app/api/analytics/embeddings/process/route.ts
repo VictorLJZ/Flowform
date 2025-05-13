@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { processFormConversations } from '@/services/analytics/preprocessConversations';
+import { EmbeddingStatus } from '@/types/AggregateApiCleanup';
 
 /**
  * POST handler for processing form conversations and generating embeddings
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error processing form conversations:', error);
+    // Error processing form conversations
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to process form conversations' 
     }, { status: 500 });
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       .eq('type', 'dynamic');
       
     if (blocksError) {
-      console.error('Error fetching dynamic blocks:', blocksError);
+      // Error fetching dynamic blocks
       return NextResponse.json({ error: blocksError.message }, { status: 500 });
     }
     
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       .in('block_id', blockIds);
       
     if (totalError) {
-      console.error('Error counting total conversations:', totalError);
+      // Error counting total conversations
       return NextResponse.json({ error: totalError.message }, { status: 500 });
     }
     
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
       .eq('form_id', formId);
       
     if (embeddedError) {
-      console.error('Error counting embedded conversations:', embeddedError);
+      // Error counting embedded conversations
       return NextResponse.json({ error: embeddedError.message }, { status: 500 });
     }
     
@@ -141,13 +142,15 @@ export async function GET(request: NextRequest) {
       ? Math.round((embeddedResponses / totalResponses) * 100) 
       : 0;
     
-    return NextResponse.json({
+    const status: EmbeddingStatus = {
       total_responses: totalResponses,
       embedded_count: embeddedResponses,
       embedding_percentage: embeddingPercentage
-    });
+    };
+    
+    return NextResponse.json(status);
   } catch (error) {
-    console.error('Error checking embedding status:', error);
+    // Error checking embedding status
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to check embedding status' 
     }, { status: 500 });

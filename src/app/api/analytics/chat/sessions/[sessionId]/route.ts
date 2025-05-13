@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ChatSessionUpdateData } from '@/types/AggregateApiCleanup';
 
 // DELETE endpoint to delete a session
 export async function DELETE(
@@ -32,7 +33,7 @@ export async function DELETE(
       .eq('session_id', sessionId);
     
     if (messagesError) {
-      console.error('Error deleting chat messages:', messagesError);
+      // Error deleting chat messages
       return NextResponse.json({ error: messagesError.message }, { status: 500 });
     }
     
@@ -44,13 +45,13 @@ export async function DELETE(
       .eq('user_id', user.id);
     
     if (error) {
-      console.error('Error deleting chat session:', error);
+      // Error deleting chat session
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting chat session:', error);
+    // Error in deleting chat session
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to delete chat session' 
     }, { status: 500 });
@@ -85,7 +86,7 @@ export async function PATCH(
     }
     
     // Build update object with only provided fields
-    const updateData: { title?: string; last_message?: string } = {};
+    const updateData: ChatSessionUpdateData = {};
     if (title !== undefined) updateData.title = title;
     if (last_message !== undefined) updateData.last_message = last_message;
     
@@ -97,13 +98,13 @@ export async function PATCH(
       .eq('user_id', user.id);
     
     if (error) {
-      console.error('Error updating chat session:', error);
+      // Error updating chat session
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating chat session:', error);
+    // Error in updating chat session
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to update chat session' 
     }, { status: 500 });

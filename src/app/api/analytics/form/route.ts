@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
+import { FormAnalytics } from '@/types/AggregateApiCleanup';
 
 // Get analytics data for a specific form
 export async function GET(request: Request) {
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
       .lte('created_at', endDate);
 
     if (viewError) {
-      console.error('[API] Error getting form views:', viewError);
+      // Error getting form views
       return NextResponse.json(
         { error: viewError.message },
         { status: 500 }
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
       .lte('created_at', endDate);
 
     if (completionError) {
-      console.error('[API] Error getting completed responses:', completionError);
+      // Error getting completed responses
       return NextResponse.json(
         { error: completionError.message },
         { status: 500 }
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       .single();
 
     if (metricsError && metricsError.code !== 'PGRST116') { // Not found is ok
-      console.error('[API] Error getting form metrics:', metricsError);
+      // Error getting form metrics
       return NextResponse.json(
         { error: metricsError.message },
         { status: 500 }
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
       .lte('created_at', endDate);
 
     if (interactionsError) {
-      console.error('[API] Error getting form interactions:', interactionsError);
+      // Error getting form interactions
       return NextResponse.json(
         { error: interactionsError.message },
         { status: 500 }
@@ -101,11 +102,11 @@ export async function GET(request: Request) {
       });
 
     if (viewsTimeError) {
-      console.error('[API] Error getting views over time:', viewsTimeError);
+      // Error getting views over time
       // Fall back to an empty array if the function isn't available
       const viewsOverTimeData: { date: string; count: number }[] = [];
       
-      const analytics = {
+      const analytics: FormAnalytics = {
         form_id: formId,
         total_views: viewCount || 0,
         total_completions: completionCount || 0,
@@ -118,7 +119,7 @@ export async function GET(request: Request) {
       return NextResponse.json(analytics);
     }
 
-    const analytics = {
+    const analytics: FormAnalytics = {
       form_id: formId,
       total_views: viewCount || 0,
       total_completions: completionCount || 0,
@@ -130,7 +131,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json(analytics);
   } catch (error: unknown) {
-    console.error('[API] Error in form analytics API:', error);
+    // Error in form analytics API
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }

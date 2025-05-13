@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import { BlockSubmitResponse, TrackingResponse } from '@/types/AggregateApiCleanup';
 
 // Define validation schema for request body with improved validation
 const blockSubmitSchema = z.object({
@@ -24,8 +25,7 @@ export async function POST(request: Request) {
     const publicAccessHeader = request.headers.get('x-flowform-public-access');
     const isPublicAccess = publicAccessHeader === 'true';
     
-    // Log the public access status
-    console.log('[API] Block submit request with public access:', isPublicAccess ? 'yes' : 'no');
+    // Check the public access status
     
     // Parse request body
     const body = await request.json();
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     // Validate request body
     const validationResult = blockSubmitSchema.safeParse(body);
     if (!validationResult.success) {
-      console.error('[API] Block submit validation error:', validationResult.error.errors);
+      // Block submit validation error
       return NextResponse.json(
         { 
           success: false, 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     // If not public access and not authenticated, return 401
     if (!isPublicAccess) {
       // For now, we'll allow all public form access requests - no authentication required
-      console.log('[API] Public access not specified, checking auth would happen here');
+      // Public access not specified, would check auth in production
       // In a real implementation, we would check for auth token here
       // For now, if public access header is not present, return 401
       return NextResponse.json(
@@ -70,8 +70,7 @@ export async function POST(request: Request) {
       delete cleanMetadata.response_id;
     }
     
-    // Call the RPC function
-    console.log('[API] Calling track_block_submit RPC with block_id:', data.blockId, 'form_id:', data.formId);
+    // Call the RPC function to track block submission
     
     const { data: rpcResult, error } = await supabase.rpc('track_block_submit', {
       p_block_id: data.blockId,
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
     });
     
     if (error) {
-      console.error('[API] Database error tracking block submit:', error.message);
+      // Database error tracking block submit
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
@@ -91,7 +90,7 @@ export async function POST(request: Request) {
     }
     
     if (rpcResult && !rpcResult.success) {
-      console.error('[API] RPC function reported error:', rpcResult.error);
+      // RPC function reported error
       return NextResponse.json(
         { success: false, error: rpcResult.error },
         { status: 500 }
@@ -99,7 +98,7 @@ export async function POST(request: Request) {
     }
     
     // Create data to return to the client
-    const responseData = {
+    const responseData: BlockSubmitResponse = {
       id: rpcResult.submit_id,
       block_id: data.blockId,
       form_id: data.formId,
@@ -107,11 +106,15 @@ export async function POST(request: Request) {
       timestamp: rpcResult.timestamp
     };
     
-    return NextResponse.json({ success: true, data: responseData });
+    const response: TrackingResponse = { 
+      success: true, 
+      data: responseData
+    };
+    return NextResponse.json(response);
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[API] Error processing block submit tracking:', errorMessage);
+    // Error processing block submit tracking
     return NextResponse.json(
       { success: false, error: 'Internal server error', detail: errorMessage },
       { status: 500 }

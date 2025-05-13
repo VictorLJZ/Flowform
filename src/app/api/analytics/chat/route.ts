@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateRagResponse } from '@/services/ai/ragService';
-
-// Define a type for the chat response
-interface ChatResponseWithState {
-  sessionId: string;
-  response: string;
-  response_id?: string;
-  usedRAG?: boolean;
-}
+import { ChatResponseWithState } from '@/types/AggregateApiCleanup';
 
 /**
  * POST handler for chat API
@@ -60,7 +53,7 @@ export async function POST(request: NextRequest) {
         .single();
       
       if (sessionError) {
-        console.error('Error creating chat session:', sessionError);
+        // Error creating chat session
         return NextResponse.json({ error: sessionError.message }, { status: 500 });
       }
       
@@ -74,7 +67,7 @@ export async function POST(request: NextRequest) {
         .eq('user_id', userData.user.id);
       
       if (updateError) {
-        console.error('Error updating chat session:', updateError);
+        // Error updating chat session
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
     }
@@ -89,7 +82,7 @@ export async function POST(request: NextRequest) {
       });
     
     if (userMessageError) {
-      console.error('Error saving user message:', userMessageError);
+      // Error saving user message
       return NextResponse.json({ error: userMessageError.message }, { status: 500 });
     }
     
@@ -115,7 +108,7 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: true });
     
     if (messagesError) {
-      console.error('Error fetching previous messages:', messagesError);
+      // Error fetching previous messages
       return NextResponse.json({ error: messagesError.message }, { status: 500 });
     }
     
@@ -146,7 +139,7 @@ export async function POST(request: NextRequest) {
           .eq('id', chatSessionId);
       }
     } catch (ragError) {
-      console.error('Error with RAG service:', ragError);
+      // Error with RAG service
       
       // Simplified fallback
       aiResponse = "I'm having trouble accessing form response data to answer your question. Please try again later.";
@@ -163,7 +156,7 @@ export async function POST(request: NextRequest) {
       });
     
     if (assistantMessageError) {
-      console.error('Error saving assistant message:', assistantMessageError);
+      // Error saving assistant message
       return NextResponse.json({ error: assistantMessageError.message }, { status: 500 });
     }
     
@@ -180,7 +173,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(responseObject);
   } catch (error) {
-    console.error('Error processing chat:', error);
+    // Error processing chat
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to process chat' 
     }, { status: 500 });
@@ -230,13 +223,13 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true });
     
     if (error) {
-      console.error('Error fetching chat messages:', error);
+      // Error fetching chat messages
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     return NextResponse.json({ messages });
   } catch (error) {
-    console.error('Error fetching chat messages:', error);
+    // Error fetching chat messages
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to load chat messages' 
     }, { status: 500 });

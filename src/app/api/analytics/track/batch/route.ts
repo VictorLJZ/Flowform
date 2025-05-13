@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { BatchAnalyticsResult, BatchEventResponse } from '@/types/AggregateApiCleanup';
 
 // Define validation schema for individual events
 const analyticsEventSchema = z.object({
@@ -38,10 +39,10 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     
     // Initialize results
-    const results = {
+    const results: BatchAnalyticsResult = {
       processed: 0,
       errors: 0,
-      details: [] as Array<{ type: string; success: boolean; error?: string }>
+      details: []
     };
     
     // Process each event
@@ -102,12 +103,14 @@ export async function POST(request: Request) {
       }
     }
     
-    return NextResponse.json({
+    const response: BatchEventResponse = {
       success: true,
       ...results
-    });
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('[API] Error in batch analytics API:', error);
+    // Error in batch analytics API
     return NextResponse.json(
       { 
         success: false, 

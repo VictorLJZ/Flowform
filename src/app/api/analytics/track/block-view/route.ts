@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import { TrackingResponse } from '@/types/AggregateApiCleanup';
 
 /**
  * API route for tracking block views
@@ -27,7 +28,6 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     
     // Call the RPC function to track block view and update metrics in one transaction
-    console.log('[API DEBUG] Calling track_block_view RPC with block_id:', blockId, 'form_id:', formId);
     
     const { data: rpcResult, error } = await supabase.rpc('track_block_view', {
       p_block_id: blockId,
@@ -39,14 +39,14 @@ export async function POST(request: Request) {
       
     if (error || (rpcResult && !rpcResult.success)) {
       const errorMessage = error ? error.message : (rpcResult ? rpcResult.error : 'Unknown error');
-      console.error('[API] Error tracking block view:', errorMessage);
+      // Error tracking block view
       return NextResponse.json(
         { success: false, error: errorMessage },
         { status: 500 }
       );
     }
     
-    console.log('[API] Block view tracked successfully via RPC');
+    // Block view tracked successfully via RPC
     
     // Create data to return to the client
     const data = {
@@ -56,9 +56,10 @@ export async function POST(request: Request) {
       timestamp: rpcResult.timestamp
     };
 
-    return NextResponse.json({ success: true, data });
+    const response: TrackingResponse = { success: true, data };
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Error processing block view tracking:', error);
+    // Error processing block view tracking
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
