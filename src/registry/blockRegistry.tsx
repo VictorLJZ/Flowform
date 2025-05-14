@@ -6,9 +6,7 @@ import {
   Bookmark
 } from "lucide-react"
 import dynamic from "next/dynamic"
-// Import legacy types for backward compatibility
-import type { BlockDefinition, FormBlock } from '@/types/block-types'
-// Import new type system
+// Import new type system only
 import {
   ApiBlockType,
   ApiBlockSubtype,
@@ -17,7 +15,23 @@ import {
   ApiIntegrationBlockSubtype,
   ApiLayoutBlockSubtype
 } from '@/types/block/ApiBlock'
-import { UiBlockDefinition } from '@/types/block/UiBlock'
+import { UiBlock, UiBlockDefinition } from '@/types/block/UiBlock'
+
+// Define BlockDefinition interface since it was previously in block-types.ts
+interface BlockDefinition {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  icon: React.ComponentType;
+  defaultTitle: string;
+  defaultDescription?: string;
+  category: string;
+  isPremium?: boolean;
+  getDefaultValues?: () => Record<string, unknown>;
+  validate?: (values: Record<string, unknown>) => Record<string, string> | null;
+  settingsComponent?: React.ComponentType<any>;
+}
 
 // Block registry
 const blockRegistry: Record<string, BlockDefinition> = {
@@ -61,7 +75,7 @@ const blockRegistry: Record<string, BlockDefinition> = {
     getDefaultValues: () => ({
       placeholder: "email@example.com"
     }),
-    validate: (values) => {
+    validate: (values: Record<string, unknown>) => {
       // Basic email validation example
       const email = values.answer as string
       if (email && !/^\S+@\S+\.\S+$/.test(email)) {
@@ -85,7 +99,7 @@ const blockRegistry: Record<string, BlockDefinition> = {
       max: undefined,
       step: 1
     }),
-    validate: (values) => {
+    validate: (values: Record<string, unknown>) => {
       const num = Number(values.answer)
       const min = values.min !== undefined ? Number(values.min) : undefined
       const max = values.max !== undefined ? Number(values.max) : undefined
@@ -260,12 +274,12 @@ export const getAllBlocks = () => {
 }
 
 /**
- * Creates a new block with the new type system while maintaining compatibility with legacy code
+ * Creates a new block with the new type system
  * @param blockTypeId The ID of the block type to create
  * @param order The order index of the block
- * @returns A new block compatible with both new and old systems
+ * @returns A new UiBlock
  */
-export const createNewBlock = (blockTypeId: string, order: number): FormBlock => {
+export const createNewBlock = (blockTypeId: string, order: number): UiBlock => {
   const blockDef = getBlockDefinition(blockTypeId)
   
   // Determine the block type and subtype based on blockTypeId
@@ -286,18 +300,17 @@ export const createNewBlock = (blockTypeId: string, order: number): FormBlock =>
     blockSubtype = blockTypeId as ApiStaticBlockSubtype;
   }
   
-  // Create a block that's compatible with both systems
+  // Create a block using the new type system
   return {
     id: `block-${Date.now()}`,
-    blockTypeId,
+    formId: '', // Will be set when associated with a form
     type: blockType,
     subtype: blockSubtype,
     title: blockDef?.defaultTitle || "",
     description: blockDef?.defaultDescription || "",
     required: false,
-    order_index: order,
     orderIndex: order,
-    settings: blockDef?.getDefaultValues() || {},
+    settings: blockDef?.getDefaultValues ? blockDef.getDefaultValues() : {},
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

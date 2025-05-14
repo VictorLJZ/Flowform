@@ -1,13 +1,15 @@
 import { createClient } from '@/lib/supabase/client'
-import type { FormMetrics } from '@/types/supabase-types'
+import { DbFormMetrics } from '@/types/analytics/DbFormMetrics'
+import { ApiFormMetrics } from '@/types/analytics/ApiFormMetrics'
+import { dbToApiFormMetrics } from '@/utils/type-utils/analytics'
 
 /**
  * Fetches analytics summary data for a form
  * 
  * @param formId - The ID of the form to fetch analytics for
- * @returns Promise resolving to form metrics data
+ * @returns Promise resolving to form metrics data in API layer format
  */
-export async function getFormAnalyticsSummary(formId: string): Promise<FormMetrics | null> {
+export async function getFormAnalyticsSummary(formId: string): Promise<ApiFormMetrics | null> {
   if (!formId) {
     throw new Error('Form ID is required')
   }
@@ -27,7 +29,8 @@ export async function getFormAnalyticsSummary(formId: string): Promise<FormMetri
     }
     
     if (metrics) {
-      return metrics as FormMetrics
+      // Transform database response to API layer format
+      return dbToApiFormMetrics(metrics as DbFormMetrics)
     }
     
     // If no pre-calculated metrics exist, calculate them on the fly
@@ -71,16 +74,17 @@ export async function getFormAnalyticsSummary(formId: string): Promise<FormMetri
     const completionRate = safeStarts > 0 ? (safeCompletions / safeStarts) : 0
     
     // Create dynamic metrics (not saved to database)
-    const dynamicMetrics: FormMetrics = {
-      form_id: formId,
-      total_views: totalViews || 0,
-      unique_views: uniqueViews || 0,
-      total_starts: totalStarts || 0,
-      total_completions: totalCompletions || 0,
-      completion_rate: completionRate,
-      average_completion_time_seconds: null, // Would require additional calculation
-      bounce_rate: 0, // Would require additional calculation
-      last_updated: new Date().toISOString()
+    // Create metrics object directly in API layer format
+    const dynamicMetrics: ApiFormMetrics = {
+      formId: formId,
+      totalViews: totalViews || 0,
+      uniqueViews: uniqueViews || 0,
+      totalStarts: totalStarts || 0,
+      totalCompletions: totalCompletions || 0,
+      completionRate: completionRate,
+      averageCompletionTimeSeconds: undefined, // Would require additional calculation
+      bounceRate: 0, // Would require additional calculation
+      lastUpdated: new Date().toISOString()
     }
     
     return dynamicMetrics

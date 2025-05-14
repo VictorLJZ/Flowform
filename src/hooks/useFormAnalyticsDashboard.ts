@@ -1,5 +1,6 @@
 import useSWR from 'swr';
-import type { FormMetrics } from '@/types/supabase-types';
+import { ApiFormMetrics, UiFormMetrics } from '@/types/analytics';
+import { apiToUiFormMetrics } from '@/utils/type-utils/analytics';
 
 // API response fetcher for SWR
 const fetcher = async (url: string) => {
@@ -44,7 +45,8 @@ export type BlockPerformance = { block_id: string; title: string; avg_time_secon
 export type BlockStats = { id: string; title: string; count: number; };
 export type BasicInsight = { id: string; title: string; description: string; };
 export type BaseAnalyticsDashboardData = {
-  metrics: FormMetrics | null;
+  metrics: ApiFormMetrics | null;
+  uiMetrics: UiFormMetrics | null;
   isLoading: boolean;
   error: string | null;
 };
@@ -94,15 +96,30 @@ export function useFormAnalyticsDashboard(formId: string | null) {
     // Combined error state
     hasError: !!analyticsError || !!blockMetricsError,
     
-    // For backward compatibility
+    // API layer metrics from the API response
     metrics: analyticsData?.data ? {
-      id: analyticsData.data.formId,
-      views: analyticsData.data.views,
-      unique_views: analyticsData.data.uniqueViews,
-      completions: analyticsData.data.completions,
-      submission_rate: analyticsData.data.submissionRate,
-      bounce_rate: analyticsData.data.bounceRate,
-      avg_time_to_complete: analyticsData.data.avgTimeToComplete,
-    } as unknown as FormMetrics : null
+      formId: analyticsData.data.formId,
+      totalViews: analyticsData.data.views,
+      uniqueViews: analyticsData.data.uniqueViews,
+      totalCompletions: analyticsData.data.completions,
+      completionRate: analyticsData.data.submissionRate,
+      bounceRate: analyticsData.data.bounceRate,
+      averageCompletionTimeSeconds: analyticsData.data.avgTimeToComplete,
+      totalStarts: analyticsData.data.views, // Estimate if not provided
+      lastUpdated: new Date().toISOString()
+    } : null,
+    
+    // UI layer metrics with formatted display values
+    uiMetrics: analyticsData?.data ? apiToUiFormMetrics({
+      formId: analyticsData.data.formId,
+      totalViews: analyticsData.data.views,
+      uniqueViews: analyticsData.data.uniqueViews,
+      totalCompletions: analyticsData.data.completions,
+      completionRate: analyticsData.data.submissionRate,
+      bounceRate: analyticsData.data.bounceRate,
+      averageCompletionTimeSeconds: analyticsData.data.avgTimeToComplete,
+      totalStarts: analyticsData.data.views, // Estimate if not provided
+      lastUpdated: new Date().toISOString()
+    }) : null
   };
 }

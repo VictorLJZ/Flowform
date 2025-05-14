@@ -12,12 +12,14 @@
  * 3. Update API routes to use the proper types and transformations
  */
 
-import { BlockMetrics } from '@/types/supabase-types';
+import { ApiBlockMetrics } from '@/types/analytics';
 import { RagStatus } from '@/types/chat-types';
-import { z } from 'zod';
+import * as z from 'zod';
+import { ApiFormView } from './analytics';
 
 // From: src/app/api/analytics/block-metrics/[formId]/route.ts
-// Should become DbBlockMetric
+// This has been replaced with DbBlockMetrics in the new type system
+// Keeping this interface temporarily for backward compatibility
 export interface BlockMetric {
   id?: string;
   block_id?: string;
@@ -42,7 +44,7 @@ export interface BlockPerformance {
   completion_rate: number;
   average_time_spent: number;
   skip_rate: number;
-  metrics: BlockMetrics | null;
+  metrics: ApiBlockMetrics | null;
 }
 
 // From: src/app/api/analytics/chat/sessions/[sessionId]/route.ts
@@ -99,7 +101,7 @@ export interface FormAnalytics {
   total_completions: number;
   completion_rate: number;
   average_time_spent: number;
-  metrics: Record<string, any> | null;
+  metrics: Record<string, unknown> | null;
   views_over_time: { date: string; count: number }[];
 }
 
@@ -147,19 +149,21 @@ export interface BlockSubmitResponseData {
 
 // Types for form-view/route.ts
 export const FormViewRequestBodySchema = z.object({
-  form_id: z.string().uuid(),
-  visitor_id: z.string(),
-  is_unique: z.boolean().optional().default(false),
-  device_type: z.string().optional(),
+  formId: z.string().uuid(),
+  visitorId: z.string(),
+  isUnique: z.boolean().optional().default(false),
+  deviceType: z.string().optional(),
   browser: z.string().optional(),
-  source: z.string().optional().nullable(),
+  source: z.string().optional(),
 });
 
 export type FormViewRequestBody = z.infer<typeof FormViewRequestBodySchema>;
 
+// Note: FormViewData is now replaced by ApiFormView from analytics types
+// This type is kept for backward compatibility
 export interface FormViewData {
   id: string;
-  form_id: string;
+  form_id: string; // Keep snake_case for backward compatibility
   timestamp: string;
 }
 
@@ -183,13 +187,13 @@ export type InteractionRequestBody = z.infer<typeof InteractionRequestBodySchema
 export interface InteractionRpcRawData {
   interaction_id?: string; // Example, depends on actual RPC return
   timestamp?: string;      // Example, depends on actual RPC return
-  [key: string]: any;       // Allow other properties returned by RPC
+  [key: string]: unknown;  // Allow other properties returned by RPC
 }
 
 // Represents the full structure of 'rpcResult' from the track_block_interaction RPC call
 export type InteractionRpcResponse =
   | ({ success: true } & InteractionRpcRawData)
-  | { success: false; error: string; [key: string]: any };
+  | { success: false; error: string; [key: string]: unknown };
 
 // Types for view/route.ts
 export const ViewRequestBodySchema = z.object({
@@ -216,12 +220,12 @@ export interface ViewResponseData {
   timestamp: string; // Likely an ISO string from the DB
   is_unique?: boolean | null;
   metadata?: Record<string, unknown> | null;
-  [key: string]: any; // Allow other properties returned by Supabase select
+  [key: string]: unknown; // Allow other properties returned by Supabase select
 }
 
 // Generic tracking response for all tracking routes
 export type TrackingResponse =
-  | { success: true; data: Record<string, unknown> | FormViewData | BatchAnalyticsResult | BlockSubmitResponseData | InteractionRpcResponse | ViewResponseData }
-  | { success: false; error: string; details?: any };
+  | { success: true; data: Record<string, unknown> | FormViewData | BatchAnalyticsResult | BlockSubmitResponseData | InteractionRpcResponse | ViewResponseData | ApiFormView }
+  | { success: false; error: string; details?: unknown };
 
 // More types will be added here as we analyze other API routes...

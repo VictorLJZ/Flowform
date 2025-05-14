@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
-import type { FormViewRequestBody, FormViewData, TrackingResponse } from '../../../../../types/AggregateApiCleanup';
-import { FormViewRequestBodySchema } from '../../../../../types/AggregateApiCleanup';
+import { ApiFormView } from '@/types/analytics';
+import { FormViewRequestBody, FormViewRequestBodySchema, TrackingResponse } from '@/types/AggregateApiCleanup';
 
 // Mark this route as dynamic to prevent caching
 export const dynamic = 'force-dynamic';
@@ -49,10 +49,10 @@ export async function POST(request: Request) {
     // console.log('[API DEBUG] Calling track_form_view RPC with form_id:', data.form_id);
     
     const { data: rpcResult, error } = await supabase.rpc('track_form_view', {
-      p_form_id: data.form_id,
-      p_visitor_id: data.visitor_id,
-      p_is_unique: !!data.is_unique,
-      p_device_type: data.device_type || null,
+      p_form_id: data.formId,
+      p_visitor_id: data.visitorId,
+      p_is_unique: !!data.isUnique,
+      p_device_type: data.deviceType || null,
       p_browser: data.browser || null,
       p_source: data.source || null
     });
@@ -68,10 +68,16 @@ export async function POST(request: Request) {
     
     // console.log('[API] Form view tracked successfully via RPC');
     
-    const formView: FormViewData = {
+    // Convert result to API layer type
+    const formView: ApiFormView = {
       id: rpcResult.view_id,
-      form_id: data.form_id,
-      timestamp: rpcResult.timestamp
+      formId: data.formId,
+      visitorId: data.visitorId,
+      source: data.source,
+      deviceType: data.deviceType,
+      browser: data.browser,
+      timestamp: rpcResult.timestamp,
+      isUnique: !!data.isUnique
     };
     
     

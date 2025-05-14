@@ -35,62 +35,17 @@ export interface WorkflowEdge {
  * Database Tables - Analytics
  */
 
-export interface FormView {
-  id: string; // UUID
-  form_id: string; // UUID, references forms.form_id
-  visitor_id: string;
-  source: string | null;
-  device_type: string | null;
-  browser: string | null;
-  timestamp: string; // ISO date string
-  is_unique: boolean;
-}
+// FormMetrics has been migrated to the new three-layer type system
+// See src/types/analytics/DbFormMetrics.ts, ApiFormMetrics.ts, and UiFormMetrics.ts
 
-export interface FormMetrics {
-  form_id: string; // UUID, references forms.form_id
-  total_views: number;
-  unique_views: number;
-  total_starts: number;
-  total_completions: number;
-  completion_rate: number; // Float
-  average_completion_time_seconds: number | null;
-  bounce_rate: number; // Float
-  last_updated: string; // ISO date string
-}
+// BlockMetrics has been migrated to the new three-layer type system
+// See src/types/analytics/DbBlockMetrics.ts, ApiBlockMetrics.ts, and UiBlockMetrics.ts
 
-export interface BlockMetrics {
-  id: string; // UUID
-  block_id: string; // UUID, references form_blocks.id
-  form_id: string; // UUID, references forms.form_id
-  views: number;
-  skips: number;
-  average_time_seconds: number | null;
-  drop_off_count: number;
-  drop_off_rate: number; // Float
-  last_updated: string; // ISO date string
-}
+// FormInteraction has been migrated to the new three-layer type system
+// See src/types/analytics/DbFormMetrics.ts (DbFormInteraction), ApiFormMetrics.ts (ApiFormInteraction), and UiFormMetrics.ts (UiFormInteraction)
 
-export interface FormInteraction {
-  id: string; // UUID
-  response_id: string | null; // UUID, references form_responses.id
-  block_id: string | null; // UUID, references form_blocks.id
-  interaction_type: 'view' | 'focus' | 'blur' | 'change' | 'submit' | 'error';
-  timestamp: string; // ISO date string
-  duration_ms: number | null;
-  metadata: Record<string, unknown> | null; // JSONB
-}
-
-export interface DynamicBlockAnalytics {
-  id: string; // UUID
-  dynamic_response_id: string; // UUID, references dynamic_block_responses.id
-  block_id: string; // UUID, references form_blocks.id
-  question_index: number;
-  question_text: string;
-  time_to_answer_seconds: number | null;
-  answer_length: number | null;
-  sentiment_score: number | null; // Float
-  topics: { topic: string; confidence: number; relevance?: number }[] | null; // JSONB
-}
+// DynamicBlockAnalytics has been migrated to the new three-layer type system
+// See src/types/analytics/DbDynamicBlockAnalytics.ts, ApiDynamicBlockAnalytics.ts, and UiDynamicBlockAnalytics.ts
 
 // Type for joining tables and getting complete form data
 export type FormWithBlocks = DbForm & {

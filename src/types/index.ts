@@ -8,13 +8,10 @@ export * from './common-types';
 export * from './ai-types';
 
 // Analytics types
-export * from './analytics-types';
+export * from './analytics';
 
 // Auth types
 export * from './auth-types';
-
-// Block metrics types
-export * from './block-metrics-types';
 
 // Chart types
 export * from './chart-types';

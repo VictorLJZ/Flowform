@@ -13,43 +13,38 @@ export async function trackFormViewClient(
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
   // Use visitor ID from metadata if provided, otherwise it should be provided by the caller
-  const visitorId = metadata.visitor_id as string || '';
-  const isUnique = metadata.is_unique as boolean || false;
+  const visitorId = metadata.visitorId as string || metadata.visitor_id as string || '';
+  const isUnique = metadata.isUnique as boolean || metadata.is_unique as boolean || false;
   const timestamp = new Date().toISOString();
   
   // Get device and browser information
   const deviceType = typeof window !== 'undefined' 
     ? detectDeviceType() 
     : 'unknown';
-  
+    
   const browser = typeof window !== 'undefined' 
     ? detectBrowser() 
     : 'unknown';
-  
-  // Enrich metadata with browser information when available
-  const enrichedMetadata = {
-    ...metadata,
-    user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : null,
-    referrer: typeof document !== 'undefined' ? document.referrer : null,
-    screen_size: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
-  };
+    
+  // Add referrer and screen size to tracking data
+  const referrer = typeof document !== 'undefined' ? document.referrer : undefined;
+  const screenSize = typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : undefined;
 
-  // Removed event queuing to eliminate redundancy
-  // We now use only the direct API call as the single source of truth
-
-  // Use the API route to track the form view
-  const apiPayload = {
-    form_id: formId, // Ensure field names match the schema validation in the API
-    visitor_id: visitorId,
-    device_type: deviceType,
+  // Prepare API request data using the new API types with camelCase properties
+  const requestData = {
+    formId,
+    visitorId,
+    deviceType,
     browser,
-    source: metadata.source as string || null,
+    isUnique,
+    source: metadata.source as string || undefined,
+    // Include timestamp for audit purposes
     timestamp,
-    is_unique: isUnique,
-    metadata: enrichedMetadata
+    // Include additional tracking information
+    referrer,
+    screenSize
   };
   
-  // Function to attempt the API call with retries
   const trackWithRetry = async (retries = 2): Promise<void> => {
     try {
       // Get the current session/token
@@ -57,25 +52,38 @@ export async function trackFormViewClient(
       const { data: { session } } = await supabaseClient.auth.getSession();
       const accessToken = session?.access_token;
 
-      const response = await fetch('/api/analytics/track/form-view', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add Authorization header if token exists
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        credentials: 'same-origin', // Include credentials for same-origin requests
-        body: JSON.stringify(apiPayload),
-      });
+      try {
+        const response = await fetch('/api/analytics/track/form-view', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Add Authorization header if token exists
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          credentials: 'same-origin', // Include credentials for same-origin requests
+          body: JSON.stringify(requestData),
+        });
 
-      if (!response.ok) {
-        console.error(`Error tracking form view (${response.status}): ${response.statusText}`);
-        
-        // Retry on 401/403 errors if retries remain
-        if ((response.status === 401 || response.status === 403) && retries > 0) {
-          console.log(`Retrying form view tracking (${retries} retries left)`);
+        if (!response.ok) {
+          console.error(`[Analytics] Error tracking form view (${response.status}): ${response.statusText}`);
+          // Retry on 401/403 errors if retries remain
+          if ((response.status === 401 || response.status === 403) && retries > 0) {
+            console.log(`[Analytics] Retrying form view tracking (${retries} retries left)`);
+            return trackWithRetry(retries - 1);
+          }
+          return;
+        }
+
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        console.error('[Analytics] Failed to track form view:', error);
+        // Retry on error if retries remain
+        if (retries > 0) {
+          console.log(`[Analytics] Retrying form view tracking (${retries} retries left)`);
           return trackWithRetry(retries - 1);
         }
+        // Fail silently in production to not disrupt user experience
       }
     } catch (error) {
       console.error('Failed to track form view:', error);

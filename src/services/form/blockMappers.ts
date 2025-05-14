@@ -1,4 +1,4 @@
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { ApiQAPair } from '@/types/response';
 import type { AIConversationHandle } from '@/types/form-types';
 import type { useAnalytics } from '@/hooks/useAnalytics';
@@ -8,7 +8,7 @@ import { BlockPresentation } from '@/types/theme-types';
  * Base props available in the BlockRenderer component.
  */
 export interface BaseBlockMapperProps {
-  block: FormBlock;
+  block: UiBlock;
   currentAnswer: string | number | string[] | ApiQAPair[];
   onChange: (answer: string | number | string[] | ApiQAPair[]) => void;
   analytics: ReturnType<typeof useAnalytics>;
@@ -17,7 +17,7 @@ export interface BaseBlockMapperProps {
   aiConversationRef?: React.RefObject<AIConversationHandle | null>;
   responseId?: string | null;
   formId?: string;
-  submitAnswer?: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
+  submitAnswer?: (block: UiBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
 }
 
 /**

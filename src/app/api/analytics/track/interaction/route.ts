@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
-import type { InteractionRequestBody, InteractionRpcResponse, TrackingResponse } from '../../../../../types/AggregateApiCleanup';
-import { InteractionRequestBodySchema } from '../../../../../types/AggregateApiCleanup';
+import { InteractionRequestBodySchema, InteractionRpcResponse, TrackingResponse, InteractionRequestBody } from '@/types/AggregateApiCleanup';
+import { PostgrestError } from '@supabase/supabase-js';
 
 /**
  * API route for tracking block interactions
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       p_duration_ms: metadata?.duration_ms || null,
       p_visitor_id: visitorId,
       p_metadata: cleanMetadata && Object.keys(cleanMetadata).length > 0 ? cleanMetadata : null
-    }) as { data: InteractionRpcResponse | null, error: any }; // Added type assertion for rpc call
+    }) as { data: InteractionRpcResponse | null, error: PostgrestError | null }; // Use specific error type
     
     if (error || (rpcResult && !rpcResult.success)) {
       const errorMessage = error ? error.message : (rpcResult ? rpcResult.error : 'Unknown error');
