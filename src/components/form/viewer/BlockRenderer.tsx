@@ -17,7 +17,7 @@ import { DateBlock } from '@/components/form/blocks/DateBlock';
 import { AIConversationBlock } from '@/components/form/blocks/AIConversationBlock';
 import type { AIConversationHandle } from '@/types/form-types';
 import { FormBlock } from '@/types/block-types';
-import type { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import type { BaseBlockMapperProps } from '@/services/form/blockMappers';
 import {
@@ -33,9 +33,9 @@ import {
 
 interface BlockRendererProps {
   block: FormBlock;
-  currentAnswer: string | number | string[] | QAPair[];
-  setCurrentAnswer: (answer: string | number | string[] | QAPair[]) => void;
-  submitAnswer: (block: FormBlock, answer: string | number | string[] | QAPair[]) => Promise<void>; 
+  currentAnswer: string | number | string[] | ApiQAPair[];
+  setCurrentAnswer: (answer: string | number | string[] | ApiQAPair[]) => void;
+  submitAnswer: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
   submitting: boolean;
   responseId: string | null;
   formId: string;

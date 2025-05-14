@@ -11,9 +11,10 @@ import { useWorkflowNavigation } from './useWorkflowNavigation';
 import { Connection, Rule } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
 import { ApiQAPair } from '@/types/response';
+import { LegacyQAPair } from '@/utils/type-utils/response/LegacyQAPairAdapter';
 
 // Answer types can be varied based on the block type
-type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[];
+type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[] | LegacyQAPair[];
 
 interface FormWorkflowNavigationProps {
   blocks: FormBlock[];

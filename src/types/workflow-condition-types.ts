@@ -1,7 +1,6 @@
 import { Edge } from 'reactflow';
-import { WorkflowEdgeData, Rule } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
-import { ConditionRule } from '@/types/workflow-types';
+import { WorkflowEdgeData, Rule, ConditionRule } from '@/types/workflow-types';
+import { ApiBlock } from '@/types/block';
 
 // Field option type
 export interface FieldOption {
@@ -121,10 +120,10 @@ export const standardFields: FieldOption[] = [
  * Get available fields for a specific source block
  * This standardizes condition fields for different block types
  */
-export function getAvailableFieldsForBlock(sourceBlock: FormBlock | null | undefined): FieldOption[] {
+export function getAvailableFieldsForBlock(sourceBlock: ApiBlock | null | undefined): FieldOption[] {
   if (!sourceBlock) return [];
   
-  const blockTypeId = sourceBlock.blockTypeId;
+  const blockTypeId = sourceBlock.subtype;
   
   // Get standard fields applicable to this block type
   const fields = standardFields.filter(field => 
@@ -160,11 +159,11 @@ export function getAvailableFieldsForBlock(sourceBlock: FormBlock | null | undef
 /**
  * Get available operators for a specific field
  */
-export function getOperatorsForField(fieldId: string, sourceBlock: FormBlock | null | undefined): ConditionOperator[] {
+export function getOperatorsForField(fieldId: string, sourceBlock: ApiBlock | null | undefined): ConditionOperator[] {
   if (!fieldId || !sourceBlock) return ['equals'];
   
   // First, try to find the field in standard fields
-  const field = standardFields.find(f => f.id === fieldId && f.blockTypes.includes(sourceBlock.blockTypeId));
+  const field = standardFields.find(f => f.id === fieldId && f.blockTypes.includes(sourceBlock.subtype));
   
   if (field) {
     return field.operators;
@@ -182,7 +181,7 @@ export function getOperatorsForField(fieldId: string, sourceBlock: FormBlock | n
 /**
  * Validate a condition rule
  */
-export function validateCondition(condition: ConditionRule | undefined, sourceBlock: FormBlock | null | undefined): boolean {
+export function validateCondition(condition: ConditionRule | undefined, sourceBlock: ApiBlock | null | undefined): boolean {
   if (!condition || !condition.field || !condition.operator) return false;
   
   const { field, operator, value } = condition;

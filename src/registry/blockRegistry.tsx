@@ -6,7 +6,18 @@ import {
   Bookmark
 } from "lucide-react"
 import dynamic from "next/dynamic"
+// Import legacy types for backward compatibility
 import type { BlockDefinition, FormBlock } from '@/types/block-types'
+// Import new type system
+import {
+  ApiBlockType,
+  ApiBlockSubtype,
+  ApiStaticBlockSubtype,
+  ApiDynamicBlockSubtype,
+  ApiIntegrationBlockSubtype,
+  ApiLayoutBlockSubtype
+} from '@/types/block/ApiBlock'
+import { UiBlockDefinition } from '@/types/block/UiBlock'
 
 // Block registry
 const blockRegistry: Record<string, BlockDefinition> = {
@@ -248,18 +259,47 @@ export const getAllBlocks = () => {
   return Object.values(blockRegistry)
 }
 
+/**
+ * Creates a new block with the new type system while maintaining compatibility with legacy code
+ * @param blockTypeId The ID of the block type to create
+ * @param order The order index of the block
+ * @returns A new block compatible with both new and old systems
+ */
 export const createNewBlock = (blockTypeId: string, order: number): FormBlock => {
   const blockDef = getBlockDefinition(blockTypeId)
   
+  // Determine the block type and subtype based on blockTypeId
+  let blockType: ApiBlockType = (blockDef?.type || 'static') as ApiBlockType;
+  let blockSubtype: ApiBlockSubtype;
+  
+  // Assign the appropriate subtype based on blockTypeId and type
+  if (blockTypeId === 'ai_conversation') {
+    blockSubtype = 'ai_conversation' as ApiDynamicBlockSubtype;
+  } else if (blockTypeId === 'hubspot') {
+    blockSubtype = 'hubspot' as ApiIntegrationBlockSubtype;
+  } else if (blockTypeId === 'page_break') {
+    blockSubtype = 'page_break' as ApiLayoutBlockSubtype;
+  } else if (blockTypeId === 'redirect') {
+    blockSubtype = 'redirect' as ApiLayoutBlockSubtype;
+  } else {
+    // For static blocks, the blockTypeId is the subtype
+    blockSubtype = blockTypeId as ApiStaticBlockSubtype;
+  }
+  
+  // Create a block that's compatible with both systems
   return {
     id: `block-${Date.now()}`,
     blockTypeId,
-    type: blockDef?.type || 'static', // Valid default type
+    type: blockType,
+    subtype: blockSubtype,
     title: blockDef?.defaultTitle || "",
     description: blockDef?.defaultDescription || "",
     required: false,
     order_index: order,
-    settings: blockDef?.getDefaultValues() || {}
+    orderIndex: order,
+    settings: blockDef?.getDefaultValues() || {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 }
 

@@ -2,7 +2,7 @@
 import { createClient, SupabaseClient } from '@/lib/supabase/client';
 import { DbFormResponse, DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
 import { dbToApiFormResponse, dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
-import { DbForm } from '@/types/form';
+import { DbForm } from '@/types/block';
 
 // Temporary type to maintain compatibility during migration
 interface CompleteResponse {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/client"
 import { generateQuestion } from "@/services/ai/generateQuestion"
-import type { QAPair } from "@/types/supabase-types"
+import type { ApiQAPair } from "@/types/response"
 
 // For Next.js App Router, we use this format for route handlers
 export async function POST(request: Request) {
@@ -50,11 +50,15 @@ export async function POST(request: Request) {
     const maxQuestions = blockData.settings?.maxQuestions || 5;
     const contextInstructions = blockData.settings?.contextInstructions || '';
 
-    // Format the conversation for OpenAI
-    const aiConversation = conversation.map((qa: QAPair) => [
-      { role: "assistant", content: qa.question },
-      { role: "user", content: qa.answer },
-    ]).flat()
+    // Format the conversation for OpenAI using the new ApiQAPair format
+    const aiConversation = conversation.map((item: ApiQAPair) => {
+      if (item.type === 'question') {
+        return { role: "assistant", content: item.content };
+      } else if (item.type === 'answer') {
+        return { role: "user", content: item.content };
+      }
+      return null;
+    }).filter(Boolean)
 
     // Add context instructions if available
     if (contextInstructions) {

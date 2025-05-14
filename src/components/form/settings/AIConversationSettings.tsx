@@ -7,10 +7,15 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent } from "@/components/ui/card"
 import { FormBlock } from "@/types/block-types"
+import { UiBlock } from "@/types/block/UiBlock"
 import { Info } from "lucide-react"
 
+/**
+ * Props interface for AIConversationSettings component
+ * Accepts both FormBlock (legacy) and UiBlock (new type system)
+ */
 interface AIConversationSettingsProps {
-  block: FormBlock
+  block: FormBlock | UiBlock
   updateSettings: (settings: Record<string, unknown>) => void
 }
 

@@ -6,10 +6,10 @@
  */
 
 // Database to API transformations
-export * from './DbToApiResponse.js';
+export * from './DbToApiResponse';
 
 // API to Database transformations
-export * from './ApiToDbResponse.js';
+export * from './ApiToDbResponse';
 
 // API to UI transformations
-export * from './ApiToUiResponse.js';
+export * from './ApiToUiResponse';

@@ -1,11 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Connection, ConditionRule, ConditionGroup } from '@/types/workflow-types';
 import { FormBlock } from '@/types/block-types';
+import { ApiQAPair } from '@/types/response';
 
 // Using unknown[] is more type-safe than any[] but still allows for flexibility
 // We need this flexibility due to the variety of answer types in the system
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Answer = string | number | string[] | boolean | any;
+// Using union types to maintain flexibility for all answer types
+type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[];
 
 interface WorkflowNavigationProps {
   blocks: FormBlock[];
@@ -194,7 +196,10 @@ export function useWorkflowNavigation({
       
       if (Array.isArray(answer)) {
         // For multiple choice where answer is an array of selections
-        const isSelected = answer.includes(choiceValue);
+        // Type safe check for primitive values in array
+        const isSelected = answer.some(item => 
+          (typeof item === 'string' || typeof item === 'number') && item.toString() === choiceValue
+        );
         console.log(`Choice ${choiceValue} is ${isSelected ? 'selected' : 'not selected'} in ${JSON.stringify(answer)}`);
         return operator === 'equals' ? isSelected : !isSelected;
       } else if (typeof answer === 'string') {

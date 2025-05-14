@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { completeResponse } from "@/services/response/completeResponse"
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
-import { QAPair } from '@/types/supabase-types'
+import { ApiQAPair } from '@/types/response'
 
 // Use Node.js runtime instead of Edge
 export const runtime = 'nodejs';
@@ -400,36 +400,81 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         }
         
         // Get the current question index from the request or default to the end
-        // const questionIndex = body.questionIndex ?? (existingData?.conversation?.length || 0); // Not currently used
-        
-        const conversation: QAPair[] = existingData?.conversation || [];
+        // Initialize conversation array from existing data or create a new one
+        const conversation: ApiQAPair[] = existingData?.conversation || [];
+        const timestamp = new Date().toISOString();
         
         // Add the new answer to the conversation
         if (body.isStarterQuestion) {
           console.log(`[${requestId}] Processing starter question answer`);
-          conversation.push({
-            question: currentQuestion || blockData.title || "What's your answer?",
-            answer: answer as string,
-            timestamp: new Date().toISOString(),
-            is_starter: true
-          });
+          
+          // Replace the starter question and answer if they exist
+          if (conversation.length >= 2) {
+            // Update the first question and answer pair
+            if (conversation[0].type === 'question') {
+              conversation[0] = {
+                type: 'question',
+                content: currentQuestion || blockData.title || "What's your answer?",
+                timestamp,
+                isStarter: true
+              };
+            }
+            
+            if (conversation[1].type === 'answer') {
+              conversation[1] = {
+                type: 'answer',
+                content: answer as string,
+                timestamp,
+                isStarter: true
+              };
+            }
+          } else {
+            // Add new starter question and answer
+            // Clear any existing items first
+            conversation.splice(0, conversation.length);
+            
+            // Add question
+            conversation.push({
+              type: 'question',
+              content: currentQuestion || blockData.title || "What's your answer?",
+              timestamp,
+              isStarter: true
+            });
+            
+            // Add answer
+            conversation.push({
+              type: 'answer',
+              content: answer as string,
+              timestamp,
+              isStarter: true
+            });
+          }
         } else if (!body.isComplete) {
           // Only add new answer to conversation if not "Continue" button (isComplete)
           console.log(`[${requestId}] Processing follow-up question answer`);
           
           // Check if the answer is the entire conversation array 
           // (this can happen if the Continue button sends the current state)
-          if (Array.isArray(answer) && answer.length > 0 && answer[0].question) {
+          if (Array.isArray(answer) && answer.length > 0 && 
+              typeof answer[0] === 'object' && 'type' in answer[0]) {
             console.log(`[${requestId}] Detected conversation array submitted as answer, ignoring`);
             // Don't add this to conversation - it's a duplicate
           } else {
-            // Normal case - add the answer to conversation
-            conversation.push({
-              question: currentQuestion || (existingData?.next_question || 'Follow-up question'),
-              answer: answer as string,
-              timestamp: new Date().toISOString(),
-              is_starter: false
-            });
+            // Normal case - add the question and answer to conversation
+            conversation.push(
+              {
+                type: 'question',
+                content: currentQuestion || (existingData?.next_question || 'Follow-up question'),
+                timestamp,
+                isStarter: false
+              },
+              {
+                type: 'answer',
+                content: answer as string,
+                timestamp,
+                isStarter: false
+              }
+            );
           }
         } else {
           console.log(`[${requestId}] Continue button pressed, not adding to conversation`);
@@ -462,9 +507,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         
         if (!isComplete) {
           try {
-            // Get the questions and answers arrays
-            const prevQuestions = conversation.map(qa => qa.question);
-            const prevAnswers = conversation.map(qa => qa.answer);
+            // Get the questions and answers arrays from ApiQAPair format
+            const prevQuestions = conversation
+              .filter(item => item.type === 'question')
+              .map(item => item.content);
+            const prevAnswers = conversation
+              .filter(item => item.type === 'answer')
+              .map(item => item.content);
             
             // Get context instructions from block settings if available
             const contextInstructions = blockData.settings?.contextInstructions || '';

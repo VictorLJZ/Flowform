@@ -22,7 +22,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { CustomFormData } from "@/types/form-builder-types"
 import { FormTheme, defaultFormTheme } from "@/types/theme-types"
-import { FormBlock } from '@/types/supabase-types';
+// Updated to use new type system
+import { UiBlock } from '@/types/block';
 import FormBuilderSidebar from "@/components/form/builder/form-builder-sidebar"
 import FormBuilderContent from "@/components/form/builder/form-builder-content"
 import FormBuilderSettings from "@/components/form/builder/form-builder-settings"
@@ -118,24 +119,39 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       
       // Transform blocks from DB format to application format
       // Default to an empty array if form.blocks is null or undefined
-      const parsedBlocks = (form.blocks || []).map((block: FormBlock) => {
-        // CRITICAL FIX: BlockTypeId should be the SUBTYPE, not the type
-        // The previous implementation incorrectly mapped blockTypeId to block.type
+      const parsedBlocks = (form.blocks || []).map((block: any) => {
+        // Handle both old and new block formats
+        // In legacy format, block might have type but not subtype
+        // In new format, block will have both type and subtype
         
-        // Get the block definition based on subtype, not type
-        const blockDef = getBlockDefinition(block.subtype);
+        // Determine the appropriate blockTypeId
+        // For newer blocks, use subtype; for legacy blocks, fallback to type
+        const blockTypeId = block.subtype || block.type || 'static';
         
-        // Fixed property mapping
+        // Get the block definition
+        const blockDef = getBlockDefinition(blockTypeId);
+        
+        // Set the block type based on available data or defaults
+        const blockType = block.type || (blockTypeId === 'ai_conversation' ? 'dynamic' : 
+                         blockTypeId === 'hubspot' ? 'integration' : 
+                         (blockTypeId === 'page_break' || blockTypeId === 'redirect') ? 'layout' : 
+                         'static');
+                         
+        // Fixed property mapping - ensure all required fields have values
         return {
           id: block.id,
-          blockTypeId: block.subtype, // FIXED: blockTypeId should be the subtype (e.g., 'multiple_choice')
-          type: block.type, // Keep the generic type (e.g., 'static')
-          subtype: block.subtype, // Also add the subtype explicitly for future reference
+          blockTypeId: blockTypeId, // Ensure this is always a string
+          type: blockType, // Always has a value
+          subtype: blockTypeId, // Use the same value for consistency 
           title: block.title || blockDef?.defaultTitle || '',
           description: block.description || undefined, // Ensure undefined instead of null
-          required: block.required, // Already boolean
-          order_index: block.order_index, // Already number
+          required: block.required !== undefined ? block.required : false,
+          order_index: block.order_index || 0, // Ensure it's a number
+          orderIndex: block.orderIndex || block.order_index || 0, // Support both naming conventions
           settings: block.settings || {},
+          // Add timestamp fields for completeness
+          createdAt: block.createdAt || block.created_at || new Date().toISOString(),
+          updatedAt: block.updatedAt || block.updated_at || new Date().toISOString()
         };
       });
       
@@ -150,7 +166,18 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
       if (form.workflow_edges && Array.isArray(form.workflow_edges)) {
         
         // Transform workflow edges to our internal Connection format
-        const connections = form.workflow_edges.map(edge => {
+        const connections = form.workflow_edges.map((edge: { 
+          id: string; 
+          source_id: string; 
+          target_id: string; 
+          source_handle?: string; 
+          target_handle?: string; 
+          rules?: string;
+          source_block_id?: string;
+          default_target_id?: string;
+          is_explicit?: boolean;
+          order_index?: number;
+        }) => {
           let parsedRules: Rule[] = [];
           if (edge.rules) { // edge.rules is the JSON string from the DB
             try {

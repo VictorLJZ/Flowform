@@ -5,7 +5,7 @@
  * Each slice represents a logical grouping of state and actions.
  */
 
-import type { FormBlock } from './block-types';
+import type { UiBlock } from './block';
 import type { SlideLayout } from './layout-types';
 import type { CustomFormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
@@ -36,18 +36,18 @@ export interface FormCoreSlice {
  * Handles adding, updating, removing and reordering blocks
  */
 export interface FormBlocksSlice {
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   currentBlockId: string | null;
   
   // Actions
-  setBlocks: (blocks: FormBlock[]) => void;
+  setBlocks: (blocks: UiBlock[]) => void;
   addBlock: (blockTypeId: string) => void;
-  updateBlock: (blockId: string, updates: Partial<FormBlock>) => void;
+  updateBlock: (blockId: string, updates: Partial<UiBlock>) => void;
   updateBlockSettings: (blockId: string, settings: Record<string, unknown>) => void;
   removeBlock: (blockId: string) => void;
   reorderBlocks: (startIndex: number, endIndex: number) => void;
   setCurrentBlockId: (blockId: string | null) => void;
-  getCurrentBlock: () => FormBlock | null;
+  getCurrentBlock: () => UiBlock | null;
 }
 
 /**

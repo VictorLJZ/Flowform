@@ -31,6 +31,6 @@ export type {
   UiResponseStatusInfo,
   UiFormResponse,
   UiStaticBlockAnswer,
-  UiDynamicBlockResponse,
-  UiQAPair
+  UiDynamicBlockResponse
+  // UiQAPair removed - using ApiQAPair directly for UI components
 } from './UiResponse';

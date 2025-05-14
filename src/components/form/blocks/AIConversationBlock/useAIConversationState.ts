@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useFormBuilderStore } from "@/stores/formBuilderStore";
 import { useAIConversation } from '@/hooks/useAIConversation';
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 import { AIConversationState } from './types';
 
 /**
@@ -13,7 +13,7 @@ export function useAIConversationState(
   formId: string,
   starterPrompt: string,
   maxQuestions: number,
-  onChange?: (value: QAPair[]) => void
+  onChange?: (value: ApiQAPair[]) => void
 ) {
   // Local state
   const [state, setState] = useState<AIConversationState>({
@@ -85,7 +85,17 @@ export function useAIConversationState(
   useEffect(() => {
     // If viewing a previous question, show its answer
     if (state.activeQuestionIndex < conversation.length) {
-      setState(prev => ({ ...prev, userInput: conversation[state.activeQuestionIndex].answer || '' }));
+      // In the new API format, find the answer item for this question index
+      // We need to find all answers at this index in the conversation
+      const questionItems = conversation.filter((item, idx) => 
+        item.type === 'question' && Math.floor(idx/2) === state.activeQuestionIndex
+      );
+      const answerItems = conversation.filter((item, idx) => 
+        item.type === 'answer' && Math.floor(idx/2) === state.activeQuestionIndex
+      );
+      
+      // Use the answer content if available
+      setState(prev => ({ ...prev, userInput: answerItems[0]?.content || '' }));
     } else {
       // When viewing the next/current question, clear the input
       setState(prev => ({ ...prev, userInput: '' }));
@@ -110,6 +120,7 @@ export function useAIConversationState(
   // Handle form value changes
   useEffect(() => {
     if (onChange && !isBuilder) {
+      // Now directly using the ApiQAPair format
       onChange(conversation);
     }
   }, [conversation, onChange, isBuilder]);
@@ -131,7 +142,11 @@ export function useAIConversationState(
   const getQuestionToSubmit = (): string => {
     if (state.activeQuestionIndex < conversation.length) {
       // Editing a previous question
-      return conversation[state.activeQuestionIndex].question;
+      // In the new API format, find the question item for this index
+      const questionItems = conversation.filter((item, idx) => 
+        item.type === 'question' && Math.floor(idx/2) === state.activeQuestionIndex
+      );
+      return questionItems[0]?.content || '';
     } else if (isFirstQuestion) {
       // Answering the starter question
       return starterPrompt;
@@ -150,11 +165,11 @@ export function useAIConversationState(
     
     return conversation.map((item, idx) => {
       // Make sure the first question always shows the starter prompt
-      if (idx === 0) {
-        // If this is the first item, always ensure it shows the proper starter prompt
+      if (idx === 0 && item.type === 'question') {
+        // If this is the first question item, ensure it shows the proper starter prompt
         return {
           ...item,
-          question: starterPrompt || item.question || "Initial question"
+          content: starterPrompt || item.content || "Initial question"
         };
       }
       return item;

@@ -3,7 +3,7 @@ import { SaveFormInput, SaveFormOutput } from '@/types/form-service-types';
 import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
-import { DbForm, ApiForm } from '@/types/form';
+import { DbForm, ApiForm } from '@/types/block';
 import { dbToApiForm } from '@/utils/type-utils';
 import { mutate } from 'swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';

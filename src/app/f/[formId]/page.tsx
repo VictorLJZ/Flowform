@@ -14,7 +14,7 @@ import { useViewTracking } from "@/hooks/analytics/useViewTracking";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
 import type { AIConversationHandle } from '@/types/form-types'; 
-import type { QAPair } from '@/types/supabase-types'; 
+import { ApiQAPair } from '@/types/response';
 import { BlockRenderer } from "@/components/form/viewer/BlockRenderer";
 import { CompletionScreen } from "@/components/form/viewer/CompletionScreen";
 import { ErrorMessages } from "@/components/form/viewer/ErrorMessages";
@@ -251,7 +251,11 @@ export default function FormViewerPage() {
       console.error('❌ [Analytics] Error tracking form completion:', error);
     }
   }, [analytics]);
-  const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | QAPair[]) => saveCurrentAnswer(blockId, answer), [saveCurrentAnswer]);
+  // Use type assertion to ensure compatibility with both the new and legacy QAPair types
+  const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | ApiQAPair[]) => {
+    // Properly typed to use ApiQAPair
+    saveCurrentAnswer(blockId, answer as any);
+  }, [saveCurrentAnswer]);
   
   // Effect to update callback refs - only runs when the memoized functions change
   useEffect(() => {
@@ -471,12 +475,14 @@ export default function FormViewerPage() {
                   try {
                     // First save to API - this was missing in the original implementation!
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling submitAnswerToAPI...');
-                    await submitAnswerToAPI(block, answer);
+                    // Type assertion to allow both QAPair types
+                    await submitAnswerToAPI(block, answer as any);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: API submission successful');
                     
                     // Then use workflow navigation
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling workflowSubmitAnswer...');
-                    workflowSubmitAnswer(answer);
+                    // Type assertion to allow both QAPair types
+                    workflowSubmitAnswer(answer as any);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Workflow navigation completed');
                   } catch (error) {
                     console.error('DEBUG_BLOCK_RENDERER_SUBMIT: Error during submission:', error);

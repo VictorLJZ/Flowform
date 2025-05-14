@@ -1,5 +1,5 @@
 // Types for form component interfaces and handles
-import { QAPair } from './supabase-types';
+import { ApiQAPair } from '@/types/response';
 
 /**
  * Interface for AIConversationBlock component ref methods
@@ -16,10 +16,10 @@ export interface AIConversationHandle {
   isComplete: () => boolean;
   
   // Get the current conversation history
-  getConversation: () => QAPair[];
+  getConversation: () => ApiQAPair[];
   
   // Alternative name for getConversation for compatibility
-  getMessages: () => QAPair[];
+  getMessages: () => ApiQAPair[];
 }
 
 /**

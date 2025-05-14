@@ -3,7 +3,7 @@
  * Converts snake_case DB properties to camelCase API properties
  */
 
-import { DbFormVersion, ApiFormVersion } from '@/types/form';
+import { DbFormVersion, ApiFormVersion } from '@/types/block';
 
 export function dbToApiFormVersion(dbFormVersion: DbFormVersion): ApiFormVersion {
   return {

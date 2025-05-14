@@ -12,15 +12,14 @@ import {
   ApiFormResponse,
   ApiStaticBlockAnswer,
   ApiDynamicBlockResponse,
-  ApiConversationMessage,
-  ApiResponseStatus
+  ApiQAPair
 } from '@/types/response';
 
 import { 
   DbFormResponse, 
   DbStaticBlockAnswer, 
   DbDynamicBlockResponse,
-  DbConversationMessage,
+  DbQAPair,
   DbResponseStatus
 } from '@/types/response';
 
@@ -90,27 +89,28 @@ export function apiToDbStaticBlockAnswerInput(apiInput: Omit<ApiStaticBlockAnswe
 }
 
 /**
- * Transform an API conversation message to DB format
+ * Transform an API QA pair to DB format
  * 
- * @param apiMessage - API conversation message object
- * @returns Database-formatted conversation message
+ * @param apiPair - API QA pair object
+ * @returns Database-formatted QA pair
  */
-export function apiToDbConversationMessage(apiMessage: ApiConversationMessage): DbConversationMessage {
+export function apiToDbQAPair(apiPair: ApiQAPair): DbQAPair {
   return {
-    role: apiMessage.role,
-    content: apiMessage.content,
-    timestamp: apiMessage.timestamp
+    type: apiPair.type,
+    content: apiPair.content,
+    timestamp: apiPair.timestamp,
+    is_starter: apiPair.isStarter
   };
 }
 
 /**
- * Transform API conversation messages to DB format
+ * Transform API QA pairs to DB format
  * 
- * @param apiMessages - Array of API conversation message objects
- * @returns Array of database-formatted conversation messages
+ * @param apiPairs - Array of API QA pair objects
+ * @returns Array of database-formatted QA pairs
  */
-export function apiToDbConversationMessages(apiMessages: ApiConversationMessage[]): DbConversationMessage[] {
-  return apiMessages.map(apiToDbConversationMessage);
+export function apiToDbQAPairs(apiPairs: ApiQAPair[]): DbQAPair[] {
+  return apiPairs.map(apiToDbQAPair);
 }
 
 /**
@@ -127,7 +127,7 @@ export function apiToDbDynamicBlockResponse(apiDynamicResponse: ApiDynamicBlockR
     started_at: apiDynamicResponse.startedAt,
     updated_at: apiDynamicResponse.updatedAt ?? null,
     completed_at: apiDynamicResponse.completedAt ?? null,
-    conversation: apiToDbConversationMessages(apiDynamicResponse.conversation) as unknown as Record<string, unknown>,
+    conversation: apiToDbQAPairs(apiDynamicResponse.conversation),
     next_question: apiDynamicResponse.nextQuestion ?? null
   };
 }
@@ -142,7 +142,7 @@ export function apiToDbDynamicBlockResponseInput(apiInput: Omit<ApiDynamicBlockR
   return {
     response_id: apiInput.responseId,
     block_id: apiInput.blockId,
-    conversation: apiToDbConversationMessages(apiInput.conversation) as unknown as Record<string, unknown>,
+    conversation: apiToDbQAPairs(apiInput.conversation),
     next_question: apiInput.nextQuestion ?? null
   };
 }

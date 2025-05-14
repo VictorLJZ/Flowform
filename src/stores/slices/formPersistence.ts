@@ -9,7 +9,7 @@ import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { saveWorkflowEdges } from '@/services/form/saveWorkflowEdges'
 import { loadFormComplete, loadVersionedFormComplete } from '@/services/viewer'
 import type { SaveFormInput } from '@/types/form-service-types'
-import type { BlockType, FormBlock } from '@/types/block-types'
+import type { ApiBlockType, ApiBlockSubtype, UiBlock } from '@/types/block'
 import type { Connection } from '@/types/workflow-types'
 import type { CustomFormData } from '@/types/form-builder-types'
 import type { FormTheme } from '@/types/theme-types'
@@ -48,13 +48,26 @@ export const createFormPersistenceSlice: StateCreator<
       }
 
       // Add blocks to match API expectations
-      const result = await saveFormWithBlocks(
-        input,
-        blocks.map((block: FormBlock) => ({
-          ...block,
-          form_id: formData.form_id
-        }))
-      )
+      // Convert UiBlock to format expected by saveFormWithBlocks
+      // We need to explicitly convert to the format expected by the service
+      // The service expects FormBlock format, which has different property names
+      const formBlocksForSaving = blocks.map((block) => ({
+        id: block.id,
+        form_id: formData.form_id,
+        type: block.type,
+        subtype: block.subtype,
+        title: block.title,
+        description: block.description,
+        required: block.required,
+        order_index: block.orderIndex,
+        settings: block.settings || {}, // Ensure settings is never null
+        blockTypeId: block.subtype, // For backward compatibility with the service
+        created_at: block.createdAt,
+        updated_at: block.updatedAt
+      }));
+      
+      // Type assertion to satisfy the compiler
+      const result = await saveFormWithBlocks(input, formBlocksForSaving as any)
 
       if (result) {
         console.log('✅ Form saved')
@@ -111,10 +124,10 @@ export const createFormPersistenceSlice: StateCreator<
     try {
       set({ isSaving: true })
 
-      // Extract settings from the block based on its blockTypeId
+      // Extract settings from the block based on its subtype
       const dynamicConfig: Record<string, unknown> = {}
 
-      if (block.blockTypeId === 'ai_conversation') {
+      if (block.subtype === 'ai_conversation') {
         // Map AI conversation block settings
         dynamicConfig.temperature = block.settings?.temperature || 0.7
         dynamicConfig.maxQuestions = block.settings?.maxQuestions || 3
@@ -129,27 +142,19 @@ export const createFormPersistenceSlice: StateCreator<
         if (block.settings?.modelId) {
           dynamicConfig.modelId = block.settings.modelId
         }
-      } else if (block.blockTypeId === 'choice') {
-        // Map choice block settings
-        dynamicConfig.options = block.settings?.options || []
-        dynamicConfig.allowMultiple = block.settings?.allowMultiple === true
-        dynamicConfig.displayMode = block.settings?.displayMode || 'radio'
-      } else if (block.blockTypeId === 'payment') {
-        // Map payment block settings
-        dynamicConfig.amount = block.settings?.amount || 0
-        dynamicConfig.currency = block.settings?.currency || 'USD'
-        dynamicConfig.paymentMethod = block.settings?.paymentMethod || 'card'
-      } else if (block.blockTypeId === 'file_upload') {
-        // Map file upload settings
-        dynamicConfig.maxFiles = block.settings?.maxFiles || 1
-        dynamicConfig.maxSize = block.settings?.maxSize || 5
-        dynamicConfig.allowedTypes = block.settings?.allowedTypes || []
+      } else if (block.subtype === 'hubspot') {
+        // Map Hubspot integration settings
+        dynamicConfig.fieldsMapping = block.settings?.fieldsMapping || {}
+        dynamicConfig.createContact = block.settings?.createContact !== false
       }
 
       // Save the dynamic configuration
+      // Get formData from state
+      const { formData } = get()
+      // Use the correct function signature
       await saveDynamicBlockConfig(block.id, dynamicConfig)
 
-      console.log(`\u2705 Saved dynamic block config: ${block.id}, type: ${block.blockTypeId}`)
+      console.log(`\u2705 Saved dynamic block config: ${block.id}, type: ${block.subtype}`)
     } catch (error) {
       console.error('Error saving dynamic block config:', error)
     } finally {
@@ -157,8 +162,8 @@ export const createFormPersistenceSlice: StateCreator<
     }
   },
 
-  // Setup the correct blockTypeId and settings when a new block type is selected
-  saveBlockType: (blockId: string, blockTypeId: string, type: BlockType = 'static') => {
+  // Setup the correct subtype and settings when a new block type is selected
+  saveBlockType: async (blockId: string, blockTypeId: string, type: ApiBlockType = 'static') => {
     const state = get()
     const { blocks } = state
     
@@ -183,9 +188,7 @@ export const createFormPersistenceSlice: StateCreator<
           userPrompt: ''
         }
       }
-    } 
-    // Special handling for choice blocks
-    else if (blockTypeId === 'choice') {
+    } else if (blockTypeId === 'choice') {
       defaultSettings = {
         options: [
           { id: uuidv4(), text: 'Option 1', value: '1' },
@@ -197,10 +200,17 @@ export const createFormPersistenceSlice: StateCreator<
     }
 
     // Update the block with new type and settings
-    updatedBlocks[blockIndex] = {
-      ...updatedBlocks[blockIndex],
-      blockTypeId,
+    const updatedBlock = {
+      id: blockId,
+      subtype: blockTypeId as ApiBlockSubtype, // Cast to ensure type compatibility
       type,
+      orderIndex: state.blocks.length
+    }
+    
+    // Apply the changes and merge with default settings
+    updatedBlocks[blockIndex] = { 
+      ...updatedBlocks[blockIndex], 
+      ...updatedBlock,
       settings: {
         ...updatedBlocks[blockIndex].settings,
         ...defaultSettings
@@ -284,9 +294,28 @@ export const createFormPersistenceSlice: StateCreator<
       // Update the state with all form data
       set({
         formData,
-        blocks,
+        // Convert blocks to UiBlock format using type assertions for safety
+        blocks: (blocks || []).map(block => {
+          // Use type assertion to safely access properties regardless of original type
+          const b = block as any
+          return {
+            id: b.id,
+            formId: b.formId || b.form_id || '',
+            type: b.type,
+            subtype: b.subtype || b.blockTypeId || 'text',
+            title: b.title,
+            description: b.description,
+            required: b.required,
+            orderIndex: b.orderIndex || b.order_index || 0,
+            settings: b.settings || {},
+            createdAt: b.createdAt || b.created_at || new Date().toISOString(),
+            updatedAt: b.updatedAt || b.updated_at || new Date().toISOString(),
+          }
+        }) as UiBlock[],
         connections,
         nodePositions,
+        isSaving: false,
+        // Set current block to the first block if blocks exist
         currentBlockId: blocks.length > 0 ? blocks[0].id : null
       });
       
@@ -333,11 +362,27 @@ export const createFormPersistenceSlice: StateCreator<
       // Update form state
       set({
         formData: formDataWithFormId,
-        blocks,
+        blocks: blocks.map(block => {
+          // Use type assertion to safely access properties regardless of original type
+          const b = block as any
+          return {
+            id: b.id,
+            formId: b.formId || b.form_id || '',
+            type: b.type,
+            subtype: b.subtype || b.blockTypeId || 'text',
+            title: b.title,
+            description: b.description,
+            required: b.required,
+            orderIndex: b.orderIndex || b.order_index || 0,
+            settings: b.settings || {},
+            createdAt: b.createdAt || b.created_at || new Date().toISOString(),
+            updatedAt: b.updatedAt || b.updated_at || new Date().toISOString(),
+          }
+        }) as UiBlock[],
         connections,
         nodePositions,
-        // Set current block to the first block if blocks exist
-        currentBlockId: blocks.length > 0 ? blocks[0].id : null
+        currentBlockId: blocks.length > 0 ? blocks[0].id : null,
+        isSaving: false,
       });
       
     } catch (error) {

@@ -9,10 +9,8 @@
  */
 
 import { formatFormDate } from '@/utils/type-utils/form/ApiToUiForm';
-import { format, formatDistanceToNow } from 'date-fns';
 
 import { 
-  ApiQAPair,
   ApiDynamicBlockResponse,
   ApiFormResponse,
   ApiResponseStatus,
@@ -20,7 +18,6 @@ import {
 } from '@/types/response';
 
 import { 
-  UiQAPair,
   UiDynamicBlockResponse,
   UiFormResponse,
   UiResponseStatusInfo,
@@ -166,7 +163,7 @@ export function apiToUiStaticBlockAnswer(apiAnswer: ApiStaticBlockAnswer): UiSta
   
   // For displayValue, we might want to do additional formatting based on answer type
   // This is a simplified example
-  let displayValue = apiAnswer.answer;
+  const displayValue = apiAnswer.answer;
   
   // Additional validation logic could be implemented here
   const isValid = !!apiAnswer.answer; // Simple validation example
@@ -193,45 +190,9 @@ export function apiToUiStaticBlockAnswers(apiAnswers: ApiStaticBlockAnswer[]): U
   return apiAnswers.map(apiToUiStaticBlockAnswer);
 }
 
-/**
- * Transform an API QA pair to UI format with display enhancements
- * 
- * @param apiPair - API QA pair object
- * @returns UI-formatted QA pair object
- */
-export function apiToUiQAPair(apiPair: ApiQAPair): UiQAPair {
-  const timestamp = new Date(apiPair.timestamp);
-  
-  // Determine display name based on type
-  let displayName = 'Question';
-  if (apiPair.type === 'answer') {
-    displayName = 'Answer';
-  }
-  
-  return {
-    // Pass through all API properties
-    ...apiPair,
-    
-    // Add UI-specific properties
-    formattedTimestamp: format(timestamp, 'MMM d, yyyy h:mm a'),
-    displayName,
-    isCurrentPair: false, // Default to false, UI component can override this
-    // Set avatars based on type
-    avatarUrl: apiPair.type === 'answer' ? '/assets/answer-icon.png' : '/assets/question-icon.png',
-    // Highlight starter questions/answers by default
-    isHighlighted: apiPair.isStarter
-  };
-}
+// UiQAPair transformation removed - using ApiQAPair directly
 
-/**
- * Transform an array of API QA pairs to UI format
- * 
- * @param apiPairs - Array of API QA pair objects
- * @returns Array of UI-formatted QA pair objects
- */
-export function apiToUiQAPairs(apiPairs: ApiQAPair[]): UiQAPair[] {
-  return apiPairs.map(apiToUiQAPair);
-}
+// UiQAPairs transformation removed - using ApiQAPair directly
 
 /**
  * Transform an API dynamic block response to UI format with enhanced display properties
@@ -249,9 +210,6 @@ export function apiToUiDynamicBlockResponse(apiDynamicResponse: ApiDynamicBlockR
   const questionCount = apiDynamicResponse.conversation.filter(m => m.type === 'question').length;
   const remainingQuestions = Math.max(0, maxQuestions - questionCount);
   
-  // Convert API QA pairs to UI format
-  const conversationUi = apiToUiQAPairs(apiDynamicResponse.conversation);
-  
   return {
     // Pass through all API properties
     ...apiDynamicResponse,
@@ -259,7 +217,8 @@ export function apiToUiDynamicBlockResponse(apiDynamicResponse: ApiDynamicBlockR
     // Add UI-specific properties
     formattedStartDate: formatFormDate(startDate.toISOString()),
     formattedCompletionDate: completionDate ? formatFormDate(completionDate.toISOString()) : undefined,
-    conversationUi,
+    // Using conversation directly instead of conversationUi
+    conversation: apiDynamicResponse.conversation,
     displayProgress: `${questionCount}/${maxQuestions} questions`,
     remainingQuestions,
     isComplete

@@ -5,8 +5,7 @@
  * and data transformation for database operations.
  */
 
-import { BlockType } from './block-types';
-import { StaticBlockSubtype } from './supabase-types';
+import { DbBlockType, DbStaticBlockSubtype } from './block';
 
 /**
  * Generic themes and settings interfaces to replace 'any' use
@@ -64,8 +63,8 @@ export interface BlockSettings {
 export interface PostgreSQLBlockData {
   id?: string;
   form_id?: string;
-  type?: BlockType;
-  subtype?: StaticBlockSubtype | 'dynamic';
+  type?: DbBlockType;
+  subtype?: DbStaticBlockSubtype | 'dynamic';
   title?: string;
   description?: string | null;
   required?: boolean;

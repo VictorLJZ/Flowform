@@ -3,7 +3,7 @@
  * They're also used indirectly through the slice interfaces, but we reference them
  * directly here to make the TypeScript compiler happy
  */
-import type { FormBlock } from './block-types';
+import type { UiBlock } from './block';
 import type { SlideLayout } from './layout-types';
 import type { CustomFormData } from './form-builder-types';
 import type { Connection } from './workflow-types';
@@ -62,7 +62,7 @@ export interface FormBuilderState extends
   // This interface combines all the slice interfaces
   // These property definitions ensure the imported types are used and not flagged as unused
   // They're never actually used at runtime since the slices provide the actual implementation
-  __blockType?: FormBlock;
+  __blockType?: UiBlock;
   __layoutType?: SlideLayout;
   __formDataType?: CustomFormData;
   __connectionType?: Connection;

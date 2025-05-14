@@ -1,4 +1,4 @@
-import type { FormBlock } from './block-types';
+import type { ApiBlock } from './block';
 import type { LogicalOperator } from './workflow-condition-types';
 export type { LogicalOperator };
 
@@ -44,7 +44,7 @@ export interface WorkflowSettings {
 }
 
 export interface WorkflowNodeData {
-  block: FormBlock;
+  block: ApiBlock;
   label: string;
   isConnectionTarget?: boolean;
 }

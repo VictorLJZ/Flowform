@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { StateCreator } from 'zustand'
 import type { FormBlocksSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
-import type { FormBlock } from '@/types/block-types'
+import type { UiBlock } from '@/types/block'
 import { getBlockDefinition } from '@/registry/blockRegistry'
 
 export const createFormBlocksSlice: StateCreator<
@@ -18,7 +18,7 @@ export const createFormBlocksSlice: StateCreator<
   currentBlockId: null,
   
   // Actions
-  setBlocks: (blocks: FormBlock[]) => set({ blocks }),
+  setBlocks: (blocks: UiBlock[]) => set({ blocks }),
   
   addBlock: (blockTypeId: string) => {
     const { blocks } = get()
@@ -31,18 +31,21 @@ export const createFormBlocksSlice: StateCreator<
       return
     }
  
-    const newBlock: FormBlock = { 
+    const newBlock: UiBlock = { 
       id: newBlockId,
-      blockTypeId: blockTypeId,
+      formId: '', // Will be set when form is saved
       type: blockDef.type || 'static',
+      subtype: blockTypeId as any,
       title: blockDef.defaultTitle || '',
       description: blockDef.defaultDescription || '',
       required: false,
-      order_index: newOrder,
-      settings: blockDef.getDefaultValues() || {}
+      orderIndex: newOrder,
+      settings: blockDef.getDefaultValues() || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
  
-    const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.order_index - b.order_index)
+    const updatedBlocks = [...blocks, newBlock].sort((a, b) => a.orderIndex - b.orderIndex)
     
     // Block system no longer directly manages connections
     // But we will notify the workflow system about the new block
@@ -83,11 +86,11 @@ export const createFormBlocksSlice: StateCreator<
     }, 0);
   },
   
-  updateBlock: (blockId: string, updates: Partial<FormBlock>) => {
+  updateBlock: (blockId: string, updates: Partial<UiBlock>) => {
     set((state) => ({
       blocks: state.blocks.map(block => 
         block.id === blockId 
-          ? { ...block, ...updates } 
+          ? { ...block, ...updates, updatedAt: new Date().toISOString() } 
           : block
       )
     }))
@@ -123,7 +126,7 @@ export const createFormBlocksSlice: StateCreator<
     // Remove the block and update block order
     const updatedBlocks = blocks
       .filter(block => block.id !== blockId)
-      .map((block, index) => ({ ...block, order_index: index }))
+      .map((block, index) => ({ ...block, orderIndex: index }))
     
     // Determine the new currentBlockId
     let newCurrentBlockId = currentBlockId
@@ -164,12 +167,13 @@ export const createFormBlocksSlice: StateCreator<
     // Insert the item at the new position
     reorderedBlocks.splice(endIndex, 0, movedBlock)
     
-    // Update order_index property for all blocks
+    // Update orderIndex property for all blocks
     // Note: We do not update connections here anymore; this is now
     // the responsibility of the workflow system
     const updatedBlocks = reorderedBlocks.map((block, index) => ({
       ...block,
-      order_index: index
+      orderIndex: index,
+      updatedAt: new Date().toISOString()
     }))
     
     // Store the ID of the moved block before updating state

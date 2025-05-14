@@ -1,7 +1,7 @@
 // FlowForm-neo Supabase Database Types
 // Defines TypeScript interfaces for all database tables
 
-import type { BlockType } from './block-types';
+// Import from form-service-types
 import type { SaveDynamicResponseInput } from './form-service-types';
 import { DbForm } from './form';
 import { DbQAPair } from './response';
@@ -14,54 +14,41 @@ import { DbQAPair } from './response';
 
 /**
  * Database Tables - Form Management
- * Note: The Form interface has been moved to src/types/form/DbForm.ts
+ * Note: This file is being migrated to the new three-layer type system
+ * Most types defined here have been moved to their respective files in:
+ * - src/types/block/DbBlock.ts - Database layer block types
+ * - src/types/block/ApiBlock.ts - API layer block types
+ * - src/types/block/UiBlock.ts - UI layer block types
+ * - src/types/form/DbForm.ts - Database layer form types
  */
 
-// BlockType definition moved to block-types.ts
-export type StaticBlockSubtype = 
-  'short_text' | 
-  'long_text' | 
-  'email' | 
-  'date' | 
-  'multiple_choice' | 
-  'checkbox_group' | 
-  'dropdown' | 
-  'number' | 
-  'scale' | 
-  'yes_no';
+/**
+ * @deprecated - Import DbStaticBlockSubtype from @/types/block/DbBlock instead
+ */
+import { DbStaticBlockSubtype } from '@/types/block/DbBlock';
+export type StaticBlockSubtype = DbStaticBlockSubtype;
 
-export interface FormBlock {
-  id: string; // UUID
-  form_id: string; // UUID, references forms.form_id
-  type: BlockType;
-  subtype: StaticBlockSubtype | 'dynamic';
-  title: string;
-  description: string | null;
-  required: boolean;
-  order_index: number;
-  settings: Record<string, unknown> | null; // JSONB
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
+/**
+ * @deprecated - Import DbBlock from @/types/block/DbBlock instead
+ */
+import { DbBlock, DbBlockType } from '@/types/block/DbBlock';
+// Re-export with legacy type for backward compatibility
+export interface FormBlock extends Omit<DbBlock, 'type' | 'subtype'> {
+  type: DbBlockType; // Use DbBlockType from our new type system
+  subtype: StaticBlockSubtype | 'dynamic'; // Use legacy subtype for compatibility
 }
 
-export interface DynamicBlockConfig {
-  block_id: string; // UUID, references form_blocks.id
-  starter_question: string;
-  temperature: number; // Float
-  max_questions: number;
-  ai_instructions: string | null;
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
-}
+/**
+ * @deprecated - Import DbDynamicBlockConfig from @/types/block/DbBlock instead
+ */
+import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
+export type { DbDynamicBlockConfig as DynamicBlockConfig };
 
-export interface BlockOption {
-  id: string; // UUID
-  block_id: string; // UUID, references form_blocks.id
-  value: string;
-  label: string;
-  order_index: number;
-  created_at: string; // ISO date string
-}
+/**
+ * @deprecated - Import DbBlockOption from @/types/block/DbBlock instead
+ */
+import { DbBlockOption } from '@/types/block/DbBlock';
+export type { DbBlockOption as BlockOption };
 
 /**
  * Database Table - Workflow Edges
@@ -83,62 +70,11 @@ export interface WorkflowEdge {
   updated_at: string; // ISO date string
 }
 
-export interface FormResponse {
-  id: string; // UUID
-  form_id: string; // UUID, references forms.form_id
-  respondent_id: string;
-  status: 'in_progress' | 'completed' | 'abandoned';
-  started_at: string; // ISO date string
-  completed_at: string | null; // ISO date string
-  metadata: Record<string, unknown> | null; // JSONB
-}
-
-/**
- * @deprecated Use the new type system instead:
- * - DbStaticBlockAnswer: Database layer (/types/response/DbResponse.ts)
- * - ApiStaticBlockAnswer: API layer (/types/response/ApiResponse.ts)
- * - UiStaticBlockAnswer: UI layer (/types/response/UiResponse.ts)
- * Import these types from '@/types/response' instead
- */
-export interface StaticBlockAnswer {
-  id: string; // UUID
-  response_id: string; // UUID, references form_responses.id
-  block_id: string; // UUID, references form_blocks.id
-  answer: string | null;
-  answered_at: string; // ISO date string
-}
-
-/**
- * @deprecated Use the new type system instead:
- * - DbQAPair: Database layer (/types/response/DbResponse.ts)
- * - ApiQAPair: API layer (/types/response/ApiResponse.ts)
- * - UiQAPair: UI layer (/types/response/UiResponse.ts)
- * Import these types from '@/types/response' instead
- */
-export interface QAPair {
-  question: string;
-  answer: string;
-  timestamp: string; // ISO date string
-  is_starter: boolean;
-}
-
-/**
- * @deprecated Use the new type system instead:
- * - DbDynamicBlockResponse: Database layer (/types/response/DbResponse.ts)
- * - ApiDynamicBlockResponse: API layer (/types/response/ApiResponse.ts)
- * - UiDynamicBlockResponse: UI layer (/types/response/UiResponse.ts)
- * Import these types from '@/types/response' instead
- */
-export interface DynamicBlockResponse {
-  id: string; // UUID
-  response_id: string; // UUID, references form_responses.id
-  block_id: string; // UUID, references form_blocks.id
-  conversation: DbQAPair[]; // JSONB array
-  next_question?: string; // Added field for the next question
-  started_at: string; // ISO date string
-  completed_at: string | null; // ISO date string
-  updated_at?: string; // ISO date string
-}
+// These types have been migrated to the new type system
+// FormResponse -> DbFormResponse, ApiFormResponse, UiFormResponse
+// StaticBlockAnswer -> DbStaticBlockAnswer, ApiStaticBlockAnswer, UiStaticBlockAnswer
+// QAPair -> DbQAPair, ApiQAPair
+// DynamicBlockResponse -> DbDynamicBlockResponse, ApiDynamicBlockResponse, UiDynamicBlockResponse
 
 /**
  * Database Tables - Analytics
@@ -202,17 +138,11 @@ export interface DynamicBlockAnalytics {
 }
 
 // Type for joining tables and getting complete form data
-export interface CompleteForm extends DbForm {
-  blocks: (FormBlock & {
-    dynamic_config?: DynamicBlockConfig;
-    options?: BlockOption[];
-  })[];
-  // Workflow connections for the form
-  workflow_edges?: WorkflowEdge[];
-  // For versioned forms, the ID of the form version
-  version_id?: string;
-  // For versioned forms, the version number
-  version_number?: number;
+export type FormWithBlocks = DbForm & {
+  blocks?: FormBlock[] | null;
+  workflow_edges?: WorkflowEdge[] | null;
+  dynamic_configs?: DbDynamicBlockConfig[] | null;
+  block_options?: DbBlockOption[] | null;
 }
 
 // Type for joining tables and getting complete response data

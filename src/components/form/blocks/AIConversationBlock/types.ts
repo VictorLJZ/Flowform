@@ -1,5 +1,5 @@
 import { BlockPresentation, SlideLayout } from "@/types/form-presentation-types";
-import { QAPair } from '@/types/supabase-types';
+import { ApiQAPair } from '@/types/response';
 import React from "react";
 
 /**
@@ -31,8 +31,8 @@ export interface AIConversationBlockProps {
     startingPrompt?: string; // Added this to handle both naming conventions
     maxQuestions?: number;
   };
-  value?: QAPair[];
-  onChange?: (value: QAPair[]) => void;
+  value?: ApiQAPair[];
+  onChange?: (value: ApiQAPair[]) => void;
   onUpdate?: (updates: BlockUpdate) => void;
   // Navigation props
   onNext?: () => void;
@@ -54,7 +54,7 @@ export interface AIConversationState {
 }
 
 export interface AIConversationData {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   nextQuestion: string;
   isComplete: boolean;
   isLoading: boolean;
@@ -62,7 +62,7 @@ export interface AIConversationData {
 }
 
 export interface AIConversationNavigationProps {
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
   activeQuestionIndex: number;
   setActiveQuestionIndex: (index: number) => void;
   hasReturnedToBlock: boolean;
@@ -73,7 +73,7 @@ export interface AIConversationNavigationProps {
 }
 
 export interface AIConversationHistoryProps {
-  displayConversation: QAPair[];
+  displayConversation: ApiQAPair[];
   historyContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -85,7 +85,7 @@ export interface AIConversationInputProps {
   isLoading: boolean;
   effectiveIsComplete: boolean;
   activeQuestionIndex: number;
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
 }
 
 export interface AIConversationButtonsProps {
@@ -103,5 +103,5 @@ export interface AIConversationButtonsProps {
   onPrevious?: () => void;
   activeQuestionIndex: number;
   setActiveQuestionIndex: (index: number) => void;
-  conversation: QAPair[];
+  conversation: ApiQAPair[];
 } 

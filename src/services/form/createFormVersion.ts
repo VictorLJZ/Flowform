@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/client';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
 import { FormBlockVersion } from '@/types/form-version-types';
-import { DbFormVersion } from '@/types/form';
+import { DbFormVersion } from '@/types/block';
 
 /**
  * Create a new form version and associated block versions
