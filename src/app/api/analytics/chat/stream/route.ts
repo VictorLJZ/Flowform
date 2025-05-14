@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { RagStatus } from '@/types/chat-types';
+import { RagStatus } from '@/types/conversation';
 import { searchSimilarConversations } from '@/services/ai/searchVectorDb';
 import { RagStreamEvent } from '@/types/AggregateApiCleanup';
 

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { SessionInfo } from '@/types/chat-types';
+import { UiSessionInfo } from '@/types/conversation/UiConversation';
 
 interface ChatSessionsState {
   // State
-  sessions: SessionInfo[];
+  sessions: UiSessionInfo[];
   currentSessionId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -14,7 +14,7 @@ interface ChatSessionsState {
   createSession: (formId: string) => Promise<string>;
   deleteSession: (sessionId: string) => Promise<void>;
   clearAllSessions: (formId: string) => Promise<void>;
-  updateSessionMetadata: (sessionId: string, metadata: Partial<Pick<SessionInfo, 'title' | 'last_message'>>) => Promise<void>;
+  updateSessionMetadata: (sessionId: string, metadata: Partial<Pick<UiSessionInfo, 'title' | 'lastMessage'>>) => Promise<void>;
 }
 
 export const useChatSessionsStore = create<ChatSessionsState>((set, get) => ({
@@ -145,7 +145,7 @@ export const useChatSessionsStore = create<ChatSessionsState>((set, get) => ({
   },
   
   // Update session metadata
-  updateSessionMetadata: async (sessionId: string, metadata: Partial<Pick<SessionInfo, 'title' | 'last_message'>>) => {
+  updateSessionMetadata: async (sessionId: string, metadata: Partial<Pick<UiSessionInfo, 'title' | 'lastMessage'>>) => {
     try {
       const response = await fetch(`/api/analytics/chat/sessions/${sessionId}`, {
         method: 'PATCH',
@@ -162,7 +162,12 @@ export const useChatSessionsStore = create<ChatSessionsState>((set, get) => ({
       set(state => ({
         sessions: state.sessions.map(session => 
           session.id === sessionId 
-            ? { ...session, ...metadata } 
+            ? { 
+                ...session, 
+                // Convert any snake_case to camelCase
+                ...(metadata.title !== undefined ? { title: metadata.title } : {}),
+                ...(metadata.lastMessage !== undefined ? { lastMessage: metadata.lastMessage } : {})
+              } 
             : session
         )
       }));

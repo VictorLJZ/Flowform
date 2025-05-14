@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { 
-  ChatMessage, 
-  ChatRequest, 
-  ChatResponse, 
-  MessagesResponse, 
-  ErrorResponse,
-  RagStatus
-} from '@/types/chat-types';
+  UiChatMessage, 
+  RagStatus, 
+  ApiChatRequest, 
+  ApiChatResponseData, 
+  ApiMessagesResponse, 
+  ApiChatMessage 
+} from '@/types/conversation';
+import { ApiErrorResponse } from '@/types/workspace';
 import { useChatSessionsStore } from '@/stores/chatSessionsStore';
 import { v4 as uuidv4 } from 'uuid';
 
 // Types for the hook return value
 interface UseFormInsightsChatReturn {
-  messages: ChatMessage[];
+  messages: UiChatMessage[];
   isLoading: boolean;
   isSending: boolean;
   error: string | null;
@@ -32,7 +33,7 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResponseId, setLastResponseId] = useState<string | null>(null);
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
   const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   
@@ -67,12 +68,12 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
     error: messagesError, 
     isLoading,
     mutate: revalidateMessages
-  } = useSWR<MessagesResponse>(
+  } = useSWR<ApiMessagesResponse>(
     currentSessionId ? `/api/analytics/chat?sessionId=${currentSessionId}` : null,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
-        const errorData = await response.json() as ErrorResponse;
+        const errorData = await response.json() as ApiErrorResponse;
         throw new Error(errorData.error || 'Failed to fetch messages');
       }
       return response.json();
@@ -85,9 +86,19 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
   }, [currentSessionId]);
   
   // Combine server messages with optimistic local messages
+  // Converting API messages to UI format inline
   const messages = messagesData?.messages ? 
-    [...messagesData.messages, ...localMessages.filter(m => 
-      !messagesData.messages.some(sm => sm.content === m.content && sm.role === m.role)
+    [...messagesData.messages.map((m: ApiChatMessage) => ({
+      id: m.id,
+      sessionId: currentSessionId || '',
+      role: m.role as 'user' | 'assistant' | 'developer',
+      content: m.content,
+      createdAt: m.createdAt || new Date().toISOString(),
+      formattedTime: new Date(m.createdAt || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      isCurrentUser: m.role === 'user',
+      formattedRole: m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Assistant' : 'System'
+    })), ...localMessages.filter((m: UiChatMessage) => 
+      !messagesData.messages.some((sm: ApiChatMessage) => sm.content === m.content && sm.role === m.role)
     )] : 
     localMessages;
   
@@ -224,11 +235,16 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
     
     // Optimistically add user message to local state
     const localMessageId = uuidv4();
-    const newUserMessage: ChatMessage = {
+    const newUserMessage: UiChatMessage = {
       id: localMessageId,
+      sessionId: currentSessionId || '',
       role: 'user',
       content: message,
-      created_at: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      // Adding required UI properties
+      formattedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      isCurrentUser: true,
+      formattedRole: 'You'
     };
     
     setLocalMessages(prev => [...prev, newUserMessage]);
@@ -245,13 +261,13 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
     }
     
     try {
-      const requestData: ChatRequest = {
+      const requestData: ApiChatRequest = {
         formId,
         query: message,
         // Only include sessionId if it's not null
         ...(currentSessionId && { sessionId: currentSessionId }),
         // Include previous response ID for conversation continuity
-        ...(lastResponseId && { previous_response_id: lastResponseId })
+        ...(lastResponseId && { previousResponseId: lastResponseId })
       };
       
       // Regular API call for the actual response
@@ -264,11 +280,11 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
       });
       
       if (!response.ok) {
-        const errorData = await response.json() as ErrorResponse;
+        const errorData = await response.json() as ApiErrorResponse;
         throw new Error(errorData.error || 'Failed to send message');
       }
       
-      const responseData = await response.json() as ChatResponse & { response_id?: string, usedRAG?: boolean };
+      const responseData = await response.json() as ApiChatResponseData;
       
       // If response indicates RAG wasn't used, clear any RAG status immediately
       if (!responseData.usedRAG) {
@@ -296,14 +312,14 @@ export function useFormInsightsChat(formId: string): UseFormInsightsChatReturn {
         setCurrentSession(responseData.sessionId);
       }
       
-      // Save the response ID for conversation continuity
-      if (responseData.response_id) {
-        setLastResponseId(responseData.response_id);
+      // Store last response ID for conversation continuity
+      if (responseData.responseId) {
+        setLastResponseId(responseData.responseId);
       }
       
       // Update session metadata with last message
       if (responseData.sessionId) {
-        updateSessionMetadata(responseData.sessionId, { last_message: message });
+        updateSessionMetadata(responseData.sessionId, { lastMessage: message });
       }
       
       // Remove local messages that should be replaced by server data

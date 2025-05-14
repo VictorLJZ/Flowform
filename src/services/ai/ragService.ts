@@ -6,6 +6,8 @@ import {
   createGeminiChat, 
   geminiModel 
 } from './geminiService';
+import { DbChatMessage } from '@/types/conversation/DbConversation';
+import { ApiChatMessage } from '@/types/conversation/ApiConversation';
 
 /**
  * RAG System Prompt template for analytics insights
@@ -347,18 +349,13 @@ export async function saveChatMessage(
  * @param sessionId Chat session ID
  * @returns Array of chat messages
  */
-export async function getChatMessages(sessionId: string): Promise<Array<{
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: string;
-}>> {
+export async function getChatMessages(sessionId: string): Promise<DbChatMessage[]> {
   const supabase = createClient();
   
   try {
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('id, role, content, created_at')
+      .select('id, role, content, created_at, session_id')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
       

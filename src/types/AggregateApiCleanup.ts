@@ -13,7 +13,7 @@
  */
 
 import { ApiBlockMetrics } from '@/types/analytics';
-import { RagStatus } from '@/types/chat-types';
+import { RagStatus } from '@/types/conversation';
 import * as z from 'zod';
 import { ApiFormView } from './analytics';
 

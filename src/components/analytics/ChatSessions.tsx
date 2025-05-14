@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlusCircle, MessageCircle, Trash2, Trash } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChatSessionsStore } from '@/stores/chatSessionsStore';
+import { UiSessionInfo } from '@/types/conversation/UiConversation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -187,15 +188,15 @@ export function ChatSessions({ formId }: ChatSessionsProps) {
                   <div className="flex justify-between items-center">
                     <div className="font-medium truncate">{session.title}</div>
                     <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                      {session.updated_at 
-                        ? formatTimeAgo(session.updated_at) 
-                        : formatTimeAgo(session.created_at)}
+                      {session.updatedAt 
+                        ? formatTimeAgo(session.updatedAt) 
+                        : formatTimeAgo(session.createdAt)}
                     </div>
                   </div>
                   
-                  {session.last_message && (
+                  {session.lastMessage && (
                     <div className="text-xs text-muted-foreground truncate mt-1">
-                      {session.last_message}
+                      {session.lastMessage}
                     </div>
                   )}
                 </div>

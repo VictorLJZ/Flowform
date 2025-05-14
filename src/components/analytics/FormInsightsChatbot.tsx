@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useFormInsightsChat } from '@/hooks/analytics/useFormInsightsChat';
 import { Loader2, Send, MessagesSquare, Search, Database, BrainCircuit } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ChatMessage, RagStatus } from '@/types/chat-types';
+import { UiChatMessage, RagStatus } from '@/types/conversation';
 import { ChatSessions } from './ChatSessions';
 import { ProcessEmbeddingsButton } from './ProcessEmbeddingsButton';
 import ReactMarkdown from 'react-markdown';
@@ -94,7 +94,7 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
       
       if (lastUserMessageIndex !== -1) {
         // Create an array with user messages, then RAG status, then AI messages
-        const result: Array<{ type: 'message' | 'status', content: ChatMessage | RagStatus }> = [];
+        const result: Array<{ type: 'message' | 'status', content: UiChatMessage | RagStatus }> = [];
         
         // Add all messages up to and including the last user message
         for (let i = 0; i <= lastUserMessageIndex; i++) {
@@ -193,7 +193,7 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
               {displayItems.map((item, index) => (
                 <React.Fragment key={index}>
                   {item.type === 'message' ? (
-                    <ChatMessageBubble message={item.content as ChatMessage} />
+                    <ChatMessageBubble message={item.content as UiChatMessage} />
                   ) : (
                     <RagStatusIndicator status={item.content as RagStatus} />
                   )}
@@ -278,7 +278,7 @@ function RagStatusIndicator({ status }: { status: { stage: string, query?: strin
 }
 
 // Chat message bubble component with improved UI
-function ChatMessageBubble({ message }: { message: ChatMessage }) {
+function ChatMessageBubble({ message }: { message: UiChatMessage }) {
   const isUser = message.role === 'user';
   
   // Check if message contains RAG search indicator
@@ -300,7 +300,7 @@ function ChatMessageBubble({ message }: { message: ChatMessage }) {
       >
         {isUser ? (
           <div className="prose prose-sm dark:prose-invert">
-            {message.content.split('\n').map((line, i) => (
+            {message.content.split('\n').map((line: string, i: number) => (
               <p key={i} className={`${i > 0 ? 'mt-2' : 'mt-0'}`}>
                 {line}
               </p>

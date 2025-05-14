@@ -1,12 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 import { storeConversationEmbedding, embeddingExists } from '../ai/generateEmbeddings';
+import { ApiChatMessage } from '@/types/conversation';
 
-// Define a type for chat messages
-interface ChatMessage {
-  role: string;
-  content: string;
-  // Add other relevant fields like 'name' or 'tool_calls' if they exist
-}
+// Using a simpler message format for preprocessing
+type SimpleMessage = Pick<ApiChatMessage, 'role' | 'content'>; // Only need role and content for formatting
 
 /**
  * Formats a conversation for embedding
@@ -15,7 +12,7 @@ interface ChatMessage {
  * @param conversation The conversation array from the database
  * @returns Formatted text suitable for generating embeddings
  */
-export function formatConversationForEmbedding(conversation: ChatMessage[]): string {
+export function formatConversationForEmbedding(conversation: SimpleMessage[]): string {
   if (!Array.isArray(conversation)) {
     return '';
   }

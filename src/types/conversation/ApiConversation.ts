@@ -84,6 +84,33 @@ export interface ApiConversationEmbeddingInput {
 }
 
 /**
+ * Chat API request interface for sending a message
+ */
+export interface ApiChatRequest {
+  formId: string;
+  query: string;
+  sessionId?: string;
+  previousResponseId?: string; // OpenAI response ID for conversation continuity
+}
+
+/**
+ * Chat API response data interface
+ */
+export interface ApiChatResponseData {
+  sessionId: string;
+  response: string;
+  responseId?: string; // OpenAI response ID for state management
+  usedRAG?: boolean;  // Flag indicating whether RAG was used for this response
+}
+
+/**
+ * Messages API response interface
+ */
+export interface ApiMessagesResponse {
+  messages: ApiChatMessage[];
+}
+
+/**
  * API response type for chat-related operations
  */
 export type ApiChatResponse<T> = {
