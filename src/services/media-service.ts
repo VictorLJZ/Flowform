@@ -1,7 +1,7 @@
 /**
  * Client-side media service functions
  */
-import { MediaAsset } from '@/types/media-types';
+import { ApiMediaAsset } from '@/types/media/ApiMedia';
 
 /**
  * Deletes a media asset from Cloudinary
@@ -56,7 +56,7 @@ export async function getCloudinaryConfig(workspaceId: string) {
  * @param workspaceId The workspace ID to get media assets for
  * @returns Promise resolving to an array of MediaAsset objects
  */
-export async function fetchWorkspaceMediaAssets(workspaceId: string): Promise<MediaAsset[]> {
+export async function fetchWorkspaceMediaAssets(workspaceId: string): Promise<ApiMediaAsset[]> {
   try {
     const response = await fetch(`/api/media/list?workspaceId=${encodeURIComponent(workspaceId)}`);
     

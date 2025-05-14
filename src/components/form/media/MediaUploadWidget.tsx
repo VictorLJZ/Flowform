@@ -2,14 +2,28 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { PlusCircle, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
-import { MediaAsset } from '@/types/media-types'
+import { UiMediaAsset } from '@/types/media/UiMedia'
 import { CloudinaryWidgetOptions, CloudinaryWidgetResult } from '@/types/common-types'
 import { v4 as uuidv4 } from 'uuid'
 import Script from 'next/script'
 import { getCloudinaryConfig } from '@/services/media-service'
+
+// Helper functions for formatting
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
 
 interface MediaUploadWidgetProps {
   onSelect?: (mediaId: string) => void
@@ -24,6 +38,21 @@ declare global {
       };
     };
   }
+}
+
+// Helper functions for formatting
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
 }
 
 export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
@@ -50,28 +79,25 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
         return
       }
       
-      try {
-        const config = await getCloudinaryConfig(currentWorkspaceId)
-        if (config) {
-          setCloudinaryConfig(config)
-        }
-      } catch (error) {
-        console.error('Error fetching Cloudinary config:', error)
+      const config = await getCloudinaryConfig(currentWorkspaceId)
+      if (config) {
+        setCloudinaryConfig({
+          cloudName: config.cloudName,
+          uploadPreset: config.uploadPreset,
+          workspaceId: currentWorkspaceId
+        })
       }
     }
-
-    if (currentWorkspaceId) {
-      fetchConfig()
-    }
+    
+    fetchConfig()
   }, [currentWorkspaceId])
 
   const openCloudinaryWidget = useCallback(() => {
-    // Make sure everything is loaded
     if (!cloudinaryConfig || !scriptLoaded || !window.cloudinary) {
       setIsLoading(false)
       return
     }
-
+    
     const uploadWidget = window.cloudinary.createUploadWidget(
       {
         cloudName: cloudinaryConfig.cloudName,
@@ -104,18 +130,45 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
           const info = result.info
           
           // Create a new media asset with the uploaded file info
-          const newAsset: MediaAsset = {
+          const createdAt = new Date().toISOString();
+          const filename = (info.original_filename as string) || 'unnamed file';
+          const fileSize = (info.bytes as number) || 0;
+          const publicId = (info.public_id as string) || '';
+          const secureUrl = (info.secure_url as string) || '';
+          const resourceType = (info.resource_type as string) || 'image';
+          const format = (info.format as string) || '';
+          const width = (info.width as number) || undefined;
+          const height = (info.height as number) || undefined;
+          const duration = (info.duration as number) || undefined;
+          const thumbnailUrl = (info.thumbnail_url as string) || secureUrl;
+          const tags = (info.tags as string[]) || [];
+          
+          const newAsset: UiMediaAsset = {
             id: uuidv4(),
-            mediaId: info.public_id,
-            type: info.resource_type === 'video' ? 'video' : 'image',
-            url: info.secure_url,
-            thumbnailUrl: info.thumbnail_url || info.secure_url,
-            width: info.width,
-            height: info.height,
-            duration: info.duration,
-            createdAt: new Date(),
-            tags: info.tags || [],
-            workspaceId: cloudinaryConfig?.workspaceId
+            mediaId: publicId,
+            userId: '', // Will be filled by backend
+            workspaceId: cloudinaryConfig.workspaceId || '',
+            filename: filename,
+            url: secureUrl,
+            secureUrl: secureUrl,
+            type: resourceType === 'video' ? 'video' : 'image',
+            format: format,
+            width: width,
+            height: height,
+            duration: duration,
+            bytes: fileSize,
+            resourceType: resourceType,
+            tags: tags,
+            createdAt: createdAt,
+            
+            // UI-specific properties
+            displayName: filename,
+            formattedSize: formatFileSize(fileSize),
+            formattedDimensions: width && height ? `${width} × ${height}` : undefined,
+            formattedDuration: duration ? formatDuration(duration) : undefined,
+            formattedDate: new Date(createdAt).toLocaleDateString(),
+            thumbnail: thumbnailUrl,
+            isSelected: false
           }
           
           // Add to store
@@ -132,48 +185,35 @@ export function MediaUploadWidget({ onSelect }: MediaUploadWidgetProps) {
     uploadWidget.open()
   }, [cloudinaryConfig, scriptLoaded, addMediaAsset, onSelect])
 
-  const handleUpload = () => {
-    if (!cloudinaryConfig) {
-      console.error('Cloudinary configuration not loaded')
-      return
-    }
-
-    setIsLoading(true)
-    
-    // If script is already loaded, open the widget directly
-    if (scriptLoaded && window.cloudinary) {
-      openCloudinaryWidget()
-    }
-  }
-
   return (
-    <>
-      {/* Load the Cloudinary Upload Widget script */}
-      <Script 
-        src="https://upload-widget.cloudinary.com/global/all.js"
-        strategy="lazyOnload"
-        onLoad={handleScriptLoad}
-      />
+    <div className="flex flex-col items-center gap-4">
+      {!scriptLoaded && (
+        <Script 
+          src="https://upload-widget.cloudinary.com/global/all.js" 
+          onLoad={handleScriptLoad} 
+        />
+      )}
       
-    <div className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
-      <Upload className="h-8 w-8 text-muted-foreground" />
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Upload Media</p>
-        <p className="text-xs text-muted-foreground">
-          Drag and drop files or click to browse
-        </p>
-      </div>
       <Button 
+        onClick={() => {
+          setIsLoading(true)
+          if (scriptLoaded && window.cloudinary) {
+            openCloudinaryWidget()
+          }
+        }} 
         variant="outline" 
-        size="sm" 
-        className="mt-2"
-        onClick={handleUpload}
+        size="lg" 
         disabled={isLoading || !cloudinaryConfig}
       >
-        <PlusCircle className="mr-2 h-4 w-4" />
-        {isLoading ? 'Loading...' : 'Add Media'}
+        {isLoading ? (
+          "Loading..."
+        ) : (
+          <>
+            <Upload className="mr-2 h-5 w-5" />
+            Upload Media
+          </>
+        )}
       </Button>
     </div>
-    </>
   )
 }

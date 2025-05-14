@@ -4,8 +4,9 @@ import { StateCreator } from 'zustand'
 import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
 import type { FormMediaSlice } from '@/types/form-store-slices-types-media'
-import { MediaAsset, mockMediaAssets } from '@/types/media-types'
+import { UiMediaAsset } from '@/types/media/UiMedia'
 import { deleteMediaAsset as deleteMediaFromCloudinary, fetchWorkspaceMediaAssets } from '@/services/media-service'
+import { apiToUiMediaAssets } from '@/utils/type-utils/media'
 
 export const createFormMediaSlice: StateCreator<
   FormBuilderState,
@@ -13,11 +14,8 @@ export const createFormMediaSlice: StateCreator<
   [],
   FormMediaSlice
 > = (set, get) => {
-  // Convert mock assets array to a record for initial state
-  const initialMediaAssets: Record<string, MediaAsset> = {};
-  mockMediaAssets.forEach(asset => {
-    initialMediaAssets[asset.id] = asset;
-  });
+  // Initialize with empty media assets record
+  const initialMediaAssets: Record<string, UiMediaAsset> = {};
 
   return {
     // Initial state
@@ -26,13 +24,13 @@ export const createFormMediaSlice: StateCreator<
     isLoadingMedia: false,
     
     // Actions
-    addMediaAsset: (asset: MediaAsset) => set(
+    addMediaAsset: (asset: UiMediaAsset) => set(
       produce((state) => {
         state.mediaAssets[asset.id] = asset;
       })
     ),
     
-    updateMediaAsset: (id: string, updates: Partial<MediaAsset>) => set(
+    updateMediaAsset: (id: string, updates: Partial<UiMediaAsset>) => set(
       produce((state) => {
         if (state.mediaAssets[id]) {
           state.mediaAssets[id] = { ...state.mediaAssets[id], ...updates };
@@ -80,15 +78,18 @@ export const createFormMediaSlice: StateCreator<
       
       try {
         // Call the API to get media assets from Cloudinary for the workspace
-        const mediaAssets = await fetchWorkspaceMediaAssets(workspaceId);
+        const apiMediaAssets = await fetchWorkspaceMediaAssets(workspaceId);
+        
+        // Convert API assets to UI assets
+        const uiMediaAssets = apiToUiMediaAssets(apiMediaAssets);
         
         // Add all media assets to the store
         set(produce((state) => {
           // Create a new record to replace existing assets
-          const newMediaAssets: Record<string, MediaAsset> = {};
+          const newMediaAssets: Record<string, UiMediaAsset> = {};
           
           // Add each media asset to the new record
-          mediaAssets.forEach(asset => {
+          uiMediaAssets.forEach(asset => {
             newMediaAssets[asset.id] = asset;
           });
           
@@ -97,7 +98,7 @@ export const createFormMediaSlice: StateCreator<
           state.isLoadingMedia = false;
         }));
         
-        return mediaAssets;
+        return uiMediaAssets;
       } catch (error) {
         console.error('Error loading media assets:', error);
         

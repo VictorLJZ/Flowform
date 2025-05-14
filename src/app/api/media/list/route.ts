@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { listWorkspaceMediaAssets } from '@/services/cloudinary-server';
 import { v4 as uuidv4 } from 'uuid';
-import { MediaAsset } from '@/types/media-types';
+import { ApiMediaAsset } from '@/types/media/ApiMedia';
 
 export async function GET(request: Request) {
   // Get workspaceId from URL params
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       tags?: string[];
     }
     
-    const formattedResults: MediaAsset[] = result.resources.map((resource: CloudinaryResource) => ({
+    const formattedResults: ApiMediaAsset[] = result.resources.map((resource: CloudinaryResource) => ({
       id: resource.asset_id || uuidv4(),
       mediaId: resource.public_id,
       type: resource.resource_type === 'video' ? 'video' : 'image',
