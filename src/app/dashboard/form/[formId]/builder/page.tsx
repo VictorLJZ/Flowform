@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils"
 import { CustomFormData } from "@/types/form-builder-types"
 import { FormTheme, defaultFormTheme } from "@/types/theme-types"
 // Updated to use new type system
-import { UiBlock } from '@/types/block';
 import FormBuilderSidebar from "@/components/form/builder/form-builder-sidebar"
 import FormBuilderContent from "@/components/form/builder/form-builder-content"
 import FormBuilderSettings from "@/components/form/builder/form-builder-settings"

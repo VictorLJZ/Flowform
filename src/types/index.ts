@@ -13,9 +13,6 @@ export * from './analytics-types';
 // Auth types
 export * from './auth-types';
 
-// Block types - with namespace to avoid naming conflicts
-export * as BlockTypes from './block-types';
-
 // Block metrics types
 export * from './block-metrics-types';
 
@@ -66,5 +63,4 @@ export * from './workspace';
 
 // Re-export specific types that might be needed directly
 // to maintain backward compatibility with existing code
-export type { FormBlock } from './block-types';
 export type { FormSettings } from './form-service-types';

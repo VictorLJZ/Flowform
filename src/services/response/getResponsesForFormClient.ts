@@ -1,5 +1,4 @@
 import { ApiFormResponse, ApiStaticBlockAnswer, ApiDynamicBlockResponse } from '@/types/response';
-import { dbToApiFormResponse, dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 
 /**
  * Get all responses for a specific form - Client-side implementation

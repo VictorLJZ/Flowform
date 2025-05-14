@@ -6,49 +6,10 @@ import type { SaveDynamicResponseInput } from './form-service-types';
 import { DbForm } from './form';
 import { DbQAPair } from './response';
 
-/**
- * Database Tables - Workspace Management
- * Note: Workspace-related types have been moved to src/types/workspace/*
- */
 
-
-/**
- * Database Tables - Form Management
- * Note: This file is being migrated to the new three-layer type system
- * Most types defined here have been moved to their respective files in:
- * - src/types/block/DbBlock.ts - Database layer block types
- * - src/types/block/ApiBlock.ts - API layer block types
- * - src/types/block/UiBlock.ts - UI layer block types
- * - src/types/form/DbForm.ts - Database layer form types
- */
-
-/**
- * @deprecated - Import DbStaticBlockSubtype from @/types/block/DbBlock instead
- */
-import { DbStaticBlockSubtype } from '@/types/block/DbBlock';
-export type StaticBlockSubtype = DbStaticBlockSubtype;
-
-/**
- * @deprecated - Import DbBlock from @/types/block/DbBlock instead
- */
-import { DbBlock, DbBlockType } from '@/types/block/DbBlock';
-// Re-export with legacy type for backward compatibility
-export interface FormBlock extends Omit<DbBlock, 'type' | 'subtype'> {
-  type: DbBlockType; // Use DbBlockType from our new type system
-  subtype: StaticBlockSubtype | 'dynamic'; // Use legacy subtype for compatibility
-}
-
-/**
- * @deprecated - Import DbDynamicBlockConfig from @/types/block/DbBlock instead
- */
-import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
-export type { DbDynamicBlockConfig as DynamicBlockConfig };
-
-/**
- * @deprecated - Import DbBlockOption from @/types/block/DbBlock instead
- */
-import { DbBlockOption } from '@/types/block/DbBlock';
-export type { DbBlockOption as BlockOption };
+// These block-related types have been fully migrated to the new type system
+// Import from '@/types/block' directly instead
+import { DbBlock, DbBlockOption, DbDynamicBlockConfig } from '@/types/block/DbBlock'
 
 /**
  * Database Table - Workflow Edges
@@ -69,12 +30,6 @@ export interface WorkflowEdge {
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }
-
-// These types have been migrated to the new type system
-// FormResponse -> DbFormResponse, ApiFormResponse, UiFormResponse
-// StaticBlockAnswer -> DbStaticBlockAnswer, ApiStaticBlockAnswer, UiStaticBlockAnswer
-// QAPair -> DbQAPair, ApiQAPair
-// DynamicBlockResponse -> DbDynamicBlockResponse, ApiDynamicBlockResponse, UiDynamicBlockResponse
 
 /**
  * Database Tables - Analytics
@@ -139,7 +94,7 @@ export interface DynamicBlockAnalytics {
 
 // Type for joining tables and getting complete form data
 export type FormWithBlocks = DbForm & {
-  blocks?: FormBlock[] | null;
+  blocks?: DbBlock[] | null;
   workflow_edges?: WorkflowEdge[] | null;
   dynamic_configs?: DbDynamicBlockConfig[] | null;
   block_options?: DbBlockOption[] | null;

@@ -5,7 +5,6 @@ import { SaveDynamicResponseInput, SaveDynamicResponseResult } from '@/types/for
 import { processConversation } from '@/services/ai/processConversation';
 import { getFormContextClient } from './getFormContextClient';
 import { ProcessConversationParams } from '@/types/ai-types';
-import { dbToApiQAPair, dbToApiQAPairs } from '@/utils/type-utils/response/DbToApiResponse';
 
 /**
  * Save a response to a dynamic block and generate the next question if needed

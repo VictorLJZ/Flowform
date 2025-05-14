@@ -8,11 +8,6 @@ import type { ElementType, ComponentType } from 'react';
 import { 
   ApiBlock, 
   ApiBlockType, 
-  ApiBlockSubtype,
-  ApiStaticBlockSubtype,
-  ApiDynamicBlockSubtype,
-  ApiIntegrationBlockSubtype,
-  ApiLayoutBlockSubtype,
   ApiBlockOption, 
   ApiDynamicBlockConfig,
   ApiBlockOptionSetting,

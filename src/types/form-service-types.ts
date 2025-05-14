@@ -1,7 +1,8 @@
-import { FormBlock, DynamicBlockConfig } from './supabase-types';
 import { ApiQAPair } from './response';
 import { DbForm, ApiForm } from './form';
 import { Connection } from './workflow-types';
+import { DbBlock, DbDynamicBlockConfig } from './block/DbBlock';
+import { ApiBlock } from './block/ApiBlock';
 
 /**
  * Form Service Types
@@ -30,7 +31,7 @@ export interface ServiceResponse<T = unknown> {
 /**
  * Input for creating a form block
  */
-export type FormBlockInput = Pick<FormBlock, 
+export type FormBlockInput = Pick<DbBlock, 
   'form_id' | 
   'type' | 
   'subtype' | 
@@ -44,7 +45,7 @@ export type FormBlockInput = Pick<FormBlock,
 /**
  * Input for creating a dynamic block configuration
  */
-export type DynamicConfigInput = Pick<DynamicBlockConfig,
+export type DynamicConfigInput = Pick<DbDynamicBlockConfig,
   'starter_question' |
   'temperature' |
   'max_questions' |
@@ -54,8 +55,8 @@ export type DynamicConfigInput = Pick<DynamicBlockConfig,
 /**
  * Response from creating a form block
  */
-export type FormBlockCreationResult = FormBlock & { 
-  dynamic_config?: DynamicBlockConfig 
+export type FormBlockCreationResult = DbBlock & { 
+  dynamic_config?: DbDynamicBlockConfig 
 };
 
 /**
@@ -116,7 +117,7 @@ export interface SaveDynamicConfigInput {
 /**
  * Result for saving dynamic block configuration
  */
-export type SaveDynamicConfigResult = ServiceResponse<DynamicBlockConfig>;
+export type SaveDynamicConfigResult = ServiceResponse<DbDynamicBlockConfig>;
 
 // -----------------------------------------------------
 // Form Types
@@ -176,7 +177,7 @@ export interface SaveFormInput {
  */
 export interface SaveFormOutput {
   form: ApiForm;
-  blocks: FormBlock[];
+  blocks: ApiBlock[];
   success: boolean;
 }
 
