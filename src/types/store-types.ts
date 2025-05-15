@@ -41,8 +41,6 @@ export type SidebarState = {
   toggleSidebar: () => void;
 }
 
-
-
 /**
  * Simplified workspace store following Carmack principles
  * 

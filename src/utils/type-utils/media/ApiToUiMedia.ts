@@ -90,9 +90,9 @@ export function apiToUiMediaAsset(apiAsset: ApiMediaAsset): UiMediaAsset {
     formattedDuration: formatDuration(apiAsset.duration),
     formattedDate: formatDate(apiAsset.createdAt),
     // Generate thumbnail URL based on asset type
-    thumbnail: apiAsset.type.startsWith('image') 
+    thumbnail: apiAsset.type?.startsWith('image') && apiAsset.secureUrl && apiAsset.secureUrl.includes('/upload/') 
       ? `${apiAsset.secureUrl.split('/upload/')[0]}/upload/c_thumb,w_200,g_face/${apiAsset.secureUrl.split('/upload/')[1]}`
-      : undefined
+      : apiAsset.secureUrl || undefined
   };
 }
 

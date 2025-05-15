@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { DbForm, ApiForm } from '@/types/block';
+import { DbForm, ApiForm } from '@/types/form';
 import { FormInput } from '@/types/form-service-types';
 import { dbToApiForm } from '@/utils/type-utils';
 

@@ -73,7 +73,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
   // Log the block being rendered for debugging
   console.log('BlockRenderer - rendering block:', { 
     id: block?.id, 
-    blockTypeId: block?.blockTypeId,
+    type: block?.type,
+    subtype: block?.subtype, // Use subtype instead of blockTypeId
     currentAnswer,
     hasAnalytics: !!analytics,
     hasBlockRef: analytics && 'blockRef' in analytics
@@ -192,8 +193,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     );
   };
 
-  // Use the block's type for the switch
-  switch (block.blockTypeId) {
+  // Use the block's subtype for the switch (after refactoring)
+  switch (block.subtype) {
     case 'text_input':
     case 'short_text':
       return renderBlock(TextInputBlock, mapToPropsText);
@@ -224,10 +225,10 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
       return renderBlock(AIConversationBlock, mapToPropsAIConversation);
 
     default:
-      console.warn(`Unsupported block type: ${block.blockTypeId}`);
+      console.warn(`Unsupported block type: ${block.subtype}`);
       return (
         <div className="p-4 text-red-500 border border-red-300 rounded w-full max-w-2xl mx-auto">
-          Unsupported block type: {block.blockTypeId}
+          Unsupported block type: {block.subtype}
         </div>
       );
   }
