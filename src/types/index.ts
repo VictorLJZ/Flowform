@@ -13,6 +13,12 @@ export * from './analytics';
 // Auth types (now in user directory)
 export * from './user';
 
+// Chart types
+export * from './chart-types';
+
+// Error types
+export * from './error-types';
+
 // Dashboard types
 export * from './dashboard-types';
 
