@@ -1,11 +1,12 @@
-import { getVerifiedUser } from './verifiedAuth';
+import { getVerifiedUser, transformToUserType } from './verifiedAuth';
+import { ApiAuthUser } from '@/types/user';
 
 /**
  * Get the current authenticated user
  * This is a direct server-side function that doesn't rely on client state
  * @returns The current user or null if not authenticated
  */
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<ApiAuthUser | null> {
   try {
     console.log('[getCurrentUser] Fetching verified user');
     const user = await getVerifiedUser();
@@ -15,7 +16,7 @@ export async function getCurrentUser() {
       return null;
     }
     
-    return user;
+    return transformToUserType(user);
   } catch (error) {
     console.error('[getCurrentUser] Error:', error);
     return null;

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useRouter } from 'next/navigation'
 import { LogOut, LayoutDashboard } from 'lucide-react'
-import { User } from "@/types/auth-types"
+import { ApiAuthUser } from "@/types/user"
 import {
   Avatar,
   AvatarFallback,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface UserMenuSectionProps {
-  user: User | null;
+  user: ApiAuthUser | null;
   signOut: () => void;
 }
 
@@ -43,7 +43,7 @@ export function UserMenuSection({ user, signOut }: UserMenuSectionProps) {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarImage 
-                  src={user.user_metadata?.avatar_url || undefined} 
+                  src={typeof user.userMetadata?.avatar_url === 'string' ? user.userMetadata.avatar_url : undefined} 
                   alt={user.email || "User Avatar"} 
                 />
                 <AvatarFallback>{getInitials(user.email)}</AvatarFallback>

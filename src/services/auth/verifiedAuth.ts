@@ -8,15 +8,15 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Session } from '@supabase/supabase-js';
-import type { User as UserType } from '@/types/auth-types';
+import { ApiAuthUser, ApiUserMetadata } from '@/types/user';
 
 /**
  * Get verified user data from Supabase auth server
  * This ensures the user data is cryptographically verified
  */
-export async function getVerifiedUser(): Promise<User | null> {
+export async function getVerifiedUser(): Promise<SupabaseUser | null> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase.auth.getUser();
@@ -47,7 +47,7 @@ export async function getVerifiedUser(): Promise<User | null> {
  */
 export async function getSessionWithVerifiedUser(): Promise<{
   session: Session | null;
-  user: User | null;
+  user: SupabaseUser | null;
 }> {
   try {
     const supabase = createClient();
@@ -76,15 +76,15 @@ export async function getSessionWithVerifiedUser(): Promise<{
 }
 
 /**
- * Transform Supabase User to our application UserType
+ * Transform Supabase User to our application ApiAuthUser type
  */
-export function transformToUserType(supabaseUser: User | null): UserType | null {
+export function transformToUserType(supabaseUser: SupabaseUser | null): ApiAuthUser | null {
   if (!supabaseUser) return null;
   
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? '',
-    user_metadata: supabaseUser.user_metadata || {},
-    app_metadata: supabaseUser.app_metadata || {}
+    userMetadata: supabaseUser.user_metadata as ApiUserMetadata || {},
+    appMetadata: supabaseUser.app_metadata || {}
   };
 }

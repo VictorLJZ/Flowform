@@ -7,7 +7,7 @@
  * - Adds UI-specific properties and formatting
  */
 
-import { ApiProfile, UiProfile } from '@/types/user';
+import { ApiProfile, UiProfile, ApiAuthUser, UiAuthUser } from '@/types/user';
 
 /**
  * Get initials from a name for avatar displays
@@ -83,4 +83,57 @@ export function formatUserDate(
   });
   
   return formatter.format(date);
+}
+
+/**
+ * Get the best display name from user metadata
+ * 
+ * @param authUser - API auth user with metadata
+ * @returns The best display name from available properties
+ */
+function getDisplayNameFromMetadata(authUser: ApiAuthUser): string {
+  const metadata = authUser.userMetadata;
+  if (!metadata) return authUser.email;
+  
+  // Try various name fields in order of preference
+  return (
+    metadata.fullName || 
+    metadata.name || 
+    metadata.email || 
+    authUser.email
+  );
+}
+
+/**
+ * Get the best avatar URL from user metadata
+ * 
+ * @param authUser - API auth user with metadata
+ * @returns The best avatar URL from available properties
+ */
+function getAvatarUrlFromMetadata(authUser: ApiAuthUser): string | undefined {
+  const metadata = authUser.userMetadata;
+  if (!metadata) return undefined;
+  
+  // Try various avatar fields in order of preference
+  return metadata.avatarUrl || metadata.picture;
+}
+
+/**
+ * Transform an API auth user to UI-specific format with enhanced display properties
+ * 
+ * @param authUser - API auth user object
+ * @returns UI-formatted auth user
+ */
+export function apiToUiAuthUser(authUser: ApiAuthUser): UiAuthUser {
+  const displayName = getDisplayNameFromMetadata(authUser);
+  
+  return {
+    id: authUser.id,
+    email: authUser.email,
+    userMetadata: authUser.userMetadata,
+    appMetadata: authUser.appMetadata,
+    displayName,
+    initials: getInitials(displayName),
+    avatarUrl: getAvatarUrlFromMetadata(authUser)
+  };
 }

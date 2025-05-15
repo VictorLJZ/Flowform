@@ -6,6 +6,22 @@
  */
 
 /**
+ * User metadata from authentication providers
+ */
+export interface ApiUserMetadata {
+  name?: string;
+  fullName?: string;
+  avatarUrl?: string;
+  picture?: string;
+  email?: string;
+  emailVerified?: boolean;
+  provider?: string;
+  sub?: string; // Subject identifier
+  // Allow for other provider-specific metadata
+  [key: string]: unknown;
+}
+
+/**
  * API-formatted profile information
  */
 export interface ApiProfile {
@@ -15,6 +31,17 @@ export interface ApiProfile {
   avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * API-formatted auth user information
+ * Extends ApiProfile with auth-specific metadata
+ */
+export interface ApiAuthUser {
+  id: string;
+  email: string;
+  userMetadata?: ApiUserMetadata;
+  appMetadata?: Record<string, unknown>;
 }
 
 /**

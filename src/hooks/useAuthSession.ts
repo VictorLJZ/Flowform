@@ -1,15 +1,15 @@
 // src/hooks/useAuthSession.ts
 import useSWR from 'swr';
-import { useSupabase } from '@/providers/auth-provider'; // We'll export this from AuthProvider
+import { useSupabase } from '@/providers/auth-provider'; 
 import type { Session } from '@supabase/supabase-js';
-import { User as UserType } from "@/types/auth-types"; // Use UserType alias
+import { ApiAuthUser, ApiUserMetadata } from '@/types/user';
 
 const SWR_KEY = 'auth-session';
 
 // Define the shape of the data returned by the SWR hook
 type AuthSessionData = {
   session: Session | null;
-  user: UserType | null; // Use our defined UserType
+  user: ApiAuthUser | null; // Use our defined ApiAuthUser
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Profile structure TBD
   profile: any | null; // Keep profile for potential future use
   isLoggedOut?: boolean; // Flag to indicate logged out state
@@ -60,11 +60,11 @@ export function useAuthSession() {
       }
 
       // Transform to our user format
-      const user = {
+      const user: ApiAuthUser = {
         id: userData.user.id,
         email: userData.user.email ?? '',
-        user_metadata: userData.user.user_metadata || {},
-        app_metadata: userData.user.app_metadata || {}
+        userMetadata: userData.user.user_metadata as ApiUserMetadata || {},
+        appMetadata: userData.user.app_metadata || {}
       };
 
       return { 

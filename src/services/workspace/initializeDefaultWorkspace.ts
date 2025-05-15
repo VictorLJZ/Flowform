@@ -81,6 +81,8 @@ export async function initializeDefaultWorkspace(userId: string): Promise<ApiWor
       userData.user.user_metadata?.full_name || 
       userData.user.email?.split('@')[0] || 
       'User';
+      
+    // Note: When using ApiAuthUser, we'd access as userMetadata.name instead of user_metadata.name
     
     const defaultWorkspaceName = `${userDisplayName}'s Workspace`;
     

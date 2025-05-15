@@ -10,14 +10,8 @@ export * from './ai-types';
 // Analytics types
 export * from './analytics';
 
-// Auth types
-export * from './auth-types';
-
-// Chart types
-export * from './chart-types';
-
-// Error types
-export * from './error-types';
+// Auth types (now in user directory)
+export * from './user';
 
 // Dashboard types
 export * from './dashboard-types';

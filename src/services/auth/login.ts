@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { User } from '@/types/auth-types';
+import { ApiAuthUser, ApiUserMetadata } from '@/types/user';
 
 /**
  * Login a user with email and password
@@ -8,7 +8,7 @@ import { User } from '@/types/auth-types';
  * @param password - User's password
  * @returns User data if successful
  */
-export async function login(email: string, password: string): Promise<User> {
+export async function login(email: string, password: string): Promise<ApiAuthUser> {
   const supabase = createClient();
   
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -29,7 +29,7 @@ export async function login(email: string, password: string): Promise<User> {
   return {
     id: data.user.id,
     email: data.user.email || '',
-    user_metadata: data.user.user_metadata || {},
-    app_metadata: data.user.app_metadata || {}
+    userMetadata: data.user.user_metadata as ApiUserMetadata || {},
+    appMetadata: data.user.app_metadata || {}
   };
 }

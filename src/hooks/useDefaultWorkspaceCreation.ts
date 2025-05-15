@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { initializeDefaultWorkspace } from '@/services/workspace/client';
 import { ApiWorkspace } from '@/types/workspace';
-import { User } from '@/types/auth-types';
+import { ApiAuthUser } from '@/types/user';
 
 /**
  * Hook to handle default workspace creation for new users
@@ -12,7 +12,7 @@ import { User } from '@/types/auth-types';
  * - Focused on a single responsibility
  */
 export function useDefaultWorkspaceCreation(
-  user: User | null,
+  user: ApiAuthUser | null,
   workspaces: ApiWorkspace[] | undefined,
   mutateWorkspaces: (data?: ApiWorkspace[] | Promise<ApiWorkspace[]> | ((current: ApiWorkspace[] | undefined) => ApiWorkspace[] | undefined) | undefined) => Promise<ApiWorkspace[] | undefined>,
   selectWorkspace: (id: string) => void
