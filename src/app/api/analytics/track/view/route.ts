@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: data as ViewResponseData } as TrackingResponse);
   } catch (error) {
-    // console.error('Error processing form view tracking:', error);
+    console.error('Error processing form view tracking:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' } as TrackingResponse,
       { status: 500 }

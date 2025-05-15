@@ -10,7 +10,6 @@
 import { 
   DbMediaAsset,
   DbMediaAssetInput,
-  DbMediaTag,
   DbMediaTagInput,
   DbMediaUsageUpdateInput
 } from '@/types/media/DbMedia';

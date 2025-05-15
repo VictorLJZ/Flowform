@@ -15,7 +15,7 @@ import {
   ApiIntegrationBlockSubtype,
   ApiLayoutBlockSubtype
 } from '@/types/block/ApiBlock'
-import { UiBlock, UiBlockDefinition } from '@/types/block/UiBlock'
+import { UiBlock } from '@/types/block/UiBlock'
 
 // Define BlockDefinition interface since it was previously in block-types.ts
 interface BlockDefinition {
@@ -283,7 +283,7 @@ export const createNewBlock = (blockTypeId: string, order: number): UiBlock => {
   const blockDef = getBlockDefinition(blockTypeId)
   
   // Determine the block type and subtype based on blockTypeId
-  let blockType: ApiBlockType = (blockDef?.type || 'static') as ApiBlockType;
+  const blockType: ApiBlockType = (blockDef?.type || 'static') as ApiBlockType;
   let blockSubtype: ApiBlockSubtype;
   
   // Assign the appropriate subtype based on blockTypeId and type

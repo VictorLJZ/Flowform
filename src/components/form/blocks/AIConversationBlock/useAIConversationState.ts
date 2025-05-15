@@ -87,9 +87,6 @@ export function useAIConversationState(
     if (state.activeQuestionIndex < conversation.length) {
       // In the new API format, find the answer item for this question index
       // We need to find all answers at this index in the conversation
-      const questionItems = conversation.filter((item, idx) => 
-        item.type === 'question' && Math.floor(idx/2) === state.activeQuestionIndex
-      );
       const answerItems = conversation.filter((item, idx) => 
         item.type === 'answer' && Math.floor(idx/2) === state.activeQuestionIndex
       );

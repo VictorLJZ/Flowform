@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlusCircle, MessageCircle, Trash2, Trash } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChatSessionsStore } from '@/stores/chatSessionsStore';
-import { UiSessionInfo } from '@/types/conversation/UiConversation';
 import {
   AlertDialog,
   AlertDialogAction,

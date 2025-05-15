@@ -5,7 +5,7 @@
  * They use camelCase naming and include UI-specific properties.
  */
 
-import { ApiAuthUser, ApiUserMetadata } from './ApiUser';
+import { ApiAuthUser } from './ApiUser';
 
 /**
  * UI-formatted profile with display enhancements

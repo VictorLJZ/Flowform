@@ -15,7 +15,7 @@ export * from './ApiUser';
 export * from './UiUser';
 
 // Import for internal use
-import { ApiAuthUser, ApiUserMetadata } from './ApiUser';
+import { ApiAuthUser } from './ApiUser';
 
 // Type re-exports for backward compatibility
 // These will help during the transition from auth-types.ts

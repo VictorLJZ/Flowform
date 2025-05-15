@@ -138,6 +138,7 @@ export async function GET(request: NextRequest) {
           const event = `data: ${JSON.stringify(data)}\n\n`;
           controller.enqueue(new TextEncoder().encode(event));
         } catch (err) {
+          console.error('Error sending event:', err);
           // Error sending event
           isClosed = true; // Mark as closed if sending fails
         }
@@ -303,7 +304,7 @@ export async function GET(request: NextRequest) {
           
         } catch (searchError) {
           clearTimeout(maxStreamTimeout);
-          
+          console.error('Error in RAG search:', searchError);
           if (!isClosed) {
             // Error in RAG search
             sendEvent({ 
@@ -316,6 +317,7 @@ export async function GET(request: NextRequest) {
         }
 
       } catch (error) {
+        console.error('Error in stream handler:', error);
         if (!isClosed) {
           // Error in stream handler
           sendEvent({ type: 'rag_error', error: 'Internal server error' } as RagStreamEvent);

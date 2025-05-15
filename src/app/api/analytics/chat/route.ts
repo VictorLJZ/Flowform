@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (ragError) {
       // Error with RAG service
+      console.error('RAG service error:', ragError);
       
       // Simplified fallback
       aiResponse = "I'm having trouble accessing form response data to answer your question. Please try again later.";

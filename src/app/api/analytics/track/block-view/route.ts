@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     const response: TrackingResponse = { success: true, data };
     return NextResponse.json(response);
   } catch (error) {
+    console.error('Error processing block view tracking:', error);
     // Error processing block view tracking
     return NextResponse.json(
       { error: 'Internal server error' },

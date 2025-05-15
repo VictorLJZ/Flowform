@@ -85,6 +85,7 @@ export async function GET(
     });
     
   } catch (error) {
+    console.error('Error fetching form insights:', error);
     // Error fetching form insights
     return NextResponse.json(
       { success: false, error: 'Failed to fetch insights', data: null },

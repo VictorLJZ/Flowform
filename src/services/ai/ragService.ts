@@ -7,7 +7,6 @@ import {
   geminiModel 
 } from './geminiService';
 import { DbChatMessage } from '@/types/conversation/DbConversation';
-import { ApiChatMessage } from '@/types/conversation/ApiConversation';
 
 /**
  * RAG System Prompt template for analytics insights

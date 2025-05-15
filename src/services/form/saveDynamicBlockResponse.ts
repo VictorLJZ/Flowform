@@ -79,7 +79,7 @@ export async function saveDynamicBlockResponse(input: SaveDynamicResponseInput):
 
     // Use the existing conversation or initialize a new one
     // Convert DB format to API format if necessary
-    let dbConversation: DbQAPair[] = currentQAPairs?.conversation || [];
+    const dbConversation: DbQAPair[] = currentQAPairs?.conversation || [];
     let conversation: ApiQAPair[] = dbConversation.map(item => ({
       type: item.type,
       content: item.content,

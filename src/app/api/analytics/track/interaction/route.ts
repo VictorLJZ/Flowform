@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: rpcResult } as TrackingResponse);
   } catch (error) {
-    // console.error('Error processing block interaction tracking:', error);
+    console.error('Error processing block interaction tracking:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' } as TrackingResponse,
       { status: 500 }
