@@ -1,21 +1,6 @@
 import { create } from 'zustand';
 import { getPosts, getPostBySlug, getPostsByTag, getTags } from '@/services/ghostService';
-import type { GhostPost, GhostTag } from '@/types';
-
-interface BlogState {
-  posts: GhostPost[];
-  currentPost: GhostPost | null;
-  tags: GhostTag[];
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  fetchPosts: (limit?: number) => Promise<GhostPost[]>;
-  fetchPostBySlug: (slug: string) => Promise<GhostPost | null>;
-  fetchPostsByTag: (tag: string, limit?: number) => Promise<void>;
-  fetchTags: () => Promise<void>;
-  reset: () => void;
-}
+import type { BlogState } from '@/types/store-types';
 
 export const useBlogStore = create<BlogState>((set) => ({
   posts: [],

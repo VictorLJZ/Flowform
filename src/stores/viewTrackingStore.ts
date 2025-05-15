@@ -2,20 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { trackFormViewClient } from '@/services/analytics/client';
 import { getVisitorId, isUniqueFormVisit } from '@/lib/analytics/visitorId';
-
-// Types to represent view tracking data
-type ViewedForm = {
-  formId: string;
-  lastViewedAt: number;
-  viewCount: number;
-};
-
-interface ViewTrackingState {
-  viewedForms: Record<string, ViewedForm>;
-  trackView: (formId: string, metadata?: Record<string, unknown>) => Promise<boolean>;
-  hasViewedRecently: (formId: string, cooldownMinutes?: number) => boolean;
-  getFormViewCount: (formId: string) => number;
-}
+import type { ViewTrackingState } from '@/types/store-types';
 
 /**
  * Store for tracking form views with deduplication

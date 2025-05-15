@@ -1,22 +1,7 @@
 // src/stores/workspaceStore.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-
-/**
- * Simplified workspace store following Carmack principles
- * 
- * This store follows a clear separation of concerns:
- * - SWR handles data fetching and caching of API workspace data
- * - Zustand ONLY handles UI state (which workspace is selected)
- */
-export interface WorkspaceState {
-  // UI Selection State
-  currentWorkspaceId: string | null;
-  lastSelectionTime: number;
-  
-  // Actions
-  selectWorkspace: (workspaceId: string | null) => void;
-}
+import type { WorkspaceState } from '@/types/store-types';
 
 /**
  * Create the workspace store

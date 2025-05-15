@@ -1,21 +1,6 @@
 import { create } from 'zustand';
 import { UiSessionInfo } from '@/types/conversation/UiConversation';
-
-interface ChatSessionsState {
-  // State
-  sessions: UiSessionInfo[];
-  currentSessionId: string | null;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  fetchSessions: (formId: string) => Promise<void>;
-  setCurrentSession: (sessionId: string | null) => void;
-  createSession: (formId: string) => Promise<string>;
-  deleteSession: (sessionId: string) => Promise<void>;
-  clearAllSessions: (formId: string) => Promise<void>;
-  updateSessionMetadata: (sessionId: string, metadata: Partial<Pick<UiSessionInfo, 'title' | 'lastMessage'>>) => Promise<void>;
-}
+import type { ChatSessionsState } from '@/types/store-types';
 
 export const useChatSessionsStore = create<ChatSessionsState>((set, get) => ({
   // Initial state
