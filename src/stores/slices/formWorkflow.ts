@@ -196,7 +196,7 @@ export const createFormWorkflowSlice: StateCreator<
     );
 
     if (!isFirstBlock && !hasIncomingConnections) {
-      const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      const sortedBlocks = [...blocks].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
       const newBlockIndex = sortedBlocks.findIndex(b => b.id === blockId);
       
       if (newBlockIndex > 0) {
@@ -248,7 +248,7 @@ export const createFormWorkflowSlice: StateCreator<
     // Ensure blocks are sorted by order_index before passing to the utility, 
     // as createDefaultConnections expects this for its logic.
     // The utility itself also sorts, but doing it here ensures consistency if that changes.
-    const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const sortedBlocks = [...blocks].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
 
     // Call the utility function to get the new state of all connections.
     // We pass all current blocks and their connections. 

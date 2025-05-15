@@ -1,5 +1,6 @@
 import useSWR from 'swr';
-import type { FormInsights, AnalyticsApiResponse } from '@/types/analytics-types';
+import type { FormInsights } from '@/types/analytics/ApiFormMetrics';
+import type { AnalyticsApiResponse } from '@/types/analytics/ApiResponse';
 
 /**
  * Custom hook for fetching form insights data

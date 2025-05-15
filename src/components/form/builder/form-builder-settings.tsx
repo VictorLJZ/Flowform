@@ -160,7 +160,7 @@ export default function FormBuilderSettings() {
               </h4>
               
               {/* Text input fields */}
-              {(currentBlock.blockTypeId === 'short_text' || currentBlock.blockTypeId === 'long_text' || currentBlock.blockTypeId === 'email') && (
+              {(currentBlock.subtype === 'short_text' || currentBlock.subtype === 'long_text' || currentBlock.subtype === 'email') && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="input-placeholder">Placeholder</Label>
@@ -173,7 +173,7 @@ export default function FormBuilderSettings() {
                     />
                   </div>
                   
-                  {currentBlock.blockTypeId === 'short_text' && (
+                  {currentBlock.subtype === 'short_text' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-length">Maximum Length</Label>
                       <Input 
@@ -190,7 +190,7 @@ export default function FormBuilderSettings() {
                     </div>
                   )}
                   
-                  {currentBlock.blockTypeId === 'long_text' && (
+                  {currentBlock.subtype === 'long_text' && (
                     <div className="space-y-1.5">
                       <Label htmlFor="max-rows">Maximum Rows</Label>
                       <Input 
@@ -210,7 +210,7 @@ export default function FormBuilderSettings() {
               )}
               
               {/* Number field */}
-              {currentBlock.blockTypeId === 'number' && (
+              {currentBlock.subtype === 'number' && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="number-placeholder">Placeholder</Label>
@@ -271,7 +271,7 @@ export default function FormBuilderSettings() {
               )}
               
               {/* Choice fields */}
-              {(currentBlock.blockTypeId === 'multiple_choice' || currentBlock.blockTypeId === 'checkbox_group' || currentBlock.blockTypeId === 'dropdown') && (
+              {(currentBlock.subtype === 'multiple_choice' || currentBlock.subtype === 'checkbox_group' || currentBlock.subtype === 'dropdown') && (
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium uppercase">Options</h5>
                   
@@ -320,7 +320,7 @@ export default function FormBuilderSettings() {
                     Add Option
                   </Button>
                   
-                  {currentBlock.blockTypeId === 'checkbox_group' && (
+                  {currentBlock.subtype === 'checkbox_group' && (
                     <div className="pt-2 space-y-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="min-selected">Minimum Selected</Label>
@@ -357,7 +357,7 @@ export default function FormBuilderSettings() {
               )}
               
               {/* AI Conversation */}
-              {currentBlock.blockTypeId === 'ai_conversation' && (
+              {currentBlock.subtype === 'ai_conversation' && (
                 <div className="space-y-3">
                   
                   <div className="space-y-1.5">

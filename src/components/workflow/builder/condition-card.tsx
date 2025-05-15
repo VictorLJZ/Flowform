@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Edge } from 'reactflow';
 import { WorkflowEdgeData, Connection, ConditionRule } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { useFormBuilderStore } from '@/stores/formBuilderStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Info, Trash2 } from 'lucide-react';
@@ -18,7 +18,7 @@ import { ConditionTypeSelector } from './condition-type-selector';
 
 interface ConditionCardProps {
   element: Edge<WorkflowEdgeData>;
-  sourceBlock: FormBlock | null | undefined;
+  sourceBlock: UiBlock | null | undefined;
   sourceBlockType: string;
   currentConnection: Connection | null;
   onConditionTypeChange: (type: 'always' | 'conditional' | 'fallback') => void;
@@ -73,7 +73,7 @@ export function ConditionCard({
   const sourceBlockId = sourceBlock?.id || '';
   const potentialTargets = useMemo(() => 
     blocks.filter(block => block.id !== sourceBlockId)
-          .sort((a, b) => a.order_index - b.order_index),
+          .sort((a, b) => a.orderIndex - b.orderIndex),
     [blocks, sourceBlockId]
   );
   
@@ -107,6 +107,7 @@ export function ConditionCard({
     if (onTargetChange) onTargetChange(success);
   };
 
+  // Use sourceBlockType from props instead of undefined sourceApiBlockType
   const getHelpText = () => {
     if (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown') {
       return "Set up conditions based on answers to determine the path.";
@@ -153,7 +154,7 @@ export function ConditionCard({
             <SelectContent>
               {potentialTargets.map(block => (
                 <SelectItem key={block.id} value={block.id}>
-                  {block.title || `Block #${block.order_index + 1}`}
+                  {block.title || `Block #${block.orderIndex + 1}`}
                 </SelectItem>
               ))}
             </SelectContent>

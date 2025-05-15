@@ -40,7 +40,7 @@ import {
  * @returns API-formatted block object
  */
 /**
- * Maps DbBlockType to ApiBlockType (they have same values but different types)
+ * Maps DbApiBlockType to ApiBlockType (they have same values but different types)
  * @param dbType Database block type
  * @returns API block type
  */
@@ -73,7 +73,7 @@ export function dbToApiBlock(dbBlock: DbBlock): ApiBlock {
     // Convert null to undefined for optional fields
     description: dbBlock.description === null ? undefined : dbBlock.description,
     required: dbBlock.required,
-    orderIndex: dbBlock.order_index,
+    orderIndex: dbBlock.orderIndex,
     settings: dbBlock.settings,
     createdAt: dbBlock.created_at,
     updatedAt: dbBlock.updated_at
@@ -102,7 +102,7 @@ export function dbToApiBlockOption(dbOption: DbBlockOption): ApiBlockOption {
     text: dbOption.text,
     value: dbOption.value,
     isDefault: dbOption.is_default,
-    orderIndex: dbOption.order_index
+    orderIndex: dbOption.orderIndex
   };
 }
 
@@ -124,12 +124,12 @@ export function dbToApiBlockOptions(dbOptions: DbBlockOption[]): ApiBlockOption[
  */
 export function dbToApiDynamicBlockConfig(dbConfig: DbDynamicBlockConfig): ApiDynamicBlockConfig {
   return {
-    systemPrompt: dbConfig.system_prompt,
+    systemPrompt: dbConfig.systemPrompt,
     model: dbConfig.model,
     temperature: dbConfig.temperature,
-    maxTokens: dbConfig.max_tokens,
-    starterQuestions: dbConfig.starter_questions,
-    referenceMaterials: dbConfig.reference_materials
+    maxTokens: dbConfig.maxTokens,
+    starterQuestions: dbConfig.starterQuestions,
+    referenceMaterials: dbConfig.referenceMaterials
   };
 }
 
@@ -149,7 +149,7 @@ export function dbToApiBlockVersion(dbBlockVersion: DbBlockVersion): ApiBlockVer
     type: dbBlockVersion.type as ApiBlockType,
     subtype: dbBlockVersion.subtype,
     required: dbBlockVersion.required,
-    orderIndex: dbBlockVersion.order_index,
+    orderIndex: dbBlockVersion.orderIndex,
     settings: dbBlockVersion.settings,
     isDeleted: dbBlockVersion.is_deleted,
     createdAt: dbBlockVersion.created_at

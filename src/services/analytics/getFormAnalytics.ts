@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Analytics } from '@/types/analytics-types';
+import { ApiFormMetrics } from '@/types/analytics';
 
 /**
  * Get analytics data for a specific form
@@ -13,7 +13,7 @@ export async function getFormAnalytics(
   formId: string,
   startDate?: string,
   endDate?: string
-): Promise<Analytics> {
+): Promise<ApiFormMetrics> {
   const supabase = await createClient();
   const now = new Date().toISOString();
   
@@ -49,7 +49,7 @@ export async function getFormAnalytics(
   }
 
   // Get form metrics if they exist
-  const { data: metrics, error: metricsError } = await supabase
+  const { error: metricsError } = await supabase
     .from('form_metrics')
     .select('*')
     .eq('form_id', formId)
@@ -57,7 +57,6 @@ export async function getFormAnalytics(
 
   if (metricsError && metricsError.code !== 'PGRST116') { // Not found is ok
     console.error('Error getting form metrics:', metricsError);
-    throw metricsError;
   }
 
   // Get form interactions to calculate average time spent
@@ -83,37 +82,33 @@ export async function getFormAnalytics(
     avgTimeSpent = totalTime / interactions.length;
   }
 
-  // Get views over time (grouped by day)
-  const { data: viewsOverTime, error: viewsTimeError } = await supabase
-    .rpc('get_daily_form_views', { 
-      form_id_param: formId,
-      start_date_param: dateStart,
+  // Get views over time data using the analytics.get_views_over_time function
+  const { error: viewsTimeError } = await supabase.rpc(
+    'analytics.get_views_over_time', 
+    { 
+      form_id_param: formId, 
+      start_date_param: dateStart, 
       end_date_param: dateEnd 
     });
-
+    
   if (viewsTimeError) {
     console.error('Error getting views over time:', viewsTimeError);
-    // Fall back to an empty array if the function isn't available
-    const viewsOverTimeData: { date: string; count: number }[] = [];
-    
-    return {
-      form_id: formId,
-      total_views: viewCount || 0,
-      total_completions: completionCount || 0,
-      completion_rate: viewCount ? (completionCount || 0) / viewCount : 0,
-      average_time_spent: avgTimeSpent,
-      metrics: metrics || null,
-      views_over_time: viewsOverTimeData
-    };
   }
 
-  return {
-    form_id: formId,
-    total_views: viewCount || 0,
-    total_completions: completionCount || 0,
-    completion_rate: viewCount ? (completionCount || 0) / viewCount : 0,
-    average_time_spent: avgTimeSpent,
-    metrics: metrics || null,
-    views_over_time: viewsOverTime || []
+  // Calculate completion rate
+  const completionRate = viewCount ? (completionCount || 0) / viewCount : 0;
+  
+  // Format the response according to ApiFormMetrics
+  const result: ApiFormMetrics = {
+    formId,
+    totalViews: viewCount || 0,
+    uniqueViews: 0, // This needs to be calculated or retrieved from the database
+    totalStarts: 0, // This needs to be retrieved from the database
+    totalCompletions: completionCount || 0,
+    completionRate,
+    averageCompletionTimeSeconds: avgTimeSpent,
+    lastUpdated: new Date().toISOString()
   };
+  
+  return result;
 }

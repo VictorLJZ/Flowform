@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { ApiBlock } from "@/types/block/ApiBlock"
+import { dbToApiBlocks } from "@/utils/type-utils/block/DbToApiBlock"
 import { 
   Breadcrumb, 
   BreadcrumbItem, 
@@ -116,9 +118,13 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         theme: ensureValidTheme(form.theme),
       })
       
-      // Transform blocks from DB format to application format
-      // Default to an empty array if form.blocks is null or undefined
-      const parsedBlocks = (form.blocks || []).map((block: any) => {
+      // Transform blocks from DB format to API format
+      // This ensures we have proper camelCase properties throughout
+      const apiBlocks = dbToApiBlocks(form.blocks || []);
+      
+      // Ensure each block has the formId property required by ApiBlock
+      // Map the API blocks with the formId and other required properties
+      const parsedBlocks = apiBlocks.map((block: ApiBlock) => {
         // Handle both old and new block formats
         // In legacy format, block might have type but not subtype
         // In new format, block will have both type and subtype
@@ -139,18 +145,18 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
         // Fixed property mapping - ensure all required fields have values
         return {
           id: block.id,
+          formId: formId, // Add the formId to meet ApiBlock requirements
           blockTypeId: blockTypeId, // Ensure this is always a string
           type: blockType, // Always has a value
           subtype: blockTypeId, // Use the same value for consistency 
           title: block.title || blockDef?.defaultTitle || '',
           description: block.description || undefined, // Ensure undefined instead of null
           required: block.required !== undefined ? block.required : false,
-          order_index: block.order_index || 0, // Ensure it's a number
-          orderIndex: block.orderIndex || block.order_index || 0, // Support both naming conventions
+          orderIndex: block.orderIndex || 0, // Now using only camelCase
           settings: block.settings || {},
           // Add timestamp fields for completeness
-          createdAt: block.createdAt || block.created_at || new Date().toISOString(),
-          updatedAt: block.updatedAt || block.updated_at || new Date().toISOString()
+          createdAt: block.createdAt || new Date().toISOString(),
+          updatedAt: block.updatedAt || new Date().toISOString()
         };
       });
       
@@ -197,9 +203,9 @@ function FormBuilderPageContent({ formId }: FormBuilderPageContentProps) {
           // Return the standardized connection format adhering to the Connection interface
           return {
             id: edge.id,
-            sourceId: edge.source_block_id,
-            defaultTargetId: edge.default_target_id,
-            is_explicit: edge.is_explicit, // Added is_explicit here
+            sourceId: edge.source_block_id || '', // Ensure sourceId is never undefined
+            defaultTargetId: edge.default_target_id || null, // Ensure it's null if undefined
+            is_explicit: edge.is_explicit || false, // Default to false if undefined
             rules: parsedRules, 
             order_index: edge.order_index || 0
           };

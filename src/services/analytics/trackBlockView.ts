@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { FormInteraction } from '@/types/supabase-types';
+import { ApiFormInteraction } from '@/types/analytics';
 import { getVisitorId } from '@/lib/analytics/visitorId';
 import { queueEvent } from '@/lib/analytics/eventQueue';
 
@@ -17,7 +17,7 @@ export async function trackBlockView(
   formId: string,
   responseId?: string,
   metadata: Record<string, unknown> = {}
-): Promise<FormInteraction> {
+): Promise<ApiFormInteraction> {
   const supabase = createClient();
   const visitorId = getVisitorId();
   const timestamp = new Date().toISOString();

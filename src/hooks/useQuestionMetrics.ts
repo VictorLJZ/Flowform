@@ -58,7 +58,7 @@ export function useQuestionMetrics(formId: string | null) {
   const processedMetrics = data?.data 
     ? data.data
         // Filter out layout blocks or other non-question blocks if needed
-        .filter(block => block.blockTypeId !== 'layout')
+        .filter(block => block.blockTypeId !== 'layout') // Using blockTypeId which is available in FormattedBlockMetrics
         // Sort by views count (descending)
         .sort((a, b) => b.count - a.count)
         // Add calculated drop-off rates with formatted percentages

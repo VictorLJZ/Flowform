@@ -14,7 +14,7 @@ import { useViewTracking } from "@/hooks/analytics/useViewTracking";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from 'framer-motion'
 import type { AIConversationHandle } from '@/types/form-types'; 
-import { ApiQAPair } from '@/types/response';
+import { AnswerValue } from '@/types/form-view-types';
 import { BlockRenderer } from "@/components/form/viewer/BlockRenderer";
 import { CompletionScreen } from "@/components/form/viewer/CompletionScreen";
 import { ErrorMessages } from "@/components/form/viewer/ErrorMessages";
@@ -251,10 +251,10 @@ export default function FormViewerPage() {
       console.error('❌ [Analytics] Error tracking form completion:', error);
     }
   }, [analytics]);
-  // Use type assertion to ensure compatibility with both the new and legacy QAPair types
-  const saveAnswerFn = useCallback((blockId: string, answer: string | number | string[] | ApiQAPair[]) => {
-    // Properly typed to use ApiQAPair
-    saveCurrentAnswer(blockId, answer as any);
+  // Use the centralized AnswerValue type for answer values instead of 'any'
+  const saveAnswerFn = useCallback((blockId: string, answer: AnswerValue) => {
+    // Now properly typed with a specific type
+    saveCurrentAnswer(blockId, answer);
   }, [saveCurrentAnswer]);
   
   // Effect to update callback refs - only runs when the memoized functions change
@@ -300,7 +300,7 @@ export default function FormViewerPage() {
     console.log('DEBUG_BLOCK_TYPE:', {
       blockId: block.id,
       blockType: block.type,
-      blockTypeId: block.blockTypeId,
+      subtype: block.subtype, // Using subtype property from UiBlock
       settings: block.settings,
       required: block.required,
       answerType: typeof currentAnswer,
@@ -308,7 +308,7 @@ export default function FormViewerPage() {
     });
 
     // AI conversation has its own internal submit/next logic
-    if (block.blockTypeId === 'ai_conversation') {
+    if (block.subtype === 'ai_conversation') {
       console.log('DEBUG_NEXT_BUTTON: Block is AI conversation, disabling standard Next button');
       return true; 
     }
@@ -352,7 +352,7 @@ export default function FormViewerPage() {
     }
     
     let answerToSubmit = currentAnswer;
-    if (block.blockTypeId === 'ai_conversation') { 
+    if (block.subtype === 'ai_conversation') { 
       if (aiConversationRef.current && typeof aiConversationRef.current.getMessages === 'function') {
         answerToSubmit = aiConversationRef.current.getMessages();
         console.log('[prepareAnswer] Using AI conversation messages');
@@ -366,7 +366,7 @@ export default function FormViewerPage() {
     console.log('[DEBUG][prepareAnswer] Prepared answer for block:', {
       blockId: block.id,
       blockType: block.type,
-      blockTypeId: block.blockTypeId,
+      subtype: block.subtype,
       settings: block.settings,
       answerType: typeof answerToSubmit,
       isArray: Array.isArray(answerToSubmit),
@@ -386,13 +386,13 @@ export default function FormViewerPage() {
     if (answerToSubmit !== null && block) {
       console.log('[DEBUG][handleSubmit] Answer prepared successfully, about to submit to API:', {
         blockId: block.id,
-        blockTypeId: block.blockTypeId,
+        subtype: block.subtype,
         answerType: typeof answerToSubmit
       });
       
       try {
         // First submit to the API
-        await submitAnswerToAPI(block, answerToSubmit);
+        await submitAnswerToAPI(block, "answer", answerToSubmit);
         
         console.log('[DEBUG][handleSubmit] API submission successful, now handling workflow navigation');
         
@@ -467,7 +467,7 @@ export default function FormViewerPage() {
                   console.log('DEBUG_BLOCK_RENDERER_SUBMIT:', {
                     blockId: block.id,
                     blockType: block.type,
-                    blockTypeId: block.blockTypeId,
+                    subtype: block.subtype,
                     answerType: typeof answer,
                     answerValue: answer
                   });
@@ -475,14 +475,14 @@ export default function FormViewerPage() {
                   try {
                     // First save to API - this was missing in the original implementation!
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling submitAnswerToAPI...');
-                    // Type assertion to allow both QAPair types
-                    await submitAnswerToAPI(block, answer as any);
+                    // Ensure answer is cast properly for API submission
+                    await submitAnswerToAPI(block, "answer", answer);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: API submission successful');
                     
                     // Then use workflow navigation
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling workflowSubmitAnswer...');
-                    // Type assertion to allow both QAPair types
-                    workflowSubmitAnswer(answer as any);
+                    // Ensure answer is cast properly for workflow navigation
+                    workflowSubmitAnswer(answer);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Workflow navigation completed');
                   } catch (error) {
                     console.error('DEBUG_BLOCK_RENDERER_SUBMIT: Error during submission:', error);

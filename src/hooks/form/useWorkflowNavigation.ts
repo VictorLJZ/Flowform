@@ -1,16 +1,15 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Connection, ConditionRule, ConditionGroup } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block/UiBlock';
 import { ApiQAPair } from '@/types/response';
 
 // Using unknown[] is more type-safe than any[] but still allows for flexibility
 // We need this flexibility due to the variety of answer types in the system
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // Using union types to maintain flexibility for all answer types
 type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[];
 
 interface WorkflowNavigationProps {
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   connections: Connection[];
   initialBlockIndex?: number;
 }
@@ -89,24 +88,24 @@ export function useWorkflowNavigation({
   // Evaluate if a condition is met based on the current answer
   const evaluateCondition = useCallback((
     condition: ConditionRule, 
-    answer: Answer,
-    blockTypeId: string
+    type: "answer", content: Answer,
+    subtype: string
   ): boolean => {
     if (!condition || !condition.field) return true;
     
     const { field, operator, value } = condition;
-    console.log(`🔍🔎🔬 [CONDITION_EVAL] Evaluating condition: field=${field}, operator=${operator}, value=${value}, blockType=${blockTypeId}, answer=`, answer);
+    console.log(`🔍🔎🔬 [CONDITION_EVAL] Evaluating condition: field=${field}, operator=${operator}, value=${value}, blockType=${subtype}, answer=`, content);
     
     // Handle null/undefined answers
-    if (answer === null || answer === undefined) {
+    if (content === null || content === undefined) {
       console.log('🔍🔎🔬 [CONDITION_EVAL] Answer is null or undefined, condition fails');
       return false;
     }
     
     // Special handling for blocks that use option IDs and labels (multiple_choice, dropdown, checkbox_group)
-    if ((blockTypeId === 'multiple_choice' || blockTypeId === 'dropdown') && 
-        typeof answer === 'string' && 
-        answer.startsWith('option-')) {
+    if ((subtype === 'multiple_choice' || subtype === 'dropdown') && 
+        typeof content === 'string' && 
+        content.startsWith('option-')) {
       // The field in this case is the block ID (not a specific 'field' within the block)
       // Get the source block from the field ID
       const sourceBlock = blocks.find(block => block.id === field);
@@ -126,22 +125,22 @@ export function useWorkflowNavigation({
       }
       
       // Find the selected option by ID
-      const selectedOption = options.find((option: {id: string; label: string}) => option.id === answer);
+      const selectedOption = options.find((option: {id: string; label: string}) => option.id === content);
       if (!selectedOption) {
-        console.warn(`🔍🔎🔬 [CONDITION_EVAL] Selected option ${answer} not found in source block's options`);
+        console.warn(`🔍🔎🔬 [CONDITION_EVAL] Selected option ${content} not found in source block's options`);
         return false;
       }
       
       // Compare the option's label with the rule's value
       const matches = selectedOption.label === value;
       
-      console.log(`🔍🔎🔬 [CONDITION_EVAL] ${blockTypeId}: ${answer} (label: "${selectedOption.label}") ${matches ? 'matches' : 'does not match'} rule value "${value}"`);
+      console.log(`🔍🔎🔬 [CONDITION_EVAL] ${subtype}: ${content} (label: "${selectedOption.label}") ${matches ? 'matches' : 'does not match'} rule value "${value}"`);
       return operator === 'equals' ? matches : !matches;
     }
     
     // Special handling for checkbox_group (array of option IDs)
-    if (blockTypeId === 'checkbox_group' && Array.isArray(answer) && answer.length > 0 && 
-        typeof answer[0] === 'string' && answer[0].startsWith('option-')) {
+    if (subtype === 'checkbox_group' && Array.isArray(content) && content.length > 0 && 
+        typeof content[0] === 'string' && content[0].startsWith('option-')) {
       // The field is the block ID
       const sourceBlock = blocks.find(block => block.id === field);
       if (!sourceBlock) {
@@ -162,7 +161,7 @@ export function useWorkflowNavigation({
       // For checkbox groups, we need to handle multiple selections
       if (operator === 'equals') {
         // Check if the value exists in the selected options
-        for (const selectedId of answer) {
+        for (const selectedId of content) {
           const selectedOption = options.find((option: {id: string; label: string}) => option.id === selectedId);
           if (selectedOption && selectedOption.label === value) {
             console.log(`🔍🔎🔬 [CONDITION_EVAL] Checkbox group: found match for "${value}" in selected options`);
@@ -173,7 +172,7 @@ export function useWorkflowNavigation({
         return false;
       } else if (operator === 'not_equals') {
         // Check that the value does NOT exist in any selected option
-        for (const selectedId of answer) {
+        for (const selectedId of content) {
           const selectedOption = options.find((option: {id: string; label: string}) => option.id === selectedId);
           if (selectedOption && selectedOption.label === value) {
             console.log(`🔍🔎🔬 [CONDITION_EVAL] Checkbox group: found match for "${value}" in selected options (not_equals fails)`);
@@ -194,34 +193,34 @@ export function useWorkflowNavigation({
       // Handle choice selections (checkboxes, radio buttons, etc.)
       const choiceValue = field.split(':')[1];
       
-      if (Array.isArray(answer)) {
-        // For multiple choice where answer is an array of selections
+      if (Array.isArray(content)) {
+        // For multiple choice where content is an array of selections
         // Type safe check for primitive values in array
-        const isSelected = answer.some(item => 
+        const isSelected = content.some(item => 
           (typeof item === 'string' || typeof item === 'number') && item.toString() === choiceValue
         );
-        console.log(`Choice ${choiceValue} is ${isSelected ? 'selected' : 'not selected'} in ${JSON.stringify(answer)}`);
+        console.log(`Choice ${choiceValue} is ${isSelected ? 'selected' : 'not selected'} in ${JSON.stringify(content)}`);
         return operator === 'equals' ? isSelected : !isSelected;
-      } else if (typeof answer === 'string') {
-        // Single selection where answer is a string
-        const matches = answer === choiceValue;
-        console.log(`Choice ${choiceValue} ${matches ? 'matches' : 'does not match'} answer "${answer}"`);
+      } else if (typeof content === 'string') {
+        // Single selection where content is a string
+        const matches = content === choiceValue;
+        console.log(`Choice ${choiceValue} ${matches ? 'matches' : 'does not match'} answer "${content}"`);
         return operator === 'equals' ? matches : !matches;
       }
-    } else if (field === 'selected' && blockTypeId === 'checkbox_group') {
+    } else if (field === 'selected' && subtype === 'checkbox_group') {
       // For checkbox groups
-      const hasSelection = Array.isArray(answer) && answer.length > 0;
+      const hasSelection = Array.isArray(content) && content.length > 0;
       console.log(`Checkbox group has ${hasSelection ? 'selections' : 'no selections'}`);
       return operator === 'equals' ? 
         (value === true ? hasSelection : !hasSelection) :
         (value === true ? !hasSelection : hasSelection);
     } else if (field === 'answer') {
       // For text, number, or similar inputs
-      console.log(`Comparing answer "${answer}" ${operator} value "${value}"`);
+      console.log(`Comparing answer "${content}" ${operator} value "${value}"`);
       
       // Handle string option IDs from multiple choice/dropdown
-      if (blockTypeId === 'multiple_choice' || blockTypeId === 'dropdown') {
-        const stringAnswer = String(answer);
+      if (subtype === 'multiple_choice' || subtype === 'dropdown') {
+        const stringAnswer = String(content);
         const stringValue = String(value);
         
         if (operator === 'equals') {
@@ -233,24 +232,24 @@ export function useWorkflowNavigation({
       
       if (operator === 'equals') {
         // Handle type coercion for common cases
-        if (typeof answer === 'number' && typeof value === 'string') {
-          return answer === Number(value);
-        } else if (typeof answer === 'string' && typeof value === 'number') {
-          return Number(answer) === value;
+        if (typeof content === 'number' && typeof value === 'string') {
+          return content === Number(value);
+        } else if (typeof content === 'string' && typeof value === 'number') {
+          return Number(content) === value;
         }
-        return answer === value;
+        return content === value;
       } else if (operator === 'not_equals') {
         // Handle type coercion for common cases
-        if (typeof answer === 'number' && typeof value === 'string') {
-          return answer !== Number(value);
-        } else if (typeof answer === 'string' && typeof value === 'number') {
-          return Number(answer) !== value;
+        if (typeof content === 'number' && typeof value === 'string') {
+          return content !== Number(value);
+        } else if (typeof content === 'string' && typeof value === 'number') {
+          return Number(content) !== value;
         }
-        return answer !== value;
-      } else if (operator === 'contains' && typeof answer === 'string') {
-        return answer.includes(String(value));
+        return content !== value;
+      } else if (operator === 'contains' && typeof content === 'string') {
+        return content.includes(String(value));
       } else if (operator === 'greater_than') {
-        const numAnswer = typeof answer === 'string' ? Number(answer) : answer;
+        const numAnswer = typeof content === 'string' ? Number(content) : content;
         const numValue = typeof value === 'string' ? Number(value) : value;
         
         if (typeof numAnswer === 'number' && typeof numValue === 'number') {
@@ -258,7 +257,7 @@ export function useWorkflowNavigation({
         }
         return false;
       } else if (operator === 'less_than') {
-        const numAnswer = typeof answer === 'string' ? Number(answer) : answer;
+        const numAnswer = typeof content === 'string' ? Number(content) : content;
         const numValue = typeof value === 'string' ? Number(value) : value;
         
         if (typeof numAnswer === 'number' && typeof numValue === 'number') {
@@ -269,7 +268,7 @@ export function useWorkflowNavigation({
     }
     
     // If we reach here, the condition wasn't properly evaluated
-    console.warn(`Condition couldn't be properly evaluated:`, { field, operator, value, answer, blockTypeId });
+    console.warn(`Condition couldn't be properly evaluated:`, { field, operator, value, content, subtype });
     
     // Default fallback - by default we allow navigation if we can't evaluate
     return true;
@@ -278,8 +277,8 @@ export function useWorkflowNavigation({
   // Helper to evaluate a ConditionGroup
   const evaluateRuleConditionGroup = useCallback((
     conditionGroup: ConditionGroup | undefined,
-    answer: Answer,
-    blockTypeId: string
+    type: "answer", content: Answer,
+    subtype: string
   ): boolean => {
     if (!conditionGroup || !conditionGroup.conditions || conditionGroup.conditions.length === 0) {
       // An empty condition group or no conditions can be considered as 'true' 
@@ -295,7 +294,7 @@ export function useWorkflowNavigation({
 
     const results: boolean[] = [];
     for (const condition of conditionGroup.conditions) {
-      results.push(evaluateCondition(condition, answer, blockTypeId));
+      results.push(evaluateCondition(condition, "answer", content, subtype));
     }
 
     if (conditionGroup.logical_operator === 'AND') {
@@ -360,8 +359,9 @@ export function useWorkflowNavigation({
           console.log(`🧩📝🔖 [RULE_EVAL]     Evaluating rule ${rule.id} targeting block ${rule.target_block_id}`);
           const ruleConditionsMet = evaluateRuleConditionGroup(
             rule.condition_group,
+            "answer",
             currentAnswer,
-            currentBlock.blockTypeId || 'unknown'
+            currentBlock.subtype || 'unknown'
           );
           
           if (ruleConditionsMet) {
@@ -416,7 +416,7 @@ export function useWorkflowNavigation({
 
   // Navigate to the next block based on the current answer and conditions
   const goToNext = useCallback((currentAnswer: Answer) => {
-    console.log('🚀⚡️🔄 [NAVIGATION] goToNext called with answer:', currentAnswer);
+    console.log('🚀⚡️🔄 [NAVIGATION] goToNext called with type: "answer", content:', currentAnswer);
     
     const nextIndex = findNextBlockIndex(currentAnswer);
     

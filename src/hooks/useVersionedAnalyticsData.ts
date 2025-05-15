@@ -1,7 +1,7 @@
 import useSWR from 'swr';
 import { getVersionedFormResponses, getFormVersions } from '@/services/analytics/getVersionedFormResponses';
 import { VersionedResponse } from '@/types/form-version-types';
-import { DbFormVersion } from '@/types/block';
+import { DbFormVersion } from '@/types/form';
 
 // Define types for combined data
 interface VersionedFormData {

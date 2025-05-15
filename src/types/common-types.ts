@@ -100,7 +100,7 @@ export type DataTransformer<T = unknown, R = unknown> = (data: T) => R;
 /**
  * Backend block data structure
  * This represents the raw block data as it comes from the database
- * before being converted to the frontend FormBlock format
+ * before being converted to the frontend UiBlock format
  */
 export interface BackendBlockData {
   id: string;

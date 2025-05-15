@@ -2,7 +2,7 @@ import { getVersionedFormWithBlocksClient } from '../form/getVersionedFormWithBl
 import { transformVersionedFormData } from '../form/transformVersionedFormData';
 import { validateConnections } from '../connection/validateConnections';
 import { preserveRules } from '../connection/preserveRules';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection } from '@/types/workflow-types';
 import { defaultFormTheme } from '@/types/theme-types';
 import { defaultFormData } from '@/stores/slices/formCore';
@@ -37,10 +37,10 @@ function formatFormData(formData: CompleteForm): CustomFormData {
 /**
  * Create default linear connections between blocks if none exist
  */
-function createDefaultConnections(blocks: FormBlock[]): Connection[] {
+function createDefaultConnections(blocks: UiBlock[]): Connection[] {
   const connections: Connection[] = [];
   // Sort blocks by order to ensure proper sequence
-  const sortedBlocks = [...blocks].sort((a, b) => a.order_index - b.order_index);
+  const sortedBlocks = [...blocks].sort((a, b) => a.orderIndex - b.orderIndex);
   
   // Create a linear workflow with properly typed connections
   for (let i = 0; i < sortedBlocks.length - 1; i++) {
@@ -67,7 +67,7 @@ function createDefaultConnections(blocks: FormBlock[]): Connection[] {
  */
 export async function loadVersionedFormComplete(formId: string): Promise<{
   formData: CustomFormData;
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   connections: Connection[];
   nodePositions: Record<string, {x: number, y: number}>;
 }> {

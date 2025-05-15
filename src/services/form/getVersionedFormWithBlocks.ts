@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/types/supabase-types';
+import { FormWithBlocks, WorkflowEdge } from '@/types/supabase-types';
+import { DbBlock, DbDynamicBlockConfig, DbBlockOption } from '@/types/block/DbBlock';
 
 /**
  * Get the latest published version of a form with all its blocks from form_block_versions
@@ -7,7 +8,7 @@ import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/type
  * @param formId - The ID of the form to retrieve
  * @returns The complete versioned form with blocks or null if not found
  */
-export async function getVersionedFormWithBlocks(formId: string): Promise<CompleteForm | null> {
+export async function getVersionedFormWithBlocks(formId: string): Promise<FormWithBlocks | null> {
   const supabase = await createClient();
 
   // First get the form
@@ -59,8 +60,8 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
   // Filter out deleted blocks
   const activeBlocks = versionedBlocks.filter(block => !block.is_deleted);
 
-  // Map from versioned blocks structure to the expected FormBlock structure
-  const blocks: FormBlock[] = activeBlocks.map(vBlock => ({
+  // Map from versioned blocks structure to the expected DbBlock structure
+  const blocks: DbBlock[] = activeBlocks.map(vBlock => ({
     id: vBlock.block_id,
     form_id: formId,
     type: vBlock.type,
@@ -68,7 +69,7 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     title: vBlock.title,
     description: vBlock.description,
     required: vBlock.required,
-    order_index: vBlock.order_index,
+    order_index: vBlock.orderIndex,
     settings: vBlock.settings,
     created_at: vBlock.created_at,
     updated_at: vBlock.created_at // Use created_at as updated_at for versioned blocks
@@ -77,7 +78,7 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
   // Fetch dynamic blocks configurations
   const dynamicBlocks = blocks.filter(block => block.type === 'dynamic');
   
-  let dynamicConfigs: DynamicBlockConfig[] = [];
+  let dynamicConfigs: DbDynamicBlockConfig[] = [];
   if (dynamicBlocks.length > 0) {
     // Instead of querying a separate table, extract config from block settings
     dynamicConfigs = dynamicBlocks.map(block => {
@@ -85,12 +86,12 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
       return {
         block_id: block.id,
         starter_question: block.title || '',
-        temperature: settings.temperature || 0.7,
-        max_questions: settings.maxQuestions || 5,
-        ai_instructions: settings.contextInstructions || '',
+        temperature: typeof settings.temperature === 'number' ? settings.temperature : 0.7,
+        max_questions: typeof settings.maxQuestions === 'number' ? settings.maxQuestions : 5,
+        ai_instructions: (settings.contextInstructions as string) || null,
         created_at: block.created_at,
         updated_at: block.updated_at
-      } as DynamicBlockConfig;
+      };
     });
   }
   
@@ -100,7 +101,7 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     ['multiple_choice', 'scale', 'yes_no'].includes(block.subtype as string)
   );
   
-  let blockOptions: BlockOption[] = [];
+  let blockOptions: DbBlockOption[] = [];
   if (optionsBlocks.length > 0) {
     const optionsBlockIds = optionsBlocks.map(block => block.id);
     const { data: options, error: optionsError } = await supabase
@@ -119,9 +120,9 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
 
   // Assemble the complete form with blocks, their configs and options
   const blocksWithDetails = blocks.map(block => {
-    const blockWithDetails: FormBlock & { 
-      dynamic_config?: DynamicBlockConfig;
-      options?: BlockOption[];
+    const blockWithDetails: DbBlock & { 
+      dynamic_config?: DbDynamicBlockConfig;
+      options?: DbBlockOption[];
     } = { ...block };
 
     // Add dynamic config if this is a dynamic block
@@ -140,24 +141,7 @@ export async function getVersionedFormWithBlocks(formId: string): Promise<Comple
     return blockWithDetails;
   });
 
-  // Define proper interface for workflow edges
-  interface WorkflowEdge {
-    id: string;
-    form_id: string;
-    source_block_id: string;
-    target_block_id: string;
-    order_index: number;
-    condition_type?: string;
-    condition_field?: string;
-    condition_operator?: string;
-    condition_value?: string | number | boolean | null;
-    condition_json?: string;
-    created_at?: string;
-    updated_at?: string;
-    default_target_id?: string | null;
-    rules?: string;
-    is_explicit: boolean;
-  }
+  // Using the WorkflowEdge type we imported
   
   // Fetch workflow connections for this form
   let workflowEdges: WorkflowEdge[] = [];

@@ -17,7 +17,7 @@ interface UseConversationInteractionProps {
   questionInputs: Record<number, string>;
   isFirstQuestion: boolean;
   starterPrompt: string;
-  submitAnswer: (question: string, answer: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<SubmitAnswerResult>;
+  submitAnswer: (questionType: "question", questionContent: string, answerType: "answer", answerContent: string, questionIndex?: number, isStarterQuestion?: boolean) => Promise<SubmitAnswerResult>;
   onNext?: () => void;
   onChange?: (value: ApiQAPair[]) => void;
   onUpdate?: () => void;
@@ -132,9 +132,9 @@ export function useConversationInteraction({
       }
       
       // Log the submission details for debugging
-      console.log('Submitting answer:', {
-        question: currentQuestion,
-        answer: userInput,
+      console.log('Submitting type: "answer", content:', {
+        questionType: "question", questionContent: currentQuestion,
+        answerType: "answer", answerContent: userInput,
         isFirstQuestion,
         activeIndex: activeQuestionIndex,
         conversationLength: conversation.length
@@ -199,7 +199,9 @@ export function useConversationInteraction({
       
       // Invoke API submission
       const result = await submitAnswer(
+        "question",  // Literal type for question
         currentQuestion,
+        "answer",    // Literal type for answer
         userInput,
         activeQuestionIndex,
         isFirstQuestion
@@ -227,7 +229,7 @@ export function useConversationInteraction({
       }
       
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error submitting type: "answer", content:', error);
     } finally {
       setIsLocalSubmitting(false);
     }

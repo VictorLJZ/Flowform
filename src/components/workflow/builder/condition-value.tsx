@@ -13,11 +13,11 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection, ConditionRule } from '@/types/workflow-types';
 
 interface ConditionValueProps extends ConditionComponentProps {
-  sourceBlock: FormBlock | null | undefined;
+  sourceBlock: UiBlock | null | undefined;
   currentConnection: Connection | null;
   conditionId: string;
 }
@@ -25,7 +25,6 @@ interface ConditionValueProps extends ConditionComponentProps {
 export function ConditionValue({
   conditionId,
   sourceBlock,
-  sourceBlockType,
   currentConnection,
   onConditionChange
 }: ConditionValueProps) {
@@ -68,7 +67,7 @@ export function ConditionValue({
   }, []);
 
   const getSuggestedValues = useCallback((): ValueSuggestion[] => {
-    if ((fieldValue === 'answer') && (sourceBlockType === 'multiple_choice' || sourceBlockType === 'dropdown')) {
+    if ((fieldValue === 'answer') && (sourceBlock?.subtype === 'multiple_choice' || sourceBlock?.subtype === 'dropdown')) {
       const options = sourceBlock?.settings || {};
       const choices = ((options.choices || options.options) as BlockChoiceOption[] | undefined) || [];
       if (!Array.isArray(choices) || choices.length === 0) {
@@ -79,7 +78,8 @@ export function ConditionValue({
         value: choice.value || choice.label || ''
       }));
     }
-    if (fieldValue === 'domain' && sourceBlockType === 'email') {
+    // Use sourceBlock?.subtype instead of undefined sourceApiBlockType
+    if (fieldValue === 'domain' && sourceBlock?.subtype === 'email') {
       return [
         { label: 'gmail.com', value: 'gmail.com' },
         { label: 'outlook.com', value: 'outlook.com' },
@@ -112,7 +112,7 @@ export function ConditionValue({
       ];
     }
     return [];
-  }, [fieldValue, sourceBlock, sourceBlockType]);
+  }, [fieldValue, sourceBlock]);
 
   useEffect(() => {
     if (currentValueData !== undefined) {
@@ -122,15 +122,16 @@ export function ConditionValue({
 
   useEffect(() => {
     if (fieldValue && currentValueData === undefined && connection) { 
-      const defaultValue = getDefaultValueForField(fieldValue, sourceBlockType);
+      const defaultValue = getDefaultValueForField(fieldValue, sourceBlock?.subtype || '');
       onConditionChange('value', defaultValue);
     }
-  }, [fieldValue, currentValueData, sourceBlockType, onConditionChange, connection, getDefaultValueForField]);
+  }, [fieldValue, currentValueData, sourceBlock, onConditionChange, connection, getDefaultValueForField]);
   
   if (!fieldValue) return null;
 
   if (fieldValue.startsWith('choice:')) {
-    if (sourceBlockType === 'multiple_choice') {
+    // Use sourceBlock?.subtype instead of undefined sourceApiBlockType
+    if (sourceBlock?.subtype === 'multiple_choice') {
       return (
         <div className="mt-2">
           <div className="bg-amber-50 p-3 rounded-md mb-2 border border-amber-200">
@@ -177,7 +178,7 @@ export function ConditionValue({
     return null;
   }
 
-  if (fieldValue === 'selected' && sourceBlockType === 'checkbox_group') {
+  if (fieldValue === 'selected' && sourceBlock?.subtype === 'checkbox_group') {
     return (
       <div className="mt-2">
         <div className="bg-slate-50 p-3 rounded-md mb-2">
@@ -230,7 +231,7 @@ export function ConditionValue({
     );
   }
 
-  const inputType = (fieldValue === 'answer' && sourceBlockType === 'number') || 
+  const inputType = (fieldValue === 'answer' && sourceBlock?.subtype === 'number') || 
                   fieldValue === 'rating' || fieldValue === 'length' 
                   ? 'number' 
                   : 'text';

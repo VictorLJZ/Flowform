@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { DynamicBlockConfig } from '@/types/supabase-types';
+import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
 import { FormContextData, StaticQuestionContext, DynamicQuestionContext } from '@/types/form-service-types';
 
 // Cache for form context data - key is formId
@@ -75,7 +75,7 @@ export async function getFormContext(
       .filter(block => block.type === 'dynamic')
       .map(block => block.id);
     
-    let dynamicConfigs: DynamicBlockConfig[] = [];
+    let dynamicConfigs: DbDynamicBlockConfig[] = [];
     
     if (dynamicBlockIds.length > 0) {
       const { data: configs, error: configsError } = await supabase
@@ -111,7 +111,7 @@ export async function getFormContext(
           title: block.title,
           description: block.description,
           type: 'dynamic' as const,
-          starter_question: config?.starter_question || ''
+          starter_type: "question", content: config?.starter_question || ''
         };
       });
     
@@ -179,7 +179,7 @@ export function formatFormContext(context: FormContextData): string {
   if (context.dynamicBlocks.length > 0) {
     prompt += "Other Dynamic Conversation Blocks:\n";
     context.dynamicBlocks.forEach((b, i) => {
-      prompt += `${i+1}. Block: ${b.title}\n   Starter Question: "${b.starter_question}"\n`;
+      prompt += `${i+1}. Block: ${b.title}\n   Starter Question: "${b.content}"\n`;
     });
   }
   

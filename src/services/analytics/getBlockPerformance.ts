@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { BlockPerformance } from '@/types/analytics-types';
-import { BlockMetrics } from '@/types/supabase-types';
+import { DbBlockPerformance, DbBlockMetrics } from '@/types/analytics/DbBlockMetrics';
 
 /**
  * Get performance analytics for a specific block or all blocks in a form
@@ -16,7 +15,7 @@ export async function getBlockPerformance(
   blockId?: string,
   startDate?: string,
   endDate?: string
-): Promise<BlockPerformance[]> {
+): Promise<DbBlockPerformance[]> {
   const supabase = await createClient();
   const now = new Date().toISOString();
   
@@ -58,7 +57,7 @@ export async function getBlockPerformance(
   }
 
   // Map of block ID to metrics
-  const metricsMap = (metrics || []).reduce<Record<string, BlockMetrics>>((acc, metric) => {
+  const metricsMap = (metrics || []).reduce<Record<string, DbBlockMetrics>>((acc, metric) => {
     acc[metric.block_id] = metric;
     return acc;
   }, {});
@@ -141,7 +140,7 @@ export async function getBlockPerformance(
   }
   
   // Compile the performance data for each block
-  const blockPerformance: BlockPerformance[] = blocks.map(block => {
+  const blockPerformance: DbBlockPerformance[] = blocks.map(block => {
     const blockMetrics = metricsMap[block.id];
     let completionRate = 0;
     let skipRate = 0;

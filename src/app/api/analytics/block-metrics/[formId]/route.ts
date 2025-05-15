@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
-import { FormattedBlockMetrics } from '@/types';
+import { FormattedBlockMetrics } from '@/types/analytics/UiBlockMetrics';
 import { BlockMetric } from '@/types/AggregateApiCleanup';
 
 // Enable CORS for this route

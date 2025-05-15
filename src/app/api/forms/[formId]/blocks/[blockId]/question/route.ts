@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      question: result.data,
+      type: "question", content: result.data,
       responseId: result.responseId,
       isComplete: conversation.length >= maxQuestions,
     })

@@ -42,7 +42,7 @@ export function ConditionItem({
   // Find the connection and source block
   const connection = connections.find(conn => conn.id === connectionId)
   // const sourceBlock = blocks.find(block => block.id === connection?.sourceId) // Not currently used
-  // const sourceBlockType = sourceBlock?.blockTypeId || 'unknown' // Not currently used
+  // const sourceApiBlockType = sourceBlock?.subtype || 'unknown' // Not currently used
   
   // Find the field block
   const fieldBlock = blocks.find(block => block.id === condition.field)
@@ -135,21 +135,21 @@ export function ConditionItem({
     ]
     
     // Check the selected field's block type, not the source block
-    const fieldBlockType = fieldBlock?.blockTypeId || ''
+    const fieldApiBlockType = fieldBlock?.subtype || ''
     
     // Debug log to see what field types are being detected
-    console.log('Field ID:', condition.field, 'Field Block Type:', fieldBlockType, 'Field Block:', fieldBlock)
+    console.log('Field ID:', condition.field, 'Field Block Type:', fieldApiBlockType, 'Field Block:', fieldBlock)
     
     // Special case for multiple choice and checkbox fields
-    if (fieldBlockType === 'multiple_choice' || fieldBlockType === 'checkbox_group' || 
-        fieldBlockType === 'dropdown' || fieldBlockType === 'rating') {
+    if (fieldApiBlockType === 'multiple_choice' || fieldApiBlockType === 'checkbox_group' || 
+        fieldApiBlockType === 'dropdown') {
       return [
         { value: 'equals', label: 'is' },
         { value: 'not_equals', label: 'is not' }
       ]
     }
     
-    if (fieldBlockType === 'number') {
+    if (fieldApiBlockType === 'number') {
       return [
         ...defaultOperators,
         { value: 'greater_than', label: 'is greater than' },
@@ -157,7 +157,7 @@ export function ConditionItem({
       ]
     }
     
-    if (fieldBlockType === 'date') {
+    if (fieldApiBlockType === 'date') {
       return [
         ...defaultOperators,
         { value: 'before', label: 'is before' },
@@ -166,7 +166,7 @@ export function ConditionItem({
     }
     
     // Match any text-like field types more broadly
-    if (['short_text', 'long_text', 'email', 'phone', 'text', 'textarea', 'paragraph', 'input'].some(type => fieldBlockType.includes(type))) {
+    if (['short_text', 'long_text', 'email', 'phone', 'text', 'textarea', 'paragraph', 'input'].some(type => fieldApiBlockType.includes(type))) {
       return [
         ...defaultOperators,
         { value: 'contains', label: 'contains' },
@@ -266,8 +266,8 @@ export function ConditionItem({
         <div></div>
         
         {/* Value input changes based on field type */}
-        {fieldBlock?.blockTypeId === 'multiple_choice' || fieldBlock?.blockTypeId === 'dropdown' || 
-          fieldBlock?.blockTypeId === 'checkbox_group' || fieldBlock?.blockTypeId === 'rating' ? (
+        {fieldBlock?.subtype === 'multiple_choice' || fieldBlock?.subtype === 'dropdown' || 
+          fieldBlock?.subtype === 'checkbox_group' ? (
           // For multiple choice fields, show a select with the question's choices
           <Select
             value={condition.value ? condition.value.toString() : ''}
@@ -288,7 +288,7 @@ export function ConditionItem({
               )}
             </SelectContent>
           </Select>
-        ) : fieldBlock?.blockTypeId === 'number' ? (
+        ) : fieldBlock?.subtype === 'number' ? (
           // For number fields, use a number input
           <Input
             type="number"
@@ -297,7 +297,7 @@ export function ConditionItem({
             onChange={(e) => updateCondition('value', e.target.value)}
             className="w-full"
           />
-        ) : fieldBlock?.blockTypeId === 'date' ? (
+        ) : fieldBlock?.subtype === 'date' ? (
           // For date fields, use a date input
           <Input
             type="date"

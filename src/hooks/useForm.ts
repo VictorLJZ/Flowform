@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { getFormWithBlocksClient } from '@/services/form/getFormWithBlocksClient'
-import { CompleteForm } from '@/types/supabase-types'
+import { CompleteForm } from '@/types/form-types'
 // Note: We're using CompleteForm from supabase-types for complete form data including blocks
 // For just the form entity itself, we use ApiForm and UiForm from the new type system
 

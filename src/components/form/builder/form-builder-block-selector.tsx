@@ -5,8 +5,7 @@ import { motion } from "motion/react"
 import { Search, X } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Input } from "@/components/ui/input"
-import { getAllBlocks, getBlocksByCategory, getBlockDefinition } from "@/registry/blockRegistry"
-import type { BlockDefinition } from '@/types/block-types'
+import { getAllBlocks, getBlocksByCategory, getBlockDefinition, BlockDefinition } from "@/registry/blockRegistry"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { categoryColors, getBlockCategory } from "@/utils/block-utils"
 
@@ -155,7 +154,7 @@ export default function FormBuilderBlockSelector() {
                               onClick={() => handleSelectBlock(block)}
                             >
                               <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors.integration.bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors.integration.text }} />}
+                                {block.icon && <block.icon {...{ className: "h-4 w-4", style: { color: categoryColors.integration.text }} as React.ComponentProps<typeof block.icon>} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>
@@ -175,7 +174,7 @@ export default function FormBuilderBlockSelector() {
                               onClick={() => handleSelectBlock(block)}
                             >
                               <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors.recommended.bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors.recommended.text }} />}
+                                {block.icon && <block.icon {...{ className: "h-4 w-4", style: { color: categoryColors.recommended.text }} as React.ComponentProps<typeof block.icon>} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>
@@ -208,7 +207,7 @@ export default function FormBuilderBlockSelector() {
                             onClick={() => handleSelectBlock(block)}
                           >
                             <div className="mr-3 rounded-md" style={{ backgroundColor: getBackgroundColorForBlock(block.id), width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {block.icon && <block.icon className="h-4 w-4" style={{ color: getColorForBlock(block.id) }} />}
+                              {block.icon && <block.icon {...{ className: "h-4 w-4", style: { color: getColorForBlock(block.id) }} as React.ComponentProps<typeof block.icon>} />}
                             </div>
                             <span className="text-sm font-medium">{block.name}</span>
                           </button>
@@ -232,7 +231,7 @@ export default function FormBuilderBlockSelector() {
                               onClick={() => handleSelectBlock(block)}
                             >
                               <div className="mr-3 rounded-md" style={{ backgroundColor: categoryColors[category.id].bg, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {block.icon && <block.icon className="h-4 w-4" style={{ color: categoryColors[category.id].text }} />}
+                                {block.icon && <block.icon {...{ className: "h-4 w-4", style: { color: categoryColors[category.id].text }} as React.ComponentProps<typeof block.icon>} />}
                               </div>
                               <span className="text-sm font-medium">{block.name}</span>
                             </button>

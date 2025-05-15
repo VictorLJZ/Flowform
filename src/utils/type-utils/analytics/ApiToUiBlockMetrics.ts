@@ -95,7 +95,7 @@ export function apiToUiBlock(api: ApiBlock): UiBlock {
   };
   
   // Get the block type name, or use the ID if not found
-  const blockTypeName = blockTypeNames[api.blockTypeId] || api.blockTypeId;
+  const blockTypeName = blockTypeNames[api.subtype] || api.subtype;
   
   // Truncate title if it's too long (over 30 characters)
   const truncatedTitle = api.title.length > 30 

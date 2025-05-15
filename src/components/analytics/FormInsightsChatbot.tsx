@@ -72,8 +72,8 @@ export function FormInsightsChatbot({ formId }: FormInsightsChatbotProps) {
   };
 
   // Handler for using a suggested question
-  const handleSuggestedQuestion = (question: string) => {
-    setInputValue(question);
+  const handleSuggestedQuestion = (content: string) => {
+    setInputValue(content);
     inputRef.current?.focus();
   };
 

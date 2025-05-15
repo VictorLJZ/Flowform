@@ -80,12 +80,12 @@ export function useConversationNavigation({
           // Force any potential microtasks to complete
           setTimeout(() => {
             document.dispatchEvent(new CustomEvent('aiconversation:question-change', {
-              detail: { question: nextQuestion, index: currentLength }
+              detail: { type: "question", content: nextQuestion, index: currentLength }
             }));
           }, 0);
         }
       } catch (error) {
-        console.error('Error moving to next question:', error);
+        console.error('Error moving to next type: "question", content:', error);
       }
     }
   }, [activeQuestionIndex, conversation.length, nextQuestion, setActiveQuestionIndex]);

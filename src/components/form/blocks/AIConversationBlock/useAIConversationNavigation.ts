@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { LegacyQAPair } from "@/utils/type-utils/response/LegacyQAPairAdapter";
+import { ApiQAPair } from "@/types/response";
 
 /**
  * Hook to manage AI conversation navigation
  */
 export function useAIConversationNavigation(
-  conversation: LegacyQAPair[],
+  conversation: ApiQAPair[],
   activeQuestionIndex: number,
   setActiveQuestionIndex: (index: number) => void,
   hasReturnedToBlock: boolean,

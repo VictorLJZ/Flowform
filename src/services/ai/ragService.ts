@@ -221,7 +221,7 @@ export async function generateRagResponse(
             try {
               // Try a simpler fallback approach - send a direct message with the search results
               const fallbackResponse = await chat.sendMessage(
-                `I found some relevant information:\n\n${searchResult}\n\nBased on this information, please answer the user's question: "${query}"`
+                `I found some relevant information:\n\n${searchResult}\n\nBased on this information, please answer the user's type: "question", content: "${query}"`
               );
               responseText = extractResponseText(fallbackResponse);
               usedRAG = true;

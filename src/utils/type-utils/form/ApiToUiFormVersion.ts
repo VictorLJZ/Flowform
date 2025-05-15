@@ -3,7 +3,7 @@
  * Adds UI-specific computed properties
  */
 
-import { ApiFormVersion, UiFormVersion } from '@/types/block';
+import { ApiFormVersion, UiFormVersion } from '@/types/form';
 
 export function apiToUiFormVersion(
   apiFormVersion: ApiFormVersion, 

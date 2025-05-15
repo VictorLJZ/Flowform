@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { PlusCircle, ChevronLeft, ChevronRight, Smartphone, Monitor } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { useCurrentBlockDefinition } from "@/hooks/useCurrentBlockDefinition"
-import type { FormBlock } from '@/types/block-types'
+import type { UiBlock } from '@/types/block'
 import type { BlockPresentation } from '@/types/theme-types'
 import type { SlideLayout } from '@/types/layout-types'
 // Import block components directly to avoid eager loading AI services
@@ -55,7 +55,7 @@ export default function FormBuilderContent() {
   const goToBlock = (direction: 'prev' | 'next') => {
     if (!currentBlockId || blocks.length === 0) return
     
-    const currentIndex = blocks.findIndex((block: FormBlock) => block.id === currentBlockId)
+    const currentIndex = blocks.findIndex((block: UiBlock) => block.id === currentBlockId)
     if (currentIndex === -1) return
     
     if (direction === 'prev' && currentIndex > 0) {
@@ -91,7 +91,7 @@ export default function FormBuilderContent() {
     )
   }
   
-  const currentIndex = blocks.findIndex((block: FormBlock) => block.id === currentBlockId)
+  const currentIndex = blocks.findIndex((block: UiBlock) => block.id === currentBlockId)
   
   return (
     <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
@@ -160,18 +160,18 @@ export default function FormBuilderContent() {
         <div className="w-full min-h-fit py-4">
           <div className="relative w-full mx-auto" style={{ maxWidth: '1200px', paddingTop: 'min(56.25%, calc(100vh - 10rem))' }}>
             <div className="absolute top-0 left-0 w-full h-full">
-              {currentBlock.blockTypeId === 'short_text' && (
+              {currentBlock.subtype === 'short_text' && (
                 <TextInputBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -181,18 +181,18 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'long_text' && (
+              {currentBlock.subtype === 'long_text' && (
                 <TextAreaBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -202,18 +202,18 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'multiple_choice' && (
+              {currentBlock.subtype === 'multiple_choice' && (
                 <MultipleChoiceBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -223,18 +223,18 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'checkbox_group' && (
+              {currentBlock.subtype === 'checkbox_group' && (
                 <CheckboxGroupBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -244,18 +244,18 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'dropdown' && (
+              {currentBlock.subtype === 'dropdown' && (
                 <DropdownBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -265,18 +265,18 @@ export default function FormBuilderContent() {
                 />
               )}
                     
-              {currentBlock.blockTypeId === 'email' && (
+              {currentBlock.subtype === 'email' && (
                 <EmailBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -285,18 +285,18 @@ export default function FormBuilderContent() {
                   }}
                 />
               )}
-                    {currentBlock.blockTypeId === 'number' && (
+                    {currentBlock.subtype === 'number' && (
                 <NumberBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -305,18 +305,18 @@ export default function FormBuilderContent() {
                   }}
                 />
               )}
-                    {currentBlock.blockTypeId === 'date' && (
+                    {currentBlock.subtype === 'date' && (
                 <DateBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={currentIndex}
                   totalBlocks={blocks.length}
-                  settings={currentBlock.settings}
+                  settings={currentBlock.settings || {}}
                   onUpdate={(updates) => {
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);
@@ -328,14 +328,13 @@ export default function FormBuilderContent() {
               
 
               
-              {(currentBlock.blockTypeId === 'ai_conversation' || 
-                currentBlock.blockTypeId === 'dynamic' || 
+              {(currentBlock.subtype === 'ai_conversation' || 
                 currentBlock.type === 'dynamic') && (
                 <AIConversationBlock
                   id={currentBlock.id}
                   title={currentBlock.title}
-                  description={currentBlock.description}
-                  required={currentBlock.required}
+                  description={currentBlock.description || undefined}
+                  required={currentBlock.required ?? false}
                   index={blocks.findIndex(b => b.id === currentBlock.id) + 1}
                   totalBlocks={blocks.length}
                   // Pass these values as separate props (they are defined in the interface)
@@ -357,10 +356,16 @@ export default function FormBuilderContent() {
                   // Add sample data for the builder preview
                   value={[
                     {
-                      question: currentBlock.title, 
-                      answer: "This is a sample answer in the form builder preview.", 
+                      type: "question", 
+                      content: currentBlock.title, 
                       timestamp: new Date().toISOString(),
-                      is_starter: true
+                      isStarter: true
+                    },
+                    {
+                      type: "answer", 
+                      content: "This is a sample answer in the form builder preview.", 
+                      timestamp: new Date().toISOString(),
+                      isStarter: false
                     }
                   ]}
                   onChange={() => {
@@ -369,7 +374,7 @@ export default function FormBuilderContent() {
                   onUpdate={(updates) => {
 
                     if (updates.title || updates.description) {
-                      updateBlock(currentBlock.id, updates as Partial<FormBlock>);
+                      updateBlock(currentBlock.id, updates as Partial<UiBlock>);
                     }
                     if (updates.settings) {
                       updateBlockSettings(currentBlock.id, updates.settings);

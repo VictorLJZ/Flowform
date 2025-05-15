@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, MutableRefObject } from 'react';
-import type { FormBlock } from '@/types/block-types';
+// Form types
 import type { ApiQAPair } from '@/types/response';
+import type { UiBlock } from '@/types/block/UiBlock';
 
 export type AnalyticsSubmitHandler = (data: { block_id: string; block_type: string }) => void;
 export type AnalyticsErrorHandler = (error: unknown, data: { block_id: string; block_type: string; response_id?: string }) => void;
@@ -12,7 +13,7 @@ interface UseFormSubmissionProps {
   onSubmitSuccessRef: MutableRefObject<AnalyticsSubmitHandler>;
   onSubmitErrorRef: MutableRefObject<AnalyticsErrorHandler>;
   onFormCompleteRef: MutableRefObject<AnalyticsCompletionHandler>;
-  saveCurrentAnswerRef: MutableRefObject<(blockId: string, answer: string | number | string[] | ApiQAPair[]) => void>;
+  saveCurrentAnswerRef: MutableRefObject<(blockId: string, type: "answer", content: string | number | string[] | ApiQAPair[]) => void>;
   goToNext: () => void;
   isLastQuestion: boolean;
 }
@@ -22,8 +23,8 @@ interface FormSubmissionState {
   submitting: boolean;
   submitError: string | null;
   completed: boolean;
-  submitAnswer: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>;
-  trackBlockSubmission: (block: FormBlock) => Promise<void>;
+  submitAnswer: (block: UiBlock, type: "answer", content: string | number | string[] | ApiQAPair[]) => Promise<void>;
+  trackBlockSubmission: (block: UiBlock) => Promise<void>;
 }
 
 export const useFormSubmission = ({
@@ -109,7 +110,7 @@ export const useFormSubmission = ({
   }, [storageKey, formId]);
 
   // Helper function to track block submission
-  const trackBlockSubmission = useCallback(async (block: FormBlock) => {
+  const trackBlockSubmission = useCallback(async (block: UiBlock) => {
     try {
       if (!onSubmitSuccessRef.current) {
         console.warn('⚠️ [useFormSubmission] onSubmitSuccessRef.current not available');
@@ -119,7 +120,7 @@ export const useFormSubmission = ({
       // Create tracking metadata
       const submitMetadata = {
         block_id: block.id,
-        block_type: block.blockTypeId,
+        block_type: block.subtype,
         response_id: responseId,
         form_id: formId,
         event_type: 'block_submission',
@@ -138,16 +139,16 @@ export const useFormSubmission = ({
     }
   }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
 
-  const submitAnswer = useCallback(async (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => {
+  const submitAnswer = useCallback(async (block: UiBlock, type: "answer", content: string | number | string[] | ApiQAPair[]) => {
     // DEBUG LOGGING: Track the answer at the start of submission
     console.log('[DEBUG][useFormSubmission] Starting submission for block:', {
       blockId: block.id,
       blockType: block.type,
-      blockTypeId: block.blockTypeId,
-      answerType: typeof answer,
-      isArray: Array.isArray(answer),
-      answerSize: typeof answer === 'string' ? answer.length : (Array.isArray(answer) ? answer.length : 'N/A'),
-      answerPreview: JSON.stringify(answer).substring(0, 50) + '...'
+      blockTypeId: block.subtype,
+      answerType: typeof content,
+      isArray: Array.isArray(content),
+      answerSize: typeof content === 'string' ? content.length : (Array.isArray(content) ? content.length : 'N/A'),
+      answerPreview: JSON.stringify(content).substring(0, 50) + '...'
     });
     if (!responseId) {
       console.error('No responseId available for submission');
@@ -169,11 +170,11 @@ export const useFormSubmission = ({
     };
 
     // For non-required blocks with empty answers, just move to the next section
-    if (!block.required && isEmptyAnswer(answer)) {
+    if (!block.required && isEmptyAnswer(content)) {
       console.log(`Non-required block ${block.id} has empty answer, skipping submission and moving to next section`);
       
       // Save empty answer locally via the answers hook
-      saveCurrentAnswerRef.current(block.id, answer);
+      saveCurrentAnswerRef.current(block.id, type, content);
       
       if (isLastQuestion) {
         console.log("[SubmitAnswer] Last question (empty), marking form complete");
@@ -205,14 +206,14 @@ export const useFormSubmission = ({
     try {
       // Determine the block type (static or dynamic) based on block properties
       // AI conversation is dynamic, everything else is static
-      const blockType = block.blockTypeId === 'ai_conversation' ? 'dynamic' : 'static';
+      const blockType = block.subtype === 'ai_conversation' ? 'dynamic' : 'static';
       
       // Construct payload in the format expected by the API
       const requestBody = {
         responseId: responseId,
         blockId: block.id,
         blockType: blockType,
-        answer: answer,
+        type: "answer", content: content,
         isCompletion: isLastQuestion,
         currentQuestion: blockType === 'dynamic' ? block.title : undefined
       };
@@ -245,13 +246,13 @@ export const useFormSubmission = ({
       await trackBlockSubmission(block);
 
       // Save answer locally via the answers hook
-      saveCurrentAnswerRef.current(block.id, answer);
+      saveCurrentAnswerRef.current(block.id, type, content);
 
       // Check if this was an AI conversation that should auto-advance
       // Only proceed to next slide if:
       //   1. It's not an AI block (normal form fields always advance) OR 
       //   2. It's an AI block AND dynamicComplete is true AND there's no next question
-      const isAIBlock = block.blockTypeId === 'ai_conversation';
+      const isAIBlock = block.subtype === 'ai_conversation';
       const hasNextQuestion = !!data.nextQuestion;
       const shouldAdvance = !isAIBlock || (data.dynamicComplete === true && !hasNextQuestion);
       
@@ -262,7 +263,7 @@ export const useFormSubmission = ({
         shouldAdvance,
         isLastQuestion,
         blockId: block.id,
-        blockType: block.blockTypeId
+        blockType: block.subtype
       });
 
       if (isLastQuestion) {

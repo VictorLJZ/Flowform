@@ -1,7 +1,6 @@
 "use client"
 
 import { StateCreator } from 'zustand'
-import { v4 as uuidv4 } from 'uuid'
 import type { FormPersistenceSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import { saveFormWithBlocks } from '@/services/form/saveFormWithBlocks'
@@ -10,10 +9,35 @@ import { saveWorkflowEdges } from '@/services/form/saveWorkflowEdges'
 import { loadFormComplete, loadVersionedFormComplete } from '@/services/viewer'
 import type { SaveFormInput } from '@/types/form-service-types'
 import type { ApiBlockType, ApiBlockSubtype, UiBlock } from '@/types/block'
+import type { DbBlock } from '@/types/block/DbBlock'
 import type { Connection } from '@/types/workflow-types'
 import type { CustomFormData } from '@/types/form-builder-types'
 import type { FormTheme } from '@/types/theme-types'
 import type { JsonObject } from '@/types/common-types'
+
+// Mixed block type that can handle both database and API property names
+// This helps during the transition between the different layer formats
+type MixedBlock = {
+  id: string;
+  // Allow both API and DB property names
+  formId?: string;
+  form_id?: string;
+  type: string;
+  subtype?: string;
+  blockTypeId?: string; // Legacy property name
+  title: string;
+  description?: string;
+  required?: boolean;
+  // Allow both API and DB property names for ordering
+  orderIndex?: number;
+  order_index?: number;
+  settings?: Record<string, unknown>;
+  // Allow both API and DB property names for timestamps
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+};
 
 export const createFormPersistenceSlice: StateCreator<
   FormBuilderState,
@@ -50,7 +74,7 @@ export const createFormPersistenceSlice: StateCreator<
       // Add blocks to match API expectations
       // Convert UiBlock to format expected by saveFormWithBlocks
       // We need to explicitly convert to the format expected by the service
-      // The service expects FormBlock format, which has different property names
+      // The service expects UiBlock format, which has different property names
       const formBlocksForSaving = blocks.map((block) => ({
         id: block.id,
         form_id: formData.form_id,
@@ -66,8 +90,8 @@ export const createFormPersistenceSlice: StateCreator<
         updated_at: block.updatedAt
       }));
       
-      // Type assertion to satisfy the compiler
-      const result = await saveFormWithBlocks(input, formBlocksForSaving as any)
+      // We're using DbBlock format for the API, so the cast is safe
+      const result = await saveFormWithBlocks(input, formBlocksForSaving as DbBlock[])
 
       if (result) {
         console.log('✅ Form saved')
@@ -110,30 +134,59 @@ export const createFormPersistenceSlice: StateCreator<
     // Extract blockId from result
     const blockId = result.id as string || result.blockId as string;
     if (!blockId) {
-      console.error('No blockId found in result object');
+      console.error('No block ID in save result');
       return;
     }
-    
-    const state = get()
-    const { blocks } = state
-    const block = blocks.find(b => b.id === blockId)
 
-    // Skip if block not found or if it's not dynamic
-    if (!block || block.type !== 'dynamic') return
+    // Get the current state
+    const state = get();
+    const { blocks } = state;
+    
+    // Find the target block
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) {
+      console.error(`Block ${blockId} not found in current blocks`);
+      return;
+    }
+
+    // Only save dynamic block config if it's a dynamic block
+    if (block.type !== 'dynamic') {
+      // No need to save config for static blocks
+      return;
+    }
+
+    set({ isSaving: true });
 
     try {
-      set({ isSaving: true })
-
-      // Extract settings from the block based on its subtype
-      const dynamicConfig: Record<string, unknown> = {}
-
+      console.log(`\u{1F504} Saving dynamic config for block: ${block.id}`);
+      
+      // Always initialize with an empty object
+      const dynamicConfig: Record<string, unknown> = {};
+      
+      // For AI conversation blocks, convert the settings from the UI schema
+      // to the database schema expected by the API
       if (block.subtype === 'ai_conversation') {
-        // Map AI conversation block settings
-        dynamicConfig.temperature = block.settings?.temperature || 0.7
-        dynamicConfig.maxQuestions = block.settings?.maxQuestions || 3
-        dynamicConfig.contextInstructions = block.settings?.contextInstructions || ''
-
-        // For AI blocks, we store the complete prompt configuration
+        // Map basic settings
+        if (block.settings?.initialQuestion) {
+          dynamicConfig.starterQuestion = block.settings.initialQuestion;
+        }
+        
+        if (block.settings?.temperature !== undefined) {
+          dynamicConfig.temperature = parseFloat(block.settings.temperature as string);
+        }
+        
+        if (block.settings?.maxQuestions !== undefined) {
+          dynamicConfig.max_questions = parseInt(block.settings.maxQuestions as string, 10);
+        }
+        
+        // Map AI instructions (system prompt)
+        if (block.settings?.promptConfig?.systemPrompt) {
+          dynamicConfig.ai_instructions = block.settings.promptConfig.systemPrompt;
+        } else if (block.settings?.systemPrompt) {
+          dynamicConfig.ai_instructions = block.settings.systemPrompt;
+        }
+        
+        // Map prompt configuration
         if (block.settings?.promptConfig) {
           dynamicConfig.promptConfig = block.settings.promptConfig
         }
@@ -148,9 +201,6 @@ export const createFormPersistenceSlice: StateCreator<
         dynamicConfig.createContact = block.settings?.createContact !== false
       }
 
-      // Save the dynamic configuration
-      // Get formData from state
-      const { formData } = get()
       // Use the correct function signature
       await saveDynamicBlockConfig(block.id, dynamicConfig)
 
@@ -167,105 +217,89 @@ export const createFormPersistenceSlice: StateCreator<
     const state = get()
     const { blocks } = state
     
-    // Find the block being updated
+    // Find the target block index
     const blockIndex = blocks.findIndex(b => b.id === blockId)
-    if (blockIndex === -1) return
-
-    // Create a copy of the blocks array
-    const updatedBlocks = [...blocks]
-    
-    // Get default settings for the block type
-    let defaultSettings: Record<string, unknown> = {}
-    
-    // Special handling for AI conversation blocks
-    if (blockTypeId === 'ai_conversation') {
-      defaultSettings = {
-        temperature: 0.7,
-        maxQuestions: 3,
-        contextInstructions: '',
-        promptConfig: {
-          systemPrompt: 'You are a helpful assistant.',
-          userPrompt: ''
-        }
-      }
-    } else if (blockTypeId === 'choice') {
-      defaultSettings = {
-        options: [
-          { id: uuidv4(), text: 'Option 1', value: '1' },
-          { id: uuidv4(), text: 'Option 2', value: '2' }
-        ],
-        allowMultiple: false,
-        displayMode: 'radio'
-      }
-    }
-
-    // Update the block with new type and settings
-    const updatedBlock = {
-      id: blockId,
-      subtype: blockTypeId as ApiBlockSubtype, // Cast to ensure type compatibility
-      type,
-      orderIndex: state.blocks.length
+    if (blockIndex === -1) {
+      console.error(`Block ${blockId} not found`)
+      return false
     }
     
-    // Apply the changes and merge with default settings
-    updatedBlocks[blockIndex] = { 
-      ...updatedBlocks[blockIndex], 
-      ...updatedBlock,
-      settings: {
-        ...updatedBlocks[blockIndex].settings,
-        ...defaultSettings
-      }
+    // Get block definition for this type
+    const blockDef = window.blockRegistry?.[blockTypeId]
+    if (!blockDef) {
+      console.error(`Block definition for ${blockTypeId} not found`)
+      return false
     }
-
-    // Update state with the new blocks array
-    set({ blocks: updatedBlocks })
-
-    // For dynamic blocks, we need to immediately save their configuration
-    if (type === 'dynamic') {
-      setTimeout(() => {
-        get().saveDynamicBlockConfigs({ id: blockId } as JsonObject)
-      }, 100)
+    
+    try {
+      set({ isSaving: true })
+      
+      // Create a copy of the blocks array
+      const updatedBlocks = [...blocks]
+      
+      // Get default settings from block definition or use empty object
+      const defaultSettings = blockDef.getDefaultValues ? blockDef.getDefaultValues() : {}
+      
+      // Update the specific block
+      updatedBlocks[blockIndex] = {
+        ...updatedBlocks[blockIndex],
+        type, // 'static', 'dynamic', etc.
+        subtype: blockTypeId as ApiBlockSubtype, // 'text', 'checkbox', etc.
+        title: blockDef.defaultTitle || updatedBlocks[blockIndex].title,
+        description: blockDef.defaultDescription || updatedBlocks[blockIndex].description,
+        settings: defaultSettings,
+        updatedAt: new Date().toISOString()
+      }
+      
+      // Update state with the new blocks array
+      set({ blocks: updatedBlocks })
+      
+      console.log(`\u2705 Block type updated: ${blockId} -> ${type}/${blockTypeId}`)
+      
+      return true
+    } catch (error) {
+      console.error('Error updating block type:', error)
+      return false
+    } finally {
+      set({ isSaving: false })
     }
   },
-
+  
   // Auto-save form at regular intervals
   startAutoSave: () => {
-    const interval = setInterval(() => {
+    // Check if window is available (client-side only)
+    if (typeof window === 'undefined') return
+    
+    // Clear any existing interval
+    if (window.autoSaveInterval) {
+      clearInterval(window.autoSaveInterval)
+    }
+    
+    // Set up a new interval for auto-saving
+    window.autoSaveInterval = setInterval(() => {
       const state = get()
+      const { isSaving } = state
       
-      // Skip auto-save if already saving, loading, or user is viewing a published form
-      if (state.isSaving || state.isLoading || state.isVersioned) {
-        return
+      // Don't trigger auto-save if already saving
+      if (!isSaving) {
+        console.log('\u23F1 Auto-save triggered')
+        get().saveForm()
       }
-
-      // Skip auto-save if form has no ID
-      if (!state.formData?.form_id) {
-        return
-      }
-
-      // Perform the save
-      console.log('\ud83d\udce6 Auto-saving form...')
-      
-      // Use our orchestrated saveForm method that returns void
-      get().saveForm()
     }, 60000) // Auto-save every 60 seconds
-
-    return () => clearInterval(interval)
+    
+    console.log('\u23F3 Auto-save enabled')
   },
-
+  
   // Save form - orchestrates the entire form saving process
   // Must return Promise<void> per interface definition
   saveForm: async () => {
-    const state = get()
-    const { formData } = state
-
-    if (state.isSaving) {
-      console.log('Already saving, skipping this save request')
-      return
-    }
-
+    // Prevent saving if no form data
+    const { formData, isSaving } = get()
+    if (!formData || isSaving) return
+    
+    // Set saving state
     set({ isSaving: true })
-
+    
     try {
       // First save form and blocks
       const saveResult = await get().saveFormAndBlocks()
@@ -280,7 +314,7 @@ export const createFormPersistenceSlice: StateCreator<
       set({ isSaving: false })
     }
   },
-
+  
   // Load a published/versioned form
   loadVersionedForm: async (formId: string) => {
     // Set loading state
@@ -296,17 +330,17 @@ export const createFormPersistenceSlice: StateCreator<
         formData,
         // Convert blocks to UiBlock format using type assertions for safety
         blocks: (blocks || []).map(block => {
-          // Use type assertion to safely access properties regardless of original type
-          const b = block as any
+          // Use MixedBlock type to safely access properties from both DB and API formats
+          const b = block as MixedBlock
           return {
             id: b.id,
             formId: b.formId || b.form_id || '',
             type: b.type,
-            subtype: b.subtype || b.blockTypeId || 'text',
+            subtype: b.subtype || b.subtype || 'text',
             title: b.title,
             description: b.description,
             required: b.required,
-            orderIndex: b.orderIndex || b.order_index || 0,
+            orderIndex: b.orderIndex || b.orderIndex || 0,
             settings: b.settings || {},
             createdAt: b.createdAt || b.created_at || new Date().toISOString(),
             updatedAt: b.updatedAt || b.updated_at || new Date().toISOString(),
@@ -363,17 +397,17 @@ export const createFormPersistenceSlice: StateCreator<
       set({
         formData: formDataWithFormId,
         blocks: blocks.map(block => {
-          // Use type assertion to safely access properties regardless of original type
-          const b = block as any
+          // Use MixedBlock type to safely access properties from both DB and API formats
+          const b = block as MixedBlock
           return {
             id: b.id,
             formId: b.formId || b.form_id || '',
             type: b.type,
-            subtype: b.subtype || b.blockTypeId || 'text',
+            subtype: b.subtype || b.subtype || 'text',
             title: b.title,
             description: b.description,
             required: b.required,
-            orderIndex: b.orderIndex || b.order_index || 0,
+            orderIndex: b.orderIndex || b.orderIndex || 0,
             settings: b.settings || {},
             createdAt: b.createdAt || b.created_at || new Date().toISOString(),
             updatedAt: b.updatedAt || b.updated_at || new Date().toISOString(),

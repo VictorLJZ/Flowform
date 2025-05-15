@@ -57,7 +57,7 @@ export async function saveStaticAnswer(
   const payload = {
     response_id: responseId,
     block_id: blockId,
-    answer: formattedAnswer,
+    type: "answer", content: formattedAnswer,
     answered_at: new Date().toISOString()
   };
   const { data, error } = await supabase
@@ -68,7 +68,7 @@ export async function saveStaticAnswer(
     .single();
 
   if (error) {
-    console.error('Error saving static answer:', error);
+    console.error('Error saving static type: "answer", content:', error);
     throw error;
   }
 

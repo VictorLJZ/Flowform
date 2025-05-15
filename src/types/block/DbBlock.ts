@@ -7,7 +7,7 @@
 /**
  * Types of blocks in the database
  */
-export type DbBlockType = 'static' | 'dynamic' | 'integration' | 'layout';
+export type DbApiBlockType = 'static' | 'dynamic' | 'integration' | 'layout';
 
 /**
  * Subtypes for static blocks in the database
@@ -55,7 +55,7 @@ export type DbBlockSubtype =
 export interface DbBlock {
   id: string; // UUID, primary key
   form_id: string; // UUID, references forms.id
-  type: DbBlockType; // 'static', 'dynamic', 'integration', 'layout'
+  type: DbApiBlockType; // 'static', 'dynamic', 'integration', 'layout'
   subtype: DbBlockSubtype; // Specific block type within the category
   title: string; // Display title
   description: string | null; // Optional description

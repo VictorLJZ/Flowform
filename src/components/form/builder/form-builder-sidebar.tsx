@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { PlusCircle, ChevronLeft, ChevronRight, Trash2, Pencil, Check } from "lucide-react"
 import { useFormBuilderStore } from "@/stores/formBuilderStore"
 import { getBlockDefinition } from "@/registry/blockRegistry"
-import type { FormBlock, BlockDefinition } from '@/types/block-types'
+import type { UiBlock } from '@/types/block';
+import { BlockDefinition } from '@/registry/blockRegistry'
 import { cn } from "@/lib/utils"
 import { useAutosave } from "@/services/form/autosaveForm"
 import { 
@@ -32,7 +33,7 @@ import { BlockPill } from "@/components/form/builder/block-pill"
 
 // Sortable block item component
 function SortableBlockItem({ block, index, isSelected, blockDef }: { 
-  block: FormBlock;
+  block: UiBlock;
   index: number; 
   isSelected: boolean,
   blockDef: BlockDefinition | null
@@ -98,7 +99,7 @@ function SortableBlockItem({ block, index, isSelected, blockDef }: {
               {block.title || blockDef?.defaultTitle || 'Untitled Block'}
             </div>
             <div className="text-xs text-muted-foreground truncate">
-              {blockDef?.name || block.blockTypeId}
+              {blockDef?.name || block.subtype}
             </div>
           </div>
         )}
@@ -198,8 +199,8 @@ export default function FormBuilderSidebar() {
     
     if (over && active.id !== over.id) {
       // Find the index of the dragged item and the drop target
-      const oldIndex = blocks.findIndex((block: FormBlock) => block.id === active.id)
-      const newIndex = blocks.findIndex((block: FormBlock) => block.id === over.id)
+      const oldIndex = blocks.findIndex((block: UiBlock) => block.id === active.id)
+      const newIndex = blocks.findIndex((block: UiBlock) => block.id === over.id)
       
       // Call the reorder function from the store
       reorderBlocks(oldIndex, newIndex)
@@ -298,12 +299,12 @@ export default function FormBuilderSidebar() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={blocks.map((block: FormBlock) => block.id)}
+                items={blocks.map((block: UiBlock) => block.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {blocks.map((block: FormBlock, index: number) => {
+                {blocks.map((block: UiBlock, index: number) => {
                   // Get the block definition for additional info
-                  const blockDef = getBlockDefinition(block.blockTypeId)
+                  const blockDef = getBlockDefinition(block.subtype)
                   const isSelected = block.id === currentBlockId
                   
                   return (

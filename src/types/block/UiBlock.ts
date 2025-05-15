@@ -74,7 +74,7 @@ export interface UiDynamicBlockConfigSetting extends ApiDynamicBlockConfigSettin
  * Legacy block compatibility type for transition period
  * This helps us remove the dependency on block-types.ts while maintaining backward compatibility
  */
-export type LegacyFormBlock = UiBlock;
+export type LegacyUiBlock = UiBlock;
 
 /**
  * Definition of a block type, including metadata and components
@@ -95,15 +95,15 @@ export interface UiBlockDefinition {
    * Component used to render this block in viewer
    * Support both new UiBlock and legacy block format for transition period
    */
-  renderComponent?: ComponentType<{ block: UiBlock | LegacyFormBlock; value?: unknown; onChange?: (value: unknown) => void }>;
+  renderComponent?: ComponentType<{ block: UiBlock | LegacyUiBlock; value?: unknown; onChange?: (value: unknown) => void }>;
 
   /**
    * Component used to edit block settings in builder
    * Support both new UiBlock and legacy block format for transition period
    */
   editComponent?: ComponentType<{ 
-    block: UiBlock | LegacyFormBlock; 
-    updateBlock: (updates: Partial<UiBlock | LegacyFormBlock>) => void 
+    block: UiBlock | LegacyUiBlock; 
+    updateBlock: (updates: Partial<UiBlock | LegacyUiBlock>) => void 
   }>;
 
   /**
@@ -111,7 +111,7 @@ export interface UiBlockDefinition {
    * Support both new UiBlock and legacy block format for transition period
    */
   settingsComponent?: ComponentType<{ 
-    block: UiBlock | LegacyFormBlock; 
+    block: UiBlock | LegacyUiBlock; 
     updateSettings: (settings: Record<string, unknown>) => void 
   }>;
 

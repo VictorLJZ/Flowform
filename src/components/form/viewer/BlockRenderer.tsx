@@ -16,7 +16,7 @@ import { NumberBlock } from '@/components/form/blocks/NumberBlock';
 import { DateBlock } from '@/components/form/blocks/DateBlock';
 import { AIConversationBlock } from '@/components/form/blocks/AIConversationBlock';
 import type { AIConversationHandle } from '@/types/form-types';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block/UiBlock';
 import { ApiQAPair } from '@/types/response';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import type { BaseBlockMapperProps } from '@/services/form/blockMappers';
@@ -32,10 +32,10 @@ import {
 } from '@/services/form/blockMappers';
 
 interface BlockRendererProps {
-  block: FormBlock;
+  block: UiBlock;
   currentAnswer: string | number | string[] | ApiQAPair[];
-  setCurrentAnswer: (answer: string | number | string[] | ApiQAPair[]) => void;
-  submitAnswer: (block: FormBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
+  setCurrentAnswer: (type: "answer", content: string | number | string[] | ApiQAPair[]) => void;
+  submitAnswer: (block: UiBlock, type: "answer", content: string | number | string[] | ApiQAPair[]) => Promise<void>; 
   submitting: boolean;
   responseId: string | null;
   formId: string;
@@ -67,7 +67,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
     blockId: block?.id || '', // Ensure blockId is never undefined
     responseId: responseId || undefined,
     disabled: !responseId || !block?.id || !formId, // Disable if any required values are missing
-    metadata: { blockType: block?.blockTypeId || '' }
+    metadata: { blockType: block?.subtype || '' }
   });
 
   // Log the block being rendered for debugging
@@ -124,7 +124,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
   } = {
     id: block.id,
     title: block.title,
-    description: block.description,
+    description: block.description || undefined, // Convert null to undefined
     required: block.required,
     settings: {
       // Create a proper SlideLayout object based on the layout type
@@ -134,7 +134,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
       // Include any presentation settings if available
       presentation: block.settings?.presentation as BlockPresentation | undefined
     },
-    onNext: submitAnswer ? () => submitAnswer(block, currentAnswer) : undefined,
+    onNext: submitAnswer ? () => submitAnswer(block, "answer", currentAnswer) : undefined, // Added missing "answer" parameter
     isNextDisabled: submitting, // Disable when submitting
     index: index, // Add current block index for question numbering
     totalBlocks: totalBlocks // Add total blocks for progress and Submit button text
@@ -194,35 +194,42 @@ export const BlockRenderer: React.FC<BlockRendererProps> = (props) => {
   };
 
   // Use the block's subtype for the switch (after refactoring)
-  switch (block.subtype) {
+  // Convert the subtype to string for safer comparison
+  const blockSubtype = String(block.subtype);
+  
+  // Add type assertion on renderBlock to support generic types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typedRenderBlock = renderBlock as any;
+  
+  switch (blockSubtype) {
     case 'text_input':
     case 'short_text':
-      return renderBlock(TextInputBlock, mapToPropsText);
+      return typedRenderBlock(TextInputBlock, mapToPropsText);
       
     case 'long_text': 
       // Long text specifically uses the TextAreaBlock component
-      return renderBlock(TextAreaBlock, mapToPropsText);
+      return typedRenderBlock(TextAreaBlock, mapToPropsText);
 
     case 'email':
-      return renderBlock(EmailBlock, mapToPropsEmail);
+      return typedRenderBlock(EmailBlock, mapToPropsEmail);
 
     case 'number':
-      return renderBlock(NumberBlock, mapToPropsNumber);
+      return typedRenderBlock(NumberBlock, mapToPropsNumber);
 
     case 'date':
-      return renderBlock(DateBlock, mapToPropsDate);
+      return typedRenderBlock(DateBlock, mapToPropsDate);
 
     case 'dropdown':
-      return renderBlock(DropdownBlock, mapToPropsDropdown);
+      return typedRenderBlock(DropdownBlock, mapToPropsDropdown);
 
     case 'multiple_choice':
-      return renderBlock(MultipleChoiceBlock, mapToPropsMultipleChoice);
+      return typedRenderBlock(MultipleChoiceBlock, mapToPropsMultipleChoice);
 
     case 'checkbox_group':
-      return renderBlock(CheckboxGroupBlock, mapToPropsCheckboxGroup);
+      return typedRenderBlock(CheckboxGroupBlock, mapToPropsCheckboxGroup);
 
     case 'ai_conversation':
-      return renderBlock(AIConversationBlock, mapToPropsAIConversation);
+      return typedRenderBlock(AIConversationBlock, mapToPropsAIConversation);
 
     default:
       console.warn(`Unsupported block type: ${block.subtype}`);

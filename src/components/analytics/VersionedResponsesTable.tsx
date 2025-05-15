@@ -88,46 +88,49 @@ export function VersionedResponsesTable({
       response.static_answers.forEach((answer) => {
         // For versioned view, indicate which version this answer belongs to when in all versions mode
         const answerText = answer.answer || '';
-        answerMap[answer.block_id] = selectedVersionId === 'all' && versionNumber 
+        // ApiStaticBlockAnswer uses camelCase property names per API layer convention
+        answerMap[answer.blockId] = selectedVersionId === 'all' && versionNumber 
           ? `${answerText} ${versionNumber > 1 ? `(v${versionNumber})` : ''}`.trim()
           : answerText;
       });
 
       // Process dynamic responses (questions with multiple answers or complex structures)
-      response.dynamic_responses.forEach((dynamicResponse) => {
+      response.dynamic_responses?.forEach((dynamicResponse) => {
         if (dynamicResponse.conversation && dynamicResponse.conversation.length > 0) {
           try {
             // Extract answers from the conversation
-            const answers = dynamicResponse.conversation.map(qa => qa.answer).filter(Boolean);
+            const qa = dynamicResponse.conversation[0];
+            // ApiQAPair uses 'content' property, not 'answer'
+            const responseData = JSON.parse(qa?.content || '{}');
             
-            // For dynamic responses, we join all answers into a single string
-            const responseData = answers;
+            // Process the response data based on its type
                 
             // Handle different response formats based on block type
             if (Array.isArray(responseData)) {
               // For multi-select or checkbox questions
-              answerMap[dynamicResponse.block_id] = responseData.join(', ');
+              answerMap[dynamicResponse.blockId] = responseData.join(', ');
             } else if (typeof responseData === 'object') {
               // For complex object responses
-              answerMap[dynamicResponse.block_id] = JSON.stringify(responseData);
+              answerMap[dynamicResponse.blockId] = JSON.stringify(responseData);
             } else {
               // For simple value responses
-              answerMap[dynamicResponse.block_id] = String(responseData);
+              answerMap[dynamicResponse.blockId] = String(responseData);
             }
           } catch (error) {
             console.error('Error parsing dynamic response:', error);
-            answerMap[dynamicResponse.block_id] = 'Error parsing response';
+            answerMap[dynamicResponse.blockId] = 'Error parsing response';
           }
         } else {
-          answerMap[dynamicResponse.block_id] = '';
+          answerMap[dynamicResponse.blockId] = '';
         }
       });
 
       return {
         id: response.id,
-        startedAt: response.started_at,
-        completedAt: response.completed_at,
-        respondentId: response.respondent_id,
+        // ApiFormResponse uses camelCase per API layer convention
+        startedAt: response.startedAt || '-',
+        completedAt: response.completedAt || null,
+        respondentId: response.respondentId || 'Anonymous',
         status: response.status,
         version: response.form_version?.version_number || null,
         answers: answerMap,

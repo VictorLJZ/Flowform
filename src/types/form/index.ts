@@ -12,6 +12,7 @@ export * from './DbFormVersion';
 // API layer exports
 export * from './ApiForm';
 export * from './ApiFormVersion';
+export * from './ApiFormResponse';
 
 // UI layer exports
 export * from './UiForm';

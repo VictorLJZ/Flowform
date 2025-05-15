@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
-import type { FormInsights } from '@/types/analytics-types';
+import type { FormInsights } from '@/types/analytics/ApiFormMetrics';
 
 // Mark this route as dynamic to prevent caching
 export const dynamic = 'force-dynamic';

@@ -6,6 +6,19 @@
  */
 
 /**
+ * Form insights data as returned by the API
+ * Used in the analytics insights endpoints
+ */
+export interface FormInsights {
+  totalViews: number;
+  totalStarts: number;
+  totalSubmissions: number;
+  completionRate: number;
+  averageTimeToComplete: number;
+  lastUpdated: string;
+}
+
+/**
  * Form metrics aggregate data
  */
 export interface ApiFormMetrics {

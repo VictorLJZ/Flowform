@@ -5,6 +5,7 @@ import { StateCreator } from 'zustand'
 import type { FormBlocksSlice } from '@/types/form-store-slices-types'
 import type { FormBuilderState } from '@/types/store-types'
 import type { UiBlock } from '@/types/block'
+import { ApiBlockSubtype, ApiBlockType } from '@/types/block/ApiBlock'
 import { getBlockDefinition } from '@/registry/blockRegistry'
 
 export const createFormBlocksSlice: StateCreator<
@@ -34,13 +35,13 @@ export const createFormBlocksSlice: StateCreator<
     const newBlock: UiBlock = { 
       id: newBlockId,
       formId: '', // Will be set when form is saved
-      type: blockDef.type || 'static',
-      subtype: blockTypeId as any,
+      type: (blockDef.type as ApiBlockType) || 'static',
+      subtype: blockTypeId as ApiBlockSubtype,
       title: blockDef.defaultTitle || '',
       description: blockDef.defaultDescription || '',
       required: false,
       orderIndex: newOrder,
-      settings: blockDef.getDefaultValues() || {},
+      settings: blockDef.getDefaultValues ? blockDef.getDefaultValues() : {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }

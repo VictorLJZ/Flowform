@@ -73,14 +73,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
      return null;
   }
 
+  // Ensure all properties are explicitly typed as strings
   const userData = user ? {
-    name: user.user_metadata?.name || 
-          user.user_metadata?.full_name || 
-          user.email?.split('@')[0] || 
+    name: (user.userMetadata?.name as string) || 
+          (user.userMetadata?.full_name as string) || 
+          (user.email?.split('@')[0] as string) || 
           'User',
     email: user.email || '',
-    avatar: user.user_metadata?.picture || 
-           user.user_metadata?.avatar_url || 
+    avatar: (user.userMetadata?.picture as string) || 
+           (user.userMetadata?.avatar_url as string) || 
            undefined
   } : {
     name: "Guest",

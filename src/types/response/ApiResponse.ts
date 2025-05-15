@@ -83,7 +83,7 @@ export interface ApiFormResponseInput {
 export interface ApiStaticBlockAnswerInput {
   responseId: string;
   blockId: string;
-  answer: string;
+  type: "answer", content: string;
 }
 
 /**

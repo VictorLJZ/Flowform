@@ -45,11 +45,11 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
   }
   
   // FIX FOR BLOCK TYPE PERSISTENCE ISSUE
-  // If block.subtype exists and block.blockTypeId is not in blockDefinitions, use subtype
+  // If block.subtype exists and block.subtype is not in blockDefinitions, use subtype
   // This handles cases where a new block type (subtype) was created based on an existing blockTypeId
   // but the blockTypeId itself hasn't been updated yet, or was reverted during development.
-  let effectiveBlockTypeId = block.blockTypeId;
-  if (block.subtype && (!block.blockTypeId || !getBlockDefinition(block.blockTypeId))) {
+  let effectiveBlockTypeId = block.subtype;
+  if (block.subtype && (!block.subtype || !getBlockDefinition(block.subtype))) {
     effectiveBlockTypeId = block.subtype as string;
   }
 
@@ -109,7 +109,10 @@ export function BlockPill({ block, index, compact = false, fallbackText = "Selec
     // Check block definition icon first (highest priority)
     if (blockDef?.icon) {
       const DefinedIcon = blockDef.icon;
-      return <DefinedIcon size={size} style={{ color: textColor }} />;
+      // Use type assertion to handle icon props properly
+      return <DefinedIcon 
+        {...{ size, style: { color: textColor } } as React.ComponentProps<typeof DefinedIcon>} 
+      />;
     }
     
     // Then use our switch statement for known types

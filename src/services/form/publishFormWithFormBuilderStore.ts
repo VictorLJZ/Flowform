@@ -1,13 +1,16 @@
 import { createClient } from '@/lib/supabase/client';
-import { ApiFormVersion, DbFormVersion } from '@/types/block';
-import { DbForm, ApiForm } from '@/types/block';
 import { invalidateFormCacheClient } from './invalidateCacheClient';
 import { createFormVersion } from './createFormVersion';
 import { updateFormVersion } from './updateFormVersion';
 import { getFormWithBlocksClient } from './getFormWithBlocksClient';
-import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
-import type { FormBlock, BlockType } from '@/types/block-types';
+import type { UiBlock } from '@/types/block';
+import type { ApiBlockType } from '@/types/block/ApiBlock';
 import { dbToApiForm, dbToApiFormVersion } from '@/utils/type-utils/form';
+import type { ApiForm } from '@/types/form/ApiForm';
+import type { DbForm } from '@/types/form/DbForm';
+import type { ApiFormVersion } from '@/types/form/ApiFormVersion';
+import type { DbFormVersion } from '@/types/form/DbFormVersion';
+import type { DbBlock } from '@/types/block/DbBlock';
 
 /**
  * Publish a form with proper versioning using blocks from the form builder store
@@ -21,7 +24,7 @@ import { dbToApiForm, dbToApiFormVersion } from '@/utils/type-utils/form';
  */
 export async function publishFormWithFormBuilderStore(
   formId: string,
-  blocks: FormBlock[]
+  blocks: UiBlock[]
 ): Promise<{ form: ApiForm; version?: ApiFormVersion | null }> {
   const supabase = createClient();
 
@@ -47,22 +50,28 @@ export async function publishFormWithFormBuilderStore(
       const formWithBlocks = await getFormWithBlocksClient(formId);
       if (formWithBlocks && formWithBlocks.blocks && formWithBlocks.blocks.length > 0) {
         // Convert database blocks to the format expected by createFormVersion/updateFormVersion
-        blocksToUse = formWithBlocks.blocks.map(dbBlock => {
-          const blockTypeId = mapFromDbBlockType(dbBlock.type || 'static', dbBlock.subtype || 'short_text');
-          const blockType: BlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
+        blocksToUse = formWithBlocks.blocks.map((dbBlock: DbBlock) => {
+          // Determine the block type based on the database type
+          const blockType: ApiBlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
                                        dbBlock.type === 'integration' ? 'integration' : 
                                        dbBlock.type === 'layout' ? 'layout' : 'static';
           
-          return {
+          // Create a UiBlock with all required properties
+          const uiBlock: UiBlock = {
             id: dbBlock.id,
-            blockTypeId: blockTypeId,
+            formId: dbBlock.form_id,
             type: blockType,
+            subtype: dbBlock.subtype as 'short_text' | 'long_text' | 'email' | 'date' | 'multiple_choice' | 'checkbox_group' | 'dropdown' | 'number' | 'scale' | 'yes_no' | 'ai_conversation' | 'hubspot' | 'page_break' | 'redirect',
             title: dbBlock.title || '',
-            description: dbBlock.description || '',
+            description: dbBlock.description || null,
             required: !!dbBlock.required,
-            order_index: dbBlock.order_index || 0,
-            settings: dbBlock.settings || {}
+            orderIndex: dbBlock.order_index || 0,
+            settings: dbBlock.settings || {},
+            createdAt: dbBlock.created_at,
+            updatedAt: dbBlock.updated_at,
           };
+          
+          return uiBlock;
         });
         console.log(`Retrieved ${blocksToUse.length} blocks from database for publishing.`);
       } else {

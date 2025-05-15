@@ -178,7 +178,9 @@ export function AIConversationBlock({
       
       // Pass the appropriate question index based on what we're editing
       await submitAnswer(
+        "question", // Literal string for question type
         finalQuestion,
+        "answer", // Literal string for answer type
         userInput,
         activeQuestionIndex < conversation.length ? activeQuestionIndex : (isFirstQuestion ? 0 : conversation.length),
         isFirstQuestion && activeQuestionIndex >= conversation.length
@@ -200,7 +202,7 @@ export function AIConversationBlock({
       }
       
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error submitting type: "answer", content:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -225,7 +227,7 @@ export function AIConversationBlock({
             responseId,
             blockId: id,
             blockType: 'dynamic',
-            answer: null, // Empty answer for Continue button
+            type: "answer", content: null, // Empty answer for Continue button
             isComplete: true // Important flag to indicate this is just a continue action
           })
         }).catch(error => {
@@ -315,7 +317,8 @@ export function AIConversationBlock({
 
     // When editing a previous question, show that question as the title
     if (activeQuestionIndex < conversation.length) {
-      return conversation[activeQuestionIndex].question;
+      // Use 'content' property from ApiQAPair instead of 'question'
+      return conversation[activeQuestionIndex].content;
     }
     
     // For new questions, use the next question as title

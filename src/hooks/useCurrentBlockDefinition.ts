@@ -13,7 +13,7 @@ export const useCurrentBlockDefinition = () => {
   if (!currentBlock) return null
   
   try {
-    return getBlockDefinition(currentBlock.blockTypeId)
+    return getBlockDefinition(currentBlock.subtype)
   } catch (error) {
     console.error('Error getting block definition:', error)
     return null

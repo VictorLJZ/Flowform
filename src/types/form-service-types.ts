@@ -77,8 +77,8 @@ export interface SaveDynamicResponseInput {
   responseId: string;   // form_responses.id
   blockId: string;      // form_blocks.id
   formId: string;       // forms.form_id
-  question: string;     // The current question
-  answer: string;       // The user's answer
+  questionContent: string;     // The current question
+  answerContent: string;       // The user's answer
   isStarterQuestion?: boolean; // Whether this is the first question
   isComplete?: boolean; // Override completion status (for special cases)
   mode?: 'builder' | 'viewer'; // Application mode for context
@@ -190,7 +190,7 @@ export interface SaveFormOutput {
  */
 export interface GetQuestionResult extends ServiceResponse {
   data?: {
-    question: string;
+    type: "question", content: string;
     blockId: string;
     temperature: number;
     maxQuestions: number;
@@ -221,7 +221,7 @@ export interface DynamicQuestionContext {
   title: string;
   description: string | null;
   type: 'dynamic';
-  starter_question: string;
+  starter_type: "question", content: string;
 }
 
 /**

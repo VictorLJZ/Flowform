@@ -77,7 +77,7 @@ export interface CompleteResponse {
 // Selection record types for session API routes
 export type StaticAnswerRecord = {
   block_id: string;
-  answer: string | null;
+  type: "answer", content: string | null;
 }
 
 /**

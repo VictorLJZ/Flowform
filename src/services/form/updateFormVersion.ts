@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
-import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
+import type { UiBlock as FrontendUiBlock } from '@/types/block';
 import type { FormBlockVersion } from '@/types/form-version-types';
 
 /**
@@ -13,7 +14,7 @@ import type { FormBlockVersion } from '@/types/form-version-types';
  */
 export async function updateFormVersion(
   versionId: string,
-  blocks: FrontendFormBlock[]
+  blocks: FrontendUiBlock[]
 ): Promise<boolean> {
   const supabase = createClient();
   
@@ -31,7 +32,7 @@ export async function updateFormVersion(
     
     // Then create new block versions for all current blocks
     const blockVersions: Partial<FormBlockVersion>[] = blocks.map(block => {
-      const { type, subtype } = mapToDbBlockType(block.blockTypeId);
+      const { type, subtype } = mapToDbBlockType(block.subtype);
       return {
         block_id: block.id,
         form_version_id: versionId,
@@ -40,7 +41,7 @@ export async function updateFormVersion(
         type,
         subtype,
         required: !!block.required,
-        order_index: block.order_index || 0,
+        order_index: block.orderIndex || 0,
         settings: block.settings || {},
         is_deleted: false
       };

@@ -36,7 +36,7 @@ export interface DashboardFormData {
   // Dynamic block configuration properties
   dynamicConfig?: {
     max_questions: number;
-    starter_question: string;
+    starter_type: "question", content: string;
     temperature: number;
   };
 }

@@ -5,6 +5,7 @@
  * and data transformation for database operations.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DbBlockType, DbStaticBlockSubtype } from './block';
 
 /**
@@ -63,7 +64,7 @@ export interface BlockSettings {
 export interface PostgreSQLBlockData {
   id?: string;
   form_id?: string;
-  type?: DbBlockType;
+  type?: DbApiBlockType;
   subtype?: DbStaticBlockSubtype | 'dynamic';
   title?: string;
   description?: string | null;

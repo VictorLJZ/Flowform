@@ -42,7 +42,7 @@ export const fetchDashboardData = async (workspaceId: string): Promise<Dashboard
       published_at: new Date().toISOString(), 
       dynamicConfig: {
         max_questions: 5, 
-        starter_question: 'How was your experience?', 
+        starter_type: "question", content: 'How was your experience?', 
         temperature: 0.7
       }
     },
@@ -58,7 +58,7 @@ export const fetchDashboardData = async (workspaceId: string): Promise<Dashboard
       published_at: new Date(Date.now() - 86400000).toISOString(), 
       dynamicConfig: {
         max_questions: 5, 
-        starter_question: 'Thoughts on product?', 
+        starter_type: "question", content: 'Thoughts on product?', 
         temperature: 0.7
       }
     }

@@ -5,7 +5,7 @@
  * This helps identify problematic connection patterns that could cause infinite loops during form execution.
  */
 
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection } from '@/types/workflow-types';
 
 export interface CycleDetectionResult {
@@ -23,7 +23,7 @@ export interface CycleDetectionResult {
  * @returns Object containing cycle detection results and affected connections
  */
 export function detectCycles(
-  blocks: FormBlock[], 
+  blocks: UiBlock[], 
   connections: Connection[]
 ): CycleDetectionResult {
   console.log('🔄 [Cycle Detection] Analyzing workflow for cycles');

@@ -1,10 +1,10 @@
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { BlockChoiceOption, operatorLabels } from '@/types/workflow-condition-types';
 import { Edge } from 'reactflow';
 import { Connection, ConditionRule, WorkflowEdgeData } from '@/types/workflow-types';
 
 // Function to get human-readable field name
-export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): string => {
+export const getFieldName = (fieldId: string, sourceBlock?: UiBlock | null): string => {
   if (!fieldId) return '';
   
   if (fieldId === 'answer') return 'Answer';
@@ -32,7 +32,7 @@ export const getFieldName = (fieldId: string, sourceBlock?: FormBlock | null): s
 // Renamed from getSingleConditionSummary and adjusted for ConditionRule type
 const summarizeConditionRule = (
   conditionRule: ConditionRule, 
-  sourceBlock: FormBlock | null | undefined
+  sourceBlock: UiBlock | null | undefined
 ): string => {
   if (!conditionRule) return 'Invalid condition';
   const fieldName = getFieldName(conditionRule.field, sourceBlock);
@@ -46,7 +46,7 @@ const summarizeConditionRule = (
 // Get a summary of the current condition in plain language
 export const getConditionSummary = (
   connectionData: Connection | Edge<WorkflowEdgeData>, 
-  sourceBlock: FormBlock | null | undefined
+  sourceBlock: UiBlock | null | undefined
 ): string => {
   const isEdge = (data: Connection | Edge<WorkflowEdgeData>): data is Edge<WorkflowEdgeData> => {
     return 'data' in data && data.data !== undefined;

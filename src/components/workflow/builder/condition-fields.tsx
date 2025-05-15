@@ -9,18 +9,17 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection, ConditionRule } from '@/types/workflow-types';
 
 interface ConditionFieldsProps extends ConditionComponentProps {
-  sourceBlock: FormBlock | null | undefined;
+  sourceBlock: UiBlock | null | undefined;
   currentConnection: Connection | null;
   conditionId: string;
 }
 
 export function ConditionFields({ 
   sourceBlock, 
-  sourceBlockType, 
   onConditionChange,
   currentConnection,
   conditionId
@@ -38,7 +37,7 @@ export function ConditionFields({
     
     const availableFields = getAvailableFieldsForBlock(sourceBlock);
     
-    if (sourceBlockType === 'multiple_choice') {
+    if (sourceBlock.subtype === 'multiple_choice') {
       return availableFields;
     }
     

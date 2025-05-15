@@ -36,7 +36,7 @@ export interface DbStaticBlockAnswer {
   id: string; // UUID
   response_id: string; // UUID, references form_responses.id
   block_id: string; // UUID, references form_blocks.id
-  answer: string | null; // Text content of the answer
+  type: "answer", content: string | null; // Text content of the answer
   answered_at: string; // Timestamp with time zone
 }
 
@@ -51,7 +51,7 @@ export interface DbDynamicBlockResponse {
   updated_at: string | null; // Timestamp with time zone
   completed_at: string | null; // Timestamp with time zone
   conversation: DbQAPair[]; // Array of question-answer pairs
-  next_question: string | null; // Text, next AI-generated question
+  next_type: "question", content: string | null; // Text, next AI-generated question
 }
 
 /**

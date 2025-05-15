@@ -128,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         if (config && !configError) {
           // If config exists, use the starter_question
-          starterQuestion = config.starter_question;
+          starterQuestion = config.starterQuestion;
         } else {
           // Fallback to using the block title
           console.log('No dynamic block config found, using block title instead');
@@ -232,7 +232,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     // Process the answer based on block type
     if (blockType === 'static') {
       // DEBUG LOGGING: Track static block answer on the server side
-      console.log(`[${requestId}][DEBUG] Processing static block answer:`, {
+      console.log(`[${requestId}][DEBUG] Processing static block type: "answer", content:`, {
         responseId,
         blockId,
         answerType: typeof answer,
@@ -290,15 +290,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         const payload = {
           response_id: responseId,
           block_id: blockId,
-          answer: formattedAnswer,
+          type: "answer", content: formattedAnswer,
           answered_at: new Date().toISOString()
         };
         
         // Log the exact payload we're about to save to the database
         console.log(`[${requestId}][DEBUG] About to save static answer to database:`, {
           payload,
-          answerType: typeof payload.answer,
-          answerLength: payload.answer.length
+          answerType: typeof payload.content,
+          answerLength: payload.content.length
         });
 
         const { data: existingAnswer, error: fetchError } = await serviceSupabase
@@ -309,7 +309,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           .maybeSingle();
 
         if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found, which is fine
-          console.error(`[${requestId}][DEBUG] Error checking existing answer:`, fetchError);
+          console.error(`[${requestId}][DEBUG] Error checking existing type: "answer", content:`, fetchError);
         } else {
           console.log(`[${requestId}][DEBUG] Existing answer check:`, {
             exists: !!existingAnswer,
@@ -326,12 +326,12 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           .single();
           
         if (error) {
-          console.error(`[${requestId}][DEBUG] Error saving static answer:`, error);
+          console.error(`[${requestId}][DEBUG] Error saving static type: "answer", content:`, error);
           throw error;
         }
 
         // Log the successful save
-        console.log(`[${requestId}][DEBUG] Successfully saved static answer:`, {
+        console.log(`[${requestId}][DEBUG] Successfully saved static type: "answer", content:`, {
           savedRecordId: savedRecord?.id,
           savedAnswer: savedRecord?.answer?.substring(0, 50) + '...'
         });
@@ -542,11 +542,11 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
               nextQuestion = result.data;
               console.log(`[${requestId}] Generated next question (length: ${nextQuestion.length})`);
             } else {
-              console.warn(`[${requestId}] Failed to generate next question:`, result.error);
+              console.warn(`[${requestId}] Failed to generate next type: "question", content:`, result.error);
               nextQuestion = "I'm having trouble thinking of a follow-up question. Could you tell me more about that?";
             }
           } catch (aiError) {
-            console.error(`[${requestId}] Error generating next question:`, aiError);
+            console.error(`[${requestId}] Error generating next type: "question", content:`, aiError);
             nextQuestion = "I'm having trouble thinking of a follow-up question. Could you tell me more about that?";
           }
         }
@@ -558,7 +558,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
             response_id: responseId,
             block_id: blockId,
             conversation,
-            next_question: nextQuestion,
+            next_type: "question", content: nextQuestion,
             completed_at: isComplete ? new Date().toISOString() : null,
             updated_at: new Date().toISOString()
           }, { onConflict: 'response_id,block_id' });

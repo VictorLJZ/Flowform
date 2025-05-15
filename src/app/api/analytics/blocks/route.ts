@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { NextResponse } from 'next/server';
-import { BlockMetrics } from '@/types/supabase-types';
+import { DbBlockMetrics } from '@/types/analytics/DbBlockMetrics';
+import { ApiBlockMetrics } from '@/types/analytics/ApiBlockMetrics';
 import { BlockPerformance } from '@/types/AggregateApiCleanup';
 
 // Get performance analytics for a specific block or all blocks in a form
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
     }
 
     // Map of block ID to metrics
-    const metricsMap = (metrics || []).reduce<Record<string, BlockMetrics>>((acc, metric) => {
+    const metricsMap = (metrics || []).reduce<Record<string, DbBlockMetrics>>((acc, metric) => {
       acc[metric.block_id] = metric;
       return acc;
     }, {});
@@ -129,7 +130,19 @@ export async function GET(request: Request) {
         completion_rate: completionRate,
         average_time_spent: blockMetrics?.average_time_seconds || 0,
         skip_rate: skipRate,
-        metrics: blockMetrics || null
+        // Transform DbBlockMetrics to ApiBlockMetrics at the API boundary
+        metrics: blockMetrics ? {
+          id: blockMetrics.id,
+          blockId: blockMetrics.block_id,
+          formId: blockMetrics.form_id,
+          views: blockMetrics.views,
+          skips: blockMetrics.skips,
+          averageTimeSeconds: blockMetrics.average_time_seconds || undefined,
+          dropOffCount: blockMetrics.drop_off_count,
+          dropOffRate: blockMetrics.drop_off_rate || undefined,
+          lastUpdated: blockMetrics.last_updated,
+          submissions: blockMetrics.submissions
+        } as ApiBlockMetrics : null
       } as BlockPerformance;
     });
     

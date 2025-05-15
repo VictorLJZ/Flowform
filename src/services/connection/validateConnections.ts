@@ -1,4 +1,4 @@
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection } from '@/types/workflow-types';
 
 /**
@@ -8,7 +8,7 @@ import { Connection } from '@/types/workflow-types';
  */
 export function validateConnections(
   connections: Connection[],
-  blocks: FormBlock[]
+  blocks: UiBlock[]
 ): Connection[] {
   return connections.filter(conn => {
     // Check source and target blocks exist

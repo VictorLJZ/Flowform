@@ -24,7 +24,7 @@ export function useWorkflowData() {
   useEffect(() => {
     if (blocks.length > 0) {
       // Sort blocks by order to ensure proper sequence
-      const sortedBlocks = [...blocks].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      const sortedBlocks = [...blocks].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
       
       // Default layout values
       const gridColumns = Math.min(4, Math.ceil(Math.sqrt(sortedBlocks.length)));

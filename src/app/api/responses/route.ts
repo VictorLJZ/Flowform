@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { DbStaticBlockAnswer, DbDynamicBlockResponse } from '@/types/response';
+import { DbStaticBlockAnswer, DbDynamicBlockResponse, ApiStaticBlockAnswer, ApiDynamicBlockResponse } from '@/types/response';
 import { dbToApiStaticBlockAnswers, dbToApiDynamicBlockResponses } from '@/utils/type-utils/response';
 
 // Get all responses for a specific form
@@ -102,8 +102,8 @@ export async function GET(request: Request) {
     }
 
     // Convert DB types to API types for the response
-    const apiStaticAnswersByResponse: Record<string, any> = {};
-    const apiDynamicResponsesByResponse: Record<string, any> = {};
+    const apiStaticAnswersByResponse: Record<string, ApiStaticBlockAnswer[]> = {};
+    const apiDynamicResponsesByResponse: Record<string, ApiDynamicBlockResponse[]> = {};
     
     // Transform static answers to API format
     Object.entries(staticAnswersByResponse).forEach(([responseId, answers]) => {

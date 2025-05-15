@@ -15,11 +15,11 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Connection, ConditionRule } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 
 interface ConditionOperatorsProps extends ConditionComponentProps {
   currentConnection: Connection | null;
-  sourceBlock: FormBlock | null | undefined;
+  sourceBlock: UiBlock | null | undefined;
   conditionId: string;
 }
 
@@ -68,7 +68,6 @@ function getUserFriendlyOperatorLabel(
 
 export function ConditionOperators({ 
   sourceBlock, 
-  sourceBlockType, 
   onConditionChange,
   currentConnection,
   conditionId
@@ -86,7 +85,7 @@ export function ConditionOperators({
   
   const operatorOptions = availableOperators.map(operator => ({
     value: operator,
-    label: getUserFriendlyOperatorLabel(currentField, operator, sourceBlockType)
+    label: getUserFriendlyOperatorLabel(currentField, operator, sourceBlock?.subtype || '')
   }));
 
   if (currentField.startsWith('choice:') && operatorOptions.length <= 1) {

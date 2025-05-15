@@ -60,7 +60,7 @@ export async function saveDynamicBlockConfig(
         starter_question: dynamicConfig.starter_question,
         temperature: dynamicConfig.temperature,
         max_questions: dynamicConfig.max_questions,
-        ai_instructions: dynamicConfig.ai_instructions,
+        ai_instructions: dynamicConfig.ai_instructions || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       } 

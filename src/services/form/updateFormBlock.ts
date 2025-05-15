@@ -1,18 +1,12 @@
 import { createClient } from '@/lib/supabase/client';
-import { DynamicBlockConfig } from '@/types/supabase-types';
+import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
 import { FormBlockUpdateInput, FormBlockCreationResult } from '@/types/form-service-types';
-import { BlockType, FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
+// Using string for BlockType since we don't have a centralized type
 import { invalidateFormCache } from './invalidateCache';
 import { checkFormResponses } from './checkFormResponses';
 import { createFormVersion } from './createFormVersion';
 
-// Define this one here as it was not included in our centralized types
-type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,
-  'starter_question' |
-  'temperature' |
-  'max_questions' |
-  'ai_instructions'
->>;
 
 /**
  * Update an existing form block
@@ -25,7 +19,7 @@ type DynamicConfigUpdateInput = Partial<Pick<DynamicBlockConfig,
 export async function updateFormBlock(
   blockId: string,
   blockData: Omit<FormBlockUpdateInput, 'id'>,
-  dynamicConfig?: DynamicConfigUpdateInput
+  dynamicConfig?: DbDynamicBlockConfig | null
 ): Promise<FormBlockCreationResult> {
   const supabase = createClient();
 
@@ -48,10 +42,24 @@ export async function updateFormBlock(
   
   if (hasResponses) {
     // Get all blocks for this form to create a complete version
-    const { data: allFormBlocks, error: blocksError } = await supabase
+    const { data: blocks, error: blocksError } = await supabase
       .from('form_blocks')
       .select('*')
-      .eq('form_id', formId);
+      .eq('form_id', formId) as { 
+        data: Array<{
+          id: string;
+          type: string;
+          title?: string;
+          description?: string | null;
+          required?: boolean;
+          order_index?: number;
+          settings?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+          [key: string]: unknown;
+        }> | null; 
+        error: Error | null 
+      };
       
     if (blocksError) {
       console.error('Error fetching all form blocks:', blocksError);
@@ -59,16 +67,20 @@ export async function updateFormBlock(
     }
     
     // Map database blocks to frontend format for versioning
-    const frontendBlocks = allFormBlocks.map(block => ({
+    const frontendBlocks = (blocks || []).map(block => ({
       id: block.id,
-      blockTypeId: `${block.type}_${block.subtype}`,
-      type: block.type === 'dynamic' ? 'dynamic' as BlockType : 'static' as BlockType,
-      title: block.title,
-      description: block.description,
-      required: block.required,
-      order_index: block.order_index,
-      settings: block.settings
-    })) as FormBlock[];
+      formId: formId,
+      blockTypeId: `${block.type}_${(block as { subtype?: string }).subtype || 'default'}`,
+      type: (block.type === 'dynamic' ? 'dynamic' : 'static') as string,
+      title: block.title || '',
+      description: block.description || '',
+      required: block.required || false,
+      orderIndex: block.order_index || 0,
+      settings: block.settings || {},
+      subtype: (block as { subtype?: string }).subtype || 'default',
+      createdAt: block.created_at || new Date().toISOString(),
+      updatedAt: block.updated_at || new Date().toISOString()
+    } as UiBlock));
     
     // Get user ID for versioning
     const { data: { user } } = await supabase.auth.getUser();

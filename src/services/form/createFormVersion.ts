@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
-import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
+import type { UiBlock as FrontendUiBlock } from '@/types/block';
 import { FormBlockVersion } from '@/types/form-version-types';
-import { DbFormVersion } from '@/types/block';
+import { DbFormVersion } from '@/types/form/DbFormVersion';
 
 /**
  * Create a new form version and associated block versions
@@ -14,7 +14,7 @@ import { DbFormVersion } from '@/types/block';
 export async function createFormVersion(
   formId: string,
   createdBy: string,
-  blocks: FrontendFormBlock[]
+  blocks: FrontendUiBlock[]
 ): Promise<DbFormVersion | null> {
   // SAFEGUARD: Prevent blocks from being incorrectly marked as deleted when an empty array is provided
   if (!blocks || blocks.length === 0) {
@@ -64,7 +64,7 @@ export async function createFormVersion(
     
     // Prepare block versions for all current blocks
     const blockVersions: Partial<FormBlockVersion>[] = blocks.map(block => {
-      const { type, subtype } = mapToDbBlockType(block.blockTypeId);
+      const { type, subtype } = mapToDbBlockType(block.subtype);
       return {
         block_id: block.id,
         form_version_id: formVersion.id,
@@ -73,7 +73,7 @@ export async function createFormVersion(
         type,
         subtype,
         required: !!block.required,
-        order_index: block.order_index || 0,
+        order_index: block.orderIndex || 0,
         settings: block.settings || {},
         is_deleted: false
       };
@@ -123,7 +123,7 @@ export async function createFormVersion(
               deletedBlock.type = blockData.type;
               deletedBlock.subtype = blockData.subtype;
               deletedBlock.required = blockData.required;
-              deletedBlock.order_index = blockData.order_index;
+              deletedBlock.order_index = blockData.orderIndex;
               deletedBlock.settings = blockData.settings;
             }
           });

@@ -9,15 +9,14 @@
 import { useCallback, useState, useMemo } from 'react';
 import { useWorkflowNavigation } from './useWorkflowNavigation';
 import { Connection, Rule } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { ApiQAPair } from '@/types/response';
-import { LegacyQAPair } from '@/utils/type-utils/response/LegacyQAPairAdapter';
 
 // Answer types can be varied based on the block type
-type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[] | LegacyQAPair[];
+type Answer = string | number | string[] | boolean | Record<string, unknown> | ApiQAPair[];
 
 interface FormWorkflowNavigationProps {
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   connections: Connection[];
   initialBlockIndex?: number;
 }

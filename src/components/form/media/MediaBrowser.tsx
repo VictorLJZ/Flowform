@@ -77,7 +77,7 @@ export function MediaBrowser({ onSelect, selectedMediaId }: MediaBrowserProps) {
                 {asset.type === 'image' ? (
                   <Image 
                     src={asset.mediaId.startsWith('http') 
-                      ? asset.thumbnailUrl 
+                      ? (asset.thumbnail || asset.mediaId) 
                       : getCloudinaryUrl(asset.mediaId, {
                           type: 'image',
                           width: 200,

@@ -22,8 +22,8 @@ export async function POST(request: Request) {
         responseId: input.responseId,
         blockId: input.blockId,
         formId: input.formId,
-        answer: typeof input.answer === 'string' ? 
-          (input.answer.length > 20 ? input.answer.substring(0, 20) + '...' : input.answer) : 
+        type: "answer", content: typeof input.answerContent === 'string' ? 
+          (input.answerContent.length > 20 ? input.answerContent.substring(0, 20) + '...' : input.answerContent) : 
           'NON-STRING',
       });
     } catch (e) {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
     
     // Validate required fields
-    const requiredFields = ['responseId', 'blockId', 'formId', 'answer'];
+    const requiredFields = ['responseId', 'blockId', 'formId', 'answerContent'];
     const missingFields = requiredFields.filter(field => !input[field as keyof ExtendedInputType]);
     
     if (missingFields.length > 0) {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     // Call the service with detailed error handling
     const result = await saveDynamicBlockResponse(input);
-    console.log(`[${requestId}] Successfully processed answer:`, {
+    console.log(`[${requestId}] Successfully processed type: "answer", content:`, {
       success: result.success,
       hasData: !!result.data,
       hasConversation: result.data && 'conversation' in result.data,
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     // Capture detailed error information
-    console.error('Error in /api/conversation/answer:', error);
+    console.error('Error in /api/conversation/type: "answer", content:', error);
     
     // Provide a helpful error response with as much detail as possible
     let errorMessage = 'Unknown server error';

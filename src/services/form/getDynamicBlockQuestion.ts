@@ -36,7 +36,7 @@ export async function getDynamicBlockQuestion(blockId: string): Promise<GetQuest
     return {
       success: true,
       data: {
-        question: block.title, // Use block title as the starter question
+        type: "question", content: block.title, // Use block title as the starter question
         blockId,
         temperature,
         maxQuestions,
@@ -45,7 +45,7 @@ export async function getDynamicBlockQuestion(blockId: string): Promise<GetQuest
     };
     
   } catch (error: unknown) {
-    console.error('Error getting dynamic block question:', error);
+    console.error('Error getting dynamic block type: "question", content:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

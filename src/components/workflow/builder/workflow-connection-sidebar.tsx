@@ -115,7 +115,7 @@ export default function WorkflowConnectionSidebar() {
         updatedCondition.operator = 'equals';
         if (typeof value === 'string' && value.startsWith('choice:')) {
           updatedCondition.value = true;
-        } else if (value === 'rating' || (value === 'answer' && sourceBlock?.blockTypeId === 'number')) {
+        } else if (value === 'rating' || (value === 'answer' && sourceBlock?.subtype === 'number')) {
           updatedCondition.value = 0;
         } else if (value === 'selected') {
           updatedCondition.value = true;
@@ -548,7 +548,7 @@ export default function WorkflowConnectionSidebar() {
           <ConditionCard
             element={element} 
             sourceBlock={sourceBlock}
-            sourceBlockType={sourceBlock?.blockTypeId || 'unknown'}
+            sourceBlockType={sourceBlock?.subtype || 'unknown'}
             currentConnection={connection} 
             onConditionTypeChange={(type) => handleSetConditionalOrAlways(type === 'conditional')} 
             onConditionChange={adaptedConditionChangeHandler} 

@@ -50,6 +50,24 @@ export interface UiBlockMetricsData extends Omit<ApiBlockMetricsData, 'block'> {
 }
 
 /**
+ * Legacy formatted block metrics type used in the analytics API routes
+ * This is a UI-layer type that provides formatted metrics data for display
+ * in dashboards and analytics views
+ */
+export interface FormattedBlockMetrics {
+  id: string;
+  title: string;
+  blockTypeId: string;
+  count: number;
+  uniqueViews: number;
+  avgTimeSpent: number;
+  interactionCount: number;
+  completionRate: number;
+  dropOffRate: number;
+  dropOffPercentage: string; // Formatted string for UI display (e.g., "-25%")
+}
+
+/**
  * UI layer representation of dynamic block analytics with display properties
  */
 export interface UiDynamicBlockAnalytics extends ApiDynamicBlockAnalytics {

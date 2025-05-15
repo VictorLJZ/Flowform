@@ -1,4 +1,4 @@
-import { BlockPerformance } from '@/types/analytics-types';
+import { ApiBlockPerformance } from '@/types/analytics/ApiBlockMetrics';
 
 /**
  * Get performance analytics for a specific block or all blocks in a form - Client-side implementation
@@ -15,7 +15,7 @@ export async function getBlockPerformanceClient(
   blockId?: string,
   startDate?: string,
   endDate?: string
-): Promise<BlockPerformance[]> {
+): Promise<ApiBlockPerformance[]> {
   try {
     // Construct the query parameters
     const params = new URLSearchParams({ formId });

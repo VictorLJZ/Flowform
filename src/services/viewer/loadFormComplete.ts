@@ -1,111 +1,109 @@
-import { getFormWithBlocksClient } from '../form/getFormWithBlocksClient';
 import { createClient } from '@/lib/supabase/client';
 import { transformConnections } from '../connection/transformConnections';
 import { validateConnections } from '../connection/validateConnections';
 import { preserveRules } from '../connection/preserveRules';
-import { FormBlock, BlockType } from '@/types/block-types';
 import { Connection } from '@/types/workflow-types';
 import { migrateAllBlockLayouts } from '../form/layoutMigration';
 import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
+import type { UiBlock } from '@/types/block';
 import { defaultFormTheme } from '@/types/theme-types';
 import { defaultFormData } from '@/stores/slices/formCore';
+import type { 
+  DbBlock, 
+  DbBlockSubtype,
+  DbStaticBlockSubtype,
+  DbDynamicBlockSubtype,
+  DbIntegrationBlockSubtype,
+  DbLayoutBlockSubtype
+} from '@/types/block/DbBlock';
 
-// Define types for database records
-interface DbFormBlock {
-  id: string;
-  form_id: string;
-  type: string;
-  subtype: string;
-  title: string;
-  description: string | null;
-  required: boolean;
-  order_index: number;
-  settings: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-  [key: string]: unknown;
+function isDbBlockSubtype(value: unknown): value is DbBlockSubtype {
+  if (typeof value !== 'string') return false;
+  const validSubtypes: string[] = [
+    // Static blocks
+    'short_text', 'long_text', 'email', 'date', 'multiple_choice',
+    'checkbox_group', 'dropdown', 'number', 'scale', 'yes_no',
+    // Dynamic blocks
+    'ai_conversation',
+    // Integration blocks
+    'hubspot',
+    // Layout blocks
+    'page_break', 'redirect'
+  ];
+  return validSubtypes.includes(value);
 }
 
-interface DbForm {
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-  workspace_id: string;
-  settings: Record<string, unknown> | null;
-  blocks?: DbFormBlock[];
-  workflow_edges?: Record<string, unknown>[];
-  version_id?: string;
-  version_number?: number;
-  [key: string]: unknown;
+import type { CompleteForm } from '@/types/form-types';
+import type { WorkflowEdge } from '@/types/supabase-types';
+
+// Local type for the transformed block with blockTypeId
+interface TransformedBlock extends Omit<UiBlock, 'blockTypeId'> {
+  blockTypeId: string;
 }
 
 /**
  * Convert backend blocks to frontend block format
- * Extracted from formPersistence.ts
  */
-function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
-  return backendBlocks.map((block) => {
+const convertBackendBlocks = (blocks: DbBlock[]): UiBlock[] => {
+  return blocks.map(block => {
+    // Ensure block.subtype is a valid DbBlockSubtype or default to 'short_text'
+    const validSubtype: DbBlockSubtype = 
+      block.subtype && block.subtype !== '' 
+        ? block.subtype as DbBlockSubtype 
+        : 'short_text';
+        
     // Map database type/subtype to frontend blockTypeId
-    // This is critical - blockTypeId must match exactly what the registry expects
-    let blockTypeId = block.subtype;
+    let blockTypeId = validSubtype;
     
     // Special case for dynamic blocks
-    if (block.type === 'dynamic' && block.subtype === 'dynamic') {
+    if (block.type === 'dynamic' && validSubtype === 'ai_conversation') {
       blockTypeId = 'ai_conversation';
     }
     
     // Special case for layout blocks
     else if (block.type === 'layout') {
-      if (block.subtype === 'short_text') {
+      if (block.subtype === 'page_break' || block.subtype === 'redirect') {
+        blockTypeId = block.subtype;
+      } else if (block.settings && typeof block.settings === 'object') {
         // Try to determine if this is a page_break or redirect based on settings
-        if (block.settings && typeof block.settings === 'object') {
-          if ('url' in block.settings) {
-            blockTypeId = 'redirect';
-          } else {
-            blockTypeId = 'page_break';
-          }
+        if ('url' in block.settings) {
+          blockTypeId = 'redirect';
         } else {
-          blockTypeId = 'page_break'; // Default for layout blocks
+          blockTypeId = 'page_break';
         }
+      } else {
+        blockTypeId = 'page_break'; // Default for layout blocks
       }
     }
     
     // For other cases where block.subtype might be different from what registry expects
-    // Use our mapFromDbBlockType utility as a backup
     if (!blockTypeId || blockTypeId === '') {
-      blockTypeId = mapFromDbBlockType(block.type as BlockType, block.subtype);
+      blockTypeId = mapFromDbBlockType(block.type, block.subtype || 'short_text');
     }
     
     // Determine block type (static, dynamic, etc)
-    // This is the database "type" value, not to be confused with blockTypeId
-    let blockType = block.type as BlockType;
+    let blockType = block.type;
     
-    // Ensure blockType is valid (defensive programming)
+    // Ensure blockType is valid
     if (!['static', 'dynamic', 'layout', 'integration'].includes(blockType)) {
       blockType = 'static';
     }
     
     // Create the transformed block with correct typing
-    const transformedBlock: FormBlock = {
+    const transformedBlock: TransformedBlock = {
       id: block.id,
-      blockTypeId: String(blockTypeId), // Ensure blockTypeId is the mapped value from subtype and is a string
+      formId: block.form_id,
+      blockTypeId: String(blockTypeId),
       type: blockType,
       title: block.title || '',
       description: block.description || '',
-      required: block.required || false,
-      order_index: block.order_index,
-      settings: block.settings || {}
+      required: Boolean(block.required),
+      orderIndex: block.order_index || 0,
+      settings: block.settings || {},
+      subtype: (block.subtype || 'short_text') as string,
+      createdAt: block.created_at || new Date().toISOString(),
+      updatedAt: block.updated_at || new Date().toISOString()
     };
-    
-    // Extra validation to ensure we NEVER set blockTypeId to the block's type
-    if (transformedBlock.blockTypeId === transformedBlock.type && ['static', 'dynamic', 'layout', 'integration'].includes(transformedBlock.blockTypeId)) {
-      // Emergency fallback: If for some reason blockTypeId ended up as 'static', use the subtype as a fallback
-      if (block.subtype && block.subtype !== transformedBlock.type) {
-        transformedBlock.blockTypeId = String(block.subtype);
-      }
-    }
     
     return transformedBlock;
   });
@@ -113,136 +111,110 @@ function convertBackendBlocks(backendBlocks: DbFormBlock[]): FormBlock[] {
 
 /**
  * Extract node positions from form settings
- * Extracted from formPersistence.ts
  */
-function extractNodePositions(formData: DbForm): Record<string, {x: number, y: number}> {
+function extractNodePositions(formData: CompleteForm): Record<string, {x: number, y: number}> {
   try {
-    if (formData.settings?.workflow && typeof formData.settings.workflow === 'object') {
-      const workflow = formData.settings.workflow as { nodePositions?: Record<string, {x: number, y: number}> };
-      if (workflow.nodePositions && typeof workflow.nodePositions === 'object') {
-        return workflow.nodePositions;
-      }
+    // Try to get node positions from form settings
+    const nodePositions = formData.settings?.nodePositions;
+    
+    // If we have valid node positions, return them
+    if (nodePositions && typeof nodePositions === 'object' && !Array.isArray(nodePositions)) {
+      return nodePositions as Record<string, {x: number, y: number}>;
     }
   } catch (error) {
     console.error('Error extracting node positions:', error);
   }
+  
+  // Return empty object if no valid positions found
   return {};
 }
 
 /**
  * Format form data with defaults
- * Extracted from formPersistence.ts
  */
-function formatFormData(formData: DbForm, isVersioned: boolean = false): DbForm {
+function formatFormData(formData: CompleteForm, isVersioned: boolean = false): CompleteForm {
   return {
-    id: formData.id,
-    form_id: formData.id, // Use id as form_id for compatibility
+    ...formData,
     title: formData.title || 'Untitled Form',
-    description: formData.description || '',
-    workspace_id: formData.workspace_id,
-    created_at: formData.created_at,
-    updated_at: formData.updated_at,
-    created_by: formData.created_by || '',
-    status: formData.status || (isVersioned ? 'published' : 'draft'),
-    // Always use defaultFormTheme as the base and merge with any available theme properties
-    theme: formData.theme ? { 
-      ...defaultFormTheme, 
-      ...(typeof formData.theme === 'object' ? formData.theme : {}) 
-    } : defaultFormTheme,
-    settings: formData.settings ? {
+    description: formData.description || null,
+    settings: {
       ...defaultFormData.settings,
-      ...(typeof formData.settings === 'object' ? formData.settings : {})
-    } : { ...defaultFormData.settings }
+      ...(formData.settings || {})
+    } as Record<string, unknown>,
+    theme: defaultFormTheme as unknown as Record<string, unknown>,
+    blocks: formData.blocks || [],
+    workflow_edges: formData.workflow_edges || []
   };
 }
 
 /**
  * Loads a complete form with blocks and connections for the viewer
- * 
- * This combines all functionality from getFormWithBlocksClient
- * and the form loading logic from formPersistence.ts into a clean service
- * 
- * @param formId The ID of the form to load
- * @returns An object containing formData, blocks, connections, and nodePositions
  */
 export async function loadFormComplete(formId: string): Promise<{
-  formData: DbForm;
-  blocks: FormBlock[];
+  formData: CompleteForm;
+  blocks: UiBlock[];
   connections: Connection[];
   nodePositions: Record<string, {x: number, y: number}>;
 }> {
-  // Get form with blocks from API
-  const result = await getFormWithBlocksClient(formId);
-  
-  if (!result) {
-    throw new Error(`Form with ID ${formId} not found`);
-  }
-  
-  // Extract core data and ensure proper type conversion
-  // Convert CompleteForm to DbForm by explicitly mapping properties
-  const formData: DbForm = {
-    id: result.form_id,
-    title: result.title,
-    description: result.description,
-    created_at: result.created_at,
-    updated_at: result.updated_at,
-    workspace_id: result.workspace_id,
-    settings: result.settings,
-    blocks: result.blocks as DbFormBlock[],
-    workflow_edges: result.workflow_edges as unknown as Record<string, unknown>[],
-    version_id: result.version_id,
-    version_number: result.version_number
-  };
-  
-  const backendBlocks = result.blocks as DbFormBlock[];
-  
-  // Convert blocks to frontend format
-  const blocks: FormBlock[] = convertBackendBlocks(backendBlocks);
-  
-  // Extract node positions from form settings
-  const nodePositions: Record<string, {x: number, y: number}> = extractNodePositions(formData);
-  
-  // Load connections from workflow_edges table
-  let workflowConnections: Connection[] = [];
   try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('workflow_edges')
-      .select('*')
-      .eq('form_id', formId)
-      .order('order_index', { ascending: true });
-
-    if (error) {
-      console.error('Error loading workflow connections:', error);
-      throw error;
+    // 1. Fetch the form with its blocks and workflow edges
+    const formWithBlocks = await getFormWithBlocksClient(formId);
+    
+    if (!formWithBlocks) {
+      throw new Error('Form not found');
     }
     
-    if (data && data.length > 0) {
-      const sbData = data || []; // Use empty array if data is null
-
-      workflowConnections = transformConnections(sbData);
-      
-      // Validate connections to remove those with invalid block references
-      workflowConnections = validateConnections(workflowConnections, blocks);
-      
-      // Ensure rules are preserved across connections with same source->target
-      workflowConnections = preserveRules(workflowConnections);
+    // 2. Format the form data with defaults
+    const isVersioned = 'version_id' in formWithBlocks && formWithBlocks.version_id !== undefined;
+    const formData = formatFormData(formWithBlocks, isVersioned);
+    
+    // 3. Convert backend blocks to frontend format
+    const blocks = formWithBlocks.blocks ? convertBackendBlocks(formWithBlocks.blocks) : [];
+    
+    // 4. Process connections - ensure we pass an array of WorkflowEdge to transformConnections
+    const workflowEdges: WorkflowEdge[] = [];
+    if (Array.isArray(formWithBlocks.workflow_edges)) {
+      workflowEdges.push(...formWithBlocks.workflow_edges.map(edge => {
+        const typedEdge = edge as Partial<WorkflowEdge>;
+        return {
+          id: typedEdge.id || '',
+          form_id: typedEdge.form_id || '', // Default to empty string as fallback
+          source_block_id: typedEdge.source_block_id || '',
+          default_target_id: typedEdge.default_target_id || null,
+          condition_type: typedEdge.condition_type || 'always',
+          rules: typeof typedEdge.rules === 'string' ? typedEdge.rules : '[]',
+          order_index: typedEdge.order_index || 0,
+          is_explicit: typedEdge.is_explicit || false,
+          created_at: typedEdge.created_at || new Date().toISOString(),
+          updated_at: typedEdge.updated_at || new Date().toISOString()
+        } as WorkflowEdge;
+      }));
     }
+    const connections = transformConnections(workflowEdges);
+    
+    // 5. Extract node positions
+    const nodePositions = extractNodePositions(formWithBlocks);
+    
+    // 6. Migrate block layouts if needed
+    if (blocks.length > 0) {
+      migrateAllBlockLayouts(blocks);
+    }
+    
+    // 7. Validate connections after all transformations
+    if (connections.length > 0) {
+      validateConnections(connections, blocks);
+      // @ts-expect-error - preserveRules has incorrect type definition
+      preserveRules(connections, blocks);
+    }
+    
+    return {
+      formData,
+      blocks,
+      connections,
+      nodePositions
+    };
   } catch (error) {
-    console.error('Error loading workflow connections:', error);
-    workflowConnections = [];
+    console.error('Error loading form:', error);
+    throw error;
   }
-  
-  // Migrate block layouts from legacy format
-  const migratedBlocks = migrateAllBlockLayouts(blocks);
-  
-  // Format the form data with defaults
-  const formattedData = formatFormData(formData);
-  
-  return {
-    formData: formattedData,
-    blocks: migratedBlocks,
-    connections: workflowConnections,
-    nodePositions
-  };
 }

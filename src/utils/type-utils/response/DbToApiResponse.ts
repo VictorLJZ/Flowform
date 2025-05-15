@@ -64,7 +64,7 @@ export function dbToApiStaticBlockAnswer(dbAnswer: DbStaticBlockAnswer): ApiStat
     id: dbAnswer.id,
     responseId: dbAnswer.response_id,
     blockId: dbAnswer.block_id,
-    answer: dbAnswer.answer ?? undefined,
+    type: "answer", content: dbAnswer.answer ?? undefined,
     answeredAt: dbAnswer.answered_at
   };
 }

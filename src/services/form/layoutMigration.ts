@@ -1,7 +1,8 @@
 "use client"
 
 import { SlideLayout, ViewportLayouts, getDefaultViewportLayouts } from '@/types/layout-types'
-import { FormBlock } from '@/types/block-types'
+import type { UiBlock } from '@/types/block/UiBlock'
+import type { ApiBlock } from '@/types/block/ApiBlock'
 
 /**
  * Migrate a block from the legacy single layout format to the new ViewportLayouts format
@@ -10,7 +11,7 @@ import { FormBlock } from '@/types/block-types'
  * @param block The form block to migrate
  * @returns A new block object with migrated layouts
  */
-export function migrateBlockLayout(block: FormBlock): FormBlock {
+export function migrateBlockLayout(block: ApiBlock): UiBlock {
   if (!block.settings) {
     // If the block has no settings at all, add default viewport layouts
     return {
@@ -68,6 +69,6 @@ export function migrateBlockLayout(block: FormBlock): FormBlock {
  * @param blocks Array of form blocks to migrate
  * @returns A new array of blocks with migrated layouts
  */
-export function migrateAllBlockLayouts(blocks: FormBlock[]): FormBlock[] {
+export function migrateAllBlockLayouts(blocks: UiBlock[]): UiBlock[] {
   return blocks.map(migrateBlockLayout)
 }

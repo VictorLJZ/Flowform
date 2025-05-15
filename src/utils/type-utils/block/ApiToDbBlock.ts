@@ -22,7 +22,7 @@ import {
 
 import { 
   DbBlock, 
-  DbBlockType,
+  DbApiBlockType,
   DbBlockSubtype,
   DbBlockOption, 
   DbDynamicBlockConfig
@@ -40,12 +40,13 @@ import {
  * @returns Database-formatted block object
  */
 /**
- * Maps ApiBlockType to DbBlockType (they have same values but different types)
+ * Maps ApiBlockType to DbApiBlockType (they have same values but different types)
  * @param apiType API block type
  * @returns Database block type
  */
-export function mapApiToDbBlockType(apiType: ApiBlockType): DbBlockType {
-  return apiType as DbBlockType;
+// This function uses type casting but is important for type safety
+export function mapApiToDbBlockType(apiType: ApiBlockType): DbApiBlockType {
+  return apiType as DbApiBlockType;
 }
 
 /**

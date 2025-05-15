@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FormBlock } from '@/types/block-types'
+import { UiBlock } from '@/types/block/UiBlock'
 import { Connection } from '@/types/workflow-types'
 import { BlockPill } from '@/components/form/builder/block-pill'
 import { ArrowRight } from 'lucide-react'
@@ -9,14 +9,14 @@ import { ArrowRight } from 'lucide-react'
 
 interface ConnectionOverviewCardProps {
   connection: Connection;
-  sourceBlock: FormBlock | null;
-  targetBlock: FormBlock | null;
+  sourceBlock: UiBlock | null;
+  targetBlock: UiBlock | null;
 }
 
 export function ConnectionOverviewCard({ connection, sourceBlock, targetBlock }: ConnectionOverviewCardProps) {
   if (!connection || !sourceBlock) return null;
   
-  // const sourceBlockType = sourceBlock.blockTypeId || 'unknown'; // Not currently used
+  // const sourceApiBlockType = sourceBlock.subtype || 'unknown'; // Not currently used
   // We don't need the color scheme in this component currently
   // const colorScheme = getBlockTypeColors(sourceBlockType);
   

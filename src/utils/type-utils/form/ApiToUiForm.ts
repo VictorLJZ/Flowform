@@ -7,8 +7,8 @@
  * - Adds UI-specific properties and formatting
  */
 
-import { ApiForm, ApiFormStatus } from '@/types/block';
-import { UiForm, UiFormListItem } from '@/types/block';
+import { ApiForm, ApiFormStatus } from '@/types/form';
+import { UiForm, UiFormListItem } from '@/types/form';
 
 /**
  * Transform an API form to UI-specific format

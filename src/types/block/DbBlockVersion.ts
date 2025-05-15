@@ -4,6 +4,7 @@
  * Uses snake_case naming to match database column names
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DbBlockType, DbBlockSubtype } from './DbBlock';
 
 /**
@@ -16,7 +17,7 @@ export interface DbBlockVersion {
   form_version_id: string; // UUID, references form_versions.id
   title: string | null; // Display title
   description: string | null; // Optional description
-  type: DbBlockType; // 'static', 'dynamic', 'integration', 'layout'
+  type: DbApiBlockType; // 'static', 'dynamic', 'integration', 'layout'
   subtype: DbBlockSubtype; // Specific block type within the category
   required: boolean | null; // Whether an answer is required
   order_index: number; // Position within the form version
@@ -33,6 +34,6 @@ export interface DbSimpleBlockVersion {
   id: string; // UUID of the block version
   block_id: string; // UUID of the original block
   title: string | null;
-  type: DbBlockType;
+  type: DbApiBlockType;
   subtype: DbBlockSubtype;
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FormBlock } from '@/types/block-types'
+import { UiBlock } from '@/types/block/UiBlock'
 import { Connection } from '@/types/workflow-types'
 import { BlockPill } from '@/components/form/builder/block-pill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -9,14 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface DefaultTargetCardProps {
   connection: Connection;
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   onTargetChange: (targetId: string) => void; 
   onPendingChange: () => void;
 }
 
 export function DefaultTargetCard({ connection, blocks, onTargetChange, onPendingChange }: DefaultTargetCardProps) {
   // const sourceBlock = blocks.find(b => b.id === connection.sourceId); // Not currently used
-  // const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'; // Not currently used
+  // const sourceApiBlockType = sourceBlock?.subtype || 'unknown'; // Not currently used
   // Using static styling instead of dynamic color scheme to avoid TypeScript errors
   
   // Filter out the source block from the available target blocks

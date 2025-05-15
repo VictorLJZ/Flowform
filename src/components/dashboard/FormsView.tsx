@@ -11,7 +11,14 @@ import { useForms } from "@/hooks/useForms"
 import { usePublishForm } from "@/hooks/usePublishForm"
 import { getFormWithBlocksClient } from "@/services/form/getFormWithBlocksClient"
 import { mapFromDbBlockType } from "@/utils/blockTypeMapping"
-import type { BlockType } from "@/types/block-types"
+import type { ApiBlockType, ApiBlockSubtype } from "@/types/block/ApiBlock"
+import type { DbBlock } from "@/types/block/DbBlock"
+import type { UiBlock } from "@/types/block/UiBlock"
+
+// Extend UiBlock to include our custom properties
+interface CustomUiBlock extends UiBlock {
+  blockTypeId: string;
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,24 +58,41 @@ export function FormsView({ workspaceId, viewMode, className = '' }: FormsViewPr
       }
       
       // Convert database blocks to the format expected by our publishing function
-      // Using type assertion to handle the complex mapping between DB and form blocks
-      const convertedBlocks = form.blocks.map((dbBlock) => {
+      const convertedBlocks: CustomUiBlock[] = form.blocks.map((dbBlock: DbBlock) => {
         const blockTypeId = mapFromDbBlockType(dbBlock.type || 'static', dbBlock.subtype || 'short_text');
-        // Determine block type based on db type
-        const blockType: BlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
-                                     dbBlock.type === 'integration' ? 'integration' : 
-                                     dbBlock.type === 'layout' ? 'layout' : 'static';
         
-        // Create the block using the properties that exist in the FormBlock type
-        return {
+        // Determine block type based on db type
+        const blockType: ApiBlockType = dbBlock.type === 'dynamic' ? 'dynamic' : 
+                                      dbBlock.type === 'integration' ? 'integration' : 
+                                      dbBlock.type === 'layout' ? 'layout' : 'static';
+        
+        // Determine block subtype based on db type
+        const blockSubtype: ApiBlockSubtype = dbBlock.subtype?.toLowerCase() as ApiBlockSubtype || 'short_text';
+        
+        // Create the block with all required properties for UiBlock type
+        const uiBlock: CustomUiBlock = {
           id: dbBlock.id,
-          blockTypeId: blockTypeId,
+          formId: formId, // Required by UiBlock
           type: blockType,
+          subtype: blockSubtype, // Required by ApiBlock
           title: dbBlock.title || '',
-          order_index: dbBlock.order_index || 0,
+          description: dbBlock.description || null, // Required by ApiBlock
           required: dbBlock.required || false,
-          settings: dbBlock.settings || {}
+          orderIndex: dbBlock.order_index || 0, // camelCase for API layer
+          settings: dbBlock.settings || {},
+          createdAt: dbBlock.created_at || new Date().toISOString(),
+          updatedAt: dbBlock.updated_at || new Date().toISOString(),
+          // Optional UI-specific properties
+          displayStatus: 'valid',
+          isVisible: true,
+          isEditable: true,
+          hasValidationErrors: false,
+          validationMessages: [],
+          // Custom property for UI
+          blockTypeId,
         };
+        
+        return uiBlock;
       });
       
       // Publish the form with its blocks

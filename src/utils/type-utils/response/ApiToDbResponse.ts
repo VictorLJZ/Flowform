@@ -69,7 +69,7 @@ export function apiToDbStaticBlockAnswer(apiAnswer: ApiStaticBlockAnswer): DbSta
     id: apiAnswer.id,
     response_id: apiAnswer.responseId,
     block_id: apiAnswer.blockId,
-    answer: apiAnswer.answer ?? null,
+    type: "answer", content: apiAnswer.answer ?? null,
     answered_at: apiAnswer.answeredAt
   };
 }
@@ -84,7 +84,7 @@ export function apiToDbStaticBlockAnswerInput(apiInput: Omit<ApiStaticBlockAnswe
   return {
     response_id: apiInput.responseId,
     block_id: apiInput.blockId,
-    answer: apiInput.answer ?? null
+    type: "answer", content: apiInput.answer ?? null
   };
 }
 
@@ -128,7 +128,7 @@ export function apiToDbDynamicBlockResponse(apiDynamicResponse: ApiDynamicBlockR
     updated_at: apiDynamicResponse.updatedAt ?? null,
     completed_at: apiDynamicResponse.completedAt ?? null,
     conversation: apiToDbQAPairs(apiDynamicResponse.conversation),
-    next_question: apiDynamicResponse.nextQuestion ?? null
+    next_type: "question", content: apiDynamicResponse.nextQuestion ?? null
   };
 }
 
@@ -143,6 +143,6 @@ export function apiToDbDynamicBlockResponseInput(apiInput: Omit<ApiDynamicBlockR
     response_id: apiInput.responseId,
     block_id: apiInput.blockId,
     conversation: apiToDbQAPairs(apiInput.conversation),
-    next_question: apiInput.nextQuestion ?? null
+    next_type: "question", content: apiInput.nextQuestion ?? null
   };
 }

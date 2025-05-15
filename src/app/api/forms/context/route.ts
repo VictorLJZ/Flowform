@@ -73,7 +73,7 @@ export async function GET(request: Request) {
           title: block.title,
           description: block.description,
           type: 'dynamic' as const,
-          starter_question: starterQuestion
+          starter_type: "question", content: starterQuestion
         };
       });
       

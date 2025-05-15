@@ -35,11 +35,11 @@ export function AIConversationHistory({
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Starter</span>
                 )}
               </div>
-              <p className="text-sm">{item.question}</p>
+              <p className="text-sm">{item.content}</p>
             </div>
             <div className="bg-gray-50 p-3 rounded-md ml-4">
-              <p className="text-sm font-medium text-gray-800">Your answer:</p>
-              <p className="text-sm">{item.answer}</p>
+              <p className="text-sm font-medium text-gray-800">Your type: &quot;answer&quot;, content:</p>
+              <p className="text-sm">{item.type === 'answer' ? item.content : ''}</p>
             </div>
           </div>
         ))}

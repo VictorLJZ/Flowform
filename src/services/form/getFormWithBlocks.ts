@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
-import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption, WorkflowEdge } from '@/types/supabase-types';
+import { WorkflowEdge } from '@/types/supabase-types';
+import { DbForm } from '@/types/form';
+import { DbBlock } from '@/types/block/DbBlock';
+import { DbBlockOption } from '@/types/block/DbBlock';
+import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
 
 
 /**
@@ -8,6 +12,15 @@ import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption, WorkflowEdge 
  * @param formId - The ID of the form to retrieve
  * @returns The complete form with blocks or null if not found
  */
+// Define a type for the complete form with all its related data
+type CompleteForm = DbForm & {
+  blocks: (DbBlock & {
+    dynamic_config: DbDynamicBlockConfig | null;
+    options: DbBlockOption[] | null;
+  })[];
+  workflow_edges: WorkflowEdge[];
+};
+
 export async function getFormWithBlocks(formId: string): Promise<CompleteForm | null> {
   const supabase = await createClient();
 
@@ -48,7 +61,7 @@ export async function getFormWithBlocks(formId: string): Promise<CompleteForm | 
     ['multiple_choice', 'scale', 'yes_no'].includes(block.subtype as string)
   );
   
-  let blockOptions: BlockOption[] = [];
+  let blockOptions: DbBlockOption[] = [];
   if (optionsBlocks.length > 0) {
     const optionsBlockIds = optionsBlocks.map(block => block.id);
     const { data: options, error: optionsError } = await supabase
@@ -67,9 +80,9 @@ export async function getFormWithBlocks(formId: string): Promise<CompleteForm | 
 
   // Assemble the complete form with blocks, their configs and options
   const blocksWithDetails = blocks.map(block => {
-    const blockWithDetails: FormBlock & { 
-      dynamic_config?: DynamicBlockConfig;
-      options?: BlockOption[];
+    const blockWithDetails: DbBlock & { 
+      dynamic_config?: DbDynamicBlockConfig;
+      options?: DbBlockOption[];
     } = { ...block };
 
     // Add dynamic config if this is a dynamic block - derived from block settings

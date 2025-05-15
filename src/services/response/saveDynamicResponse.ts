@@ -82,33 +82,61 @@ export async function saveDynamicResponse(
     is_starter: isFirstQuestion
   };
   
+  // Legacy format types for conversion - using specific types instead of any
+  type OldQAPairFormat = {
+    question?: string;
+    answer?: string;
+    timestamp?: string;
+    isStarter?: boolean;
+  };
+  
+  type ApiLikeQAPairFormat = { 
+    type: 'question' | 'answer'; 
+    content: string; 
+    timestamp?: string; 
+    isStarter?: boolean 
+  };
+  
   // Helper function to convert old QAPair format to new DbQAPair format
-  const convertOldQAPairsToNew = (oldConversation: any[]): DbQAPair[] => {
+  const convertOldQAPairsToNew = (oldConversation: unknown[]): DbQAPair[] => {
     const newConversation: DbQAPair[] = [];
     
-    // Check if using old or new format
-    if (oldConversation.length > 0 && 'question' in oldConversation[0]) {
-      // Old format with {question, answer}
-      for (const oldPair of oldConversation) {
-        // Add question pair
+    for (let i = 0; i < oldConversation.length; i += 1) {
+      const item = oldConversation[i];
+      
+      // Skip non-object items
+      if (!item || typeof item !== 'object') continue;
+      
+      // Handle legacy format with question/answer properties
+      if ('question' in item || 'answer' in item) {
+        const qaPair = item as OldQAPairFormat;
+        if (qaPair.question) {
+          newConversation.push({
+            type: 'question',
+            content: qaPair.question,
+            timestamp: qaPair.timestamp || new Date().toISOString(),
+            is_starter: qaPair.isStarter || false
+          });
+        }
+        if (qaPair.answer) {
+          newConversation.push({
+            type: 'answer',
+            content: qaPair.answer,
+            timestamp: qaPair.timestamp || new Date().toISOString(),
+            is_starter: qaPair.isStarter || false
+          });
+        }
+      } 
+      // Handle API-like format with type property
+      else if ('type' in item && 'content' in item) {
+        const qaPair = item as ApiLikeQAPairFormat;
         newConversation.push({
-          type: 'question',
-          content: oldPair.question,
-          timestamp: oldPair.timestamp,
-          is_starter: oldPair.is_starter || false
-        });
-        
-        // Add answer pair
-        newConversation.push({
-          type: 'answer',
-          content: oldPair.answer,
-          timestamp: oldPair.timestamp,
-          is_starter: oldPair.is_starter || false
+          type: qaPair.type,
+          content: qaPair.content,
+          timestamp: qaPair.timestamp || new Date().toISOString(),
+          is_starter: qaPair.isStarter || false
         });
       }
-    } else {
-      // Already in new format
-      return oldConversation as DbQAPair[];
     }
     
     return newConversation;
@@ -179,7 +207,7 @@ export async function saveDynamicResponse(
         throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Error generating next question:', error);
+      console.error('Error generating next type: "question", content:', error);
       throw error;
     }
   }

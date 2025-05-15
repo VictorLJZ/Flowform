@@ -28,7 +28,7 @@ import { MediaRightSplitLayout } from "./slide-layouts/MediaRightSplitLayout"
 import { MediaTopLayout } from "./slide-layouts/MediaTopLayout"
 import { MediaBottomLayout } from "./slide-layouts/MediaBottomLayout"
 import { MediaBetweenLayout } from "./slide-layouts/MediaBetweenLayout"
-import type { FormBlock } from "@/types/supabase-types"; // Import FormBlock type
+import type { UiBlock } from "@/types/block/UiBlock"; // Import UiBlock type
 
 interface SlideWrapperProps {
   id: string
@@ -42,7 +42,7 @@ interface SlideWrapperProps {
     layout: SlideLayout
   }
   children: React.ReactNode
-  onUpdate?: (updates: Partial<FormBlock>) => void
+  onUpdate?: (updates: Partial<UiBlock>) => void
   onNext?: () => void
   isNextDisabled?: boolean
   blockRef?: React.RefObject<HTMLDivElement | null>

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { DynamicBlockAnalytics } from '@/types/supabase-types';
+import { ApiDynamicBlockAnalytics } from '@/types/analytics';
 import { queueEvent } from '@/lib/analytics/eventQueue';
 
 /**
@@ -20,7 +20,7 @@ export async function trackDynamicBlockAnalytics(
   questionText: string,
   answer: string,
   timeToAnswerSeconds?: number
-): Promise<DynamicBlockAnalytics> {
+): Promise<ApiDynamicBlockAnalytics> {
   const supabase = createClient();
   const timestamp = new Date().toISOString();
   

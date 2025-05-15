@@ -18,7 +18,7 @@ import {
 import { UiBlock } from '@/types/block/UiBlock'
 
 // Define BlockDefinition interface since it was previously in block-types.ts
-interface BlockDefinition {
+export interface BlockDefinition {
   id: string;
   type: string;
   name: string;
@@ -30,7 +30,7 @@ interface BlockDefinition {
   isPremium?: boolean;
   getDefaultValues?: () => Record<string, unknown>;
   validate?: (values: Record<string, unknown>) => Record<string, string> | null;
-  settingsComponent?: React.ComponentType<any>;
+  settingsComponent?: React.ComponentType<{ block: UiBlock; updateSettings: (settings: Record<string, unknown>) => void }>;
 }
 
 // Block registry
@@ -79,7 +79,7 @@ const blockRegistry: Record<string, BlockDefinition> = {
       // Basic email validation example
       const email = values.answer as string
       if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-        return { answer: "Please enter a valid email address" }
+        return { type: "answer", content: "Please enter a valid email address" }
       }
       return null
     }
@@ -105,13 +105,13 @@ const blockRegistry: Record<string, BlockDefinition> = {
       const max = values.max !== undefined ? Number(values.max) : undefined
       
       if (isNaN(num)) {
-        return { answer: "Please enter a valid number" }
+        return { type: "answer", content: "Please enter a valid number" }
       }
       if (min !== undefined && num < min) {
-        return { answer: `Value must be at least ${min}` }
+        return { type: "answer", content: `Value must be at least ${min}` }
       }
       if (max !== undefined && num > max) {
-        return { answer: `Value must be at most ${max}` }
+        return { type: "answer", content: `Value must be at most ${max}` }
       }
       return null
     }

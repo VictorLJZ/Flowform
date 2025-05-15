@@ -1,13 +1,13 @@
+import { UiBlock } from '@/types/block/UiBlock';
 import { Connection } from '@/types/workflow-types';
-import { FormBlock } from '@/types/block-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { getConditionSummary } from '@/utils/workflow/condition-utils';
 
 interface ConnectionOverviewProps {
-  sourceBlock: FormBlock | null | undefined;
-  targetBlock: FormBlock | null | undefined;
+  sourceBlock: UiBlock | null | undefined;
+  targetBlock: UiBlock | null | undefined;
   sourceBlockType: string;
   currentConnection: Connection | null;
 }

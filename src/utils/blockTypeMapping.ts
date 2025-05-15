@@ -1,7 +1,9 @@
 "use client"
 
-import { BlockType } from '@/types/block-types';
-import { StaticBlockSubtype } from '@/types/supabase-types';
+import { ApiBlockType, ApiStaticBlockSubtype } from '@/types/block/ApiBlock';
+
+// BlockType alias to match the three-layer type system architecture
+type BlockType = ApiBlockType;
 
 /**
  * Map block types to database type and subtype
@@ -11,13 +13,13 @@ import { StaticBlockSubtype } from '@/types/supabase-types';
  */
 export function mapToDbBlockType(blockTypeId: string): { 
   type: BlockType, 
-  subtype: StaticBlockSubtype | 'dynamic' | 'ai_conversation' 
+  subtype: ApiStaticBlockSubtype | 'dynamic' | 'ai_conversation' 
 } {
-  console.log('DEBUG - mapToDbBlockType called with:', blockTypeId);
+  console.log('DEBUG - mapToDbApiBlockType called with:', blockTypeId);
   
   // Handle null or undefined blockTypeId (defensive programming)
   if (!blockTypeId) {
-    console.warn('WARNING: mapToDbBlockType received null/undefined blockTypeId, defaulting to static/short_text');
+    console.warn('WARNING: mapToDbApiBlockType received null/undefined blockTypeId, defaulting to static/short_text');
     return { type: 'static', subtype: 'short_text' };
   }
   
@@ -59,20 +61,20 @@ export function mapToDbBlockType(blockTypeId: string): {
   console.log(`DEBUG - Using ${blockTypeId} directly as static/${blockTypeId}`);
   return { 
     type: 'static', 
-    subtype: blockTypeId as StaticBlockSubtype 
+    subtype: blockTypeId as ApiStaticBlockSubtype 
   };
 }
 
 /**
  * Map database type and subtype to the block type ID
- * This is the reverse of mapToDbBlockType and handles the
+ * This is the reverse of mapToDbApiBlockType and handles the
  * special case of mapping dynamic blocks back to their specific types
  * 
  * @param type - The database block type
  * @param subtype - The database block subtype
  * @returns Block type ID for the registry
  */
-export function mapFromDbBlockType(type: BlockType, subtype: string | StaticBlockSubtype | 'dynamic' | 'ai_conversation'): string {
+export function mapFromDbBlockType(type: BlockType, subtype: string | ApiStaticBlockSubtype | 'dynamic' | 'ai_conversation'): string {
   // Log input values for debugging
   console.log('💼🔢🖇👓🚀 MAP FUNCTION: Mapping DB -> Frontend:', { type, subtype });
   console.log(`💼🔢🖇👓🚀 MAP FUNCTION: DB type=${type}, subtype=${subtype}, type of subtype=${typeof subtype}`);

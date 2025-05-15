@@ -98,7 +98,7 @@ export function formatFormContextClient(context: FormContextData): string {
   if (context.dynamicBlocks.length > 0) {
     prompt += "Other Dynamic Conversation Blocks:\n";
     context.dynamicBlocks.forEach((b, i) => {
-      prompt += `${i+1}. Block: ${b.title}\n   Starter Question: "${b.starter_question}"\n`;
+      prompt += `${i+1}. Block: ${b.title}\n   Starter Question: "${b.content}"\n`;
     });
   }
   

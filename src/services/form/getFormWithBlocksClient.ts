@@ -1,4 +1,4 @@
-import { CompleteForm } from '@/types/supabase-types';
+import type { CompleteForm } from '@/types/form-types';
 
 /**
  * Client-side version of getFormWithBlocks

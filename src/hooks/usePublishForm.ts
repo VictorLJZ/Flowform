@@ -5,7 +5,7 @@ import { useFormBuilderStore } from "@/stores/formBuilderStore";
 import { publishFormWithFormBuilderStore } from "@/services/form/publishFormWithFormBuilderStore";
 import { ApiFormVersion } from "@/types/form";
 import { ApiForm } from "@/types/form";
-import { FormBlock } from "@/types/block-types";
+import { UiBlock } from "@/types/block";
 
 /**
  * Hook to handle form publishing with consistent behavior
@@ -64,7 +64,7 @@ export function usePublishForm() {
    */
   const publishFormWithBlocks = async (
     formId: string,
-    blocksToPublish: FormBlock[]
+    blocksToPublish: UiBlock[]
   ): Promise<{
     form: ApiForm;
     version?: ApiFormVersion | null;

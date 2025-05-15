@@ -12,10 +12,18 @@ const AnswerRequestSchema = z.object({
     z.boolean(),
     z.null(),
     z.array(z.string()),
-    z.array(z.object({
-      question: z.string(),
-      answer: z.string()
-    }))
+    z.array(
+      z.union([
+        z.object({
+          type: z.literal("question"),
+          content: z.string()
+        }),
+        z.object({
+          type: z.literal("answer"),
+          content: z.string()
+        })
+      ])
+    )
   ])
 });
 
@@ -146,17 +154,17 @@ export async function POST(request: Request) {
       .maybeSingle();
     
     if (existingError) {
-      console.error('Error checking for existing answer:', existingError);
+      console.error('Error checking for existing type: "answer", content:', existingError);
     }
     
     const answerRecord = {
       response_id,
       block_id,
-      answer: answerValue,
+      type: "answer", content: answerValue,
       answered_at: new Date().toISOString()
     };
     
-    console.log('Saving answer:', JSON.stringify(answerRecord));
+    console.log('Saving type: "answer", content:', JSON.stringify(answerRecord));
     
     // First check the form status to make sure it's published
     console.log('Checking form status for block:', block_id);
@@ -190,7 +198,7 @@ export async function POST(request: Request) {
         .select();
       
       if (upsertError) {
-        console.error('Error upserting answer:', upsertError);
+        console.error('Error upserting type: "answer", content:', upsertError);
         
         // Special handling for RLS errors
         if (upsertError.code === '42501') {
@@ -204,7 +212,7 @@ export async function POST(request: Request) {
               {
                 p_response_id: response_id,
                 p_block_id: block_id,
-                p_answer: answerValue
+                p_type: "answer", content: answerValue
               }
             );
             

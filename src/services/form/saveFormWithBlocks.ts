@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { SaveFormInput, SaveFormOutput } from '@/types/form-service-types';
-import type { FormBlock as FrontendFormBlock } from '@/types/block-types';
+import type { UiBlock as FrontendUiBlock } from '@/types/block';
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import { v4 as uuidv4 } from 'uuid';
-import { DbForm, ApiForm } from '@/types/block';
+import { DbForm } from '@/types/form/DbForm';
+import { ApiForm } from '@/types/form/ApiForm';
 import { dbToApiForm } from '@/utils/type-utils';
 import { mutate } from 'swr';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -19,7 +20,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
  */
 export async function saveFormWithBlocks(
   formData: SaveFormInput, 
-  blocks: FrontendFormBlock[]
+  blocks: FrontendUiBlock[]
 ): Promise<SaveFormOutput> {
   const supabase = createClient();
   
@@ -122,7 +123,7 @@ export async function saveFormWithBlocks(
     
     // Upsert blocks 
     const blocksToUpsert = blocks.map((block, index) => {
-      const { type, subtype } = mapToDbBlockType(block.blockTypeId);
+      const { type, subtype } = mapToDbBlockType(block.subtype);
       return {
         id: block.id, // Now properly UUID format from the frontend
         form_id: formId,

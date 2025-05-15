@@ -1,4 +1,4 @@
-import { Analytics } from '@/types/analytics-types';
+import { ApiFormMetrics } from '@/types/analytics';
 
 /**
  * Get analytics data for a specific form - Client-side implementation
@@ -13,7 +13,7 @@ export async function getFormAnalyticsClient(
   formId: string,
   startDate?: string,
   endDate?: string
-): Promise<Analytics> {
+): Promise<ApiFormMetrics> {
   try {
     // Construct the query parameters
     const params = new URLSearchParams({ formId });

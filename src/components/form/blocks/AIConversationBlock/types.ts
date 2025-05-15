@@ -3,7 +3,7 @@ import { ApiQAPair } from '@/types/response';
 import React from "react";
 
 /**
- * Type for block updates that works with both block-types.ts and supabase-types.ts FormBlock definitions
+ * Type for block updates that works with both block-types.ts and supabase-types.ts UiBlock definitions
  */
 export interface BlockUpdate {
   id?: string;

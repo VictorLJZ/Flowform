@@ -1,4 +1,4 @@
-import { DbForm, ApiForm, UiForm } from '@/types/block';
+import { DbForm, ApiForm, UiForm } from '@/types/form';
 import { createClient } from '@/lib/supabase/client';
 import { useWorkspaceSWR, createWorkspaceFetcher } from './swr';
 import { dbToApiForm } from '@/utils/type-utils';

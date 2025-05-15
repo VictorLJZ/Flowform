@@ -60,3 +60,18 @@ export interface DbDynamicBlockAnalytics {
   sentiment_score: number | null; // Float
   topics: { topic: string; confidence: number; relevance?: number }[] | null; // JSONB
 }
+
+/**
+ * Block performance analytics data
+ * Used in the getBlockPerformance service
+ */
+export interface DbBlockPerformance {
+  block_id: string;
+  form_id: string;
+  block_type: string;
+  block_subtype: string;
+  completion_rate: number;
+  average_time_spent: number;
+  skip_rate: number;
+  metrics: DbBlockMetrics | null;
+}

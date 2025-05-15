@@ -1,52 +1,61 @@
-import { CompleteForm } from '@/types/supabase-types';
-import { FormBlock, BlockType } from '@/types/block-types';
+import { CompleteForm } from '@/types/form-types';
+import { UiBlock } from '@/types/block';
+import { ApiBlockType } from '@/types/block/ApiBlock';
 import { Connection, Rule } from '@/types/workflow-types';
-import { mapFromDbBlockType } from '@/utils/blockTypeMapping';
 
 /**
  * Transforms versioned form data from the database format to the application format
  * with proper typing to avoid TypeScript errors
  */
 export function transformVersionedFormData(formData: CompleteForm): {
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   connections: Connection[];
   nodePositions: Record<string, { x: number; y: number }>;
 } {
   // 1. Transform blocks
-  const blocks: FormBlock[] = formData.blocks.map((block) => {
-    // Map database type/subtype to frontend blockTypeId
-    const blockTypeId = mapFromDbBlockType(block.type, block.subtype);
+  const blocks: UiBlock[] = formData.blocks.map(block => {
+    // Map database block to UiBlock
+    const blockType = block.type as ApiBlockType;
+    const blockTypeId = block.type; // Assuming type is the block type ID
     
-    // Determine the block type (static, dynamic, etc.)
-    const blockType: BlockType = (block.type === 'dynamic' || blockTypeId === 'ai_conversation') 
-      ? 'dynamic' 
-      : (block.type as BlockType) || 'static';
-    
-    // Create properly typed FormBlock object
     return {
       id: block.id,
+      formId: formData.form_id,
       blockTypeId,
       type: blockType,
-      title: block.title,
+      title: block.title || '',
       description: block.description || '',
-      required: block.required,
-      order_index: block.order_index,
-      created_at: block.created_at || new Date().toISOString(),
-      updated_at: block.updated_at || block.created_at || new Date().toISOString(),
-      settings: block.settings || {}
-    };
+      required: block.required || false,
+      orderIndex: block.order_index || 0,
+      createdAt: block.created_at || new Date().toISOString(),
+      updatedAt: block.updated_at || new Date().toISOString(),
+      settings: block.settings || {},
+      // Add any other required UiBlock properties with defaults
+      subtype: (block as { block_subtype?: string }).block_subtype || 'default'
+    } as UiBlock;
   });
 
   // 2. Transform workflow connections
-  const connections: Connection[] = formData.workflow_edges ? 
-    formData.workflow_edges.map((edge) => {
+  const connections: Connection[] = (formData.workflow_edges || [])
+    .filter(edge => {
+      const isValid = edge && edge.id && edge.source_block_id;
+      if (!isValid) {
+        console.warn('Skipping invalid edge:', edge);
+      }
+      return isValid;
+    })
+    .map(edge => {
       let parsedRules: Rule[] = [];
       if (edge.rules) { 
         try {
-          const rulesFromEdge = JSON.parse(edge.rules);
+          const rulesFromEdge = typeof edge.rules === 'string' 
+            ? JSON.parse(edge.rules) 
+            : edge.rules;
+          
           if (Array.isArray(rulesFromEdge)) {
             parsedRules = rulesFromEdge.filter(
-              (r: Partial<Rule>) => r.id && r.target_block_id && r.condition_group
+              (r: Partial<Rule> & { target_block_id?: string; condition_group?: unknown }) => 
+                r.id && r.target_block_id && r.condition_group
             ) as Rule[]; 
           } else {
             console.warn(`Parsed edge.rules for edge ${edge.id} is not an array:`, rulesFromEdge);
@@ -57,15 +66,14 @@ export function transformVersionedFormData(formData: CompleteForm): {
       }
 
       return {
-        id: edge.id,
-        sourceId: edge.source_block_id,
-        defaultTargetId: edge.default_target_id || null, 
-        rules: parsedRules, 
-        order_index: edge.order_index || 0,
+        id: edge.id!,
+        sourceId: edge.source_block_id!,
+        defaultTargetId: edge.default_target_id || null,
+        rules: parsedRules,
+        order_index: edge.order_index || 0, // Provide default value
         is_explicit: edge.is_explicit || false,
-      };
-    })
-    : [];
+      } as Connection; // Type assertion to ensure we match the Connection type
+    });
 
   // 3. Extract node positions from form settings
   let nodePositions: Record<string, { x: number; y: number }> = {};

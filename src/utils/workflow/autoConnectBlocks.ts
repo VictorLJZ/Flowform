@@ -6,11 +6,11 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { FormBlock } from '@/types/block-types';
+import { UiBlock } from '@/types/block';
 import { Connection } from '@/types/workflow-types';
 
 interface AutoConnectParams {
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   connections: Connection[];
   targetBlockId?: string; // Optional: only process connections for a specific block
 }
@@ -29,7 +29,7 @@ export function createDefaultConnections({
   console.log(`🔗🔗 [AutoConnect] Called with ${blocks.length} blocks, ${connections.length} connections, targetBlockId: ${targetBlockId || 'none'}`);
   
   // Sort blocks by order index
-  const sortedBlocks = [...blocks].sort((a, b) => a.order_index - b.order_index);
+  const sortedBlocks = [...blocks].sort((a, b) => a.orderIndex - b.orderIndex);
   
   // If no blocks or only one block, no connections needed
   if (sortedBlocks.length <= 1) {
@@ -46,7 +46,7 @@ export function createDefaultConnections({
   
   // Debug log the sorted blocks
   console.log(`🔗🔍 [AutoConnect] Sorted blocks:`, 
-    sortedBlocks.map(b => `${b.title || 'Untitled'} (${b.id}): index ${b.order_index}`).join(', '));
+    sortedBlocks.map(b => `${b.title || 'Untitled'} (${b.id}): index ${b.orderIndex}`).join(', '));
   
   let updatedConnections: Connection[] = [...connections];
   

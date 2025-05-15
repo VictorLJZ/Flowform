@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { CompleteForm, FormBlock, DynamicBlockConfig, BlockOption } from '@/types/supabase-types';
+import { CompleteForm } from '@/types/form';
+import type { DbBlock, DbBlockOption, DbDynamicBlockConfig } from '@/types/block/DbBlock';
 
 /**
  * Get the latest version of a form with all its blocks, configs, and options
@@ -61,7 +62,7 @@ export async function getLatestFormVersionWithBlocks(formId: string): Promise<Co
       title: vb.title,
       description: vb.description,
       required: vb.required,
-      order_index: vb.order_index,
+      order_index: vb.orderIndex,
       settings: vb.settings || {}
     }));
   } else {
@@ -83,20 +84,21 @@ export async function getLatestFormVersionWithBlocks(formId: string): Promise<Co
   // Fetch dynamic blocks configurations
   const dynamicBlocks = blocks.filter(block => block.type === 'dynamic');
   
-  let dynamicConfigs: DynamicBlockConfig[] = [];
+  let dynamicConfigs: DbDynamicBlockConfig[] = [];
   if (dynamicBlocks.length > 0) {
     // Instead of querying a separate table, extract config from block settings
     dynamicConfigs = dynamicBlocks.map(block => {
       const settings = block.settings || {};
       return {
         block_id: block.id,
-        starter_question: block.title || '',
+        starter_question: block.title || 'Ask me anything',
+        starter_type: "question",
         temperature: settings.temperature || 0.7,
         max_questions: settings.maxQuestions || 5,
         ai_instructions: settings.contextInstructions || '',
         created_at: block.created_at,
         updated_at: block.updated_at
-      } as DynamicBlockConfig;
+      } as DbDynamicBlockConfig;
     });
   }
   
@@ -106,7 +108,7 @@ export async function getLatestFormVersionWithBlocks(formId: string): Promise<Co
     ['multiple_choice', 'checkbox_group', 'dropdown'].includes(block.subtype as string)
   );
   
-  let blockOptions: BlockOption[] = [];
+  let blockOptions: DbBlockOption[] = [];
   if (optionsBlocks.length > 0) {
     const optionsBlockIds = optionsBlocks.map(block => block.id);
     const { data: options, error: optionsError } = await supabase
@@ -125,9 +127,9 @@ export async function getLatestFormVersionWithBlocks(formId: string): Promise<Co
 
   // Assemble the complete form with blocks, their configs and options
   const blocksWithDetails = blocks.map(block => {
-    const blockWithDetails: FormBlock & { 
-      dynamic_config?: DynamicBlockConfig;
-      options?: BlockOption[];
+    const blockWithDetails: DbBlock & { 
+      dynamic_config?: DbDynamicBlockConfig;
+      options?: DbBlockOption[];
     } = { ...block };
 
     // Add dynamic config if this is a dynamic block

@@ -2,7 +2,7 @@
 
 // import { useState } from 'react' // Not currently used
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FormBlock } from '@/types/block-types'
+import { UiBlock } from '@/types/block/UiBlock'
 import { Connection, ConditionGroup, ConditionRule, Rule } from '@/types/workflow-types'
 import { BlockPill } from '@/components/form/builder/block-pill'
 import { Button } from '@/components/ui/button'
@@ -14,14 +14,14 @@ import { v4 as uuidv4 } from 'uuid'
 
 interface RuleSettingsCardProps {
   connection: Connection;
-  blocks: FormBlock[];
+  blocks: UiBlock[];
   onRuleChange: (updatedRules: Rule[]) => void;
   onPendingChange: () => void;
 }
 
 export function RuleSettingsCard({ connection, blocks, onRuleChange, onPendingChange }: RuleSettingsCardProps) {
   const sourceBlock = blocks.find(b => b.id === connection.sourceId);
-  const sourceBlockType = sourceBlock?.blockTypeId || 'unknown';
+  const sourceApiBlockType = sourceBlock?.subtype || 'unknown';
   // Using static class names instead of dynamic color scheme to avoid TypeScript errors
   
   // Add a new rule to the connection
@@ -136,7 +136,7 @@ export function RuleSettingsCard({ connection, blocks, onRuleChange, onPendingCh
               updatedCondition.operator = 'equals';
               if (field.startsWith('choice:')) {
                 updatedCondition.value = true;
-              } else if (field === 'rating' || (field === 'answer' && sourceBlockType === 'number')) {
+              } else if (field === 'rating' || (field === 'answer' && sourceApiBlockType === 'number')) {
                 updatedCondition.value = 0;
               } else if (field === 'selected') {
                 updatedCondition.value = true;

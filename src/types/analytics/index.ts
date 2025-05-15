@@ -12,6 +12,7 @@ export * from './DbFormMetrics';
 // API layer exports
 export * from './ApiBlockMetrics'; // Will contain all API block types
 export * from './ApiFormMetrics';
+export * from './ApiResponse';
 
 // UI layer exports
 export * from './UiBlockMetrics'; // Will contain all UI block types

@@ -10,14 +10,14 @@ import { BlockPresentation } from '@/types/theme-types';
 export interface BaseBlockMapperProps {
   block: UiBlock;
   currentAnswer: string | number | string[] | ApiQAPair[];
-  onChange: (answer: string | number | string[] | ApiQAPair[]) => void;
+  onChange: (type: "answer", content: string | number | string[] | ApiQAPair[]) => void;
   analytics: ReturnType<typeof useAnalytics>;
   isSubmitting: boolean;
   // Include refs or specific functions needed by certain mappers
   aiConversationRef?: React.RefObject<AIConversationHandle | null>;
   responseId?: string | null;
   formId?: string;
-  submitAnswer?: (block: UiBlock, answer: string | number | string[] | ApiQAPair[]) => Promise<void>; 
+  submitAnswer?: (block: UiBlock, type: "answer", content: string | number | string[] | ApiQAPair[]) => Promise<void>; 
 }
 
 /**

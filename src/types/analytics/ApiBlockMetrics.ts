@@ -60,3 +60,18 @@ export interface ApiDynamicBlockAnalytics {
   sentimentScore: number | null;
   topics: { topic: string; confidence: number; relevance?: number }[] | null;
 }
+
+/**
+ * Block performance analytics data - API layer type
+ * Used in client-side services for block performance data
+ */
+export interface ApiBlockPerformance {
+  blockId: string;
+  formId: string;
+  blockType: string;
+  blockSubtype: string;
+  completionRate: number;
+  averageTimeSpent: number;
+  skipRate: number;
+  metrics: ApiBlockMetrics | null;
+}

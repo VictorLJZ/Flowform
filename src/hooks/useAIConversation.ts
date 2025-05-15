@@ -181,9 +181,9 @@ export function useAIConversation(
   }, []);
   
   // Safe submit function that works in both modes
-  const submitAnswer = async (question: string, answer: string, questionIndex?: number, isStarterQuestion = false) => {
+  const submitAnswer = async (questionType: "question", questionContent: string, answerType: "answer", answerContent: string, questionIndex?: number, isStarterQuestion = false) => {
     if (isBuilder) {
-      console.log('Builder mode submit:', { question, answer, questionIndex, isStarterQuestion });
+      console.log('Builder mode submit:', { questionContent, answerContent, questionIndex, isStarterQuestion });
       return Promise.resolve(undefined);
     }
     
@@ -192,12 +192,10 @@ export function useAIConversation(
       console.log('Submit answer with:', { 
         responseId, 
         blockId,
-        questionLength: question?.length || 0,
-        answerLength: answer?.length || 0,
+        questionContent,
+        answerContent,
         questionIndex,
-        isStarterQuestion,
-        isEditingPrevious: typeof questionIndex === 'number' && questionIndex < (data?.conversation?.length || 0) - 1,
-        starterQuestionSample: isStarterQuestion ? question?.substring(0, 30) + '...' : ''
+        isStarterQuestion 
       });
       
       // Create the input data for the answer submission
@@ -205,8 +203,8 @@ export function useAIConversation(
         responseId,
         blockId,
         formId,
-        question, 
-        answer,
+        questionContent, 
+        answerContent,
         isStarterQuestion,
         // When editing a previous answer, always set isComplete to false to prompt regeneration
         isComplete: typeof questionIndex === 'number' && questionIndex < (data?.conversation?.length || 0) - 1 
@@ -228,7 +226,12 @@ export function useAIConversation(
           console.log(`Truncating conversation at index ${questionIndex}`);
           console.log('Previous conversation state:', {
             length: data.conversation.length,
-            current: data.conversation.map(item => item.question.substring(0, 20) + '...').join(' -> ')
+            current: data.conversation.map(item => {
+              if (item.type === 'question') {
+                return item.content.substring(0, 20) + '...'
+              }
+              return ''
+            }).join(' -> ')
           });
           
           // Always set isComplete to false when truncating to force regeneration
@@ -241,7 +244,7 @@ export function useAIConversation(
           // Create optimistic UI update with the truncated conversation
           optimisticConversation = [
             ...data.conversation.slice(0, questionIndex),
-            { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+            { type: 'question', content: questionContent, timestamp: new Date().toISOString(), isStarter: isStarterQuestion }
           ];
           
           // When truncating, we should clear the nextQuestion since it will be regenerated
@@ -250,14 +253,14 @@ export function useAIConversation(
           // Editing the last question
           optimisticConversation = [
             ...data.conversation.slice(0, questionIndex),
-            { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+            { type: 'question', content: questionContent, timestamp: new Date().toISOString(), isStarter: isStarterQuestion }
           ];
         }
       } else if (data) {
         // Normal case - append to the conversation
         optimisticConversation = [
           ...data.conversation,
-          { question, answer, timestamp: new Date().toISOString(), is_starter: isStarterQuestion }
+          { type: 'question', content: questionContent, timestamp: new Date().toISOString(), isStarter: isStarterQuestion }
         ];
       }
       

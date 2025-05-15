@@ -55,7 +55,7 @@ const WorkflowEdge = ({
   // This function is not currently used in the component
   /*
   const getEdgeStyles = () => {
-    const sourceBlockType = sourceBlock?.blockTypeId || 'unknown'
+    const sourceApiBlockType = sourceBlock?.subtype || 'unknown'
     
     // All paths look identical - no visual distinctions
     return {

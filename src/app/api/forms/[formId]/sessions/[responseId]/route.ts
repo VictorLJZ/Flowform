@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
       .from("static_block_answers")
       .select("block_id, answer")
       .eq("response_id", responseId)
-    const staticData = (staticRaw ?? []) as StaticAnswerRecord[]
+    
+    // Transform the raw DB result to match StaticAnswerRecord structure
+    const staticData: StaticAnswerRecord[] = (staticRaw ?? []).map(item => ({
+      block_id: item.block_id,
+      type: "answer", 
+      content: item.answer
+    }))
 
     if (staticError) {
       console.error("Error fetching static answers:", staticError)
@@ -48,9 +54,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Combine answers
-    const answers: Record<string, StaticAnswerRecord['answer'] | DynamicResponseRecord['conversation']> = {}
-    staticData.forEach(({ block_id, answer }) => {
-      answers[block_id] = answer
+    const answers: Record<string, StaticAnswerRecord['content'] | DynamicResponseRecord['conversation']> = {}
+    staticData.forEach(({ block_id, content }) => {
+      answers[block_id] = content
     })
     dynamicData.forEach(({ block_id, conversation }) => {
       answers[block_id] = conversation
