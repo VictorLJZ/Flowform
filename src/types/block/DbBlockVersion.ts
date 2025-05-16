@@ -4,8 +4,7 @@
  * Uses snake_case naming to match database column names
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { DbBlockType, DbBlockSubtype } from './DbBlock';
+import { DbApiBlockType, DbBlockSubtype } from './DbBlock';
 
 /**
  * Database representation of a form block version

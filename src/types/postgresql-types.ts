@@ -5,8 +5,7 @@
  * and data transformation for database operations.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { DbBlockType, DbStaticBlockSubtype } from './block';
+import { DbApiBlockType, DbStaticBlockSubtype } from './block';
 
 /**
  * Generic themes and settings interfaces to replace 'any' use

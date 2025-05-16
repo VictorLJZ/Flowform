@@ -9,7 +9,7 @@
 
 import { 
   DbBlock, 
-  DbBlockType,
+  DbApiBlockType,
   DbBlockSubtype,
   DbBlockOption, 
   DbDynamicBlockConfig
@@ -44,7 +44,7 @@ import {
  * @param dbType Database block type
  * @returns API block type
  */
-export function mapDbToApiBlockType(dbType: DbBlockType): ApiBlockType {
+export function mapDbToApiBlockType(dbType: DbApiBlockType): ApiBlockType {
   return dbType as ApiBlockType;
 }
 
@@ -73,7 +73,7 @@ export function dbToApiBlock(dbBlock: DbBlock): ApiBlock {
     // Convert null to undefined for optional fields
     description: dbBlock.description === null ? undefined : dbBlock.description,
     required: dbBlock.required,
-    orderIndex: dbBlock.orderIndex,
+    orderIndex: dbBlock.order_index,
     settings: dbBlock.settings,
     createdAt: dbBlock.created_at,
     updatedAt: dbBlock.updated_at
@@ -99,10 +99,11 @@ export function dbToApiBlocks(dbBlocks: DbBlock[]): ApiBlock[] {
 export function dbToApiBlockOption(dbOption: DbBlockOption): ApiBlockOption {
   return {
     id: dbOption.id,
-    text: dbOption.text,
+    blockId: dbOption.block_id,
     value: dbOption.value,
-    isDefault: dbOption.is_default,
-    orderIndex: dbOption.orderIndex
+    label: dbOption.label,
+    orderIndex: dbOption.order_index,
+    createdAt: dbOption.created_at
   };
 }
 
@@ -124,12 +125,13 @@ export function dbToApiBlockOptions(dbOptions: DbBlockOption[]): ApiBlockOption[
  */
 export function dbToApiDynamicBlockConfig(dbConfig: DbDynamicBlockConfig): ApiDynamicBlockConfig {
   return {
-    systemPrompt: dbConfig.systemPrompt,
-    model: dbConfig.model,
+    blockId: dbConfig.block_id,
+    starterQuestion: dbConfig.starter_question,
     temperature: dbConfig.temperature,
-    maxTokens: dbConfig.maxTokens,
-    starterQuestions: dbConfig.starterQuestions,
-    referenceMaterials: dbConfig.referenceMaterials
+    maxQuestions: dbConfig.max_questions,
+    aiInstructions: dbConfig.ai_instructions,
+    createdAt: dbConfig.created_at,
+    updatedAt: dbConfig.updated_at
   };
 }
 
@@ -149,7 +151,7 @@ export function dbToApiBlockVersion(dbBlockVersion: DbBlockVersion): ApiBlockVer
     type: dbBlockVersion.type as ApiBlockType,
     subtype: dbBlockVersion.subtype,
     required: dbBlockVersion.required,
-    orderIndex: dbBlockVersion.orderIndex,
+    orderIndex: dbBlockVersion.order_index,
     settings: dbBlockVersion.settings,
     isDeleted: dbBlockVersion.is_deleted,
     createdAt: dbBlockVersion.created_at

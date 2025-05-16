@@ -435,10 +435,10 @@ export const createFormWorkflowSlice: StateCreator<
         }
       })
       
-      // Update block order_index based on the sorted order
+      // Update block orderIndex based on the sorted order
       ordered.forEach((blockId, index) => {
         if (typeof updateBlock === 'function') {
-          updateBlock(blockId, { order_index: index })
+          updateBlock(blockId, { orderIndex: index })
         }
       })
       

@@ -8,8 +8,7 @@ import { saveDynamicBlockConfig } from '@/services/form/saveDynamicBlockConfig'
 import { saveWorkflowEdges } from '@/services/form/saveWorkflowEdges'
 import { loadFormComplete, loadVersionedFormComplete } from '@/services/viewer'
 import type { SaveFormInput } from '@/types/form-service-types'
-import type { ApiBlockType, ApiBlockSubtype, UiBlock } from '@/types/block'
-import type { DbBlock } from '@/types/block/DbBlock'
+import type { ApiBlockType, ApiBlockSubtype, UiBlock, UiBlock as FrontendUiBlock } from '@/types/block'
 import type { Connection } from '@/types/workflow-types'
 import type { CustomFormData } from '@/types/form-builder-types'
 import type { FormTheme } from '@/types/theme-types'
@@ -90,8 +89,8 @@ export const createFormPersistenceSlice: StateCreator<
         updated_at: block.updatedAt
       }));
       
-      // We're using DbBlock format for the API, so the cast is safe
-      const result = await saveFormWithBlocks(input, formBlocksForSaving as DbBlock[])
+      // The saveFormWithBlocks function expects FrontendUiBlock[] (which is UiBlock), not DbBlock[]
+      const result = await saveFormWithBlocks(input, formBlocksForSaving as unknown as FrontendUiBlock[])
 
       if (result) {
         console.log('✅ Form saved')
@@ -180,10 +179,13 @@ export const createFormPersistenceSlice: StateCreator<
         }
         
         // Map AI instructions (system prompt)
-        if (block.settings?.promptConfig?.systemPrompt) {
-          dynamicConfig.ai_instructions = block.settings.promptConfig.systemPrompt;
-        } else if (block.settings?.systemPrompt) {
-          dynamicConfig.ai_instructions = block.settings.systemPrompt;
+        const promptConfig = block.settings?.promptConfig as { systemPrompt?: string } | undefined;
+        const settings = block.settings as { systemPrompt?: string } | undefined;
+        
+        if (promptConfig?.systemPrompt) {
+          dynamicConfig.ai_instructions = promptConfig.systemPrompt;
+        } else if (settings?.systemPrompt) {
+          dynamicConfig.ai_instructions = settings.systemPrompt;
         }
         
         // Map prompt configuration
@@ -225,10 +227,21 @@ export const createFormPersistenceSlice: StateCreator<
     }
     
     // Get block definition for this type
-    const blockDef = window.blockRegistry?.[blockTypeId]
+    // Cast window to a type that includes blockRegistry with a more specific type
+    interface BlockDefinition {
+      type: string;
+      settings?: Record<string, unknown>;
+      // Add functions and properties being used in the code
+      getDefaultValues?: () => Record<string, unknown>;
+      defaultTitle?: string;
+      defaultDescription?: string;
+    }
+    
+    const win = window as unknown as { blockRegistry?: Record<string, BlockDefinition> };
+    const blockDef = win.blockRegistry?.[blockTypeId];
     if (!blockDef) {
-      console.error(`Block definition for ${blockTypeId} not found`)
-      return false
+      console.error(`Block definition for ${blockTypeId} not found`);
+      return false;
     }
     
     try {
@@ -270,13 +283,19 @@ export const createFormPersistenceSlice: StateCreator<
     // Check if window is available (client-side only)
     if (typeof window === 'undefined') return
     
+    // Define a custom window type that includes our autoSaveInterval property
+    type CustomWindow = Window & typeof globalThis & {
+      autoSaveInterval?: NodeJS.Timeout;
+    };
+    const customWindow = window as CustomWindow;
+    
     // Clear any existing interval
-    if (window.autoSaveInterval) {
-      clearInterval(window.autoSaveInterval)
+    if (customWindow.autoSaveInterval) {
+      clearInterval(customWindow.autoSaveInterval)
     }
     
     // Set up a new interval for auto-saving
-    window.autoSaveInterval = setInterval(() => {
+    customWindow.autoSaveInterval = setInterval(() => {
       const state = get()
       const { isSaving } = state
       
@@ -371,7 +390,7 @@ export const createFormPersistenceSlice: StateCreator<
       
       // Create a CustomFormData compatible object from the DbForm returned by loadFormComplete
       const formDataWithFormId: CustomFormData = {
-        form_id: formData.id, // Ensure form_id is set from id
+        form_id: formData.form_id, // Use form_id directly as that's the property name in CompleteForm
         title: formData.title,
         description: formData.description || undefined, // Convert null to undefined for CustomFormData compatibility
         workspace_id: typeof formData.workspace_id === 'string' ? formData.workspace_id : '',
@@ -390,7 +409,9 @@ export const createFormPersistenceSlice: StateCreator<
           customCss: formData.settings?.customCss as string,
           workflow: formData.settings?.workflow as { connections: Connection[] },
         },
-        theme: formData.theme as FormTheme,
+        // Use a two-step type assertion with unknown as an intermediate step
+        // This is the recommended approach when types don't sufficiently overlap
+        theme: (formData.theme || {}) as unknown as FormTheme,
       };
       
       // Update form state

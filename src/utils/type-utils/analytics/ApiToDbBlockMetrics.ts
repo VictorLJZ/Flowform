@@ -28,7 +28,7 @@ export function apiToDbBlock(api: ApiBlock): DbBlock {
     id: api.id,
     title: api.title,
     description: api.description,
-    block_type_id: api.subtype,
+    block_type_id: api.blockTypeId,
   };
 }
 

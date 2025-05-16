@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/client';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { mapToDbBlockType } from '@/utils/blockTypeMapping';
 import type { UiBlock as FrontendUiBlock } from '@/types/block';
 import type { FormBlockVersion } from '@/types/form-version-types';

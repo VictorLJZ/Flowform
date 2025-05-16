@@ -64,7 +64,7 @@ export function dbToApiStaticBlockAnswer(dbAnswer: DbStaticBlockAnswer): ApiStat
     id: dbAnswer.id,
     responseId: dbAnswer.response_id,
     blockId: dbAnswer.block_id,
-    type: "answer", content: dbAnswer.answer ?? undefined,
+    answer: dbAnswer.content ?? undefined,
     answeredAt: dbAnswer.answered_at
   };
 }
@@ -125,7 +125,7 @@ export function dbToApiDynamicBlockResponse(dbDynamicResponse: DbDynamicBlockRes
     updatedAt: dbDynamicResponse.updated_at ?? undefined,
     completedAt: dbDynamicResponse.completed_at ?? undefined,
     conversation: dbToApiQAPairs(conversation),
-    nextQuestion: dbDynamicResponse.next_question ?? undefined
+    nextQuestion: dbDynamicResponse.content ?? undefined
   };
 }
 

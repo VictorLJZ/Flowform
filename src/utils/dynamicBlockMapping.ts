@@ -2,7 +2,7 @@
  * Mapping utilities for dynamic block settings
  * Maps frontend field names to database field names and vice versa
  */
-import { DynamicBlockConfig } from '@/types/supabase-types';
+import { DbDynamicBlockConfig } from '@/types/block/DbBlock';
 
 // Frontend form builder settings interface
 export interface FormBuilderDynamicSettings {
@@ -14,8 +14,8 @@ export interface FormBuilderDynamicSettings {
 
 // Using DynamicBlockConfig from supabase-types.ts
 
-// Type for partial DynamicBlockConfig since we can't always provide all fields
-export type DynamicBlockConfigInput = Pick<DynamicBlockConfig, 
+// Type for partial DbDynamicBlockConfig since we can't always provide all fields
+export type DynamicBlockConfigInput = Pick<DbDynamicBlockConfig, 
   'starter_question' | 
   'temperature' | 
   'max_questions' | 
@@ -25,7 +25,7 @@ export type DynamicBlockConfigInput = Pick<DynamicBlockConfig,
 // Map frontend form builder settings to database dynamic block config
 export function mapToDynamicBlockConfig(settings: FormBuilderDynamicSettings): DynamicBlockConfigInput {
   return {
-    starter_type: "question", content: settings.startingPrompt || "How can I help you today?",
+    starter_question: settings.startingPrompt || "How can I help you today?",
     temperature: settings.temperature !== undefined ? settings.temperature : 0.7,
     max_questions: settings.maxQuestions || 5,
     ai_instructions: settings.contextInstructions || null
@@ -33,9 +33,9 @@ export function mapToDynamicBlockConfig(settings: FormBuilderDynamicSettings): D
 }
 
 // Map database dynamic block config to frontend form builder settings
-export function mapToFormBuilderSettings(config: DynamicBlockConfig): FormBuilderDynamicSettings {
+export function mapToFormBuilderSettings(config: DbDynamicBlockConfig): FormBuilderDynamicSettings {
   return {
-    startingPrompt: config.starterQuestion,
+    startingPrompt: config.starter_question,
     temperature: config.temperature,
     maxQuestions: config.max_questions,
     contextInstructions: config.ai_instructions || ""
