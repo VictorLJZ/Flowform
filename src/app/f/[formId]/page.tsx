@@ -370,6 +370,7 @@ export default function FormViewerPage() {
         answerStringified = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
       }
     } catch (e) {
+      console.error('Failed to stringify answer:', e);
       answerStringified = '[Content contains non-serializable data]';
     }
 

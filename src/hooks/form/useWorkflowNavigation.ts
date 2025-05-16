@@ -38,7 +38,7 @@ export function useWorkflowNavigation({
         return stringified && typeof stringified === 'string' 
           ? stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '')
           : '[invalid rule]';
-      } catch (e) {
+      } catch {
         return '[rule with non-serializable data]';
       }
     })() : null

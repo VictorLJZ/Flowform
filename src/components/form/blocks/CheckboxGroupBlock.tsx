@@ -92,10 +92,9 @@ export function CheckboxGroupBlock({
     if (onChange) {
       try {
         onChange("answer", newValues);
-      } catch (error) {
+      } catch {
         console.warn('Falling back to legacy onChange pattern');
-        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-        onChange(newValues);
+        (onChange as unknown as (value: string[]) => void)(newValues);
       }
     }
     

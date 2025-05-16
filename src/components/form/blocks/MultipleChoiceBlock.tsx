@@ -73,10 +73,9 @@ export function MultipleChoiceBlock({
     if (mode !== 'builder' && onChange) {
       try {
         onChange("answer", option);
-      } catch (error) {
+      } catch {
         console.warn('Falling back to legacy onChange pattern');
-        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-        onChange(option);
+        (onChange as unknown as (value: string) => void)(option);
       }
       
       // Track selection for analytics

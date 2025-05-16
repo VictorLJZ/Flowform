@@ -117,14 +117,11 @@ export function useAIConversationState(
   // Handle form value changes
   useEffect(() => {
     if (onChange && !isBuilder) {
-      // Make the implementation flexible to handle both old and new versions
       try {
-        // Now directly using the ApiQAPair format with the required "answer" type parameter
         onChange("answer", conversation);
-      } catch (error) {
+      } catch {
         console.warn('Falling back to legacy onChange pattern for AI conversation');
-        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-        onChange(conversation);
+        (onChange as unknown as (value: ApiQAPair[]) => void)(conversation);
       }
     }
   }, [conversation, onChange, isBuilder]);

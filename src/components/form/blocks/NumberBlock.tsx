@@ -79,10 +79,9 @@ export function NumberBlock({
       if (onChange) {
         try {
           onChange("answer", '');
-        } catch (error) {
+        } catch {
           console.warn('Falling back to legacy onChange pattern');
-          // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-          onChange('');
+          (onChange as unknown as (value: string) => void)('');
         }
       }
       return
@@ -96,10 +95,9 @@ export function NumberBlock({
       if (onChange) {
         try {
           onChange("answer", inputValue);
-        } catch (error) {
+        } catch {
           console.warn('Falling back to legacy onChange pattern');
-          // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-          onChange(inputValue);
+          (onChange as unknown as (value: string) => void)(inputValue);
         }
       }
       return
@@ -117,10 +115,9 @@ export function NumberBlock({
     if (onChange) {
       try {
         onChange("answer", numericValue);
-      } catch (error) {
+      } catch {
         console.warn('Falling back to legacy onChange pattern');
-        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-        onChange(numericValue);
+        (onChange as unknown as (value: number) => void)(numericValue);
       }
     }
   }

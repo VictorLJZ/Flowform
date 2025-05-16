@@ -45,7 +45,8 @@ export function useFormAnswers({
       setCurrentAnswerState(valueOrNothing);
     } else {
       // Old pattern: setCurrentAnswer(value)
-      setCurrentAnswerState(typeOrValue as any);
+      // Use proper type assertion to avoid 'any'
+      setCurrentAnswerState(typeOrValue as string | number | string[] | ApiQAPair[]);
     }
   }, []);
   

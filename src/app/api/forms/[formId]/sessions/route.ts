@@ -259,6 +259,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           answerValuePreview = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
         }
       } catch (e) {
+        console.error(`[${requestId}][DEBUG] Failed to stringify answer:`, e);
         answerValuePreview = '[Content contains non-serializable data]';
       }
       

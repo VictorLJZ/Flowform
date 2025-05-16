@@ -26,7 +26,7 @@ export async function saveStaticAnswer(
     if (stringified && typeof stringified === 'string') {
       answerPreview = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
     }
-  } catch (e) {
+  } catch {
     answerPreview = '[Content contains non-serializable data]';
   }
   

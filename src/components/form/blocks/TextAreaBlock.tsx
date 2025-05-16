@@ -69,14 +69,11 @@ export function TextAreaBlock({
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     if (onChange) {
-      // Make the implementation flexible to handle both old and new versions
       try {
         onChange("answer", newValue);
-      } catch (error) {
-        // If the above fails, try the legacy pattern
+      } catch {
         console.warn('Falling back to legacy onChange pattern');
-        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
-        onChange(newValue);
+        (onChange as unknown as (value: string) => void)(newValue);
       }
     }
   }

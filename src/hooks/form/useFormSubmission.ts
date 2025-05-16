@@ -147,7 +147,7 @@ export const useFormSubmission = ({
       if (stringified && typeof stringified === 'string') {
         answerPreview = stringified.substring(0, 50) + (stringified.length > 50 ? '...' : '');
       }
-    } catch (e) {
+    } catch {
       answerPreview = '[Content contains non-serializable data]';
     }
 
