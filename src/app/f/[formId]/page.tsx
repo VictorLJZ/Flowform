@@ -363,15 +363,21 @@ export default function FormViewerPage() {
     }
     
     // DEBUG LOGGING: Track static answer data
-    console.log('[DEBUG][prepareAnswer] Prepared answer for block:', {
-      blockId: block.id,
-      blockType: block.type,
-      subtype: block.subtype,
-      settings: block.settings,
+    let answerStringified = 'Unable to stringify content';
+    try {
+      const stringified = JSON.stringify(answerToSubmit);
+      if (stringified && typeof stringified === 'string') {
+        answerStringified = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
+      }
+    } catch (e) {
+      answerStringified = '[Content contains non-serializable data]';
+    }
+
+    console.log('Formatted answer:', {
       answerType: typeof answerToSubmit,
       isArray: Array.isArray(answerToSubmit),
       answerValue: answerToSubmit,
-      answerStringified: JSON.stringify(answerToSubmit).substring(0, 100) + '...'
+      answerStringified
     });
     
     return answerToSubmit;
@@ -460,7 +466,7 @@ export default function FormViewerPage() {
                 block={block}
                 currentAnswer={currentAnswer}
                 setCurrentAnswer={setCurrentAnswer}
-                submitAnswer={async (block, answer) => {
+                submitAnswer={async (block, type, content) => {
                   // Adapter function to bridge between the expected interfaces
                   // BlockRenderer expects a function that takes (block, answer) and returns Promise<void>
                   // First, log the call to help debug
@@ -468,21 +474,22 @@ export default function FormViewerPage() {
                     blockId: block.id,
                     blockType: block.type,
                     subtype: block.subtype,
-                    answerType: typeof answer,
-                    answerValue: answer
+                    answerType: typeof content,
+                    answerValue: content,
+                    type: type
                   });
                   
                   try {
                     // First save to API - this was missing in the original implementation!
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling submitAnswerToAPI...');
-                    // Ensure answer is cast properly for API submission
-                    await submitAnswerToAPI(block, "answer", answer);
+                    // Use the passed type and content directly
+                    await submitAnswerToAPI(block, type, content);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: API submission successful');
                     
                     // Then use workflow navigation
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Calling workflowSubmitAnswer...');
-                    // Ensure answer is cast properly for workflow navigation
-                    workflowSubmitAnswer(answer);
+                    // Use the content parameter directly for workflow navigation
+                    workflowSubmitAnswer(content);
                     console.log('DEBUG_BLOCK_RENDERER_SUBMIT: Workflow navigation completed');
                   } catch (error) {
                     console.error('DEBUG_BLOCK_RENDERER_SUBMIT: Error during submission:', error);

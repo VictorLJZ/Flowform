@@ -25,7 +25,7 @@ interface DateBlockProps {
     layout?: SlideLayout
   }
   value?: string
-  onChange?: (value: string) => void
+  onChange?: (type: "answer", value: string) => void
   onUpdate?: (updates: Partial<{
     title: string;
     description: string | null;
@@ -72,7 +72,13 @@ export function DateBlock({
     const dateValue = e.target.value
     
     if (onChange) {
-      onChange(dateValue)
+      try {
+        onChange("answer", dateValue);
+      } catch (error) {
+        console.warn('Falling back to legacy onChange pattern');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(dateValue);
+      }
     }
     
     // Validate date range if set

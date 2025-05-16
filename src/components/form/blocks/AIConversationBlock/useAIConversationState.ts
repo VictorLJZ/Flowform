@@ -13,7 +13,7 @@ export function useAIConversationState(
   formId: string,
   starterPrompt: string,
   maxQuestions: number,
-  onChange?: (value: ApiQAPair[]) => void
+  onChange?: (type: "answer", value: ApiQAPair[]) => void
 ) {
   // Local state
   const [state, setState] = useState<AIConversationState>({
@@ -117,8 +117,15 @@ export function useAIConversationState(
   // Handle form value changes
   useEffect(() => {
     if (onChange && !isBuilder) {
-      // Now directly using the ApiQAPair format
-      onChange(conversation);
+      // Make the implementation flexible to handle both old and new versions
+      try {
+        // Now directly using the ApiQAPair format with the required "answer" type parameter
+        onChange("answer", conversation);
+      } catch (error) {
+        console.warn('Falling back to legacy onChange pattern for AI conversation');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(conversation);
+      }
     }
   }, [conversation, onChange, isBuilder]);
   

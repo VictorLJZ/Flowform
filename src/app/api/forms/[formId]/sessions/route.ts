@@ -197,11 +197,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     let body;
     try {
       body = await request.json();
+      // Add more detailed logging to show the exact content received
       console.log(`[${requestId}] Request body received:`, {
         responseId: body.responseId,
         blockId: body.blockId,
         blockType: body.blockType,
-        hasAnswer: !!body.answer
+        hasAnswer: !!body.answer,
+        answerType: typeof body.answer,
+        answerContent: body.answer, // Log the actual answer content
+        rawBody: JSON.stringify(body).substring(0, 200) // Log raw request body
       });
     } catch (parseError) {
       console.error(`[${requestId}] Failed to parse request JSON:`, parseError);
@@ -211,7 +215,20 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       );
     }
     
+    // Extract answer content from the request body
+    // The client should be sending the answer in the 'answer' property
     const { responseId, blockId, blockType, answer, currentQuestion } = body;
+    
+    // Enhanced debug logs to see exactly what we're receiving
+    console.log(`[${requestId}] Extracted data for processing:`, {
+      responseId,
+      blockId,
+      blockType,
+      answerValue: answer,      // Log the actual answer value
+      answerType: typeof answer,
+      answerIsArray: Array.isArray(answer),
+      answerKeys: answer && typeof answer === 'object' ? Object.keys(answer) : 'not an object'
+    });
     
     // Validate required fields
     if (!responseId || !blockId || !blockType) {
@@ -232,13 +249,27 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     // Process the answer based on block type
     if (blockType === 'static') {
       // DEBUG LOGGING: Track static block answer on the server side
-      console.log(`[${requestId}][DEBUG] Processing static block type: "answer", content:`, {
+      console.log(`[${requestId}][DEBUG] Processing static block type: "answer", content:`);
+      
+      // Create a safe preview of the answer content for logging
+      let answerValuePreview = 'Unable to stringify content';
+      try {
+        const stringified = JSON.stringify(answer);
+        if (stringified && typeof stringified === 'string') {
+          answerValuePreview = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
+        }
+      } catch (e) {
+        answerValuePreview = '[Content contains non-serializable data]';
+      }
+      
+      console.log('Static answer data:', {
         responseId,
         blockId,
         answerType: typeof answer,
         isArray: Array.isArray(answer),
-        answerValuePreview: JSON.stringify(answer).substring(0, 100) + '...'
+        answerValuePreview
       });
+      
       // For static blocks, optionally save the answer based on the 'required' flag
       // Use the service client for public form submissions
       const { data: currentBlock } = await supabase
@@ -267,6 +298,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         // Create the answer directly using the service client
         // Handle different answer data types by converting to proper string format
         let formattedAnswer: string;
+        
+        // Double-check that we're not getting the property name as the value
+        console.log(`[${requestId}] Processing answer before formatting:`, {
+          rawAnswerValue: answer,
+          answerIsLiteralString: answer === 'answer',
+          answerType: typeof answer,
+          answerLength: typeof answer === 'string' ? answer.length : 'N/A'
+        });
+        
         if (typeof answer === 'string') {
           formattedAnswer = answer;
         } else if (typeof answer === 'number') {
@@ -290,15 +330,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         const payload = {
           response_id: responseId,
           block_id: blockId,
-          type: "answer", content: formattedAnswer,
+          answer: formattedAnswer, // Using 'answer' as the column name to match database schema
           answered_at: new Date().toISOString()
         };
         
         // Log the exact payload we're about to save to the database
         console.log(`[${requestId}][DEBUG] About to save static answer to database:`, {
           payload,
-          answerType: typeof payload.content,
-          answerLength: payload.content.length
+          answerType: typeof payload.answer,
+          answerLength: payload.answer.length
         });
 
         const { data: existingAnswer, error: fetchError } = await serviceSupabase

@@ -32,7 +32,7 @@ export interface AIConversationBlockProps {
     maxQuestions?: number;
   };
   value?: ApiQAPair[];
-  onChange?: (value: ApiQAPair[]) => void;
+  onChange?: (type: "answer", value: ApiQAPair[]) => void;
   onUpdate?: (updates: BlockUpdate) => void;
   // Navigation props
   onNext?: () => void;

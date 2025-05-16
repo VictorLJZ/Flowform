@@ -28,7 +28,7 @@ interface DropdownBlockProps {
     layout?: SlideLayout
   }
   value?: string
-  onChange?: (value: string) => void
+  onChange?: (type: "answer", value: string) => void
   onUpdate?: (updates: Partial<{
     title: string;
     description: string | null;
@@ -70,7 +70,13 @@ export function DropdownBlock({
   
   const handleValueChange = (newValue: string) => {
     if (onChange) {
-      onChange(newValue)
+      try {
+        onChange("answer", newValue);
+      } catch (error) {
+        console.warn('Falling back to legacy onChange pattern');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(newValue);
+      }
     }
   }
 

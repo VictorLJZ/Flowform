@@ -3,7 +3,10 @@ import { ApiQAPair } from '@/types/response';
 
 export interface FormAnswersState {
   currentAnswer: string | number | string[] | ApiQAPair[];
-  setCurrentAnswer: (value: string | number | string[] | ApiQAPair[]) => void;
+  // Updated interface to support both patterns:
+  // 1. Old pattern: setCurrentAnswer(value)
+  // 2. New pattern: setCurrentAnswer("answer", value)
+  setCurrentAnswer: (typeOrValue: string, valueOrNothing?: string | number | string[] | ApiQAPair[]) => void;
   saveCurrentAnswer: (blockId: string, answer: string | number | string[] | ApiQAPair[]) => void;
   initializeAnswers: () => void;
   answersInitialized: boolean;
@@ -30,7 +33,21 @@ export function useFormAnswers({
   storageKey
 }: UseFormAnswersProps): FormAnswersState {
   // State for the current answer
-  const [currentAnswer, setCurrentAnswer] = useState<string | number | string[] | ApiQAPair[]>('');
+  const [currentAnswer, setCurrentAnswerState] = useState<string | number | string[] | ApiQAPair[]>('');
+  
+  // Enhanced setCurrentAnswer that handles both patterns:
+  // 1. setCurrentAnswer(value) - direct value
+  // 2. setCurrentAnswer("answer", value) - type + value pattern
+  const setCurrentAnswer = useCallback((typeOrValue: string, valueOrNothing?: string | number | string[] | ApiQAPair[]) => {
+    // Check if this is the new pattern with type + value
+    if (typeOrValue === "answer" && valueOrNothing !== undefined) {
+      // New pattern: setCurrentAnswer("answer", actualValue)
+      setCurrentAnswerState(valueOrNothing);
+    } else {
+      // Old pattern: setCurrentAnswer(value)
+      setCurrentAnswerState(typeOrValue as any);
+    }
+  }, []);
   
   // Track all answers by block ID
   const [answers, setAnswers] = useState<Record<string, string | number | string[] | ApiQAPair[]>>({});
@@ -51,7 +68,8 @@ export function useFormAnswers({
           
           // If we have an active block, set its answer as current
           if (blockId && parsedData[blockId] !== undefined) {
-            setCurrentAnswer(parsedData[blockId]);
+            // Use the internal state setter directly to avoid the type+value pattern
+            setCurrentAnswerState(parsedData[blockId]);
           }
         }
       } catch (parseError) {
@@ -86,6 +104,7 @@ export function useFormAnswers({
               const key = localStorage.key(i);
               if (key && key.startsWith('flowform-') && key !== storageKey) {
                 localStorage.removeItem(key);
+                break; // Remove one item at a time to avoid excessive deletions
               }
             }
             // Try saving again
@@ -104,10 +123,11 @@ export function useFormAnswers({
   const loadAnswerForBlock = useCallback((blockId: string) => {
     // Set the current answer if we have one saved for this block
     if (answers[blockId] !== undefined) {
-      setCurrentAnswer(answers[blockId]);
+      // Use the internal state setter directly to avoid the type+value pattern
+      setCurrentAnswerState(answers[blockId]);
     } else {
       // Clear the current answer if no saved value exists
-      setCurrentAnswer('');
+      setCurrentAnswerState('');
     }
   }, [answers]);
 

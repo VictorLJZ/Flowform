@@ -348,7 +348,7 @@ export function useAIConversation(
     console.log('Conversation state updated:', {
       conversationLength: data.conversation?.length,
       hasNextQuestion: !!data.nextQuestion,
-      nextQuestion: data.nextQuestion ? data.nextQuestion.substring(0, 30) + (data.nextQuestion.length > 30 ? '...' : '') : '',
+      nextQuestion: data.nextQuestion && typeof data.nextQuestion === 'string' ? data.nextQuestion.substring(0, 30) + (data.nextQuestion.length > 30 ? '...' : '') : '',
       isComplete: data.isComplete
     });
 

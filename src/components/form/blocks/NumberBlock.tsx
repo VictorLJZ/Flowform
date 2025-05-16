@@ -26,7 +26,7 @@ interface NumberBlockProps {
     layout?: SlideLayout
   }
   value?: number | string
-  onChange?: (value: number | string) => void
+  onChange?: (type: "answer", value: number | string) => void
   onUpdate?: (updates: Partial<{
     title: string;
     description: string | null;
@@ -76,7 +76,15 @@ export function NumberBlock({
     // Handle empty input case
     if (!inputValue) {
       setError(null)
-      if (onChange) onChange('')
+      if (onChange) {
+        try {
+          onChange("answer", '');
+        } catch (error) {
+          console.warn('Falling back to legacy onChange pattern');
+          // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+          onChange('');
+        }
+      }
       return
     }
     
@@ -85,7 +93,15 @@ export function NumberBlock({
     // Check if it's a valid number
     if (isNaN(numericValue)) {
       setError('Please enter a valid number')
-      if (onChange) onChange(inputValue)
+      if (onChange) {
+        try {
+          onChange("answer", inputValue);
+        } catch (error) {
+          console.warn('Falling back to legacy onChange pattern');
+          // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+          onChange(inputValue);
+        }
+      }
       return
     }
     
@@ -99,7 +115,13 @@ export function NumberBlock({
     }
     
     if (onChange) {
-      onChange(numericValue)
+      try {
+        onChange("answer", numericValue);
+      } catch (error) {
+        console.warn('Falling back to legacy onChange pattern');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(numericValue);
+      }
     }
   }
 

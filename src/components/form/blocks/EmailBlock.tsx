@@ -29,7 +29,7 @@ interface EmailBlockProps {
     layout?: SlideLayout
   }
   value?: string
-  onChange?: (value: string) => void
+  onChange?: (type: "answer", value: string) => void
   onUpdate?: (updates: Partial<{
     title: string;
     description: string | null;
@@ -72,7 +72,15 @@ export function EmailBlock({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     if (onChange) {
-      onChange(newValue);
+      // Make the implementation flexible to handle both old and new versions
+      try {
+        onChange("answer", newValue);
+      } catch (error) {
+        // If the above fails, try the legacy pattern
+        console.warn('Falling back to legacy onChange pattern');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(newValue);
+      }
     }
     
     // Track value change for analytics

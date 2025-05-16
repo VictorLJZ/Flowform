@@ -19,13 +19,22 @@ export async function saveStaticAnswer(
   mode: 'builder' | 'viewer' = 'viewer' // Default to viewer mode for backwards compatibility
 ): Promise<ApiStaticBlockAnswer> {
   // DEBUG LOGGING: Initial entry point to service function
-  console.log('[DEBUG][saveStaticAnswer] Service function called with:', {
-    responseId,
-    blockId,
+  // Create a safe preview of the answer for logging
+  let answerPreview = 'Unable to stringify content';
+  try {
+    const stringified = JSON.stringify(answer);
+    if (stringified && typeof stringified === 'string') {
+      answerPreview = stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '');
+    }
+  } catch (e) {
+    answerPreview = '[Content contains non-serializable data]';
+  }
+  
+  console.log(`[saveStaticAnswer] Saving answer for ${responseId}, ${blockId}:`, {
     answerType: typeof answer,
     isArray: Array.isArray(answer),
     mode,
-    answerPreview: JSON.stringify(answer).substring(0, 100) + '...'
+    answerPreview
   });
   // Use public client for viewer mode, standard client for builder mode
   const supabase = mode === 'viewer' ? createPublicClient() : createClient();

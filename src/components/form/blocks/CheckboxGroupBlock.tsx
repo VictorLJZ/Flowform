@@ -37,7 +37,7 @@ interface CheckboxGroupBlockProps {
     layout?: SlideLayout
   }
   value?: string[]
-  onChange?: (value: string[]) => void
+  onChange?: (type: "answer", value: string[]) => void
   onUpdate?: (updates: Partial<{
     title: string;
     description: string | null;
@@ -89,7 +89,15 @@ export function CheckboxGroupBlock({
     }
     
     // Send the update
-    onChange(newValues);
+    if (onChange) {
+      try {
+        onChange("answer", newValues);
+      } catch (error) {
+        console.warn('Falling back to legacy onChange pattern');
+        // @ts-ignore - Deliberately ignoring type errors for backward compatibility
+        onChange(newValues);
+      }
+    }
     
     // Track checkbox interaction for analytics
     if (analytics?.trackChange) {

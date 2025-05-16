@@ -30,8 +30,13 @@ export function transformVersionedFormData(formData: CompleteForm): {
       createdAt: block.created_at || new Date().toISOString(),
       updatedAt: block.updated_at || new Date().toISOString(),
       settings: block.settings || {},
-      // Add any other required UiBlock properties with defaults
-      subtype: (block as { block_subtype?: string }).block_subtype || 'default'
+      // Determine a valid subtype based on block type
+      subtype: (block as { block_subtype?: string }).block_subtype || 
+        // Use different defaults based on the block type
+        (blockType === 'dynamic' ? 'ai_conversation' :
+         blockType === 'layout' ? 'page_break' :
+         blockType === 'integration' ? 'hubspot' :
+         'short_text') // Default to short_text for static blocks
     } as UiBlock;
   });
 

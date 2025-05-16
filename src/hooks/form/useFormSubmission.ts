@@ -140,15 +140,25 @@ export const useFormSubmission = ({
   }, [formId, isLastQuestion, onSubmitSuccessRef, responseId]);
 
   const submitAnswer = useCallback(async (block: UiBlock, type: "answer", content: string | number | string[] | ApiQAPair[]) => {
-    // DEBUG LOGGING: Track the answer at the start of submission
-    console.log('[DEBUG][useFormSubmission] Starting submission for block:', {
+    // Create a safe preview of the answer content for logging
+    let answerPreview = 'Unable to stringify content';
+    try {
+      const stringified = JSON.stringify(content);
+      if (stringified && typeof stringified === 'string') {
+        answerPreview = stringified.substring(0, 50) + (stringified.length > 50 ? '...' : '');
+      }
+    } catch (e) {
+      answerPreview = '[Content contains non-serializable data]';
+    }
+
+    console.log('Submitting answer:', {
       blockId: block.id,
       blockType: block.type,
-      blockTypeId: block.subtype,
+      blockSubtype: block.subtype,
       answerType: typeof content,
       isArray: Array.isArray(content),
       answerSize: typeof content === 'string' ? content.length : (Array.isArray(content) ? content.length : 'N/A'),
-      answerPreview: JSON.stringify(content).substring(0, 50) + '...'
+      answerPreview
     });
     if (!responseId) {
       console.error('No responseId available for submission');
@@ -209,11 +219,12 @@ export const useFormSubmission = ({
       const blockType = block.subtype === 'ai_conversation' ? 'dynamic' : 'static';
       
       // Construct payload in the format expected by the API
+      // IMPORTANT: The server expects the answer content in the top-level 'answer' property
       const requestBody = {
         responseId: responseId,
         blockId: block.id,
         blockType: blockType,
-        type: "answer", content: content,
+        answer: content, // The actual answer content - this is what the server uses
         isCompletion: isLastQuestion,
         currentQuestion: blockType === 'dynamic' ? block.title : undefined
       };

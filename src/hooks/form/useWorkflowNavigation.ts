@@ -32,7 +32,16 @@ export function useWorkflowNavigation({
     rulesCount: c.rules?.length || 0,
     rulesType: typeof c.rules,
     isRulesArray: Array.isArray(c.rules),
-    firstRule: c.rules && c.rules.length > 0 ? JSON.stringify(c.rules[0]).substring(0, 100) + '...' : null
+    firstRule: c.rules && c.rules.length > 0 ? (() => {
+      try {
+        const stringified = JSON.stringify(c.rules[0]);
+        return stringified && typeof stringified === 'string' 
+          ? stringified.substring(0, 100) + (stringified.length > 100 ? '...' : '')
+          : '[invalid rule]';
+      } catch (e) {
+        return '[rule with non-serializable data]';
+      }
+    })() : null
   })));
   
   // Debug: Inspect first connection's rules in detail if available
