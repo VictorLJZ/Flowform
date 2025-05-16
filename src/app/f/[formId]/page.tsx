@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useFormBuilderStore } from '@/stores/formBuilderStore'
+import { useViewportDetection } from '@/hooks/useViewportDetection'
 // Using our new workflow-based navigation hook instead of the simple index-based navigation
 import { useFormWorkflowNavigation } from '@/hooks/form/useFormWorkflowNavigation';
 import { loadFormMedia } from '@/services/form/loadFormMedia';
@@ -41,6 +42,10 @@ export default function FormViewerPage() {
   const isLoading = useFormBuilderStore(state => state.isLoading);
   const loadVersionedForm = useFormBuilderStore(state => state.loadVersionedForm);
   const setMode = useFormBuilderStore(state => state.setMode);
+  const setViewportMode = useFormBuilderStore(state => state.setViewportMode);
+  
+  // Use the viewport detection hook to automatically detect mobile vs desktop
+  const detectedViewportMode = useViewportDetection();
   
   // Log connection details to help debug connection regeneration issues
   useEffect(() => {
@@ -269,17 +274,21 @@ export default function FormViewerPage() {
 
   // Load the versioned form data and blocks when the component mounts or formId changes
   useEffect(() => {
-    if (formId && typeof formId === 'string') {
-      console.log(`Attempting to load versioned form with ID: ${formId}`);
-      // Set the mode to 'viewer' before loading the form
-      setMode('viewer');
-      console.log('Set formBuilderStore mode to viewer'); 
-      // Use loadVersionedForm to ensure we're using the published version
-      loadVersionedForm(formId);
-    } else {
-      console.error("Form ID is missing or invalid in FormViewerPage");
-    }
+    console.log('📋 [FORM_VIEWER] Loading form:', formId);
+    
+    // Set the form builder mode to viewer
+    setMode('viewer');
+    
+    // Load the versioned form with all blocks and workflow data
+    loadVersionedForm(formId);
   }, [formId, loadVersionedForm, setMode]);
+  
+  // Update viewport mode when detection changes
+  useEffect(() => {
+    // Apply the detected viewport mode to the store
+    console.log(`📱 [FORM_VIEWER] Setting viewport mode to: ${detectedViewportMode}`);
+    setViewportMode(detectedViewportMode);
+  }, [detectedViewportMode, setViewportMode]);
 
   // Initialize answers effect
   useEffect(() => {
