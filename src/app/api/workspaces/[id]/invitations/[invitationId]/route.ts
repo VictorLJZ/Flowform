@@ -22,9 +22,16 @@ interface Params {
 /**
  * DELETE handler - delete a specific invitation
  */
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(
+  request: Request, 
+  { params }: { params: Promise<{ id: string; invitationId: string }> | { id: string; invitationId: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  const invitationId = resolvedParams.invitationId;
+  
   try {
-    const { id: workspaceId, invitationId } = params;
     
     // Get authenticated user
     const supabase = await createClient();

@@ -44,10 +44,15 @@ export async function middleware(request: NextRequest) {
   // Extract workspace ID from path for authorization checks
   let workspaceId: string | null = null
   
-  // Match workspace path-based routes
-  const workspaceMatch = path.match(/\/dashboard\/workspace\/([^/]+)(?:\/.*)?$/)
+  // Get workspaceId from the URL path for dashboard routes
+  const workspaceMatch = path.match(/\/dashboard\/workspace\/([^\/]+)(?:\/.*)?$/)
   if (workspaceMatch && workspaceMatch[1]) {
     workspaceId = workspaceMatch[1]
+  }
+  
+  // For API routes, check the query parameters
+  if (path.startsWith('/api/') && !workspaceId) {
+    workspaceId = request.nextUrl.searchParams.get('workspace_id')
   }
   
   // Handle OAuth callback redirects
@@ -121,8 +126,33 @@ export async function middleware(request: NextRequest) {
       )
     }
     
-    // For API routes that specify a workspace, check workspace access authorization
-    // This would be added in a future implementation
+    // For API routes that specify a workspace ID, check access authorization
+    if (workspaceId && user) {
+      try {
+        // Check if the user has access to the workspace
+        const { data: workspaceMembers, error } = await supabase
+          .from('workspace_members')
+          .select('user_id, workspace_id')
+          .eq('workspace_id', workspaceId)
+          .eq('user_id', user.id);
+        
+        // If there's an error or no data (user isn't a member), return unauthorized
+        if (error || !workspaceMembers || workspaceMembers.length === 0) {
+          console.log(`[Middleware] User ${user.id} unauthorized for workspace ${workspaceId}`);
+          
+          return NextResponse.json(
+            { error: 'You do not have access to this workspace' },
+            { status: 403 }
+          );
+        }
+        
+        // If we get here, user has access to the workspace
+        console.log(`[Middleware] User ${user.id} authorized for workspace ${workspaceId}`);
+      } catch (error) {
+        console.error('[Middleware] Error checking workspace access:', error);
+        // Fall through - we'll let the API route handle the error
+      }
+    }
   } 
   // Handle regular page routes
   else {

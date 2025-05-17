@@ -26,9 +26,15 @@ interface Params {
 /**
  * GET handler - retrieve a specific workspace by ID
  */
-export async function GET(request: Request, { params }: Params) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  
   try {
-    const { id: workspaceId } = params;
     
     // Get authenticated user
     const supabase = await createClient();
@@ -63,7 +69,7 @@ export async function GET(request: Request, { params }: Params) {
     // Transform DB type to API type
     return NextResponse.json(dbToApiWorkspace(workspace));
   } catch (error) {
-    console.error(`Error fetching workspace ${params.id}:`, error);
+    console.error(`Error fetching workspace ${workspaceId}:`, error);
     return NextResponse.json(
       { error: `Failed to get workspace: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
@@ -74,9 +80,15 @@ export async function GET(request: Request, { params }: Params) {
 /**
  * PUT handler - update a specific workspace
  */
-export async function PUT(request: Request, { params }: Params) {
+export async function PUT(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  
   try {
-    const { id: workspaceId } = params;
     
     // Get authenticated user
     const supabase = await createClient();
@@ -113,7 +125,7 @@ export async function PUT(request: Request, { params }: Params) {
     // Transform DB result back to API format
     return NextResponse.json(dbToApiWorkspace(updatedWorkspace));
   } catch (error) {
-    console.error(`Error updating workspace ${params.id}:`, error);
+    console.error(`Error updating workspace ${workspaceId}:`, error);
     return NextResponse.json(
       { error: `Failed to update workspace: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
@@ -124,9 +136,15 @@ export async function PUT(request: Request, { params }: Params) {
 /**
  * DELETE handler - delete a workspace
  */
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  
   try {
-    const { id: workspaceId } = params;
     
     // Get authenticated user
     const supabase = await createClient();
@@ -153,7 +171,7 @@ export async function DELETE(request: Request, { params }: Params) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error deleting workspace ${params.id}:`, error);
+    console.error(`Error deleting workspace ${workspaceId}:`, error);
     return NextResponse.json(
       { error: `Failed to delete workspace: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }

@@ -21,9 +21,15 @@ interface Params {
 /**
  * GET handler - get invitation details by token (public endpoint)
  */
-export async function GET(request: Request, { params }: Params) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ token: string }> | { token: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const token = resolvedParams.token;
+  
   try {
-    const { token } = params;
     
     // Get invitation by token
     const invitation = await invitationsService.getInvitationByToken(token);

@@ -197,6 +197,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
        * Fetch members for a specific workspace
        */
       fetchMembers: async (workspaceId: string) => {
+        // Check if already loading to prevent duplicate requests
+        if (get().membersLoading[workspaceId]) {
+          return get().members[workspaceId] || [];
+        }
+        
         set(state => ({
           membersLoading: { ...state.membersLoading, [workspaceId]: true },
           membersError: { ...state.membersError, [workspaceId]: null }
@@ -350,6 +355,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
        * Fetch invitations for a specific workspace
        */
       fetchInvitations: async (workspaceId: string) => {
+        // Check if already loading to prevent duplicate requests
+        if (get().invitationsLoading[workspaceId]) {
+          return get().invitations[workspaceId] || [];
+        }
+        
         set(state => ({
           invitationsLoading: { ...state.invitationsLoading, [workspaceId]: true },
           invitationsError: { ...state.invitationsError, [workspaceId]: null }

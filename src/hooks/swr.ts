@@ -87,10 +87,16 @@ export function usePaginatedFetch<T>(
  */
 export function createWorkspaceFetcher(workspaceId: string) {
   return async <T>(url: string): Promise<T> => {
+    // Ensure the URL starts with /api/ if it's a relative path and doesn't already include /api/
+    let apiUrl = url;
+    if (!url.includes('/api/') && !url.startsWith('http')) {
+      apiUrl = `/api/${url.startsWith('/') ? url.substring(1) : url}`;
+    }
+    
     // Add the workspace ID as a query parameter if not already in the URL
-    const urlWithWorkspace = url.includes('workspace_id=') 
-      ? url 
-      : `${url}${url.includes('?') ? '&' : '?'}workspace_id=${workspaceId}`;
+    const urlWithWorkspace = apiUrl.includes('workspace_id=') 
+      ? apiUrl 
+      : `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}workspace_id=${workspaceId}`;
     
     return fetcher<T>(urlWithWorkspace);
   };
@@ -104,18 +110,29 @@ export function useWorkspaceSWR<T>(
   path: string,
   config?: SWRConfiguration
 ) {
-  // If no workspace ID, don't fetch
-  const key = workspaceId ? path : null;
+  // Create a unique key that includes the workspaceId to force revalidation when workspace changes
+  // This ensures data is always fresh when switching workspaces
+  const key = workspaceId ? `${path}?workspace_id=${workspaceId}` : null;
   
   // Create a workspace-specific fetcher
   const workspaceFetcher = useCallback(
     async (url: string): Promise<T> => {
       if (!workspaceId) throw new Error('No workspace ID');
-      return createWorkspaceFetcher(workspaceId)<T>(url);
+      return createWorkspaceFetcher(workspaceId)<T>(path);
     },
-    [workspaceId]
+    [workspaceId, path]
   );
   
+  // Configure SWR with improved settings for workspace switching:
+  // 1. Shorter dedupingInterval to prevent stale data between workspace switches
+  // 2. revalidateOnMount to always fetch fresh data when component mounts or key changes
+  const mergedConfig = {
+    ...defaultConfig,
+    ...config,
+    dedupingInterval: 0, // Disable deduping to ensure fresh data on each workspace switch
+    revalidateOnMount: true, // Always revalidate when the component mounts
+  };
+  
   // Need to cast types to make TypeScript happy with our dynamic fetcher
-  return useSWR<T>(key, key ? workspaceFetcher : null, { ...defaultConfig, ...config });
+  return useSWR<T>(key, key ? workspaceFetcher : null, mergedConfig);
 }

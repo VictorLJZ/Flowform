@@ -1,9 +1,95 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { dbToApiForm } from '@/utils/type-utils/form/DbToApiForm';
+import type { DbForm } from '@/types/form/DbForm';
+import type { ApiForm } from '@/types/form/ApiForm';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/forms
+ * Retrieves forms for a workspace
+ */
+export async function GET(request: Request) {
+  try {
+    // Get the workspace_id from the query parameters
+    const url = new URL(request.url);
+    const workspaceId = url.searchParams.get('workspace_id');
+    
+    // Validate workspaceId is provided
+    if (!workspaceId) {
+      return NextResponse.json(
+        { error: 'workspace_id is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : '';
+    
+    // Create admin client to check authorization
+    const adminClient = createAdminClient();
+    
+    // Get the user from the token
+    const { data: userData } = await adminClient.auth.getUser(token);
+    const userId = userData?.user?.id;
+    
+    if (!userId) {
+      logger.warn('Unauthorized forms access attempt');
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Check if user is a member of the workspace
+    const { data: members, error: memberError } = await adminClient
+      .from('workspace_members')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId);
+    
+    if (memberError || !members || members.length === 0) {
+      logger.warn(`User ${userId} unauthorized for workspace ${workspaceId}`);
+      return NextResponse.json(
+        { error: 'You do not have access to this workspace' },
+        { status: 403 }
+      );
+    }
+    
+    // Get forms for the workspace
+    const { data: forms, error } = await adminClient
+      .from('forms')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      logger.error('Error fetching forms', { error });
+      return NextResponse.json(
+        { error: 'Error fetching forms' },
+        { status: 500 }
+      );
+    }
+    
+    // Transform DB forms to API forms
+    const apiForms: ApiForm[] = forms.map(dbToApiForm);
+    
+    return NextResponse.json(apiForms);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Unhandled error in GET /api/forms', { error: errorMessage });
+    
+    return NextResponse.json(
+      { error: 'An error occurred while fetching forms' },
+      { status: 500 }
+    );
+  }
+}
 
 // Input validation schema
 const FormCreateSchema = z.object({

@@ -69,23 +69,43 @@ export async function getWorkspaceMembersWithProfiles(workspaceId: string): Prom
       };
     }
     
-    // Join workspace_members with profiles table
-    const { data, error } = await supabase
+    // Join workspace_members with profiles table using separate queries for now
+    // Get all workspace members first
+    const { data: members, error: membersError } = await supabase
       .from('workspace_members')
-      .select(`
-        workspace_id,
-        user_id,
-        role,
-        joined_at,
-        profiles:user_id (
-          full_name,
-          avatar_url,
-          email
-        )
-      `)
+      .select('*')
       .eq('workspace_id', workspaceId);
       
-    if (error) throw error;
+    if (membersError) throw membersError;
+    if (!members || members.length === 0) return [];
+    
+    // Get profiles for all members
+    const userIds = members.map(member => member.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, email')
+      .in('id', userIds);
+      
+    if (profilesError) throw profilesError;
+    
+    // Create a map of profiles by user ID for easy lookup
+    const profileMap = (profiles || []).reduce((map, profile) => {
+      map[profile.id] = profile;
+      return map;
+    }, {} as Record<string, any>);
+    
+    // Combine member data with profile data
+    const data = members.map(member => {
+      const profile = profileMap[member.user_id] || {};
+      return {
+        ...member,
+        profiles: {
+          full_name: profile.full_name || null,
+          avatar_url: profile.avatar_url || null,
+          email: profile.email || null
+        }
+      };
+    });
     
     // First cast to unknown, then to our expected type for safety
     const typedData = (data as unknown) as DbMemberWithProfileJoin[];
@@ -103,7 +123,13 @@ export async function getWorkspaceMembersWithProfiles(workspaceId: string): Prom
       }
     })) as DbWorkspaceMemberWithProfile[];
   } catch (error) {
-    throw new Error(`Failed to get workspace members with profiles: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Detailed error in getWorkspaceMembersWithProfiles:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to get workspace members with profiles: ${error.message}`);
+    } else {
+      console.error('Non-Error object thrown:', error);
+      throw new Error(`Failed to get workspace members with profiles: ${JSON.stringify(error)}`);
+    }
   }
 }
 

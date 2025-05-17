@@ -25,9 +25,16 @@ interface Params {
 /**
  * PUT handler - update a member's role
  */
-export async function PUT(request: Request, { params }: Params) {
+export async function PUT(
+  request: Request, 
+  { params }: { params: Promise<{ id: string; userId: string }> | { id: string; userId: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  const targetUserId = resolvedParams.userId;
+  
   try {
-    const { id: workspaceId, userId } = params;
     
     // Get authenticated user
     const supabase = await createClient();
@@ -61,7 +68,7 @@ export async function PUT(request: Request, { params }: Params) {
     }
     
     // Cannot change own role
-    if (userId === user.id) {
+    if (targetUserId === user.id) {
       return NextResponse.json(
         { error: 'You cannot change your own role' },
         { status: 400 }
@@ -70,7 +77,7 @@ export async function PUT(request: Request, { params }: Params) {
     
     // Get current user role to verify permissions
     const currentUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, user.id);
-    const targetUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, userId);
+    const targetUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, targetUserId);
     
     // Check if target user exists in workspace
     if (!targetUserRole) {
@@ -107,7 +114,7 @@ export async function PUT(request: Request, { params }: Params) {
     // Update the member's role
     const updatedMember = await membersService.updateMemberRole(
       workspaceId,
-      userId,
+      targetUserId,
       role as ApiWorkspaceRole
     );
     
@@ -125,9 +132,16 @@ export async function PUT(request: Request, { params }: Params) {
 /**
  * DELETE handler - remove a member from a workspace
  */
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(
+  request: Request, 
+  { params }: { params: Promise<{ id: string; userId: string }> | { id: string; userId: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+  const targetUserId = resolvedParams.userId;
+  
   try {
-    const { id: workspaceId, userId } = params;
     
     // Get authenticated user
     const supabase = await createClient();
@@ -142,7 +156,7 @@ export async function DELETE(request: Request, { params }: Params) {
     
     // Two valid cases:
     // 1. User is removing themselves (leaving the workspace)
-    const isSelfRemoval = user.id === userId;
+    const isSelfRemoval = targetUserId === user.id;
     
     // 2. User has permission to manage members
     const canManage = isSelfRemoval || await permissionsService.canManageMembers(workspaceId, user.id);
@@ -158,7 +172,7 @@ export async function DELETE(request: Request, { params }: Params) {
     if (!isSelfRemoval) {
       // Get current user role
       const currentUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, user.id);
-      const targetUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, userId);
+      const targetUserRole = await permissionsService.getUserRoleInWorkspace(workspaceId, targetUserId);
       
       // Check if target user exists in workspace
       if (!targetUserRole) {
@@ -185,7 +199,7 @@ export async function DELETE(request: Request, { params }: Params) {
     }
     
     // Remove the member
-    await membersService.removeWorkspaceMember(workspaceId, userId);
+    await membersService.removeWorkspaceMember(workspaceId, targetUserId);
     
     return NextResponse.json({ success: true });
   } catch (error) {

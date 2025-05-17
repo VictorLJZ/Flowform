@@ -22,10 +22,15 @@ interface Params {
 /**
  * GET handler - retrieve all members of a workspace
  */
-export async function GET(request: Request, { params }: Params) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const workspaceId = resolvedParams.id;
+
   try {
-    const { id: workspaceId } = params;
-    
     // Get authenticated user
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

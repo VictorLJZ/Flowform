@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { getFormWithBlocks } from "@/services/form/getFormWithBlocks"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  // Extract formId from URL
-  const formId = request.nextUrl.pathname.split('/').pop();
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ formId: string }> | { formId: string } }
+): Promise<NextResponse> {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const formId = resolvedParams.formId;
   try {
     // formId is already extracted from the URL
     const supabase = await createClient();

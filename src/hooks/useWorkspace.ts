@@ -11,7 +11,8 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useCallback } from 'react';
 import { ApiWorkspaceUpdateInput, ApiWorkspaceRole } from '@/types/workspace/ApiWorkspace';
 import { apiToUiWorkspace } from '@/utils/type-utils/workspace/ApiToUiWorkspace';
-import { useAuth } from '@/providers/auth-provider';
+import { useCurrentUser } from '@/providers/auth-provider';
+import { useRouter } from 'next/navigation';
 
 /**
  * Extended hook that combines provider context with direct store access for
@@ -24,8 +25,11 @@ export function useWorkspace() {
   // Get direct access to the store for advanced operations
   const store = useWorkspaceStore();
   
-  // Get the current user's ID for permission checks
-  const { supabase } = useAuth();
+  // Get the current user's ID and data for permission checks
+  const { user, userId, refreshUser } = useCurrentUser();
+  
+  // Get Next.js router for navigation
+  const router = useRouter();
   
   /**
    * Refresh workspace data
@@ -53,9 +57,8 @@ export function useWorkspace() {
    * Check if current user is a member of the workspace
    */
   const isMember = useCallback(async (workspaceId: string): Promise<boolean> => {
-    // Get the current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    // Use cached user data instead of making new API call
+    if (!userId) return false;
     
     // Get members for the workspace if not already loaded
     if (!store.members[workspaceId]) {
@@ -63,16 +66,15 @@ export function useWorkspace() {
     }
     
     // Check if current user is in the members list
-    return store.members[workspaceId]?.some(member => member.userId === user.id) || false;
-  }, [store, supabase]);
+    return store.members[workspaceId]?.some(member => member.userId === userId) || false;
+  }, [store, userId]);
   
   /**
    * Get the current user's role in a workspace
    */
   const getUserRole = useCallback(async (workspaceId: string): Promise<ApiWorkspaceRole | null> => {
-    // Get the current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    // Use cached user data instead of making new API call
+    if (!userId) return null;
     
     // Get members for the workspace if not already loaded
     if (!store.members[workspaceId]) {
@@ -80,9 +82,9 @@ export function useWorkspace() {
     }
     
     // Find the current user's membership
-    const membership = store.members[workspaceId]?.find(member => member.userId === user.id);
+    const membership = store.members[workspaceId]?.find(member => member.userId === userId);
     return membership?.role || null;
-  }, [store, supabase]);
+  }, [store, userId]);
   
   /**
    * Update workspace settings (name, description, logo, etc.)
@@ -120,10 +122,26 @@ export function useWorkspace() {
     return store.error;
   }, [store]);
   
+  /**
+   * Select a workspace and navigate to its dashboard page
+   */
+  const selectWorkspaceWithNavigation = useCallback((workspaceId: string | null) => {
+    // Update the store state
+    store.selectWorkspace(workspaceId);
+    
+    // Navigate to the workspace page if a workspace was selected
+    if (workspaceId) {
+      router.push(`/dashboard/workspace/${workspaceId}`);
+    }
+  }, [store, router]);
+
   // Return combined API from both context and store
   return {
     // State from context
     ...context,
+    
+    // Override the selectWorkspace function with our navigation-enabled version
+    selectWorkspace: selectWorkspaceWithNavigation,
     
     // Current workspace lookup by ID helper
     getWorkspaceById: useCallback((id: string) => {

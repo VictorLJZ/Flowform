@@ -9,23 +9,59 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getVerifiedUser } from "@/services/auth/verifiedAuth";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { mutate } from 'swr'; 
 
 const AUTH_SWR_KEY = 'auth-session';
+const USER_CACHE_KEY = 'user-session-cache';
 
 type AuthContextType = {
   supabase: SupabaseClient;
   signOut: () => Promise<void>;
+  user: User | null;
+  isLoading: boolean;
+  userId: string | null;
+  refreshUser: () => Promise<User | null>;
+  lastRefreshed: number;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase, setSupabase] = useState(() => createClient());
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState(0);
   const router = useRouter();
   const isDev = process.env.NODE_ENV === 'development';
+  
+  // Derived state
+  const userId = user?.id || null;
+
+  // Function to refresh user data
+  const refreshUser = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+      setLastRefreshed(Date.now());
+      return currentUser;
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase]);
+  
+  // Initial load of user data
+  useEffect(() => {
+    const loadUser = async () => {
+      await refreshUser();
+    };
+    loadUser();
+  }, [refreshUser]);
 
   // Handle auth state changes
   useEffect(() => {
@@ -41,8 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Setup auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Update user state immediately based on the session
+      setUser(session?.user || null);
+      setLastRefreshed(Date.now());
       
       // Force data refresh to update auth state across the app
       mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
@@ -54,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Check for too frequent redirects
           const lastRedirect = parseInt(sessionStorage.getItem('last_redirect') || '0');
           if (Date.now() - lastRedirect < 2000) {
-
             return;
           }
           
@@ -77,37 +114,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription?.unsubscribe();
-  }, [supabase, router, isDev]);
+  }, [supabase, router, isDev, refreshUser]);
 
   // Refresh auth state when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        setSupabase(createClient());
-        mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
+        // Only refresh if it's been a while since the last refresh (5 minutes)
+        if (Date.now() - lastRefreshed > 5 * 60 * 1000) {
+          setSupabase(createClient());
+          refreshUser();
+          mutate(AUTH_SWR_KEY, undefined, { revalidate: true });
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [lastRefreshed, refreshUser]);
 
   // Sign out function
   const signOut = useCallback(async () => {
     try {
-      const user = await getVerifiedUser();
       if (user) {
         await supabase.auth.signOut();
+        setUser(null);
         mutate(AUTH_SWR_KEY, null, { revalidate: false });
       }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
-
+      setUser(null);
       mutate(AUTH_SWR_KEY, null, { revalidate: false });
     }
-  }, [supabase]);
+  }, [supabase, user]);
 
-  return <AuthContext.Provider value={{ supabase, signOut }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider 
+      value={{
+        supabase,
+        signOut,
+        user,
+        isLoading,
+        userId,
+        refreshUser,
+        lastRefreshed
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = (): AuthContextType => {
@@ -119,8 +174,18 @@ export const useAuth = (): AuthContextType => {
 };
 
 /**
- * React hook to access the Supabase client and auth functions
- * @returns The Supabase client and auth functions
+ * React hook to access just the current user
+ * This hook avoids unnecessary renders when only the user info is needed
+ * @returns The current user, loading state, and userId
+ */
+export function useCurrentUser() {
+  const { user, isLoading, userId, refreshUser } = useAuth();
+  return { user, isLoading, userId, refreshUser };
+}
+
+/**
+ * React hook to access the Supabase client
+ * @returns The Supabase client
  */
 export function useSupabase() {
   const context = useContext(AuthContext);

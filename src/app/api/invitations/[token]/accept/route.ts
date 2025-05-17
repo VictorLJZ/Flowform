@@ -22,9 +22,15 @@ interface Params {
 /**
  * POST handler - accept invitation and join workspace
  */
-export async function POST(request: Request, { params }: Params) {
+export async function POST(
+  request: Request, 
+  { params }: { params: Promise<{ token: string }> | { token: string } }
+) {
+  // Next.js 15 pattern for handling dynamic route params - we need to await the params object
+  const resolvedParams = 'then' in params ? await params : params;
+  const token = resolvedParams.token;
+  
   try {
-    const { token } = params;
     
     // Get authenticated user
     const supabase = await createClient();

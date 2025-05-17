@@ -9,7 +9,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
-import { useAuth } from '@/providers/auth-provider';
+import { useCurrentUser } from '@/providers/auth-provider';
 import { 
   ApiWorkspaceRole, 
   ApiWorkspaceInvitationInput
@@ -37,48 +37,29 @@ export function useWorkspaceMembers(workspaceId?: string) {
   } = useWorkspace();
   
   const { canManageMembers, getUserRole, isOwner } = useWorkspacePermissions();
-  const { supabase } = useAuth();
+  const { userId: currentUserId } = useCurrentUser();
   
   // Local state for transformed members and invitations
   const [uiMembers, setUiMembers] = useState<UiWorkspaceMemberWithProfile[]>([]);
   const [uiInvitations, setUiInvitations] = useState<UiWorkspaceInvitation[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Get the active workspace ID
   const activeWorkspaceId = workspaceId || currentWorkspace?.id;
   
-  // Get current user ID once
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    
-    getCurrentUser();
-  }, [supabase]);
-  
   // Load members when needed
   useEffect(() => {
-    if (activeWorkspaceId && !members[activeWorkspaceId]) {
+    if (!activeWorkspaceId) return;
+    
+    // Check if members already exist or are currently being loaded
+    const hasMembers = members[activeWorkspaceId] !== undefined;
+    const isLoading = membersLoading[activeWorkspaceId];
+    
+    if (!hasMembers && !isLoading) {
       fetchMembers(activeWorkspaceId);
     }
-  }, [activeWorkspaceId, members, fetchMembers]);
+  }, [activeWorkspaceId, fetchMembers, membersLoading]);
   
-  // Load invitations when needed
-  useEffect(() => {
-    const loadInvitations = async () => {
-      if (activeWorkspaceId) {
-        const canManage = await canManageMembers(activeWorkspaceId);
-        if (canManage && !invitations[activeWorkspaceId]) {
-          fetchInvitations(activeWorkspaceId);
-        }
-      }
-    };
-    
-    loadInvitations();
-  }, [activeWorkspaceId, invitations, fetchInvitations, canManageMembers]);
-  
-  // Transform members to UI format when they change
+  // Use a separate effect to transform the members data
   useEffect(() => {
     if (activeWorkspaceId && members[activeWorkspaceId]) {
       const membersWithProfiles = members[activeWorkspaceId].map(member => 
@@ -87,6 +68,29 @@ export function useWorkspaceMembers(workspaceId?: string) {
       setUiMembers(membersWithProfiles);
     }
   }, [activeWorkspaceId, members, currentUserId]);
+  
+  // Load invitations when needed
+  useEffect(() => {
+    const loadInvitations = async () => {
+      if (!activeWorkspaceId) return;
+      
+      // Check if invitations already exist or are currently being loaded
+      const hasInvitations = invitations[activeWorkspaceId] !== undefined;
+      const isLoading = invitationsLoading[activeWorkspaceId];
+      
+      // Only proceed if we don't have invitations and we're not already loading them
+      if (!hasInvitations && !isLoading) {
+        const canManage = await canManageMembers(activeWorkspaceId);
+        if (canManage) {
+          fetchInvitations(activeWorkspaceId);
+        }
+      }
+    };
+    
+    loadInvitations();
+  }, [activeWorkspaceId, fetchInvitations, invitationsLoading, canManageMembers]);
+  
+  // Note: Member transformation is already handled in the earlier useEffect
   
   // Transform invitations to UI format when they change
   useEffect(() => {
@@ -109,8 +113,12 @@ export function useWorkspaceMembers(workspaceId?: string) {
    * Get pending invitations only (filtered)
    */
   const getPendingInvitations = useCallback((): UiWorkspaceInvitation[] => {
-    return uiInvitations.filter(invitation => invitation.status === 'pending');
-  }, [uiInvitations]);
+    if (!activeWorkspaceId) return [];
+    
+    return uiInvitations.filter(invitation => 
+      invitation.status === 'pending'
+    );
+  }, [activeWorkspaceId, uiInvitations]);
   
   /**
    * Invite a new user to the workspace
