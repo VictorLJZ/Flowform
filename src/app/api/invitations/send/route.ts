@@ -3,6 +3,22 @@ import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { ApiWorkspaceRole } from '@/types/workspace';
 
+// Create a logger for tracking the invitation email process
+const logger = {
+  info: (message: string, data?: any) => {
+    console.log(`[INVITE-EMAIL-INFO] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(`[INVITE-EMAIL-WARN] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  },
+  error: (message: string, data?: any) => {
+    console.error(`[INVITE-EMAIL-ERROR] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  },
+  debug: (message: string, data?: any) => {
+    console.debug(`[INVITE-EMAIL-DEBUG] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  }
+};
+
 // Get invitation URL using the token
 function getInvitationUrl(token: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -11,16 +27,39 @@ function getInvitationUrl(token: string): string {
 
 // Process workspace invitation email
 export async function POST(request: Request) {
+  logger.info('Email sending process started');
+  
+  // Check if environment variables are set
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL;
+  
+  if (!resendApiKey) {
+    logger.error('RESEND_API_KEY environment variable is not set');
+    return NextResponse.json({ error: 'Email service not properly configured' }, { status: 500 });
+  }
+  
+  if (!senderEmail) {
+    logger.error('SENDER_EMAIL environment variable is not set');
+    return NextResponse.json({ error: 'Sender email not configured' }, { status: 500 });
+  }
+  
+  logger.info('Environment variables validated', { resendKeyExists: !!resendApiKey, senderEmailExists: !!senderEmail });
+  
   // Initialize Resend with API key
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(resendApiKey);
+  logger.info('Resend client initialized');
   
   try {
     // Get the Supabase client (it's an async function in this project)
     const supabase = await createClient();
+    logger.info('Supabase client created');
     
     // Check authentication
     const { data: { session } } = await supabase.auth.getSession();
+    logger.info('Auth session checked', { sessionExists: !!session });
+    
     if (!session) {
+      logger.error('Unauthorized request - No session found');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -28,9 +67,13 @@ export async function POST(request: Request) {
     }
 
     // Parse request data
-    const { invitationId } = await request.json();
+    const requestBody = await request.json();
+    const { invitationId } = requestBody;
+    
+    logger.info('Request parsed', { invitationId, requestBody });
     
     if (!invitationId) {
+      logger.error('Invitation ID missing in request');
       return NextResponse.json(
         { error: 'Invitation ID is required' },
         { status: 400 }
@@ -38,21 +81,33 @@ export async function POST(request: Request) {
     }
     
     // Fetch the invitation details
+    logger.info('Fetching invitation details', { invitationId });
     const { data: invitation, error: invitationError } = await supabase
       .from('workspace_invitations')
       .select('*')
       .eq('id', invitationId)
       .single();
       
-    if (invitationError || !invitation) {
-      console.error('Error fetching invitation:', invitationError);
+    if (invitationError) {
+      logger.error('Error fetching invitation from database', { error: invitationError });
+      return NextResponse.json(
+        { error: 'Invitation not found', details: invitationError.message },
+        { status: 404 }
+      );
+    }
+    
+    if (!invitation) {
+      logger.error('No invitation found with provided ID', { invitationId });
       return NextResponse.json(
         { error: 'Invitation not found' },
         { status: 404 }
       );
     }
     
+    logger.info('Invitation found', { invitation });
+    
     // Fetch the workspace details
+    logger.info('Fetching workspace details', { workspaceId: invitation.workspace_id });
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
       .select('name')
@@ -60,14 +115,17 @@ export async function POST(request: Request) {
       .single();
       
     if (workspaceError) {
-      console.error('Error fetching workspace:', workspaceError);
+      logger.error('Error fetching workspace from database', { error: workspaceError });
       return NextResponse.json(
-        { error: 'Workspace details not available' },
+        { error: 'Workspace details not available', details: workspaceError.message },
         { status: 500 }
       );
     }
     
+    logger.info('Workspace found', { workspace });
+    
     // Fetch inviter's profile
+    logger.info('Fetching inviter profile', { inviterId: invitation.invited_by });
     const { data: inviter, error: inviterError } = await supabase
       .from('profiles')
       .select('full_name')
@@ -75,8 +133,10 @@ export async function POST(request: Request) {
       .single();
       
     if (inviterError) {
-      console.error('Error fetching inviter profile:', inviterError);
+      logger.warn('Error fetching inviter profile from database', { error: inviterError });
       // Continue with a fallback name
+    } else {
+      logger.info('Inviter profile found', { inviter });
     }
     
     // Format role for display
@@ -269,46 +329,62 @@ export async function POST(request: Request) {
     // Get the sender email address from environment variables
     const fromAddress = process.env.SENDER_EMAIL;
     
-    if (!fromAddress) {
-      console.error('[sendInvitationEmail] Error: SENDER_EMAIL environment variable is not set.');
-      // Consider throwing an error or returning a specific response
-      // For now, just log and potentially fail silently or gracefully
-      return; // Or throw new Error('Sender email not configured');
-    }
+    logger.info('Preparing email parameters', { fromAddress, toEmail: invitation.email });
     
     // Always send to the actual invited email address
     const toEmail = invitation.email;
     
     // Log sending details
-    console.log(`[sendInvitationEmail] Sending production invitation email`);
-    console.log(`From: ${fromAddress}`);
-    console.log(`To: ${toEmail}`);
+    logger.info('Preparing to send email', {
+      from: fromAddress,
+      to: toEmail,
+      subject: `You've been invited to join ${workspace.name} on Flowform`
+    });
     
     // Send email via Resend
-    const { error } = await resend.emails.send({
-      from: fromAddress, // Use the configured sender email
+    logger.debug('Email content prepared', {
+      htmlLength: htmlContent.length,
+      textLength: textContent.length
+    });
+    
+    try {
+      // Send email via Resend
+      const emailResponse = await resend.emails.send({
+      from: fromAddress as string, // Use the configured sender email, cast to string to satisfy TS
       to: [toEmail],    // Send to the actual recipient
       subject: `You've been invited to join ${workspace.name} on Flowform`,
       html: htmlContent,
       text: textContent,
     });
-
-    if (error) {
-      console.error('Error sending invitation email:', error);
+    
+      logger.info('Email sending response received', { emailResponse });
+      
+      if ('error' in emailResponse && emailResponse.error) {
+        logger.error('Resend API returned error', { error: emailResponse.error });
+        return NextResponse.json(
+          { error: 'Failed to send invitation email', details: emailResponse.error },
+          { status: 500 }
+        );
+      }
+      
+      logger.info('Email sent successfully', { emailData: emailResponse });
+      
+      return NextResponse.json({ 
+        success: true,
+        message: 'Invitation email sent successfully',
+        emailData: emailResponse
+      });
+    } catch (sendError) {
+      logger.error('Exception during email sending', { error: sendError });
       return NextResponse.json(
-        { error: 'Failed to send invitation email' },
+        { error: 'Failed to send invitation email', details: sendError instanceof Error ? sendError.message : 'Unknown error' },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Invitation email sent successfully'
-    });
   } catch (error) {
-    console.error('Invitation email error:', error);
+    logger.error('Unhandled exception in invitation email sending process', { error });
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: 'An unexpected error occurred', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

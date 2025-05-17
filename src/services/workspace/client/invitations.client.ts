@@ -11,6 +11,19 @@ import {
   ApiErrorResponse 
 } from '@/types/workspace';
 
+// Create a logger for tracking the invitation process
+const logger = {
+  info: (message: string, data?: any) => {
+    console.log(`[INVITE-CLIENT-INFO] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(`[INVITE-CLIENT-WARN] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  },
+  error: (message: string, data?: any) => {
+    console.error(`[INVITE-CLIENT-ERROR] ${new Date().toISOString()} | ${message}`, data ? data : '');
+  }
+};
+
 /**
  * Create a new workspace invitation
  * 
@@ -22,6 +35,8 @@ export async function createInvitation(
   workspaceId: string,
   invitation: ApiWorkspaceInvitationInput
 ): Promise<ApiWorkspaceInvitation> {
+  logger.info('Creating new invitation', { workspaceId, email: invitation.email, role: invitation.role });
+  
   try {
     const response = await fetch(`/api/workspaces/${workspaceId}/invitations`, {
       method: 'POST',
@@ -32,11 +47,16 @@ export async function createInvitation(
     
     if (!response.ok) {
       const errorData = await response.json() as ApiErrorResponse;
+      logger.error('Failed to create invitation', { status: response.status, error: errorData });
       throw new Error(errorData.error || `API returned status ${response.status}`);
     }
     
-    return await response.json() as ApiWorkspaceInvitation;
+    const createdInvitation = await response.json() as ApiWorkspaceInvitation;
+    logger.info('Invitation created successfully', { invitationId: createdInvitation.id });
+    
+    return createdInvitation;
   } catch (error) {
+    logger.error('Exception during invitation creation', { error });
     throw new Error(`Failed to create invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -174,5 +194,45 @@ export async function declineInvitation(token: string): Promise<{ success: boole
     return { success: true };
   } catch (error) {
     throw new Error(`Failed to decline invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Send an invitation email for a newly created invitation
+ * 
+ * @param invitationId - UUID of the invitation
+ * @returns Object indicating success and any email details
+ */
+export async function sendInvitationEmail(
+  invitationId: string
+): Promise<{ success: boolean; emailData?: any }> {
+  logger.info('Sending invitation email', { invitationId });
+  
+  try {
+    const response = await fetch('/api/invitations/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ invitationId })
+    });
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      logger.error('Failed to send invitation email', { 
+        status: response.status, 
+        responseData 
+      });
+      throw new Error(responseData.error || `API returned status ${response.status}`);
+    }
+    
+    logger.info('Invitation email sent successfully', { responseData });
+    return { 
+      success: true,
+      emailData: responseData.emailData 
+    };
+  } catch (error) {
+    logger.error('Exception during email sending', { error });
+    throw new Error(`Failed to send invitation email: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

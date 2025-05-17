@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Plus, Trash2, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspace } from "@/hooks/useWorkspace"
+import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
 import { UiWorkspace } from "@/types/workspace/UiWorkspace"
 
 import {
@@ -38,14 +39,16 @@ type InviteInput = {
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
   
-  // Use our new unified workspace hook
+  // Use our unified workspace hooks
   const {
     currentWorkspace: contextWorkspace,
     invitations,
     invitationsLoading,
-    fetchInvitations,
-    createInvitation
+    fetchInvitations
   } = useWorkspace()
+  
+  // Use the workspace members hook for the inviteUser function
+  const { inviteUser } = useWorkspaceMembers()
   
   // We don't need to check permissions here as the Dialog is only shown to users with the right permissions
   // Permission check is done at the parent component level
@@ -133,18 +136,30 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
     let successCount = 0
     let errorCount = 0
     
+    console.log('[InviteDialog] Starting invitation process for', validInvites.length, 'invites');
+    
     for (const invite of validInvites) {
       try {
-        await createInvitation(workspaceId, { 
-          email: invite.email, 
-          role: invite.role 
-        })
-        successCount++
+        console.log(`[InviteDialog] Inviting ${invite.email} with role ${invite.role}`);
+        
+        // Use the enhanced inviteUser function which handles both creating the invitation
+        // and sending the email in a single flow
+        const result = await inviteUser(invite.email, invite.role);
+        
+        if (result) {
+          console.log(`[InviteDialog] Successfully invited ${invite.email}`, result);
+          successCount++;
+        } else {
+          console.error(`[InviteDialog] Failed to invite ${invite.email} - null result returned`);
+          errorCount++;
+        }
       } catch (error) {
-        console.error(`Error inviting ${invite.email}:`, error)
-        errorCount++
+        console.error(`[InviteDialog] Error inviting ${invite.email}:`, error);
+        errorCount++;
       }
     }
+    
+    console.log(`[InviteDialog] Invitation process completed: ${successCount} succeeded, ${errorCount} failed`);
     
     // Close dialog on success, show result toast
     if (successCount > 0) {

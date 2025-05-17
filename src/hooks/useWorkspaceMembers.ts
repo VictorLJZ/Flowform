@@ -19,6 +19,7 @@ import {
   apiToUiWorkspaceInvitation 
 } from '@/utils/type-utils/workspace/ApiToUiWorkspace';
 import { UiWorkspaceMemberWithProfile, UiWorkspaceInvitation } from '@/types/workspace/UiWorkspace';
+import { sendInvitationEmail } from '@/services/workspace/client/invitations.client';
 
 export function useWorkspaceMembers(workspaceId?: string) {
   const { 
@@ -130,14 +131,42 @@ export function useWorkspaceMembers(workspaceId?: string) {
   ): Promise<UiWorkspaceInvitation | null> => {
     if (!activeWorkspaceId) return null;
     
-    const input: ApiWorkspaceInvitationInput = {
-      email,
-      role,
-      message
-    };
-    
-    const invitation = await createInvitation(activeWorkspaceId, input);
-    return invitation ? apiToUiWorkspaceInvitation(invitation) : null;
+    try {
+      // Step 1: Create the invitation in the database
+      console.log(`[INVITE-FLOW] Creating invitation for email: ${email} with role: ${role}`);
+      
+      const input: ApiWorkspaceInvitationInput = {
+        email,
+        role,
+        message
+      };
+      
+      const invitation = await createInvitation(activeWorkspaceId, input);
+      
+      if (!invitation) {
+        console.error('[INVITE-FLOW] Failed to create invitation - no invitation returned');
+        return null;
+      }
+      
+      console.log(`[INVITE-FLOW] Invitation created successfully with ID: ${invitation.id}`);
+      
+      // Step 2: Send the invitation email
+      console.log(`[INVITE-FLOW] Sending invitation email for ID: ${invitation.id}`);
+      
+      try {
+        const emailResult = await sendInvitationEmail(invitation.id);
+        console.log(`[INVITE-FLOW] Email sending result:`, emailResult);
+      } catch (emailError) {
+        // Log the error but don't fail the overall process
+        // The invitation was created, we just couldn't send the email
+        console.error(`[INVITE-FLOW] Error sending invitation email:`, emailError);
+      }
+      
+      return apiToUiWorkspaceInvitation(invitation);
+    } catch (error) {
+      console.error(`[INVITE-FLOW] Error in invitation process:`, error);
+      return null;
+    }
   }, [activeWorkspaceId, createInvitation]);
   
   /**
