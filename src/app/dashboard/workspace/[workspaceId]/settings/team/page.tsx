@@ -1,53 +1,108 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, use } from "react"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { useWorkspacePermissions } from "@/hooks/useWorkspacePermissions"
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
-import { ApiWorkspaceRole } from "@/types/workspace"
-import { UiWorkspaceMemberWithProfile } from "@/types/workspace"
-import { apiToUiWorkspaceMemberWithProfile } from "@/utils/type-utils/workspace/ApiToUiWorkspace"
+import { ApiWorkspaceRole } from "@/types/workspace/ApiWorkspace"
+import { UiWorkspaceMemberWithProfile } from "@/types/workspace/UiWorkspace"
 import { InviteDialog } from "@/components/workspace/invite-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { useAuthSession } from "@/hooks/useAuthSession"
-import { useCurrentWorkspace } from "@/providers/workspace-provider"
+import { useAuth } from "@/providers/auth-provider"
 
 // Import the existing components to maintain functionality
 import { MembersHeader } from "@/components/workspace/members/members-header"
 import { MembersList } from "@/components/workspace/members/members-list"
 
-export default function TeamSettings() {
-  // Get the current workspace from our provider
-  const { currentWorkspace, selectedId: currentWorkspaceId } = useCurrentWorkspace()
+interface WorkspaceParams {
+  workspaceId: string
+}
+
+interface TeamSettingsProps {
+  params: Promise<WorkspaceParams>
+}
+
+export default function TeamSettings({ params: paramsPromise }: TeamSettingsProps) {
+  // Unwrap the params from the Promise
+  const params = use(paramsPromise) as WorkspaceParams
+  const { workspaceId } = params
   
-  // Debug logging to see what we're working with
-  console.log('[TeamSettings] Workspace context:', {
-    currentWorkspaceId: currentWorkspaceId || 'null', 
-    hasCurrentWorkspace: !!currentWorkspace,
-  })
+  // Use the new workspace hooks
+  const { currentWorkspace, getWorkspaceById } = useWorkspace()
+  const { canManageMembers } = useWorkspacePermissions()
   
+  // Get the current workspace if it's not already the current one
+  const workspace = currentWorkspace?.id === workspaceId 
+    ? currentWorkspace 
+    : getWorkspaceById(workspaceId)
+  
+  // Filter and sort state
   const [filterRole, setFilterRole] = useState<ApiWorkspaceRole | null>(null)
   const [sortBy, setSortBy] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [canManage, setCanManage] = useState(false)
 
-  // Get current user's ID for sorting
-  const { user: currentUser } = useAuthSession()
-  const currentUserId = currentUser?.id
+  // Get current user session and status
+  const { supabase } = useAuth()
   
+  // Use our workspaceMembers hook for member management
   const {
     members,
     isLoading,
-    error,
-  } = useWorkspaceMembers(currentWorkspaceId)
+    sortedMembers,
+    getUserRole,
+  } = useWorkspaceMembers(workspaceId)
   
-  // Find current user's role
-  const currentUserRole = members?.find(m => m.userId === currentUserId)?.role as ApiWorkspaceRole | undefined;
+  // Get the current user ID
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  
+  // Fetch current user ID
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setCurrentUserId(data.user?.id || null)
+    }
+    fetchUser()
+  }, [supabase])
+  
+  // Check permissions when workspaceId changes
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (workspaceId) {
+        const canManage = await canManageMembers(workspaceId)
+        setCanManage(canManage)
+      }
+    }
+    
+    checkPermissions()
+  }, [workspaceId, canManageMembers])
+  
+  // Get current user role
+  const [currentUserRole, setCurrentUserRole] = useState<ApiWorkspaceRole | undefined>(undefined)
+  
+  // Get current user role when user ID is available
+  useEffect(() => {
+    const getCurrentRole = async () => {
+      if (workspaceId && currentUserId) {
+        try {
+          const role = await getUserRole(workspaceId)
+          setCurrentUserRole(role as ApiWorkspaceRole)
+        } catch (error) {
+          console.error('Error getting user role:', error)
+        }
+      }
+    }
+    
+    getCurrentRole()
+  }, [workspaceId, currentUserId, getUserRole])
   
   // Filter members based on role and search query
-  const filteredMembers = members.filter(member => {
+  const filteredMembers = sortedMembers.filter((member: UiWorkspaceMemberWithProfile) => {
     // Role filter
     if (filterRole && member.role !== filterRole) {
       return false
@@ -56,62 +111,21 @@ export default function TeamSettings() {
     // Search query filter (check name or email)
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      const name = member.profile?.fullName?.toLowerCase() || ""
+      const name = member.profile?.displayName?.toLowerCase() || ""
       return name.includes(query)
     }
     
     return true
   })
   
-  // Transform members from API to UI type
-  const uiMembers = filteredMembers.map(member => {
-    // Mark if this is the current user
-    const isCurrentUser = member.userId === currentUserId;
-    return apiToUiWorkspaceMemberWithProfile(member, isCurrentUser);
-  });
+  // Check for errors
+  const error = members.length === 0 && !isLoading ? new Error("No members found") : null
 
-  // Sort members
-  const sortedMembers = [...uiMembers].sort((a, b) => {
-    // Prioritize the current user
-    if (currentUserId) {
-      if (a.userId === currentUserId) return -1 // Current user 'a' comes first
-      if (b.userId === currentUserId) return 1  // Current user 'b' comes first (so 'a' comes after)
-    }
-    
-    // Existing sorting logic for other members
-    let valueA, valueB
-    
-    switch (sortBy) {
-      case "name":
-        valueA = a.profile?.fullName?.toLowerCase() || ""
-        valueB = b.profile?.fullName?.toLowerCase() || ""
-        break
-      case "role":
-        valueA = a.role as string
-        valueB = b.role as string
-        break
-      case "joined":
-        valueA = a.joinedAt
-        valueB = b.joinedAt
-        break
-      default:
-        valueA = a.profile?.fullName?.toLowerCase() || ""
-        valueB = b.profile?.fullName?.toLowerCase() || ""
-    }
-    
-    // Handle sorting direction
-    const sortFactor = sortDirection === "asc" ? 1 : -1
-    
-    if (valueA < valueB) return -1 * sortFactor
-    if (valueA > valueB) return 1 * sortFactor
-    return 0
-  })
-  
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Team Management</h1>
-        {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+        {canManage && (
           <Button onClick={() => setShowInviteDialog(true)}>
             Invite Team Member
           </Button>
@@ -134,8 +148,6 @@ export default function TeamSettings() {
             onSortChange={setSortBy}
             onSortDirectionChange={setSortDirection}
             onSearchChange={setSearchQuery}
-            onInviteClick={() => setShowInviteDialog(true)}
-            isAdmin={currentUserRole === 'admin'}
             currentFilter={filterRole}
             currentSort={sortBy}
             currentSortDirection={sortDirection}
@@ -157,7 +169,8 @@ export default function TeamSettings() {
             </div>
           ) : (
             <MembersList 
-              members={sortedMembers as UiWorkspaceMemberWithProfile[]}
+              workspaceId={workspaceId}
+              members={filteredMembers}
               currentUserRole={currentUserRole} 
               currentUserId={currentUserId} 
             />
@@ -167,7 +180,7 @@ export default function TeamSettings() {
       <InviteDialog
         open={showInviteDialog}
         onOpenChange={setShowInviteDialog}
-        currentWorkspace={currentWorkspace || null}
+        currentWorkspace={workspace || null}
       />
     </div>
   )

@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Trash2, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
-import { ApiWorkspace } from "@/types/workspace"
-import { useWorkspaceStore } from "@/stores/workspaceStore"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { UiWorkspace } from "@/types/workspace/UiWorkspace"
 
 import {
   Dialog,
@@ -24,12 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type InviteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentWorkspace: ApiWorkspace | null | undefined
+  currentWorkspace?: UiWorkspace | null
 }
 
 type InviteInput = {
@@ -40,28 +38,33 @@ type InviteInput = {
 export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDialogProps) {
   const { toast } = useToast()
   
-  // CARMACK-IAN ARCHITECTURE: Single source of truth
-  // Zustand store is the only authoritative source for which workspace is selected
-  const workspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
-  
-  // If no selection in store but we have a workspace from props, use that as fallback
-  // This should rarely happen with our improved architecture
-  const effectiveWorkspaceId = workspaceId || currentWorkspace?.id || null;
-  
-  // Simple logging for debugging
-  console.log('[InviteDialog] Using workspace ID:', effectiveWorkspaceId, {
-    source: workspaceId ? 'zustand' : 'props'
-  });
-  
-  // Use the hook to fetch invitations and manage them
+  // Use our new unified workspace hook
   const {
-    invitations: sentInvitations,
-    send,
-    isLoading,
-    error: invitationError,
-    clearError,
-    invitationLimit,
-  } = useWorkspaceInvitations(workspaceId)
+    currentWorkspace: contextWorkspace,
+    invitations,
+    invitationsLoading,
+    fetchInvitations,
+    createInvitation
+  } = useWorkspace()
+  
+  // We don't need to check permissions here as the Dialog is only shown to users with the right permissions
+  // Permission check is done at the parent component level
+  
+  // Determine which workspace to use for invitations
+  const workspaceToUse = currentWorkspace || contextWorkspace
+  const workspaceId = workspaceToUse?.id
+  
+  // Ensure we load invitations for this workspace when the dialog opens
+  useEffect(() => {
+    if (open && workspaceId) {
+      fetchInvitations(workspaceId)
+    }
+  }, [open, workspaceId, fetchInvitations])
+  
+  // Derive values from our store
+  const sentInvitations = invitations[workspaceId || ''] || []
+  const isLoading = invitationsLoading[workspaceId || ''] || false
+  const invitationLimit = 10 // Hardcoded limit for now
   
   // For storing the list of email/role pairs to invite
   const [invites, setInvites] = useState<InviteInput[]>([
@@ -126,30 +129,47 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
       return
     }
     
-    // Log what we're about to send for debugging
-    console.log('[InviteDialog] Sending invitations:', {
-      workspaceId,
-      inviteCount: validInvites.length,
-      firstInvite: validInvites[0]?.email || 'none'
-    })
+    // Try to send all invitations
+    let successCount = 0
+    let errorCount = 0
     
-    try {
-      await send(validInvites)
-      
-      toast({
-        title: "Invitations sent",
-        description: `Successfully sent ${validInvites.length} invitation${validInvites.length > 1 ? 's' : ''}.`,
-      })
-      
-      // Reset form and close dialog
+    for (const invite of validInvites) {
+      try {
+        await createInvitation(workspaceId, { 
+          email: invite.email, 
+          role: invite.role 
+        })
+        successCount++
+      } catch (error) {
+        console.error(`Error inviting ${invite.email}:`, error)
+        errorCount++
+      }
+    }
+    
+    // Close dialog on success, show result toast
+    if (successCount > 0) {
       setInvites([{ email: "", role: "editor" }])
+      
+      // Close the dialog
       onOpenChange(false)
-    } catch (error) {
-      // Show the error to the user
-      console.error('[InviteDialog] Error sending invitations:', error)
+      
+      // Show success toast
+      if (errorCount === 0) {
+        toast({
+          title: "Invitations sent",
+          description: `Successfully sent ${successCount} ${successCount === 1 ? 'invitation' : 'invitations'}`,
+        })
+      } else {
+        toast({
+          title: "Invitations sent with errors",
+          description: `Sent ${successCount} of ${validInvites.length} invitations successfully.`,
+          variant: "destructive"
+        })
+      }
+    } else if (errorCount > 0) {
       toast({
-        title: "Error sending invitations",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: "Failed to send invitations",
+        description: `Could not send any invitations. Please check your inputs and try again.`,
         variant: "destructive"
       })
     }
@@ -159,7 +179,7 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) clearError()
+      // Just close the dialog, no need to clear errors with our new architecture
       onOpenChange(isOpen)
     }}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border bg-card shadow">
@@ -191,11 +211,7 @@ export function InviteDialog({ open, onOpenChange, currentWorkspace }: InviteDia
         </DialogHeader>
         
         <div className="px-6 pb-6 bg-card">
-          {invitationError && (
-            <Alert variant="destructive" className="mt-2 mb-4">
-              <AlertDescription>{invitationError}</AlertDescription>
-            </Alert>
-          )}
+          {/* Error handling now happens in individual toast notifications */}
           
           <div className="mt-4">
             {/* Outer container for both headers and form to ensure consistent padding */}

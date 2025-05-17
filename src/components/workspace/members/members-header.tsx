@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Filter, SortAsc, SortDesc, Users, Search } from "lucide-react"
-import { ApiWorkspaceRole } from "@/types/workspace"
+import { ApiWorkspaceRole } from "@/types/workspace/ApiWorkspace"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,8 +22,7 @@ interface MembersHeaderProps {
   onSortChange: (sortBy: string) => void
   onSortDirectionChange: (direction: "asc" | "desc") => void
   onSearchChange: (query: string) => void
-  onInviteClick: () => void
-  isAdmin: boolean
+  // onInviteClick removed - no longer used
   currentFilter: ApiWorkspaceRole | null
   currentSort: string
   currentSortDirection: "asc" | "desc"

@@ -1,98 +1,274 @@
-import { getWorkspaceMembersClient } from '@/services/workspace/getWorkspaceMembersClient'
-import { useAuthSession } from '@/hooks/useAuthSession'
-import { ApiWorkspaceRole, ApiWorkspaceMemberWithProfile } from '@/types/workspace'
-import { changeUserRoleClient, removeWorkspaceMemberClient } from '@/services/workspace/client'
-import { useWorkspaceSWR, createWorkspaceFetcher } from './swr'
-
 /**
- * Hook for fetching and managing workspace members
+ * Workspace Members Management Hook
+ * 
+ * This hook focuses on workspace member operations and invitation management.
+ * It provides specialized functions for handling members, invitations, role changes, 
+ * and other member-related operations in a cohesive way.
  */
-export function useWorkspaceMembers(workspaceId: string | null | undefined) {
-  const { user } = useAuthSession()
-  const userId = user?.id
-  
-  // Create a workspace-aware fetcher
-  const membersFetcher = createWorkspaceFetcher(async (wsId: string) => {
-    return await getWorkspaceMembersClient(wsId)
-  })
-  
-  // Special case: We need user to be authenticated to fetch members
-  // If no user is available, don't trigger the fetch
-  const shouldFetch = !!userId
-  
+
+import { useCallback, useState, useEffect } from 'react';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
+import { useAuth } from '@/providers/auth-provider';
+import { 
+  ApiWorkspaceRole, 
+  ApiWorkspaceInvitationInput
+} from '@/types/workspace/ApiWorkspace';
+import { 
+  apiToUiWorkspaceMemberWithProfile, 
+  apiToUiWorkspaceInvitation 
+} from '@/utils/type-utils/workspace/ApiToUiWorkspace';
+import { UiWorkspaceMemberWithProfile, UiWorkspaceInvitation } from '@/types/workspace/UiWorkspace';
+
+export function useWorkspaceMembers(workspaceId?: string) {
   const { 
-    data, 
-    error, 
-    isLoading, 
-    mutate 
-  } = useWorkspaceSWR<ApiWorkspaceMemberWithProfile[]>(
-    'workspaceMembers',
-    membersFetcher,
-    {
-      // Keep previous data while revalidating
-      keepPreviousData: true,
-      // Don't fetch if user is not available
-      isPaused: () => !shouldFetch,
-    },
-    workspaceId // Pass explicit workspaceId
-  )
+    members, 
+    invitations, 
+    fetchMembers, 
+    fetchInvitations, 
+    updateMemberRole, 
+    removeMember,
+    createInvitation,
+    deleteInvitation,
+    currentWorkspace,
+    leaveWorkspace,
+    membersLoading,
+    invitationsLoading
+  } = useWorkspace();
+  
+  const { canManageMembers, getUserRole, isOwner } = useWorkspacePermissions();
+  const { supabase } = useAuth();
+  
+  // Local state for transformed members and invitations
+  const [uiMembers, setUiMembers] = useState<UiWorkspaceMemberWithProfile[]>([]);
+  const [uiInvitations, setUiInvitations] = useState<UiWorkspaceInvitation[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Get the active workspace ID
+  const activeWorkspaceId = workspaceId || currentWorkspace?.id;
+  
+  // Get current user ID once
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    
+    getCurrentUser();
+  }, [supabase]);
+  
+  // Load members when needed
+  useEffect(() => {
+    if (activeWorkspaceId && !members[activeWorkspaceId]) {
+      fetchMembers(activeWorkspaceId);
+    }
+  }, [activeWorkspaceId, members, fetchMembers]);
+  
+  // Load invitations when needed
+  useEffect(() => {
+    const loadInvitations = async () => {
+      if (activeWorkspaceId) {
+        const canManage = await canManageMembers(activeWorkspaceId);
+        if (canManage && !invitations[activeWorkspaceId]) {
+          fetchInvitations(activeWorkspaceId);
+        }
+      }
+    };
+    
+    loadInvitations();
+  }, [activeWorkspaceId, invitations, fetchInvitations, canManageMembers]);
+  
+  // Transform members to UI format when they change
+  useEffect(() => {
+    if (activeWorkspaceId && members[activeWorkspaceId]) {
+      const membersWithProfiles = members[activeWorkspaceId].map(member => 
+        apiToUiWorkspaceMemberWithProfile(member, currentUserId || undefined)
+      );
+      setUiMembers(membersWithProfiles);
+    }
+  }, [activeWorkspaceId, members, currentUserId]);
+  
+  // Transform invitations to UI format when they change
+  useEffect(() => {
+    if (activeWorkspaceId && invitations[activeWorkspaceId]) {
+      const transformedInvitations = invitations[activeWorkspaceId].map(apiToUiWorkspaceInvitation);
+      setUiInvitations(transformedInvitations);
+    }
+  }, [activeWorkspaceId, invitations]);
   
   /**
-   * Change the role of a workspace member
+   * Get the current user's membership details
    */
-  const changeRole = async (memberId: string, role: ApiWorkspaceRole) => {
-    if (!workspaceId) return
+  const getCurrentUserMembership = useCallback((): UiWorkspaceMemberWithProfile | null => {
+    if (!activeWorkspaceId || !currentUserId) return null;
+    
+    return uiMembers.find(member => member.userId === currentUserId) || null;
+  }, [activeWorkspaceId, currentUserId, uiMembers]);
+  
+  /**
+   * Get pending invitations only (filtered)
+   */
+  const getPendingInvitations = useCallback((): UiWorkspaceInvitation[] => {
+    return uiInvitations.filter(invitation => invitation.status === 'pending');
+  }, [uiInvitations]);
+  
+  /**
+   * Invite a new user to the workspace
+   */
+  const inviteUser = useCallback(async (
+    email: string, 
+    role: ApiWorkspaceRole,
+    message?: string
+  ): Promise<UiWorkspaceInvitation | null> => {
+    if (!activeWorkspaceId) return null;
+    
+    const input: ApiWorkspaceInvitationInput = {
+      email,
+      role,
+      message
+    };
+    
+    const invitation = await createInvitation(activeWorkspaceId, input);
+    return invitation ? apiToUiWorkspaceInvitation(invitation) : null;
+  }, [activeWorkspaceId, createInvitation]);
+  
+  /**
+   * Cancel a pending invitation
+   */
+  const cancelInvitation = useCallback(async (
+    invitationId: string
+  ): Promise<boolean> => {
+    if (!activeWorkspaceId) return false;
     
     try {
-      await changeUserRoleClient(workspaceId, memberId, role)
-      return mutate()
+      await deleteInvitation(activeWorkspaceId, invitationId);
+      return true;
     } catch (error) {
-      console.error('Error changing member role:', error)
-      throw error
+      console.error('Failed to cancel invitation:', error);
+      return false;
     }
-  }
+  }, [activeWorkspaceId, deleteInvitation]);
+  
+  /**
+   * Change a member's role
+   */
+  const changeMemberRole = useCallback(async (
+    userId: string,
+    newRole: ApiWorkspaceRole
+  ): Promise<boolean> => {
+    if (!activeWorkspaceId) return false;
+    
+    try {
+      await updateMemberRole(activeWorkspaceId, userId, newRole);
+      return true;
+    } catch (error) {
+      console.error('Failed to change member role:', error);
+      return false;
+    }
+  }, [activeWorkspaceId, updateMemberRole]);
   
   /**
    * Remove a member from the workspace
    */
-  const removeMember = async (memberId: string) => {
-    if (!workspaceId) return
+  const removeMemberFromWorkspace = useCallback(async (
+    userId: string
+  ): Promise<boolean> => {
+    if (!activeWorkspaceId) return false;
     
     try {
-      await removeWorkspaceMemberClient(workspaceId, memberId)
-      return mutate()
+      await removeMember(activeWorkspaceId, userId);
+      return true;
     } catch (error) {
-      console.error('Error removing workspace member:', error)
-      throw error
+      console.error('Failed to remove member:', error);
+      return false;
     }
-  }
+  }, [activeWorkspaceId, removeMember]);
   
   /**
-   * Get the current user's role in this workspace
+   * Current user leaves the workspace
    */
-  const getCurrentUserRole = (): ApiWorkspaceRole | null => {
-    if (!data || !userId) return null
+  const leaveCurrentWorkspace = useCallback(async (): Promise<boolean> => {
+    if (!activeWorkspaceId) return false;
     
-    const currentUserMember = data.find(member => member.userId === userId)
-    return currentUserMember?.role as ApiWorkspaceRole || null
-  }
+    try {
+      await leaveWorkspace(activeWorkspaceId);
+      return true;
+    } catch (error) {
+      console.error('Failed to leave workspace:', error);
+      return false;
+    }
+  }, [activeWorkspaceId, leaveWorkspace]);
   
   /**
-   * Check if the current user has admin privileges
+   * Find member by user ID
    */
-  const isCurrentUserAdmin = (): boolean => {
-    const role = getCurrentUserRole()
-    return role === ('owner' as ApiWorkspaceRole) || role === ('admin' as ApiWorkspaceRole)
-  }
+  const getMemberById = useCallback((userId: string): UiWorkspaceMemberWithProfile | null => {
+    return uiMembers.find(member => member.userId === userId) || null;
+  }, [uiMembers]);
   
+  /**
+   * Get the workspace owner(s)
+   */
+  const getOwners = useCallback((): UiWorkspaceMemberWithProfile[] => {
+    return uiMembers.filter(member => member.role === 'owner');
+  }, [uiMembers]);
+  
+  /**
+   * Sort members by role importance
+   */
+  const getSortedMembers = useCallback((): UiWorkspaceMemberWithProfile[] => {
+    const roleWeight = {
+      'owner': 4,
+      'admin': 3,
+      'editor': 2,
+      'viewer': 1
+    };
+    
+    return [...uiMembers].sort((a, b) => {
+      // Sort by role first (most important roles first)
+      const roleDiff = (roleWeight[b.role as keyof typeof roleWeight] || 0) - 
+                       (roleWeight[a.role as keyof typeof roleWeight] || 0);
+      
+      if (roleDiff !== 0) return roleDiff;
+      
+      // Then sort by name
+      const nameA = a.profile?.displayName || '';
+      const nameB = b.profile?.displayName || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [uiMembers]);
+  
+  // Return all member management functions and data
   return {
-    members: data || [],
-    error,
-    isLoading,
-    mutate,
-    changeRole,
-    removeMember,
-    getCurrentUserRole,
-    isCurrentUserAdmin,
-  }
+    // Member state
+    members: uiMembers,
+    sortedMembers: getSortedMembers(),
+    currentMembership: getCurrentUserMembership(),
+    owners: getOwners(),
+    isLoading: membersLoading[activeWorkspaceId || ''] || false,
+    
+    // Invitation state
+    invitations: uiInvitations,
+    pendingInvitations: getPendingInvitations(),
+    isLoadingInvitations: invitationsLoading[activeWorkspaceId || ''] || false,
+    
+    // Member operations
+    getMemberById,
+    changeMemberRole,
+    removeMemberFromWorkspace,
+    leaveCurrentWorkspace,
+    
+    // Invitation operations
+    inviteUser,
+    cancelInvitation,
+    
+    // Permissions (re-exported)
+    getUserRole,
+    isOwner,
+    canManageMembers,
+    
+    // Core operations
+    refreshMembers: activeWorkspaceId ? () => fetchMembers(activeWorkspaceId) : () => Promise.resolve([]),
+    refreshInvitations: activeWorkspaceId ? () => fetchInvitations(activeWorkspaceId) : () => Promise.resolve([])
+  };
 }

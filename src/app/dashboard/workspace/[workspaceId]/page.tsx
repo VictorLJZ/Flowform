@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { checkAuthStatus } from "@/lib/debug/authCheck";
-import { useRouter } from "next/navigation";
-import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useRouter, useParams } from "next/navigation";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspacePermissions } from "@/hooks/useWorkspacePermissions";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,26 +27,60 @@ import {
 import { RenameDialog } from "@/components/workspace/rename-dialog";
 import { ConfirmDialog } from "@/components/workspace/confirm-dialog";
 import { InviteDialog } from "@/components/workspace/invite-dialog";
-import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
-import { useAuthSession } from "@/hooks/useAuthSession";
-import { ApiWorkspaceRole } from "@/types/workspace";
+import { useAuth } from "@/providers/auth-provider";
+import { ApiWorkspaceRole } from "@/types/workspace/ApiWorkspace";
 import { FormsView } from "@/components/dashboard";
 
 export default function WorkspacePage() {
   const router = useRouter();
   
-  // Get workspace ID from workspace store
-  const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId) ?? undefined;
+  // Get current workspace and operations from our unified hooks
+  const { 
+    getWorkspaceById,
+    updateWorkspaceSettings,
+    deleteWorkspace,
+    leaveWorkspace 
+  } = useWorkspace();
   
-  // Get current user for role check
-  const { user: currentUser } = useAuthSession();
+  // Extract workspaceId from the URL
+  const { workspaceId } = useParams();
+  
+  // Get the current workspace
+  const currentWorkspace = getWorkspaceById(workspaceId as string);
+  
+  // Get current user
+  const { supabase } = useAuth();
+  // Use a proper type for Supabase user - only care about ID
+  interface UserWithId { id: string }
+  const [currentUser, setCurrentUser] = useState<UserWithId | null>(null);
+  
+  // Get permissions and member info
+  const { getUserRole } = useWorkspacePermissions();
+  
+  // Fetch current user
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        setCurrentUser({ id: data.user.id });
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    fetchUser();
+  }, [supabase]);
+  
   const currentUserId = currentUser?.id;
+  const [currentUserRole, setCurrentUserRole] = useState<ApiWorkspaceRole | undefined>();
   
-  // Fetch members to determine current user's role
-  const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId);
-  const currentUserRole = workspaceMembers?.find(m => m.userId === currentUserId)?.role as ApiWorkspaceRole | undefined;
-
-  const { workspace, rename, leave, remove } = useCurrentWorkspace(currentWorkspaceId);
+  // Get user role
+  useEffect(() => {
+    if (workspaceId && currentUserId) {
+      getUserRole(workspaceId as string).then(role => {
+        setCurrentUserRole(role as ApiWorkspaceRole);
+      });
+    }
+  }, [workspaceId, currentUserId, getUserRole]);
 
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
@@ -108,10 +142,32 @@ export default function WorkspacePage() {
     }
   };
 
+  // Dialog handlers
   const handleRenameWorkspace = () => setIsRenameDialogOpen(true);
   const handleLeaveWorkspace = () => setIsLeaveDialogOpen(true);
   const handleDeleteWorkspace = () => setIsDeleteDialogOpen(true);
   const handleInviteToWorkspace = () => setIsInviteDialogOpen(true);
+  
+  // Action handlers
+  const rename = async (newName: string) => {
+    if (workspaceId) {
+      await updateWorkspaceSettings(workspaceId as string, { name: newName });
+    }
+  };
+  
+  const leave = async () => {
+    if (workspaceId) {
+      await leaveWorkspace(workspaceId as string);
+      router.push('/dashboard/workspace');
+    }
+  };
+  
+  const remove = async () => {
+    if (workspaceId) {
+      await deleteWorkspace(workspaceId as string);
+      router.push('/dashboard/workspace');
+    }
+  };
 
   return (
     <>
@@ -126,15 +182,11 @@ export default function WorkspacePage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard/workspace">
-                    Workspaces
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="truncate font-medium">
-                    {workspace?.name || "My Workspace"}
-                  </BreadcrumbPage>
+                  <BreadcrumbPage>{currentWorkspace?.name || "Workspace"}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -143,7 +195,7 @@ export default function WorkspacePage() {
             variant="ghost" 
             size="icon" 
             className="ml-auto" 
-            onClick={() => router.push(`/dashboard/workspace/${currentWorkspaceId}/settings`)}
+            onClick={() => router.push(`/dashboard/workspace/${workspaceId}/settings`)}
           >
             <Settings className="h-5 w-5" />
             <span className="sr-only">Settings</span>
@@ -154,7 +206,7 @@ export default function WorkspacePage() {
           {/* Custom heading with workspace name and rename button */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
-              <h1 className="text-2xl font-semibold">{workspace?.name || "My Workspace"}</h1>
+              <h1 className="text-2xl font-semibold">{currentWorkspace?.name || "My Workspace"}</h1>
               {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -203,7 +255,7 @@ export default function WorkspacePage() {
           <Separator className="mb-6" />
           
           {/* Integrated FormsView component */}
-          <FormsView workspaceId={currentWorkspaceId} viewMode={viewMode} />
+          <FormsView workspaceId={workspaceId as string} viewMode={viewMode} />
         </div>
       </div>
       
@@ -213,25 +265,24 @@ export default function WorkspacePage() {
           <RenameDialog
             open={isRenameDialogOpen}
             onOpenChange={setIsRenameDialogOpen}
-            workspace={workspace ?? null}
+            workspace={currentWorkspace ?? null}
             onRename={async (_id, newName) => { await rename(newName); }}
           />
           <ConfirmDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
             title="Delete Workspace"
-            description={`Are you sure you want to delete the "${workspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
+            description={`Are you sure you want to delete the "${currentWorkspace?.name || 'this'}" workspace? This action cannot be undone and all forms and data will be permanently lost.`}
             confirmLabel="Delete Workspace"
             variant="destructive"
             onConfirm={async () => { 
               await remove(); 
-              // Optionally, clear SWR cache or navigate away if needed after deletion 
             }}
           />
           <InviteDialog 
             open={isInviteDialogOpen} 
             onOpenChange={setIsInviteDialogOpen}
-            currentWorkspace={workspace} // Pass the workspace object
+            currentWorkspace={currentWorkspace} // Pass the workspace object
           />
         </>
       )}
@@ -241,7 +292,7 @@ export default function WorkspacePage() {
         open={isLeaveDialogOpen}
         onOpenChange={setIsLeaveDialogOpen}
         title="Leave Workspace"
-        description={`Are you sure you want to leave the "${workspace?.name || 'this'}" workspace? You will no longer have access to this workspace's forms and data.`}
+        description={`Are you sure you want to leave the "${currentWorkspace?.name || 'this'}" workspace? You will no longer have access to this workspace's forms and data.`}
         confirmLabel="Leave Workspace"
         onConfirm={async () => { await leave(); }}
       />

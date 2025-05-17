@@ -1,6 +1,7 @@
 "use client"
 
-import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { useWorkspacePermissions } from "@/hooks/useWorkspacePermissions"
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
-import { useWorkspaceDeletion } from "@/hooks/useWorkspaceDeletion"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -34,13 +34,43 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
   const params = use(paramsPromise) as WorkspaceParams
   const { workspaceId } = params
   const router = useRouter()
-  const { workspace, isLoading, rename } = useCurrentWorkspace(workspaceId)
-  const { deleteWorkspace } = useWorkspaceDeletion()
+  
+  // Use the new unified workspace hooks
+  const { 
+    getWorkspaceById, 
+    updateWorkspaceSettings, 
+    deleteWorkspace, 
+    isWorkspaceLoading 
+  } = useWorkspace()
+  
+  // Use permissions hook to check if user can edit settings and delete workspace
+  const { canDeleteWorkspace, canEditWorkspaceSettings } = useWorkspacePermissions()
+  
+  // Get current workspace
+  const workspace = getWorkspaceById(workspaceId)
+  const isLoading = isWorkspaceLoading()
+  
   const [name, setName] = useState<string>(workspace?.name || "")
   const [description, setDescription] = useState<string>(workspace?.description || "")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [canEdit, setCanEdit] = useState(false)
+  const [canDelete, setCanDelete] = useState(false)
   const { toast } = useToast()
+  
+  // Check permissions
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (workspaceId) {
+        const canEdit = await canEditWorkspaceSettings(workspaceId)
+        const canDelete = await canDeleteWorkspace(workspaceId)
+        setCanEdit(canEdit)
+        setCanDelete(canDelete)
+      }
+    }
+    
+    checkPermissions()
+  }, [workspaceId, canEditWorkspaceSettings, canDeleteWorkspace])
 
   // Update form values when workspace loads
   useEffect(() => {
@@ -52,9 +82,13 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
 
   const handleSave = async () => {
     try {
-      if (workspace) {
-        await rename(name)
-        // Additional fields would be saved in a similar way
+      if (workspace && workspaceId) {
+        // Use our new updateWorkspaceSettings function
+        await updateWorkspaceSettings(workspaceId, {
+          name,
+          description
+        })
+        
         toast({
           title: "Settings updated",
           description: "Your organization settings have been saved.",
@@ -76,20 +110,16 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
     try {
       setIsDeleting(true);
       
-      // Use our enhanced deleteWorkspace function
-      const result = await deleteWorkspace(workspaceId);
+      // Use our new deleteWorkspace function from useWorkspace hook
+      await deleteWorkspace(workspaceId);
       
-      if (result.success) {
-        // Navigate to the workspace index after deletion
-        router.push('/dashboard/workspace');
-        
-        toast({
-          title: "Organization deleted",
-          description: "Your organization has been permanently deleted."
-        });
-      } else {
-        throw new Error("Failed to delete workspace");
-      }
+      // Navigate to the workspace index after deletion
+      router.push('/dashboard/workspace');
+      
+      toast({
+        title: "Organization deleted",
+        description: "Your organization has been permanently deleted."
+      });
     } catch (error) {
       console.error('Error deleting workspace:', error);
       toast({
@@ -125,6 +155,7 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
               onChange={(e) => setName(e.target.value)}
               placeholder="FlowForm"
               className="max-w-md"
+              disabled={!canEdit}
             />
           </div>
         </div>
@@ -139,12 +170,13 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your organization"
               className="max-w-md"
+              disabled={!canEdit}
             />
           </div>
         </div>
         
         <div className="pt-6 flex justify-end">
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={!canEdit}>Save</Button>
         </div>
       </div>
       
@@ -160,7 +192,7 @@ export default function WorkspaceSettingsPage({ params: paramsPromise }: Workspa
               variant="destructive" 
               size="sm" 
               onClick={() => setShowDeleteConfirm(true)}
-              disabled={isDeleting}
+              disabled={isDeleting || !canDelete}
             >
               {isDeleting ? (
                 <>

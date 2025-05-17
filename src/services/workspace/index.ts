@@ -1,24 +1,20 @@
-// Workspace Service - Index File
-// Re-exports all workspace-related services
+/**
+ * Workspace Services
+ * 
+ * This index file exports all server-side workspace services.
+ */
 
-// Workspace access and creation
-export * from './getUserWorkspaces';
-export * from './getUserWorkspacesClient';
-export * from './createWorkspace';
-export * from './updateWorkspace';
-export * from './deleteWorkspace';
-export * from './initializeDefaultWorkspace';
-export * from './leaveWorkspace';
+// Core workspace operations
+export * from './workspaces.server';
 
-// Workspace membership and invitations
-export * from './getWorkspaceMembers';
-export * from './getWorkspaceMembersClient';
+// Member management operations
+export * from './members.server';
 
-// Invitation management
-export * from './inviteToWorkspace';
-export * from './acceptInvitation';
-export * from './declineInvitation';
-export * from './getPendingInvitations';
-export * from './getSentInvitations';
-export * from './resendInvitation';
-export * from './revokeInvitation';
+// Invitation operations
+export * from './invitations.server';
+
+// Permission checks
+export * from './permissions.server';
+
+// Shared utilities
+export * from './utils';

@@ -60,12 +60,3 @@ export interface DbWorkspaceInvitation {
   expires_at: string; // ISO date string
   token: string;
 }
-
-
-
-/**
- * Database workspace member joined with user profile information
- */
-export interface DbWorkspaceMemberWithProfile extends DbWorkspaceMember {
-  profile: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>;
-}

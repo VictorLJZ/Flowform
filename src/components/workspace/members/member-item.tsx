@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers"
-import { createClient } from "@/lib/supabase/client"
-import { changeUserRoleClient, removeWorkspaceMemberClient } from "@/services/workspace/client"
-import { UiWorkspaceMemberWithProfile, ApiWorkspaceRole } from "@/types/workspace"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { useWorkspacePermissions } from "@/hooks/useWorkspacePermissions"
+import { useAuth } from "@/providers/auth-provider"
+import { UiWorkspaceMemberWithProfile } from "@/types/workspace/UiWorkspace"
+import { ApiWorkspaceRole } from "@/types/workspace/ApiWorkspace"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MoreVertical, UserMinus, Shield, AlertTriangle } from "lucide-react"
 import {
@@ -55,45 +56,48 @@ export function MemberItem({
   currentUserRole,
 }: MemberItemProps) {
   const { toast } = useToast()
-  const { mutate } = useWorkspaceMembers(member.workspaceId)
+  const { supabase } = useAuth()
+  // Get workspace-related functions
+  // Get only the required workspace functions that we'll use
+  const { 
+    updateMemberRole, 
+    removeMember,
+  } = useWorkspace()
+  
+  // Note: We're using our custom role-based permission checks in this component
+  // instead of the hook's canManageRole function
+  
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const targetMemberRole = member.role as ApiWorkspaceRole;
-
-  const canManageRole = (
-    initiator?: ApiWorkspaceRole,
-    target?: ApiWorkspaceRole
-  ): boolean => {
-    if (!initiator || !target || isCurrentUser) return false; 
-    if (initiator === 'owner') return true; 
-    if (initiator === 'admin') return target === 'editor' || target === 'viewer';
-    return false; 
-  };
-
-  const canAssignRole = (
-    initiator?: ApiWorkspaceRole,
-    roleToAssign?: ApiWorkspaceRole
-  ): boolean => {
-      if (!initiator || !roleToAssign) return false;
-      if (initiator === 'owner') return true; 
-      if (initiator === 'admin') return roleToAssign === 'editor' || roleToAssign === 'viewer';
-      return false;
+  
+  // Custom permission checks based on role hierarchy
+  const canManageUserRole = (initiatorRole?: ApiWorkspaceRole, targetRole?: ApiWorkspaceRole): boolean => {
+    if (!initiatorRole || !targetRole || isCurrentUser) return false;
+    if (initiatorRole === 'owner') return true;
+    if (initiatorRole === 'admin') return targetRole === 'editor' || targetRole === 'viewer';
+    return false;
   };
   
-  const canRemoveMember = (
-    initiator?: ApiWorkspaceRole,
-    target?: ApiWorkspaceRole
-  ): boolean => {
-    if (!initiator || !target || isCurrentUser) return false; 
-    if (initiator === 'owner') return target !== 'owner'; 
-    if (initiator === 'admin') return target === 'editor' || target === 'viewer';
-    return false; 
+  const canRemoveUser = (initiatorRole?: ApiWorkspaceRole, targetRole?: ApiWorkspaceRole): boolean => {
+    if (!initiatorRole || !targetRole || isCurrentUser) return false;
+    if (initiatorRole === 'owner') return targetRole !== 'owner';
+    if (initiatorRole === 'admin') return targetRole === 'editor' || targetRole === 'viewer';
+    return false;
   };
-
-  const showActions = canManageRole(currentUserRole, targetMemberRole);
-  const allowRemove = canRemoveMember(currentUserRole, targetMemberRole);
+  
+  const canAssignUserRole = (initiatorRole?: ApiWorkspaceRole, roleToAssign?: ApiWorkspaceRole): boolean => {
+    if (!initiatorRole || !roleToAssign) return false;
+    if (initiatorRole === 'owner') return true;
+    if (initiatorRole === 'admin') return roleToAssign === 'editor' || roleToAssign === 'viewer';
+    return false;
+  };
+  
+  // Determine if we should show action buttons based on permissions
+  const showActions = canManageUserRole(currentUserRole, targetMemberRole);
+  const allowRemove = canRemoveUser(currentUserRole, targetMemberRole);
 
   const getInitials = (name: string) => {
     return name
@@ -121,9 +125,9 @@ export function MemberItem({
     setIsLoading(true)
     
     try {
-      await changeUserRoleClient(member.workspaceId, member.userId, newRole as ApiWorkspaceRole)
+      await updateMemberRole(member.workspaceId, member.userId, newRole as ApiWorkspaceRole)
       
-      await mutate()
+      // No need to manually refresh as the hook handles this
       
       toast({
         title: "Role updated",
@@ -141,30 +145,33 @@ export function MemberItem({
   }
 
   const confirmOwnershipTransfer = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
+
     try {
-      // First make the target user an owner
-      await changeUserRoleClient(member.workspaceId, member.userId, 'owner')
-      // Then demote the current user to admin
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      // Transfer ownership to the target user by updating their role to 'owner'
+      await updateMemberRole(member.workspaceId, member.userId, 'owner')
+      
+      // Get current user ID to update their role
+      const { data: { user } } = await supabase.auth.getUser()
       if (user?.id) {
-        await changeUserRoleClient(member.workspaceId, user.id, 'admin')
+        // Demote current user (if they're the current owner) to admin
+        await updateMemberRole(member.workspaceId, user.id, 'admin')
       }
-      await mutate()
+      
       toast({
-        title: "Ownership Transferred",
-        description: `${member.profile.fullName} is now the workspace owner. You are now an Admin.`,
+        title: "Ownership transferred",
+        description: `${member.profile.fullName || 'User'} is now the workspace owner.`,
       })
+
+      setShowTransferDialog(false);
     } catch (error) {
       toast({
         title: "Failed to transfer ownership",
         description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
-      setShowTransferDialog(false)
+      setIsLoading(false);
     }
   }
 
@@ -172,9 +179,9 @@ export function MemberItem({
     setIsLoading(true)
     
     try {
-      await removeWorkspaceMemberClient(member.workspaceId, member.userId)
+      await removeMember(member.workspaceId, member.userId)
       
-      await mutate()
+      setShowRemoveDialog(false)
       
       toast({
         title: "Member removed",
@@ -188,7 +195,6 @@ export function MemberItem({
       })
     } finally {
       setIsLoading(false)
-      setShowRemoveDialog(false)
     }
   }
 
@@ -239,25 +245,25 @@ export function MemberItem({
                 <DropdownMenuRadioGroup value={member.role} onValueChange={handleRoleChange}>
                   <DropdownMenuRadioItem 
                     value="owner"
-                    disabled={!canAssignRole(currentUserRole, 'owner') || isLoading}
+                    disabled={!canAssignUserRole(currentUserRole, 'owner') || isLoading}
                   >
                     Owner
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem 
                     value="admin"
-                    disabled={!canAssignRole(currentUserRole, 'admin') || isLoading}
+                    disabled={!canAssignUserRole(currentUserRole, 'admin') || isLoading}
                   >
                     Admin
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem 
                     value="editor"
-                    disabled={!canAssignRole(currentUserRole, 'editor') || isLoading}
+                    disabled={!canAssignUserRole(currentUserRole, 'editor') || isLoading}
                   >
                     Editor
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem 
                     value="viewer"
-                    disabled={!canAssignRole(currentUserRole, 'viewer') || isLoading}
+                    disabled={!canAssignUserRole(currentUserRole, 'viewer') || isLoading}
                   >
                     Viewer
                   </DropdownMenuRadioItem>

@@ -1,9 +1,9 @@
 "use client"
 
-import type { UiWorkspaceInvitation } from "@/types/workspace"
+import { UiWorkspaceInvitation } from "@/types/workspace/UiWorkspace"
 import { useState } from "react"
 import { format } from "date-fns"
-import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
+import { useWorkspace } from "@/hooks/useWorkspace"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,10 +24,19 @@ interface InvitationRowProps {
 
 export function InvitationRow({ invitation }: InvitationRowProps) {
   const { toast } = useToast()
-  const { resend, revoke, isLoading } = useWorkspaceInvitations(invitation.workspaceId)
+  // Use our unified workspace hook
+  const { 
+    deleteInvitation, 
+    createInvitation,
+    invitationsLoading 
+  } = useWorkspace()
+  
   const [isResending, setIsResending] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+  
+  // Check if operations are loading
+  const isLoading = invitationsLoading[invitation.workspaceId] || false
   
   // Format dates
   const invitedDate = format(new Date(invitation.invitedAt), 'MMM d, yyyy')
@@ -62,13 +71,24 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
   const handleResendInvitation = async () => {
     setIsResending(true)
     try {
-      await resend(invitation.id)
+      // To resend, we delete the old invitation and create a new one
+      await deleteInvitation(invitation.workspaceId, invitation.id)
+      await createInvitation(invitation.workspaceId, { 
+        email: invitation.email, 
+        role: invitation.role 
+      })
+      
       toast({
         title: "Invitation resent",
         description: `Invitation to ${invitation.email} has been resent.`,
       })
     } catch (error) {
       console.error('Error resending invitation:', error)
+      toast({
+        variant: "destructive",
+        title: "Failed to resend invitation",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+      })
     } finally {
       setIsResending(false)
     }
@@ -77,13 +97,18 @@ export function InvitationRow({ invitation }: InvitationRowProps) {
   const handleRevokeInvitation = async () => {
     setIsRevoking(true)
     try {
-      await revoke(invitation.id)
+      await deleteInvitation(invitation.workspaceId, invitation.id)
       toast({
         title: "Invitation revoked",
         description: `Invitation to ${invitation.email} has been revoked.`,
       })
     } catch (error) {
       console.error('Error revoking invitation:', error)
+      toast({
+        variant: "destructive",
+        title: "Failed to revoke invitation",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+      })
     } finally {
       setIsRevoking(false)
     }

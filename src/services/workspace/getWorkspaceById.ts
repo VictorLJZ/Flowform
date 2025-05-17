@@ -1,38 +1,24 @@
-import { createClient } from '@/lib/supabase/client';
-import { DbWorkspace, ApiWorkspace } from '@/types/workspace';
-import { dbToApiWorkspace } from '@/utils/type-utils';
+import { createClient } from "@/lib/supabase/client";
+import { ApiWorkspace } from "@/types/workspace/ApiWorkspace";
 
 /**
- * Fetch workspace data by ID
- * 
- * @param workspaceId - The ID of the workspace to fetch
- * @returns The workspace or null if not found
+ * Get a workspace by its ID
+ * @param workspaceId The workspace ID to retrieve
+ * @returns The workspace if found, null otherwise
  */
 export async function getWorkspaceById(workspaceId: string): Promise<ApiWorkspace | null> {
-  if (!workspaceId) {
-    console.error('[getWorkspaceById] No workspace ID provided');
-    return null;
-  }
-
-  console.log('[getWorkspaceById] Fetching workspace:', workspaceId);
   const supabase = createClient();
   
-  try {
-    const { data, error } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('id', workspaceId)
-      .single();
-    
-    if (error) {
-      console.error('[getWorkspaceById] Error fetching workspace:', error);
-      return null;
-    }
-    
-    const dbWorkspace = data as DbWorkspace;
-    return dbToApiWorkspace(dbWorkspace);
-  } catch (error) {
-    console.error('[getWorkspaceById] Unexpected error:', error);
+  const { data, error } = await supabase
+    .from("workspaces")
+    .select("*")
+    .eq("id", workspaceId)
+    .single();
+  
+  if (error || !data) {
+    console.error("Error fetching workspace:", error);
     return null;
   }
+  
+  return data as ApiWorkspace;
 }

@@ -10,12 +10,17 @@
  * - Data transformation layer between database and UI
  */
 
-import { DbWorkspaceRole } from './DbWorkspace';
+import { DbWorkspaceRole, DbInvitationStatus } from './DbWorkspace';
 
 /**
- * API role type - reexporting from DB layer for consistency
+ * API role type - reexporting from DB layer
  */
 export type ApiWorkspaceRole = DbWorkspaceRole;
+
+/**
+ * API invitation status type - reexporting from DB layer
+ */
+export type ApiInvitationStatus = DbInvitationStatus;
 
 /**
  * Workspace object in API format with camelCase properties
@@ -49,7 +54,7 @@ export interface ApiWorkspaceInvitation {
   workspaceId: string;
   email: string;
   role: ApiWorkspaceRole;
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  status: ApiInvitationStatus;
   invitedBy: string;
   invitedAt: string;
   expiresAt: string;
@@ -57,7 +62,7 @@ export interface ApiWorkspaceInvitation {
 }
 
 /**
- * Input type for creating a new workspace (API layer with camelCase)
+ * Input type for creating a new workspace
  */
 export interface ApiWorkspaceInput {
   name: string;
@@ -68,7 +73,7 @@ export interface ApiWorkspaceInput {
 }
 
 /**
- * Input type for updating an existing workspace (API layer with camelCase)
+ * Input type for updating an existing workspace
  */
 export interface ApiWorkspaceUpdateInput {
   name?: string;
@@ -77,8 +82,6 @@ export interface ApiWorkspaceUpdateInput {
   settings?: Record<string, unknown>;
 }
 
-
-
 /**
  * API workspace member with profile information
  */
@@ -86,15 +89,31 @@ export interface ApiWorkspaceMemberWithProfile extends ApiWorkspaceMember {
   profile: {
     fullName?: string;
     avatarUrl?: string;
-    email?: string;
+    email: string;
   };
 }
 
 /**
- * API error response interface for client-side implementations
+ * Input type for creating a new invitation
+ */
+export interface ApiWorkspaceInvitationInput {
+  email: string;
+  role: ApiWorkspaceRole;
+  message?: string;
+}
+
+/**
+ * Input type for updating a member role
+ */
+export interface ApiWorkspaceMemberUpdate {
+  role: ApiWorkspaceRole;
+}
+
+/**
+ * API error response interface
  */
 export interface ApiErrorResponse {
-  error?: string;
+  error: string;
+  status: number;
   message?: string;
-  status?: number;
 }

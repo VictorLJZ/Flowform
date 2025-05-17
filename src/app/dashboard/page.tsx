@@ -2,18 +2,18 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { workspaces, isLoading } = useWorkspaces();
+  const { workspaces, isLoading: isWorkspacesLoading } = useWorkspace();
   
   // Redirect to the first workspace or create a new one if no workspaces
   useEffect(() => {
     // Only attempt to redirect once data is loaded
-    if (!isLoading) {
+    if (!isWorkspacesLoading) {
       // Small delay to ensure state is properly initialized
       const redirectTimer = setTimeout(() => {
         if (workspaces && workspaces.length > 0) {
@@ -28,7 +28,7 @@ export default function DashboardPage() {
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [workspaces, isLoading, router]);
+  }, [workspaces, isWorkspacesLoading, router]);
 
   return (
     <div className="flex h-full w-full items-center justify-center p-8">

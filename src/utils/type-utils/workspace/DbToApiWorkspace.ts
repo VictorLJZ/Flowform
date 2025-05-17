@@ -11,7 +11,6 @@ import {
   DbWorkspace, 
   DbWorkspaceMember, 
   DbWorkspaceInvitation,
-  DbWorkspaceMemberWithProfile
 } from '@/types/workspace';
 import { DbProfile } from '@/types/user';
 
@@ -114,9 +113,9 @@ export function dbToApiWorkspaceInvitations(dbInvitations: DbWorkspaceInvitation
  * @param profileData - Profile data to include with the member
  * @returns API-formatted workspace member with profile information
  */
-export function dbToApiWorkspaceMemberWithProfileFromParts(
+export function dbToApiWorkspaceMemberWithProfile(
   dbMember: DbWorkspaceMember, 
-  profileData: Pick<DbProfile, 'full_name' | 'avatar_url'> & { email?: string | null }
+  profileData: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>
 ): ApiWorkspaceMemberWithProfile {
   return {
     workspaceId: dbMember.workspace_id,
@@ -127,30 +126,7 @@ export function dbToApiWorkspaceMemberWithProfileFromParts(
       // Convert null to undefined for all optional profile fields
       fullName: profileData.full_name === null ? undefined : profileData.full_name,
       avatarUrl: profileData.avatar_url === null ? undefined : profileData.avatar_url,
-      email: profileData.email === null || profileData.email === undefined ? undefined : profileData.email
-    }
-  };
-}
-
-/**
- * Transform a DbWorkspaceMemberWithProfile to API format
- * 
- * @param dbMemberWithProfile - Combined database workspace member with profile
- * @returns API-formatted workspace member with profile
- */
-export function dbToApiWorkspaceMemberWithProfile(
-  dbMemberWithProfile: DbWorkspaceMemberWithProfile
-): ApiWorkspaceMemberWithProfile {
-  return {
-    workspaceId: dbMemberWithProfile.workspace_id,
-    userId: dbMemberWithProfile.user_id,
-    role: dbMemberWithProfile.role,
-    joinedAt: dbMemberWithProfile.joined_at,
-    profile: {
-      // Convert null to undefined for all optional profile fields
-      fullName: dbMemberWithProfile.profile.full_name === null ? undefined : dbMemberWithProfile.profile.full_name,
-      avatarUrl: dbMemberWithProfile.profile.avatar_url === null ? undefined : dbMemberWithProfile.profile.avatar_url,
-      email: dbMemberWithProfile.profile.email === null || dbMemberWithProfile.profile.email === undefined ? undefined : dbMemberWithProfile.profile.email
+      email: profileData.email
     }
   };
 }

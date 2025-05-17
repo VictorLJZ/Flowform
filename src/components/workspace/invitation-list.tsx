@@ -1,9 +1,9 @@
 "use client"
 
-import { useWorkspaceInvitations } from "@/hooks/useWorkspaceInvitations"
+import { useEffect } from "react"
+import { useWorkspace } from "@/hooks/useWorkspace"
 import { InvitationRow } from "@/components/workspace/invitation-row"
-import { dbToApiWorkspaceInvitation } from "@/utils/type-utils"
-import { UiWorkspaceInvitation } from "@/types/workspace"
+import { UiWorkspaceInvitation } from "@/types/workspace/UiWorkspace"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mail, LoaderCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -15,19 +15,33 @@ interface InvitationListProps {
 }
 
 export function InvitationList({ workspaceId }: InvitationListProps) {
+  // Use our new unified workspace hook
   const {
-    invitations: sentInvitations,
-    isLoading: isLoadingInvitations,
-    error: invitationError
-  } = useWorkspaceInvitations(workspaceId)
+    invitations,
+    invitationsLoading,
+    fetchInvitations,
+    isWorkspaceLoading,
+    getWorkspaceError
+  } = useWorkspace()
   
-  // Convert DB invitations to UI format
-  const uiInvitations = sentInvitations.map(dbInvitation => {
-    // First convert to API format
-    const apiInvitation = dbToApiWorkspaceInvitation(dbInvitation);
-    // For this simple case, API and UI formats are the same
-    return apiInvitation as UiWorkspaceInvitation;
-  });
+  // No local state needed with unified hook approach
+  
+  // Fetch invitations when component mounts or workspaceId changes
+  useEffect(() => {
+    if (workspaceId) {
+      fetchInvitations(workspaceId)
+    }
+  }, [workspaceId, fetchInvitations])
+  
+  // Simple error display
+  const hasError = getWorkspaceError(workspaceId) !== null
+  
+  // Get invitations for this workspace
+  const sentInvitations = invitations[workspaceId] || []
+  const isLoadingInvitations = invitationsLoading[workspaceId] || isWorkspaceLoading(workspaceId)
+  
+  // No need to convert formats anymore as our hooks now handle that
+  const uiInvitations = sentInvitations as UiWorkspaceInvitation[];
   
   // Filter invitations to show pending ones first, then others
   const sortedInvitations = [...uiInvitations].sort((a, b) => {
@@ -54,9 +68,9 @@ export function InvitationList({ workspaceId }: InvitationListProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {invitationError && (
+        {hasError && (
           <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{invitationError}</AlertDescription>
+            <AlertDescription>Failed to load invitations. Please try again.</AlertDescription>
           </Alert>
         )}
         

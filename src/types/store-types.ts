@@ -19,6 +19,15 @@ import type { UIAlertsSlice } from './form-store-slices-types-alerts';
 import type { FormMediaSlice } from './form-store-slices-types-media';
 import type { GhostPost, GhostTag } from './ghost';
 import { UiSessionInfo } from './conversation';
+import type {
+  ApiWorkspace,
+  ApiWorkspaceInput,
+  ApiWorkspaceUpdateInput,
+  ApiWorkspaceMemberWithProfile,
+  ApiWorkspaceRole,
+  ApiWorkspaceInvitation,
+  ApiWorkspaceInvitationInput
+} from './workspace/ApiWorkspace';
 
 /**
  * Analytics store state and actions
@@ -42,19 +51,48 @@ export type SidebarState = {
 }
 
 /**
- * Simplified workspace store following Carmack principles
+ * Workspace store for managing workspaces, members, and invitations
  * 
- * This store follows a clear separation of concerns:
- * - SWR handles data fetching and caching of API workspace data
- * - Zustand ONLY handles UI state (which workspace is selected)
+ * This store follows our three-layer type system architecture:
+ * - It stores API-level types (ApiWorkspace) internally
+ * - UI components should transform these to UI types as needed
+ * - API types are transformed to DB types by the service layer
  */
 export interface WorkspaceState {
-  // UI Selection State
+  // Workspace State
+  workspaces: ApiWorkspace[];
   currentWorkspaceId: string | null;
   lastSelectionTime: number;
+  isLoading: boolean;
+  error: string | null;
   
-  // Actions
+  // Workspace Members State
+  members: Record<string, ApiWorkspaceMemberWithProfile[]>;
+  membersLoading: Record<string, boolean>;
+  membersError: Record<string, string | null>;
+  
+  // Workspace Invitations State
+  invitations: Record<string, ApiWorkspaceInvitation[]>;
+  invitationsLoading: Record<string, boolean>;
+  invitationsError: Record<string, string | null>;
+  
+  // Workspace Actions
+  fetchWorkspaces: () => Promise<ApiWorkspace[]>;
   selectWorkspace: (workspaceId: string | null) => void;
+  createWorkspace: (input: ApiWorkspaceInput) => Promise<ApiWorkspace>;
+  updateWorkspace: (id: string, input: ApiWorkspaceUpdateInput) => Promise<ApiWorkspace>;
+  deleteWorkspace: (id: string) => Promise<void>;
+  
+  // Member Actions
+  fetchMembers: (workspaceId: string) => Promise<ApiWorkspaceMemberWithProfile[]>;
+  updateMemberRole: (workspaceId: string, userId: string, role: ApiWorkspaceRole) => Promise<void>;
+  removeMember: (workspaceId: string, userId: string) => Promise<void>;
+  leaveWorkspace: (workspaceId: string) => Promise<void>;
+  
+  // Invitation Actions
+  fetchInvitations: (workspaceId: string) => Promise<ApiWorkspaceInvitation[]>;
+  createInvitation: (workspaceId: string, input: ApiWorkspaceInvitationInput) => Promise<ApiWorkspaceInvitation>;
+  deleteInvitation: (workspaceId: string, invitationId: string) => Promise<void>;
 }
 
 /**

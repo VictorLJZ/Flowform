@@ -10,17 +10,18 @@
 import { 
   DbWorkspace, 
   DbWorkspaceMember, 
-  DbWorkspaceRole,
   DbWorkspaceInvitation,
   DbInvitationStatus
-} from '@/types/workspace';
+} from '@/types/workspace/DbWorkspace';
 
 import {
+  ApiWorkspace,
   ApiWorkspaceInput,
   ApiWorkspaceUpdateInput,
   ApiWorkspaceRole,
-  ApiWorkspaceMember
-} from '@/types/workspace';
+  ApiWorkspaceMember,
+  ApiWorkspaceInvitation
+} from '@/types/workspace/ApiWorkspace';
 
 /**
  * Transform API workspace input to DB format for insertion
@@ -70,7 +71,7 @@ export function apiToDbWorkspaceMember(apiMember: ApiWorkspaceMember): DbWorkspa
   return {
     workspace_id: apiMember.workspaceId,
     user_id: apiMember.userId,
-    role: apiToDbWorkspaceRole(apiMember.role),
+    role: apiMember.role,
     joined_at: apiMember.joinedAt
   };
 }
@@ -91,7 +92,7 @@ export function createDbWorkspaceMember(
   return {
     workspace_id: workspaceId,
     user_id: userId,
-    role: apiToDbWorkspaceRole(role),
+    role: role,
     joined_at: new Date().toISOString()
   };
 }
@@ -122,7 +123,7 @@ export function createDbWorkspaceInvitation(
   return {
     workspace_id: workspaceId,
     email: email,
-    role: apiToDbWorkspaceRole(role),
+    role: role,
     status: 'pending' as DbInvitationStatus,
     invited_by: invitedBy,
     invited_at: now.toISOString(),
@@ -132,23 +133,40 @@ export function createDbWorkspaceInvitation(
 }
 
 /**
- * Transform API workspace role to DB format
+ * Transform an API workspace to a DB workspace format
  * 
- * @param role - API workspace role
- * @returns Database-formatted workspace role
+ * @param workspace - API workspace object
+ * @returns Database-formatted workspace
  */
-export function apiToDbWorkspaceRole(role: ApiWorkspaceRole): DbWorkspaceRole {
-  // Assuming ApiWorkspaceRole and DbWorkspaceRole are compatible or identical
-  return role as DbWorkspaceRole;
+export function apiToDbWorkspace(workspace: ApiWorkspace): DbWorkspace {
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    description: workspace.description === undefined ? null : workspace.description,
+    created_at: workspace.createdAt,
+    created_by: workspace.createdBy,
+    updated_at: workspace.updatedAt || new Date().toISOString(),
+    logo_url: workspace.logoUrl === undefined ? null : workspace.logoUrl,
+    settings: workspace.settings === undefined ? null : workspace.settings
+  };
 }
 
 /**
- * Transform DB workspace role to API format
+ * Transform an API workspace invitation to a DB workspace invitation format
  * 
- * @param role - DB workspace role
- * @returns API-formatted workspace role
+ * @param invitation - API workspace invitation object
+ * @returns Database-formatted workspace invitation
  */
-export function dbToApiWorkspaceRole(role: DbWorkspaceRole): ApiWorkspaceRole {
-  // Assuming DbWorkspaceRole and ApiWorkspaceRole are compatible or identical
-  return role as ApiWorkspaceRole;
+export function apiToDbWorkspaceInvitation(invitation: ApiWorkspaceInvitation): DbWorkspaceInvitation {
+  return {
+    id: invitation.id,
+    workspace_id: invitation.workspaceId,
+    email: invitation.email,
+    role: invitation.role,
+    status: invitation.status as DbInvitationStatus,
+    invited_by: invitation.invitedBy,
+    invited_at: invitation.invitedAt,
+    expires_at: invitation.expiresAt,
+    token: invitation.token
+  };
 }

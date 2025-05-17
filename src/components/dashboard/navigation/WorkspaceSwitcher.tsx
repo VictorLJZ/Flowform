@@ -18,116 +18,45 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useWorkspaces } from "@/hooks/useWorkspaces"
-import { useCurrentWorkspace } from "@/hooks/useCurrentWorkspace"
 import { useEffect, useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/components/ui/use-toast"
-import { useAuthSession } from "@/hooks/useAuthSession"
-import { useWorkspaceSwitcher } from "@/hooks/useWorkspaceSwitcher"
-import { createWorkspace } from "@/services/workspace/client"
-import { ApiWorkspaceInput } from "@/types/workspace"
+import { useAuth } from "@/providers/auth-provider"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { UiWorkspace } from "@/types/workspace/UiWorkspace"
+import { CreateWorkspaceDialog } from "@/components/workspace/CreateWorkspaceDialog"
 
 export function WorkspaceSwitcher() {
-  const { workspaces, isLoading: isLoadingWorkspaces, mutate: mutateWorkspaces } = useWorkspaces()
-  const { currentWorkspaceId, switchToWorkspace } = useWorkspaceSwitcher()
+  // Use the new unified workspace hook
+  const { 
+    workspaces, 
+    currentWorkspace, 
+    selectWorkspace, 
+    isWorkspaceLoading
+  } = useWorkspace()
 
-  const { user, isLoading: isLoadingAuth } = useAuthSession()
-  const userId = user?.id
+  // Auth context - we only need supabase client
+  const { supabase } = useAuth()
+  
+  // We no longer need to fetch the session or track auth loading state
+  // The user is already authenticated at this point by the auth provider
 
+  // Auto-select first workspace if none is selected
   useEffect(() => {
-    if (currentWorkspaceId === null && workspaces.length > 0 && !isLoadingWorkspaces) {
+    if (!currentWorkspace && workspaces.length > 0 && !isWorkspaceLoading()) {
       console.log("[WorkspaceSwitcher] No workspace selected in store, setting initial:", workspaces[0].id);
-      switchToWorkspace(workspaces[0].id);
+      selectWorkspace(workspaces[0].id);
     }
-  }, [workspaces, currentWorkspaceId, isLoadingWorkspaces, switchToWorkspace])
+  }, [workspaces, currentWorkspace, isWorkspaceLoading, selectWorkspace])
 
-  const { workspace: currentWorkspace, isLoading: isLoadingCurrentWorkspace } = useCurrentWorkspace(currentWorkspaceId)
-
+  // UI state for the create dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [newWorkspace, setNewWorkspace] = useState({ name: "", description: "" })
-
-  const handleCreateWorkspace = async () => {
-    if (!newWorkspace.name) return
-    if (isLoadingAuth) {
-      toast({ title: "Please wait", description: "Authentication in progress..." })
-      return
-    }
-    if (!userId) {
-      toast({ variant: "destructive", title: "Error", description: "User authentication required" })
-      return
-    }
-    try {
-      setIsCreating(true)
-      
-      // Create the workspace in the database
-      const workspaceInput: ApiWorkspaceInput = { 
-        name: newWorkspace.name, 
-        description: newWorkspace.description, 
-        createdBy: userId, 
-        logoUrl: "", 
-        settings: {} 
-      };
-      const created = await createWorkspace(workspaceInput)
-      
-      // Close dialog and reset form
-      setCreateDialogOpen(false)
-      setNewWorkspace({ name: "", description: "" })
-      
-      if (created && 'id' in created && created.id) {
-        console.log("🔴🔴 [WorkspaceSwitcher] Successfully created workspace:", created.id);
-        
-        // Show success toast
-        toast({ 
-          title: "Success", 
-          description: "Workspace created successfully!" 
-        });
-        
-        // Simple, clean approach following Carmack principles
-        console.log("[WorkspaceSwitcher] Workspace created, updating state:", created.id);
-        
-        // 1. Update SWR cache first (data layer)
-        await mutateWorkspaces(prev => {
-          if (!prev) return [created];
-          if (prev.some(w => w.id === created.id)) return prev;
-          return [...prev, created];
-        }, false);
-        
-        // 2. Select the workspace using Zustand (UI state)
-        // This is the only place we need to update selection state
-        console.log("[WorkspaceSwitcher] Selecting new workspace:", created.id);
-        switchToWorkspace(created.id);
-        
-        // That's it! No session storage, no extra state management needed.
-        
-        // Delay closing the dialog slightly to show the success message
-        setTimeout(() => {
-          // Close the modal with a slight delay for better UX
-          setCreateDialogOpen(false);
-        }, 500);
-      }
-    } catch (error) {
-      console.error("[WorkspaceSwitcher] Error creating workspace:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to create workspace" 
-      })
-    } finally {
-      setIsCreating(false)
-    }
+  
+  // Handle successful workspace creation
+  const handleCreateSuccess = (workspace: UiWorkspace) => {
+    console.log("[WorkspaceSwitcher] Successfully created workspace:", workspace.id);
+    
+    // The unified hook will update the store automatically,
+    // so we just need to select the new workspace
+    selectWorkspace(workspace.id);
   }
 
   return (
@@ -136,67 +65,48 @@ export function WorkspaceSwitcher() {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              >
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  {isLoadingCurrentWorkspace ? (
+              <SidebarMenuButton aria-expanded={true} className="w-full justify-between space-x-2">
+                {isWorkspaceLoading() ? (
+                  <span className="flex items-center gap-2">
                     <Loader2 className="size-4 animate-spin" />
-                  ) : currentWorkspace?.logoUrl ? (
-                    <Image 
-                      src={currentWorkspace.logoUrl} 
-                      alt={currentWorkspace.name} 
-                      width={16}
-                      height={16}
-                      className="rounded"
-                    />
-                  ) : (
-                    <Building2 className="size-4" />
-                  )}
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {isLoadingCurrentWorkspace ? "Loading..." : currentWorkspace?.name || "Select Workspace"}
+                    <span>Loading...</span>
                   </span>
-                  <span className="truncate text-xs">Free Plan</span>
-                </div>
-                <ChevronsUpDown className="ml-auto" />
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <div className="flex size-6 items-center justify-center rounded-md border">
+                      {currentWorkspace?.logoUrl ? (
+                        <Image 
+                          src={currentWorkspace.logoUrl} 
+                          alt={currentWorkspace.name || 'Workspace'} 
+                          width={14}
+                          height={14}
+                          className="rounded shrink-0"
+                        />
+                      ) : (
+                        <Building2 className="size-3.5" />
+                      )}
+                    </div>
+                    <span className="truncate">{currentWorkspace?.name}</span>
+                  </span>
+                )}
+                <ChevronsUpDown className="size-3.5 opacity-50" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              className="w-64 rounded-xl border p-2 shadow-xl"
-              side="right" 
-              align="start"
-              sideOffset={8}
-            >
-              <DropdownMenuLabel className="px-2 py-1.5">My Workspaces</DropdownMenuLabel>
+            <DropdownMenuContent align="start" sideOffset={0} className="w-72">
+              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {isLoadingWorkspaces ? (
-                 <DropdownMenuItem disabled className="gap-2 p-2">
-                   <Loader2 className="mr-2 size-4 animate-spin" /> Loading...
-                 </DropdownMenuItem>
+              {isWorkspaceLoading() ? (
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="size-6 animate-spin" />
+                </div>
               ) : (
                 workspaces.map((workspace, index) => (
                   <DropdownMenuItem
                     key={workspace.id}
                     onClick={() => {
-                      // Debug info
-                      console.log(`[WorkspaceSwitcher] Workspace selected:`, { 
-                        selected: workspace.id, 
-                        current: currentWorkspaceId,
-                        isSame: workspace.id === currentWorkspaceId
-                      });
-                      
-                      // Use the dedicated hook for workspace switching
-                      switchToWorkspace(workspace.id);
-                      
-                      // Close the dropdown menu after selection
-                      const closeEvent = new MouseEvent('click', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                      });
+                      selectWorkspace(workspace.id)
+                      // Close any open modals by sending a custom event
+                      const closeEvent = new CustomEvent('closeDropdownMenus')
                       document.dispatchEvent(closeEvent);
                     }}
                     className="gap-2 p-2"
@@ -234,62 +144,12 @@ export function WorkspaceSwitcher() {
         </SidebarMenuItem>
       </SidebarMenu>
 
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="bg-white w-full max-w-[480px] p-7 shadow-lg rounded-xl border border-gray-200">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-2xl font-bold">Create workspace</DialogTitle>
-            <DialogDescription className="text-gray-500 mt-2 text-base">
-              Add a new workspace to organize your forms and collaborate with others.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-2">
-            <div className="grid gap-3 mb-4">
-              <Label htmlFor="name" className="text-base font-semibold">Name</Label>
-              <Input
-                id="name"
-                placeholder="Enter workspace name"
-                value={newWorkspace.name}
-                onChange={(e) => setNewWorkspace(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-lg px-4 py-2.5 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="description" className="text-base font-semibold">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Enter workspace description (optional)"
-                value={newWorkspace.description}
-                onChange={(e) => setNewWorkspace(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full min-h-[120px] rounded-lg px-4 py-2.5 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <DialogFooter className="mt-8 flex items-center justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setCreateDialogOpen(false)}
-              disabled={isCreating}
-              className="rounded-lg px-6 py-3 text-sm font-medium h-10"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateWorkspace}
-              disabled={!newWorkspace.name || isCreating}
-              className="rounded-lg px-6 py-3 text-sm font-medium h-10"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create workspace"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Use our extracted CreateWorkspaceDialog component */}
+      <CreateWorkspaceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreateSuccess={handleCreateSuccess}
+      />
     </>
   )
 }

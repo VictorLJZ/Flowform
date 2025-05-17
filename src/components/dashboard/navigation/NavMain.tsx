@@ -2,7 +2,7 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWorkspaces } from "@/hooks/useWorkspaces"
+import { useWorkspace } from "@/hooks/useWorkspace"
 import { Button } from "@/components/ui/button"
 
 import {
@@ -40,7 +40,7 @@ export function NavMain({
   }[]
 }) {
   const router = useRouter();
-  const { workspaces } = useWorkspaces();
+  const { workspaces } = useWorkspace();
   
   // Handle action items like form creation
   const handleAction = async (action: string) => {

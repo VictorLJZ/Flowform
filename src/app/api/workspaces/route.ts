@@ -1,92 +1,91 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
-import { DbWorkspace } from '@/types/workspace';
-import { dbToApiWorkspace } from '@/utils/type-utils';
+/**
+ * API Routes for workspace core operations
+ * 
+ * GET /api/workspaces - Get all user's workspaces
+ * POST /api/workspaces - Create a new workspace
+ */
 
-// Get all workspaces for the current user
-export async function GET(request: Request) {
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import * as workspacesService from '@/services/workspace/workspaces.server';
+import { ApiWorkspaceInput } from '@/types/workspace';
+import { dbToApiWorkspace } from '@/utils/type-utils/workspace/DbToApiWorkspace';
+import { apiToDbWorkspace } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
+
+/**
+ * GET handler - retrieve all workspaces for the current user
+ */
+export async function GET() {
   try {
-    // Extract userId from query params
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
+    // Get authenticated user
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!userId) {
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'User ID is required' },
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Get workspaces the user is a member of
+    const userWorkspaces = await workspacesService.getUserWorkspaces(user.id);
+    
+    // Transform DB types to API types
+    const apiWorkspaces = userWorkspaces.map(dbToApiWorkspace);
+    
+    return NextResponse.json(apiWorkspaces);
+  } catch (error) {
+    console.error('Error fetching workspaces:', error);
+    return NextResponse.json(
+      { error: `Failed to get workspaces: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST handler - create a new workspace
+ */
+export async function POST(request: Request) {
+  try {
+    // Get authenticated user
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Parse request body
+    const workspaceInput = await request.json() as ApiWorkspaceInput;
+    
+    // Validate required fields
+    if (!workspaceInput.name?.trim()) {
+      return NextResponse.json(
+        { error: 'Workspace name is required' },
         { status: 400 }
       );
     }
-
-    const supabase = await createClient();
-    console.log('[API] Getting workspaces for userId:', userId);
-
-    // Get workspace memberships with timeout protection
-    const { data: memberships, error: membershipError } = await supabase
-      .from('workspace_members')
-      .select('workspace_id, role')
-      .eq('user_id', userId);
-      
-    // Check for errors
-    if (membershipError) {
-      console.error('[API] Error fetching workspace memberships:', membershipError);
-      return NextResponse.json(
-        { error: membershipError.message },
-        { status: 500 }
-      );
-    }
-
-    // Check for empty results
-    if (!memberships || memberships.length === 0) {
-      console.log('[API] No workspace memberships found for user');
-      return NextResponse.json([]);
-    }
     
-    // Log memberships detail
-    console.log('[API] Memberships fetched for userId:', userId, {
-      count: memberships?.length || 0,
-      membershipIds: memberships?.map(m => m.workspace_id)
+    // Transform API input to DB format
+    const dbWorkspaceData = apiToDbWorkspace({
+      ...workspaceInput,
+      createdBy: user.id
     });
-
-    // Get workspace IDs from memberships
-    const workspaceIds = memberships.map((m) => m.workspace_id);
-    console.log('[API] Found workspace IDs:', workspaceIds);
-
-    // Get workspaces
-    const { data: workspaces, error: workspacesError } = await supabase
-      .from('workspaces')
-      .select('*')
-      .in('id', workspaceIds);
-
-    // Check for errors
-    if (workspacesError) {
-      console.error('[API] Error fetching workspaces:', workspacesError);
-      return NextResponse.json(
-        { error: workspacesError.message },
-        { status: 500 }
-      );
-    }
     
-    // Log raw data from database
-    console.log('[API] Raw workspaces returned from database:', {
-      workspaceIds: workspaces?.map(w => w.id),
-      requestedIds: workspaceIds
-    });
-
-    // Log success
-    console.log('[API] Successfully fetched workspaces:', {
-      count: workspaces?.length || 0,
-      names: workspaces?.map((w: DbWorkspace) => w.name) || []
-    });
-
-    // Transform DB workspaces to API format
-    const apiWorkspaces = workspaces?.map(dbToApiWorkspace) || [];
-
-    // Return API-formatted workspaces
-    return NextResponse.json(apiWorkspaces);
-  } catch (error: unknown) {
-    console.error('[API] ERROR in workspace fetch:', error);
+    // Create workspace
+    const createdWorkspace = await workspacesService.createWorkspace(dbWorkspaceData);
+    
+    // Transform DB result back to API format
+    return NextResponse.json(dbToApiWorkspace(createdWorkspace), { status: 201 });
+  } catch (error) {
+    console.error('Error creating workspace:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { error: `Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
