@@ -32,6 +32,13 @@ export async function deleteWorkspace(workspaceId: string): Promise<{
     throw new Error('User is not a member of this workspace');
   }
   
+  // Log membership details
+  console.log('[deleteWorkspace] Checking workspace membership:', {
+    workspaceId,
+    userId: userData.user.id,
+    role: memberData.role
+  });
+  
   // Allow both owners and admins to delete workspaces
   if (memberData.role !== 'owner' && memberData.role !== 'admin') {
     throw new Error('Only workspace owners and admins can delete workspaces');
@@ -50,7 +57,10 @@ export async function deleteWorkspace(workspaceId: string): Promise<{
   }
   
   // Verify the workspace was actually deleted
-  console.log('Delete operation result:', { deletedData });
+  console.log('[deleteWorkspace] Workspace delete operation completed', {
+    deletedWorkspaceId: workspaceId,
+    deleteResult: deletedData
+  });
   
   // Double-check if the workspace was deleted
   const { data: checkData, error: checkError } = await supabase
@@ -86,6 +96,12 @@ export async function deleteWorkspace(workspaceId: string): Promise<{
     console.error('Error fetching remaining workspaces after deletion:', fetchError);
   }
   
+  // Log remaining workspaces after deletion
+  console.log('[deleteWorkspace] Remaining workspaces after deletion:', {
+    count: remainingWorkspaces?.length || 0,
+    ids: remainingWorkspaces?.map(w => w.id)
+  });
+
   // Transform DB workspaces to API format before returning
   const apiWorkspaces = remainingWorkspaces ? 
     remainingWorkspaces.map(dbToApiWorkspace) : 

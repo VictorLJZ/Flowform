@@ -44,6 +44,12 @@ export function useWorkspaceInitialization() {
       keepPreviousData: true, 
       loadingTimeout: 3000,
       onSuccess: (data) => {
+        console.log('[useWorkspaceInitialization] SWR data refresh success:', {
+          timestamp: new Date().toISOString(),
+          count: data?.length || 0,
+          ids: data?.map(w => w.id),
+          currentId: currentWorkspaceId
+        });
         console.log('[useWorkspaceInitialization] Successfully fetched workspaces:', {
           count: data?.length || 0,
           currentWorkspaceId,
@@ -54,6 +60,9 @@ export function useWorkspaceInitialization() {
           console.log('[useWorkspaceInitialization] No workspace selected, selecting first one:', data[0].id);
           selectWorkspace(data[0].id);
         }
+      },
+      onError: (error) => {
+        console.error('[useWorkspaceInitialization] SWR data fetch error:', error);
       }
     }
   );

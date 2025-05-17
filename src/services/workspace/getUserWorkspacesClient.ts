@@ -10,6 +10,7 @@ import { ApiErrorResponse } from '@/types/workspace';
  * @returns An array of workspaces
  */
 export async function getUserWorkspacesClient(userId: string): Promise<ApiWorkspace[]> {
+  console.log('[getUserWorkspacesClient] Starting data fetch for userId:', userId);
   
   // Maximum number of retries
   const maxRetries = 2;
@@ -63,6 +64,12 @@ export async function getUserWorkspacesClient(userId: string): Promise<ApiWorksp
       const workspaces = await response.json() as ApiWorkspace[];
       
       // Log success
+      
+      // Log results
+      console.log('[getUserWorkspacesClient] Fetch completed, returning workspaces:', {
+        count: workspaces?.length || 0,
+        ids: workspaces?.map(w => w.id)
+      });
       
       // Return workspaces or empty array
       return workspaces || [];

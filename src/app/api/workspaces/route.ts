@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       .from('workspace_members')
       .select('workspace_id, role')
       .eq('user_id', userId);
-
+      
     // Check for errors
     if (membershipError) {
       console.error('[API] Error fetching workspace memberships:', membershipError);
@@ -40,6 +40,12 @@ export async function GET(request: Request) {
       console.log('[API] No workspace memberships found for user');
       return NextResponse.json([]);
     }
+    
+    // Log memberships detail
+    console.log('[API] Memberships fetched for userId:', userId, {
+      count: memberships?.length || 0,
+      membershipIds: memberships?.map(m => m.workspace_id)
+    });
 
     // Get workspace IDs from memberships
     const workspaceIds = memberships.map((m) => m.workspace_id);
@@ -59,6 +65,12 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
+    
+    // Log raw data from database
+    console.log('[API] Raw workspaces returned from database:', {
+      workspaceIds: workspaces?.map(w => w.id),
+      requestedIds: workspaceIds
+    });
 
     // Log success
     console.log('[API] Successfully fetched workspaces:', {
