@@ -12,19 +12,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { WorkspaceState } from '@/types/store-types';
 import {
-  ApiWorkspace,
   ApiWorkspaceInput,
   ApiWorkspaceUpdateInput,
-  ApiWorkspaceMemberWithProfile,
   ApiWorkspaceRole,
-  ApiWorkspaceInvitation,
   ApiWorkspaceInvitationInput
 } from '@/types/workspace/ApiWorkspace';
 
 // Import client services
 import {
   getUserWorkspaces,
-  getWorkspace,
   createWorkspace,
   updateWorkspace,
   deleteWorkspace
@@ -172,9 +168,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             const newCurrentId = 
               state.currentWorkspaceId === id ? null : state.currentWorkspaceId;
               
-            // Clean up associated members and invitations
-            const { [id]: _, ...remainingMembers } = state.members;
-            const { [id]: __, ...remainingInvitations } = state.invitations;
+            // Clean up associated members and invitations by omitting the workspace entries
+            const remainingMembers = { ...state.members };
+            const remainingInvitations = { ...state.invitations };
+            delete remainingMembers[id];
+            delete remainingInvitations[id];
             
             return {
               workspaces: state.workspaces.filter(w => w.id !== id),
@@ -312,9 +310,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // If the workspace was deleted (last owner left), remove it from state
           if (result.isWorkspaceDeleted) {
             set(state => {
-              // Clean up the workspace and associated data
-              const { [workspaceId]: _, ...remainingMembers } = state.members;
-              const { [workspaceId]: __, ...remainingInvitations } = state.invitations;
+              // Clean up the workspace and associated data by omitting the workspace entries
+              const remainingMembers = { ...state.members };
+              const remainingInvitations = { ...state.invitations };
+              delete remainingMembers[workspaceId];
+              delete remainingInvitations[workspaceId];
               
               return {
                 workspaces: state.workspaces.filter(w => w.id !== workspaceId),

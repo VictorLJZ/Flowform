@@ -12,7 +12,7 @@ import * as workspacesService from '@/services/workspace/workspaces.server';
 import * as permissionsService from '@/services/workspace/permissions.server';
 import { ApiWorkspaceUpdateInput } from '@/types/workspace';
 import { dbToApiWorkspace } from '@/utils/type-utils/workspace/DbToApiWorkspace';
-import { apiToDbWorkspace } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
+import { workspaceUpdateInputToDb } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
 
 /**
  * Extract the workspace ID from the params
@@ -102,7 +102,7 @@ export async function PUT(request: Request, { params }: Params) {
     const updateData = await request.json() as ApiWorkspaceUpdateInput;
     
     // Transform API input to DB format
-    const dbUpdateData = apiToDbWorkspace(updateData);
+    const dbUpdateData = workspaceUpdateInputToDb(updateData);
     
     // Update workspace
     const updatedWorkspace = await workspacesService.updateWorkspace(

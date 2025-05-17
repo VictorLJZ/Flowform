@@ -10,8 +10,9 @@
 import { 
   DbWorkspace, 
   DbWorkspaceMember, 
-  DbWorkspaceInvitation,
+  DbWorkspaceInvitation
 } from '@/types/workspace';
+import { DbWorkspaceMemberWithProfile } from '@/services/workspace/members.server';
 import { DbProfile } from '@/types/user';
 
 import { 
@@ -109,14 +110,33 @@ export function dbToApiWorkspaceInvitations(dbInvitations: DbWorkspaceInvitation
 /**
  * Transform a DB workspace member to API format with profile information
  * 
- * @param dbMember - Database workspace member object
- * @param profileData - Profile data to include with the member
+ * This function has two overloads:
+ * 1. For separate member and profile data
+ * 2. For combined DbWorkspaceMemberWithProfile objects (from the members service)
+ * 
+ * @param dbMember - Database workspace member object (with or without profile)
+ * @param profileData - Profile data to include with the member (optional if dbMember has profile)
  * @returns API-formatted workspace member with profile information
  */
 export function dbToApiWorkspaceMemberWithProfile(
+  dbMember: DbWorkspaceMemberWithProfile
+): ApiWorkspaceMemberWithProfile;
+export function dbToApiWorkspaceMemberWithProfile(
   dbMember: DbWorkspaceMember, 
   profileData: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>
+): ApiWorkspaceMemberWithProfile;
+export function dbToApiWorkspaceMemberWithProfile(
+  dbMember: DbWorkspaceMember | DbWorkspaceMemberWithProfile,
+  profileData?: Pick<DbProfile, 'full_name' | 'avatar_url' | 'email'>
 ): ApiWorkspaceMemberWithProfile {
+  // Check if we have a combined object with profile or separate objects
+  const hasEmbeddedProfile = 'profile' in dbMember;
+  
+  // Extract profile data from the appropriate source
+  const profile = hasEmbeddedProfile 
+    ? (dbMember as DbWorkspaceMemberWithProfile).profile
+    : profileData!;
+  
   return {
     workspaceId: dbMember.workspace_id,
     userId: dbMember.user_id,
@@ -124,9 +144,10 @@ export function dbToApiWorkspaceMemberWithProfile(
     joinedAt: dbMember.joined_at,
     profile: {
       // Convert null to undefined for all optional profile fields
-      fullName: profileData.full_name === null ? undefined : profileData.full_name,
-      avatarUrl: profileData.avatar_url === null ? undefined : profileData.avatar_url,
-      email: profileData.email
+      fullName: profile.full_name === null ? undefined : profile.full_name,
+      avatarUrl: profile.avatar_url === null ? undefined : profile.avatar_url,
+      // Ensure email is never null (use a fallback empty string if needed)
+      email: profile.email || ''
     }
   };
 }

@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import * as workspacesService from '@/services/workspace/workspaces.server';
 import { ApiWorkspaceInput } from '@/types/workspace';
 import { dbToApiWorkspace } from '@/utils/type-utils/workspace/DbToApiWorkspace';
-import { apiToDbWorkspace } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
+import { workspaceInputToDb } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
 
 /**
  * GET handler - retrieve all workspaces for the current user
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
     
     // Transform API input to DB format
-    const dbWorkspaceData = apiToDbWorkspace({
+    const dbWorkspaceData = workspaceInputToDb({
       ...workspaceInput,
       createdBy: user.id
     });

@@ -13,7 +13,6 @@
 import { 
   ApiWorkspace,
   ApiWorkspaceMember, 
-  ApiWorkspaceRole,
   ApiWorkspaceInvitation,
   ApiWorkspaceMemberWithProfile
 } from './ApiWorkspace';

@@ -1,18 +1,4 @@
 /**
- * Database-level workspace types
- * 
- * These types directly reflect the database schema for workspace-related tables.
- * They use snake_case naming to match database column names.
- * 
- * Use these types for:
- * - Database queries and mutations
- * - Direct interaction with Supabase
- * - Backend services that work with raw database data
- */
-
-import { DbProfile } from '@/types/user';
-
-/**
  * Database workspace table schema
  */
 export interface DbWorkspace {

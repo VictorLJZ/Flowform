@@ -20,7 +20,8 @@ import {
   ApiWorkspaceUpdateInput,
   ApiWorkspaceRole,
   ApiWorkspaceMember,
-  ApiWorkspaceInvitation
+  ApiWorkspaceInvitation,
+  ApiWorkspaceInvitationInput
 } from '@/types/workspace/ApiWorkspace';
 
 /**
@@ -168,5 +169,25 @@ export function apiToDbWorkspaceInvitation(invitation: ApiWorkspaceInvitation): 
     invited_at: invitation.invitedAt,
     expires_at: invitation.expiresAt,
     token: invitation.token
+  };
+}
+
+/**
+ * Transform an API workspace invitation input to a DB workspace invitation format
+ * for creating a new invitation. This prepares the data for the createInvitation service.
+ * 
+ * @param input - API workspace invitation input with workspaceId and invitedBy
+ * @returns Database-formatted workspace invitation (without id, invited_at, expires_at, and token)
+ */
+export function apiToDbWorkspaceInvitationInput(
+  input: ApiWorkspaceInvitationInput & { workspaceId: string; invitedBy: string }
+): Omit<DbWorkspaceInvitation, 'id' | 'invited_at' | 'expires_at' | 'token'> {
+  return {
+    workspace_id: input.workspaceId,
+    email: input.email,
+    role: input.role,
+    status: 'pending' as DbInvitationStatus,
+    invited_by: input.invitedBy
+    // Note: message field is in the input but not stored in the DB schema
   };
 }

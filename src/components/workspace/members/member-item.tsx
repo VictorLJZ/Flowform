@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useWorkspace } from "@/hooks/useWorkspace"
-import { useWorkspacePermissions } from "@/hooks/useWorkspacePermissions"
 import { useAuth } from "@/providers/auth-provider"
 import { UiWorkspaceMemberWithProfile } from "@/types/workspace/UiWorkspace"
 import { ApiWorkspaceRole } from "@/types/workspace/ApiWorkspace"

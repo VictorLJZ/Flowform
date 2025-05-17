@@ -108,7 +108,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     }
     try {
       // Accept the invitation through the service
-      const membership = await acceptInvitationService(token, userId)
+      const membership = await acceptInvitationService(token)
       
       if (membership) {
         toast({
@@ -119,16 +119,13 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
         // Important: Update SWR cache to make the workspace appear in the workspace switcher without a page refresh
         try {
           // Get the workspace details
-          const newWorkspace = await getWorkspaceById(membership.workspace_id)
+          const newWorkspace = await getWorkspaceById(membership.id)
           
           if (newWorkspace) {
-            // Update the SWR cache with the new workspace
-            await mutateWorkspaces(prev => {
-              const safeWorkspaces = prev || [];
-              // Check if workspace already exists to avoid duplicates
-              if (safeWorkspaces.some(w => w.id === newWorkspace.id)) return safeWorkspaces;
-              return [...safeWorkspaces, newWorkspace];
-            });
+            // Refresh the workspaces list to include the new workspace
+            await mutateWorkspaces();
+            
+            // The hook will internally refresh the workspace list
             
             console.log('[InvitePage] Updated workspace cache with new workspace:', newWorkspace.name);
           } else {

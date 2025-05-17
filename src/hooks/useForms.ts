@@ -1,7 +1,5 @@
-import { DbForm, ApiForm, UiForm } from '@/types/form';
-import { createClient } from '@/lib/supabase/client';
-import { useWorkspaceSWR, createWorkspaceFetcher } from './swr';
-import { dbToApiForm } from '@/utils/type-utils';
+import { ApiForm, UiForm } from '@/types/form';
+import { useWorkspaceSWR } from './swr';
 import { apiToUiForm } from '@/utils/type-utils';
 
 /**
@@ -13,40 +11,18 @@ import { apiToUiForm } from '@/utils/type-utils';
  * @returns UI-formatted forms data, loading state, error, and mutate function
  */
 export function useForms(workspaceId?: string | null) {
-  // Create a workspace-aware fetcher that handles workspace ID automatically
-  const formsFetcher = createWorkspaceFetcher<ApiForm[]>(async (wsId: string) => {
-    console.log(`[useForms] Fetching forms for workspace: ${wsId}`);
-    const supabase = createClient();
-    
-    const { data, error } = await supabase
-      .from('forms')
-      .select('*')
-      .eq('workspace_id', wsId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error(`[useForms] Error fetching forms for workspace ${wsId}:`, error);
-      throw error;
-    }
-    
-    console.log(`[useForms] Fetched ${data?.length || 0} forms for workspace ${wsId}`);
-    
-    // Transform DB data to API format
-    const dbForms = (data || []) as DbForm[];
-    return dbForms.map(dbForm => dbToApiForm(dbForm));
-  });
-
-  // Use our workspace-aware SWR hook with the API type
+  // Use our workspace-aware SWR hook directly with the API type
   const { data, error, isLoading, mutate } = useWorkspaceSWR<ApiForm[]>(
+    workspaceId,
     'forms',
-    formsFetcher,
     {
       revalidateOnFocus: true,
       revalidateIfStale: true,
       dedupingInterval: 5000, // Deduplicate requests within 5 seconds
-    },
-    workspaceId // Pass the explicit workspaceId if provided
+    }
   );
+  
+  // When data is fetched, it will go through our workspace-specific fetcher internally
 
   // Transform API forms to UI forms for component consumption
   const uiForms: UiForm[] = data ? data.map(form => apiToUiForm(form)) : [];

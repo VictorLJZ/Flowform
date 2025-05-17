@@ -56,9 +56,6 @@ export async function getWorkspaceMembersWithProfiles(workspaceId: string): Prom
   try {
     const supabase = await createClient();
     
-    // Define the return type structure from Supabase - using 'unknown' for safer casting
-    type DbMemberWithProfileResult = unknown;
-    
     // Define our expected structure for type safety after the cast
     interface DbMemberWithProfileJoin {
       workspace_id: string;

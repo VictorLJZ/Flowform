@@ -8,7 +8,6 @@
 import { 
   ApiWorkspaceInvitation, 
   ApiWorkspaceInvitationInput,
-  ApiInvitationStatus, 
   ApiErrorResponse 
 } from '@/types/workspace';
 

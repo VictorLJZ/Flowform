@@ -16,5 +16,6 @@ export * from './invitations.server';
 // Permission checks
 export * from './permissions.server';
 
-// Shared utilities
-export * from './utils';
+// Shared utilities - selectively export to avoid naming conflicts
+export { generateInvitationToken, calculateExpirationDate, ROLE_WEIGHTS } from './utils';
+// The isInvitationExpired utility is already exported from invitations.server.ts

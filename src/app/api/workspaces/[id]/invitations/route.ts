@@ -11,7 +11,7 @@ import * as invitationsService from '@/services/workspace/invitations.server';
 import * as permissionsService from '@/services/workspace/permissions.server';
 import { ApiWorkspaceInvitationInput } from '@/types/workspace';
 import { dbToApiWorkspaceInvitation } from '@/utils/type-utils/workspace/DbToApiWorkspace';
-import { apiToDbWorkspaceInvitation } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
+import { apiToDbWorkspaceInvitationInput } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
 
 /**
  * Extract the workspace ID from the params
@@ -128,7 +128,7 @@ export async function POST(request: Request, { params }: Params) {
     }
     
     // Transform API input to DB format
-    const dbInvitationData = apiToDbWorkspaceInvitation({
+    const dbInvitationData = apiToDbWorkspaceInvitationInput({
       ...invitationData,
       workspaceId: workspaceId,
       invitedBy: user.id

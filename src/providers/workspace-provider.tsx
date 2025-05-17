@@ -9,17 +9,14 @@ import {
   ReactNode
 } from "react";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { useAuth } from "@/providers/auth-provider";
 import { 
   ApiWorkspace, 
   ApiWorkspaceInput 
 } from "@/types/workspace/ApiWorkspace";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { apiToUiWorkspace } from "@/utils/type-utils/workspace/ApiToUiWorkspace";
 import { UiWorkspace } from "@/types/workspace/UiWorkspace";
-
-// SWR key for workspace data
-const WORKSPACES_SWR_KEY = 'user-workspaces';
+import { useSupabase } from "@/providers/auth-provider";
 
 // The context type specifies what data and functions the provider shares
 type WorkspaceContextType = {
@@ -45,11 +42,10 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
  * Provides workspace context to the application and handles initialization
  */
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
 
-  // Access the auth context
-  const { supabase } = useAuth();
+  // Access auth services
+  const supabase = useSupabase();
   
   // Access the workspace store
   const workspaceStore = useWorkspaceStore();

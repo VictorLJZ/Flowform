@@ -19,7 +19,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
-import { useAuth } from "@/providers/auth-provider"
 import { useWorkspace } from "@/hooks/useWorkspace"
 import { UiWorkspace } from "@/types/workspace/UiWorkspace"
 import { CreateWorkspaceDialog } from "@/components/workspace/CreateWorkspaceDialog"
@@ -32,9 +31,6 @@ export function WorkspaceSwitcher() {
     selectWorkspace, 
     isWorkspaceLoading
   } = useWorkspace()
-
-  // Auth context - we only need supabase client
-  const { supabase } = useAuth()
   
   // We no longer need to fetch the session or track auth loading state
   // The user is already authenticated at this point by the auth provider
