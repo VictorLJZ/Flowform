@@ -9,51 +9,58 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, X, AlertCircle, Loader2 } from "lucide-react"
-import { useAuthSession } from "@/hooks/useAuthSession"
 import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
 import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
 import { getWorkspaceById } from "@/services/workspace/getWorkspaceById"
-import { useWorkspaceInitialization } from "@/hooks/useWorkspaceInitialization"
 
 interface InvitePageClientProps {
   token: string
 }
 
+// Define the invitation state types for clarity
+type InvitationState = 'loading' | 'validating' | 'valid' | 'expired' | 'error'
+type InvitationDetails = {
+  email: string
+  workspace: string
+  workspaceId: string
+  role: string
+}
+
 export function InvitePageClient({ token }: InvitePageClientProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isLoading: isAuthLoading } = useAuthSession()
-  const userId = user?.id
-  // Use SWR to mutate workspace data instead of the old Zustand sync method
-  const { mutate: mutateWorkspaces } = useWorkspaceInitialization()
+  const [state, setState] = useState<InvitationState>('loading')
+  const [authUser, setAuthUser] = useState<{id: string, email: string} | null>(null)
+  const [invitationDetails, setInvitationDetails] = useState<InvitationDetails | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   
-  // Not using email state directly as it's handled by the invitation details
-  // const [email, setEmail] = useState("")
-  const [isValidating, setIsValidating] = useState(true)
-  const [invitationDetails, setInvitationDetails] = useState<{
-    email: string
-    workspace: string
-    role: string
-    expired: boolean
-  } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  
+  // Single effect to handle the entire invitation validation flow
   useEffect(() => {
-    const validateInvitation = async () => {
+    async function validateInvitation() {
       try {
+        console.log('Checking authentication...')
         const supabase = createClient()
         
-        // Check if user is authenticated
+        // Step 1: Check if user is authenticated
         const { data: authData } = await supabase.auth.getUser()
         
         if (!authData.user) {
-          // Store token in localStorage and redirect to login
+          console.log('No authenticated user, redirecting to login')
           localStorage.setItem('pendingInviteToken', token)
           router.push(`/login?redirect=/invite/${token}`)
           return
         }
         
-        // Get invitation details
+        // Store authentication data
+        setAuthUser({
+          id: authData.user.id,
+          email: authData.user.email || ''
+        })
+        
+        console.log('User authenticated, fetching invitation...')
+        setState('validating')
+        
+        // Step 2: Get invitation details
         const { data: invitation, error: invitationError } = await supabase
           .from('workspace_invitations')
           .select(`
@@ -63,77 +70,96 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           .eq('token', token)
           .single()
         
+        // Handle invitation errors
         if (invitationError || !invitation) {
-          setError("This invitation is invalid or has been revoked.")
-          setIsValidating(false)
+          console.error('Invalid invitation or error:', invitationError)
+          setErrorMessage("This invitation is invalid or has been revoked.")
+          setState('error')
           return
         }
         
-        // AuthProvider handles global user state
-        
-        // Check if invitation has expired
+        // Step 3: Check if invitation has expired
         const isExpired = new Date(invitation.expires_at) < new Date()
         
+        if (isExpired) {
+          console.log('Invitation has expired')
+          setInvitationDetails({
+            email: invitation.email,
+            workspace: invitation.workspaces?.name || "Unknown Workspace",
+            workspaceId: invitation.workspace_id,
+            role: invitation.role
+          })
+          setState('expired')
+          return
+        }
+        
+        // Step 4: Check email match
+        const userEmail = authData.user.email?.toLowerCase()
+        const invitationEmail = invitation.email.toLowerCase()
+        
+        if (userEmail && userEmail !== invitationEmail) {
+          console.log('Email mismatch')
+          setErrorMessage(`This invitation was sent to ${invitation.email}. Please log in with that email address.`)
+          setState('error')
+          return
+        }
+        
+        // Step 5: Invitation is valid
         setInvitationDetails({
           email: invitation.email,
           workspace: invitation.workspaces?.name || "Unknown Workspace",
-          role: invitation.role,
-          expired: isExpired
+          workspaceId: invitation.workspace_id,
+          role: invitation.role
         })
+        setState('valid')
         
-        // Verify the email matches
-        if (authData.user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-          setError(`This invitation was sent to ${invitation.email}. Please log in with that email address.`)
-        }
-        
-        setIsValidating(false)
       } catch (error) {
         console.error('Error validating invitation:', error)
-        setError("An error occurred while validating this invitation.")
-        setIsValidating(false)
+        setErrorMessage("An error occurred while validating this invitation.")
+        setState('error')
       }
     }
-    
+
+    // Start validation immediately
     validateInvitation()
+    
+    return () => {
+      // No cleanup needed
+    }
   }, [token, router])
   
+  // Handle accepting invitation
   const handleAcceptInvitation = async () => {
-    if (isAuthLoading) {
-      toast({ title: "Please wait", description: "Verifying your authentication..." })
-      return
-    }
-    if (!userId) {
+    if (!authUser) {
       toast({ variant: "destructive", title: "Error", description: "Authentication required" })
       return
     }
+    
+    if (!invitationDetails) {
+      toast({ variant: "destructive", title: "Error", description: "Invalid invitation" })
+      return
+    }
+    
     try {
-      // Accept the invitation through the service
-      const membership = await acceptInvitationService(token)
+      // Show loading feedback
+      setState('loading')
       
-      if (membership) {
+      // Accept the invitation through the service
+      const workspace = await acceptInvitationService(token)
+      
+      if (workspace) {
         toast({
           title: "Invitation accepted",
-          description: `You have joined the "${invitationDetails?.workspace}" workspace.`,
+          description: `You have joined the "${invitationDetails.workspace}" workspace.`,
         })
         
-        // Important: Update SWR cache to make the workspace appear in the workspace switcher without a page refresh
         try {
           // Get the workspace details
-          const newWorkspace = await getWorkspaceById(membership.id)
-          
-          if (newWorkspace) {
-            // Refresh the workspaces list to include the new workspace
-            await mutateWorkspaces();
-            
-            // The hook will internally refresh the workspace list
-            
-            console.log('[InvitePage] Updated workspace cache with new workspace:', newWorkspace.name);
-          } else {
-            console.log('[InvitePage] Workspace not found after accepting invitation');
-          }
-        } catch (fetchError) {
-          console.error('Error updating workspaces cache:', fetchError)
-          // Non-blocking, still continue even if cache refresh fails
+          const newWorkspace = await getWorkspaceById(workspace.id)
+          console.log('Workspace joined:', newWorkspace?.name)
+        } catch (error) {
+          console.error('Error fetching workspace details:', error)
+          // Non-blocking, still continue
         }
         
         // Redirect to dashboard
@@ -146,18 +172,12 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
         title: "Error accepting invitation",
         description: error instanceof Error ? error.message : "An unknown error occurred"
       })
+      setState('valid') // Reset to valid state to allow retry
     }
   }
-  
+
+  // Handle declining invitation  
   const handleDeclineInvitation = async () => {
-    if (isAuthLoading) {
-      toast({ title: "Please wait", description: "Verifying your authentication..." })
-      return
-    }
-    if (!userId) {
-      toast({ variant: "destructive", title: "Error", description: "Authentication required" })
-      return
-    }
     try {
       await declineInvitationService(token)
       toast({
@@ -168,10 +188,16 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
       router.push('/')
     } catch (error) {
       console.error('Error declining invitation:', error)
+      toast({
+        variant: "destructive", 
+        title: "Error", 
+        description: "Failed to decline the invitation."
+      })
     }
   }
   
-  if (isValidating) {
+  // Different UI states based on the invitation state
+  if (state === 'loading' || state === 'validating') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Card className="w-full max-w-md">
@@ -187,7 +213,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     )
   }
   
-  if (error || !invitationDetails) {
+  if (state === 'error') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Card className="w-full max-w-md">
@@ -196,7 +222,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
               <AlertCircle className="h-5 w-5" />
               Invalid Invitation
             </CardTitle>
-            <CardDescription>{error || "This invitation is invalid or has expired."}</CardDescription>
+            <CardDescription>{errorMessage || "This invitation is invalid or has expired."}</CardDescription>
           </CardHeader>
           <CardFooter className="flex justify-center">
             <Button onClick={() => router.push('/')}>Return to Homepage</Button>
@@ -206,7 +232,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     )
   }
   
-  if (invitationDetails.expired) {
+  if (state === 'expired') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Card className="w-full max-w-md">
@@ -228,14 +254,15 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     )
   }
   
+  // Valid invitation - show accept/decline options
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle>Workspace Invitation</CardTitle>
           <CardDescription>
-            You have been invited to join the &ldquo;{invitationDetails.workspace}&rdquo; workspace 
-            as a {invitationDetails.role}.
+            You have been invited to join the &ldquo;{invitationDetails?.workspace}&rdquo; workspace 
+            as a {invitationDetails?.role}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -243,7 +270,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
             <Label htmlFor="email">Your Email</Label>
             <Input
               id="email"
-              value={invitationDetails.email}
+              value={invitationDetails?.email || ''}
               disabled
             />
             <p className="text-xs text-muted-foreground">
