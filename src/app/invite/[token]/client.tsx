@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth, useSupabase } from "@/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, X, AlertCircle, Loader2 } from "lucide-react"
-import { acceptInvitation as acceptInvitationService } from "@/services/workspace/acceptInvitation"
-import { declineInvitation as declineInvitationService } from "@/services/workspace/declineInvitation"
-import { getWorkspaceById } from "@/services/workspace/getWorkspaceById"
 
 interface InvitePageClientProps {
   token: string
@@ -19,6 +16,20 @@ interface InvitePageClientProps {
 
 // Define the invitation state types for clarity
 type InvitationState = 'loading' | 'validating' | 'valid' | 'expired' | 'error'
+
+// Define the RPC function result type
+type ValidatedInvitation = {
+  id: string
+  workspace_id: string
+  email: string
+  role: string
+  status: string
+  invited_at: string
+  expires_at: string
+  token: string
+  workspace_name: string
+}
+
 type InvitationDetails = {
   email: string
   workspace: string
@@ -30,71 +41,88 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [state, setState] = useState<InvitationState>('loading')
-  const [authUser, setAuthUser] = useState<{id: string, email: string} | null>(null)
   const [invitationDetails, setInvitationDetails] = useState<InvitationDetails | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [validationAttempted, setValidationAttempted] = useState(false)
   
-  // Single effect to handle the entire invitation validation flow
+  // Get auth context and Supabase client from the existing provider
+  const { user, isLoading: authLoading } = useAuth()
+  const supabase = useSupabase()
+
+  // Effect to run when auth state changes or on first load
   useEffect(() => {
     async function validateInvitation() {
       try {
-        console.log('Checking authentication...')
-        const supabase = createClient()
+        // Do not re-validate if we're in a valid state and have invitation details
+        if (state === 'valid' && invitationDetails !== null) {
+          return
+        }
+
+        console.log('=== STARTING INVITATION VALIDATION ===')
+        console.log('Token being validated:', token)
+        console.log('Auth state:', { user: user?.id, authLoading })
+        setValidationAttempted(true)
         
         // Step 1: Check if user is authenticated
-        const { data: authData } = await supabase.auth.getUser()
+        if (authLoading) {
+          console.log('Auth is still loading, waiting...')
+          setState('loading') // Make sure we're in loading state
+          return // Exit early, will retry when auth state changes
+        }
         
-        if (!authData.user) {
+        if (!user) {
           console.log('No authenticated user, redirecting to login')
           localStorage.setItem('pendingInviteToken', token)
           router.push(`/login?redirect=/invite/${token}`)
           return
         }
         
-        // Store authentication data
-        setAuthUser({
-          id: authData.user.id,
-          email: authData.user.email || ''
-        })
+        // Log authentication data
+        console.log('User authenticated:', { id: user.id, email: user.email })
         
-        console.log('User authenticated, fetching invitation...')
+        console.log('Starting invitation validation via RPC...')
         setState('validating')
         
-        // Step 2: Get invitation details
-        const { data: invitation, error: invitationError } = await supabase
-          .from('workspace_invitations')
-          .select(`
-            *,
-            workspaces:workspace_id (name)
-          `)
-          .eq('token', token)
+        // Debug: Verify the token parameter
+        console.log('Calling RPC with token parameter:', { p_token: token })
+        
+        // Step 2: Use RPC function to validate the invitation
+        console.log('Attempting RPC call to validate_invitation_by_token...')
+        console.time('RPC call duration')
+        
+        const { data, error } = await supabase
+          .rpc('validate_invitation_by_token', { p_token: token })
           .single()
+          
+        console.timeEnd('RPC call duration')
+        console.log('RPC result:', { data, error })
+        
+        // Log the raw results
+        console.log('RPC result:', { data, error })
+        
+
         
         // Handle invitation errors
-        if (invitationError || !invitation) {
-          console.error('Invalid invitation or error:', invitationError)
-          setErrorMessage("This invitation is invalid or has been revoked.")
+        if (error) {
+          console.error('Validation error:', error)
+          setErrorMessage(error?.message || "This invitation is invalid or has expired.")
           setState('error')
           return
         }
         
-        // Step 3: Check if invitation has expired
-        const isExpired = new Date(invitation.expires_at) < new Date()
-        
-        if (isExpired) {
-          console.log('Invitation has expired')
-          setInvitationDetails({
-            email: invitation.email,
-            workspace: invitation.workspaces?.name || "Unknown Workspace",
-            workspaceId: invitation.workspace_id,
-            role: invitation.role
-          })
-          setState('expired')
+        if (!data) {
+          console.error('No data returned from RPC function')
+          setErrorMessage("This invitation is invalid or has expired.")
+          setState('error')
           return
         }
         
-        // Step 4: Check email match
-        const userEmail = authData.user.email?.toLowerCase()
+        // Cast the data to our type
+        const invitation = data as ValidatedInvitation
+        console.log('Validated invitation data:', invitation)
+        
+        // Step 3: Check email match
+        const userEmail = user.email?.toLowerCase()
         const invitationEmail = invitation.email.toLowerCase()
         
         if (userEmail && userEmail !== invitationEmail) {
@@ -104,10 +132,10 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
           return
         }
         
-        // Step 5: Invitation is valid
+        // Step 4: Invitation is valid
         setInvitationDetails({
           email: invitation.email,
-          workspace: invitation.workspaces?.name || "Unknown Workspace",
+          workspace: invitation.workspace_name || "Unknown Workspace",
           workspaceId: invitation.workspace_id,
           role: invitation.role
         })
@@ -121,16 +149,15 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
     }
 
     // Start validation immediately
-    validateInvitation()
-    
-    return () => {
-      // No cleanup needed
+    // Only run validation if auth has loaded or if we haven't attempted validation yet
+    if (!authLoading || !validationAttempted) {
+      validateInvitation()
     }
-  }, [token, router])
-  
+  }, [token, router, supabase, user, authLoading, validationAttempted, state, invitationDetails])
+
   // Handle accepting invitation
   const handleAcceptInvitation = async () => {
-    if (!authUser) {
+    if (!user) {
       toast({ variant: "destructive", title: "Error", description: "Authentication required" })
       return
     }
@@ -144,42 +171,55 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
       // Show loading feedback
       setState('loading')
       
-      // Accept the invitation through the service
-      const workspace = await acceptInvitationService(token)
-      
-      if (workspace) {
-        toast({
-          title: "Invitation accepted",
-          description: `You have joined the "${invitationDetails.workspace}" workspace.`,
-        })
-        
-        try {
-          // Get the workspace details
-          const newWorkspace = await getWorkspaceById(workspace.id)
-          console.log('Workspace joined:', newWorkspace?.name)
-        } catch (error) {
-          console.error('Error fetching workspace details:', error)
-          // Non-blocking, still continue
+      // Accept the invitation through the API endpoint
+      const response = await fetch(`/api/invitations/${token}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
-        
-        // Redirect to dashboard
-        router.push('/dashboard')
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to accept invitation')
       }
+      
+      const data = await response.json()
+      
+      toast({
+        title: "Invitation accepted",
+        description: `You have joined the "${invitationDetails.workspace}" workspace.`,
+      })
+      
+      // Redirect to dashboard
+      router.push('/dashboard/workspace/' + invitationDetails.workspaceId)
     } catch (error) {
       console.error('Error accepting invitation:', error)
+      setState('valid') // Reset state to allow retry
       toast({
         variant: "destructive",
         title: "Error accepting invitation",
-        description: error instanceof Error ? error.message : "An unknown error occurred"
+        description: error instanceof Error ? error.message : "Failed to accept the invitation."
       })
-      setState('valid') // Reset to valid state to allow retry
     }
   }
 
   // Handle declining invitation  
   const handleDeclineInvitation = async () => {
     try {
-      await declineInvitationService(token)
+      // Decline invitation through API endpoint
+      const response = await fetch(`/api/invitations/${token}/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to decline invitation')
+      }
+      
       toast({
         title: "Invitation declined",
         description: "You have declined the invitation.",
@@ -191,7 +231,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
       toast({
         variant: "destructive", 
         title: "Error", 
-        description: "Failed to decline the invitation."
+        description: error instanceof Error ? error.message : "Failed to decline the invitation."
       })
     }
   }

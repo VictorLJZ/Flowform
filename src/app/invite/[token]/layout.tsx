@@ -1,8 +1,9 @@
 "use client";
 
 import { WorkspaceProvider } from "@/providers/workspace-provider";
+import { AuthProvider } from "@/providers/auth-provider";
 import { ReactNode, useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface InviteLayoutProps {
   children: ReactNode;
@@ -43,7 +44,21 @@ export default function InviteLayout({ children }: InviteLayoutProps) {
   // Only render after the component has mounted on the client side
   useEffect(() => {
     try {
-      setHasMounted(true);
+      // Check for auth parameter in URL
+      const url = new URL(window.location.href);
+      const hasAuthParam = url.searchParams.has('_auth');
+      
+      // If we detect the auth param, it means we just came from login
+      if (hasAuthParam) {
+        console.log('Detected auth redirect parameter');
+        // Give auth time to initialize
+        setTimeout(() => {
+          setHasMounted(true);
+        }, 500);
+      } else {
+        // No auth param, regular load
+        setHasMounted(true);
+      }
     } catch (err) {
       console.error('Error initializing invitation layout:', err);
       setHasError(true);
@@ -57,16 +72,30 @@ export default function InviteLayout({ children }: InviteLayoutProps) {
   if (!hasMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
-        <p className="text-center text-muted-foreground">Loading...</p>
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Preparing Invitation</CardTitle>
+            <CardContent className="flex justify-center py-6 mt-4">
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">Just a moment...</p>
+              </div>
+            </CardContent>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
   
   try {
     return (
-      <WorkspaceProvider>
-        {children}
-      </WorkspaceProvider>
+      <AuthProvider>
+        <WorkspaceProvider>
+          {children}
+        </WorkspaceProvider>
+      </AuthProvider>
     );
   } catch (error) {
     console.error('Error in invite layout rendering:', error);
