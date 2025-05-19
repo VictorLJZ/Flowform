@@ -302,7 +302,7 @@ export const createFormMediaSlice: StateCreator<
       const cropString = generateTransformations(cropOnlyTransforms);
       
       // Then apply only the adjustments without crop
-      const adjustmentsOnly = { ...transforms, crop: undefined };
+      const adjustmentsOnly = { ...transforms, crop: undefined, filter: undefined };
       const adjustmentsString = generateTransformations(adjustmentsOnly, ['crop']);
       
       // Parse the Cloudinary URL
@@ -325,6 +325,135 @@ export const createFormMediaSlice: StateCreator<
       
       return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
     },
+
+    /**
+     * Generates a preview URL for the filters tab that properly applies
+     * transformations in the correct order (crop first, then adjustments, then filter)
+     * @returns The filters preview URL or null if no image is being edited
+     */
+    getFiltersPreviewUrl: () => {
+      const { editingMediaId, mediaAssets, editingHistory } = get();
+      
+      if (!editingMediaId || !mediaAssets[editingMediaId]) {
+        return null;
+      }
+      
+      const asset = mediaAssets[editingMediaId];
+      const transforms = editingHistory[editingMediaId]?.transformations;
+      
+      if (!transforms) {
+        return asset.url;
+      }
+      
+      // First apply only the crop transformation
+      const cropOnlyTransforms = { ...transforms, adjustments: undefined, filter: undefined };
+      const cropString = generateTransformations(cropOnlyTransforms);
+      
+      // Then apply the adjustments without crop
+      const adjustmentsOnly = { ...transforms, crop: undefined, filter: undefined };
+      const adjustmentsString = generateTransformations(adjustmentsOnly, ['crop', 'filter']);
+      
+      // Finally apply the filter
+      const filterOnly = { ...transforms, crop: undefined, adjustments: undefined };
+      const filterString = generateTransformations(filterOnly, ['crop', 'adjustments']);
+      
+      // Parse the Cloudinary URL
+      const baseUrl = asset.url.split('/upload/')[0];
+      const publicId = asset.url.split('/upload/')[1];
+      
+      if (!baseUrl || !publicId) {
+        return asset.url;
+      }
+      
+      // Build the URL with transformations in proper order and cache busting
+      // This ensures cropString is applied first, then adjustmentsString, then filterString
+      const transformParts = [];
+      if (cropString) transformParts.push(cropString);
+      if (adjustmentsString) transformParts.push(adjustmentsString);
+      if (filterString) transformParts.push(filterString);
+      
+      const transformString = transformParts.join('/');
+      const previewUrl = `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+      const cacheBuster = `_t=${Date.now()}`;
+      
+      return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
+    },
+
+    /**
+     * Generates a filter preview URL for a specific filter value
+     * This is used to show filter thumbnails in the filter selection grid
+     * @param filterValue The filter to preview
+     * @returns The filter preview URL or null if no image is being edited
+     */
+    getFilterThumbnailUrl: (filterValue: string | null) => {
+      const { editingMediaId, mediaAssets, editingHistory } = get();
+      
+      if (!editingMediaId || !mediaAssets[editingMediaId]) {
+        return null;
+      }
+      
+      const asset = mediaAssets[editingMediaId];
+      const transforms = editingHistory[editingMediaId]?.transformations;
+      
+      if (!filterValue) {
+        // For "Original" filter, show with all other transformations
+        // but no filter
+        const noFilterTransforms = transforms ? 
+          { ...transforms, filter: undefined } : undefined;
+          
+        const transformString = noFilterTransforms ? 
+          generateTransformations(noFilterTransforms) : '';
+        
+        // Parse the Cloudinary URL
+        const baseUrl = asset.url.split('/upload/')[0];
+        const publicId = asset.url.split('/upload/')[1];
+        
+        if (!baseUrl || !publicId) {
+          return asset.url;
+        }
+        
+        const previewUrl = `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+        const cacheBuster = `_t=${Date.now()}`;
+        
+        return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
+      }
+      
+      // For actual filters, first apply crop and adjustments, then the selected filter
+      // First apply only the crop transformation
+      const cropOnlyTransforms = transforms ? 
+        { ...transforms, adjustments: undefined, filter: undefined } : undefined;
+      const cropString = cropOnlyTransforms ? 
+        generateTransformations(cropOnlyTransforms) : '';
+      
+      // Then apply only the adjustments without crop
+      const adjustmentsOnly = transforms ? 
+        { ...transforms, crop: undefined, filter: undefined } : undefined;
+      const adjustmentsString = adjustmentsOnly ? 
+        generateTransformations(adjustmentsOnly, ['crop']) : '';
+      
+      // Finally apply the specific filter
+      const filterString = generateTransformations({ filter: filterValue }, ['crop', 'adjustments']);
+      
+      // Parse the Cloudinary URL
+      const baseUrl = asset.url.split('/upload/')[0];
+      const publicId = asset.url.split('/upload/')[1];
+      
+      if (!baseUrl || !publicId) {
+        return asset.url;
+      }
+      
+      // Build the URL with transformations in proper order and cache busting
+      const transformParts = [];
+      if (cropString) transformParts.push(cropString);
+      if (adjustmentsString) transformParts.push(adjustmentsString);
+      if (filterString) transformParts.push(filterString);
+      
+      const transformString = transformParts.join('/');
+      const previewUrl = `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+      const cacheBuster = `_t=${Date.now()}`;
+      
+      return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
+    },
     
     /**
      * Save the edited media to Cloudinary
@@ -340,15 +469,39 @@ export const createFormMediaSlice: StateCreator<
       
       const asset = mediaAssets[editingMediaId];
       const transforms = editingHistory[editingMediaId].transformations;
-      const transformString = generateTransformations(transforms);
       
-      if (!asset || !transformString) {
+      if (!asset || !transforms) {
+        return false;
+      }
+      
+      // Generate transformations in the correct order to match the previews
+      // First apply crop transformation
+      const cropOnlyTransforms = { ...transforms, adjustments: undefined, filter: undefined };
+      const cropString = generateTransformations(cropOnlyTransforms);
+      
+      // Then apply the adjustments
+      const adjustmentsOnly = { ...transforms, crop: undefined, filter: undefined };
+      const adjustmentsString = generateTransformations(adjustmentsOnly, ['crop', 'filter']);
+      
+      // Finally apply the filter
+      const filterOnly = { ...transforms, crop: undefined, adjustments: undefined };
+      const filterString = generateTransformations(filterOnly, ['crop', 'adjustments']);
+      
+      // Build the transformation string in the proper order
+      const transformParts = [];
+      if (cropString) transformParts.push(cropString);
+      if (adjustmentsString) transformParts.push(adjustmentsString);
+      if (filterString) transformParts.push(filterString);
+      
+      const finalTransformString = transformParts.join('/');
+      
+      if (!finalTransformString) {
         return false;
       }
       
       try {
         // Call service to save edited media
-        const result = await saveEditedMediaService(asset.mediaId, workspaceId, transformString);
+        const result = await saveEditedMediaService(asset.mediaId, workspaceId, finalTransformString);
         
         if (result) {
           // Update the media asset in the store

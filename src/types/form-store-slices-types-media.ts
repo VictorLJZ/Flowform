@@ -70,4 +70,6 @@ export interface FormMediaSlice {
   getEditorPreviewUrl: () => string | undefined;
   getNonCropPreviewUrl: () => string | null;
   getAdjustmentsPreviewUrl: () => string | null;
+  getFiltersPreviewUrl: () => string | null;
+  getFilterThumbnailUrl: (filterValue: string | null) => string | null;
 }

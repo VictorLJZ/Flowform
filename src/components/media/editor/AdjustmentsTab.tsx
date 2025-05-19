@@ -50,7 +50,15 @@ export default function AdjustmentsTab({ onChange, initialAdjustments }: Adjustm
   };
   
   const handleRotate = (amount: number) => {
-    const newRotate = adjustments.rotate + amount;
+    // Calculate new rotation angle and normalize it to 0-359°
+    let newRotate = adjustments.rotate + amount;
+    
+    // Normalize to 0-359° range
+    newRotate = ((newRotate % 360) + 360) % 360;
+    
+    // If it's a full circle (360°), reset to 0°
+    if (newRotate === 360) newRotate = 0;
+    
     handleChange('rotate', newRotate);
   };
   

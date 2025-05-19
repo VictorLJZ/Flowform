@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { generateTransformations } from '@/utils/cloudinary-transforms';
+import { useFormBuilderStore } from '@/stores/formBuilderStore';
 
 interface FiltersTabProps {
   imageUrl: string;
@@ -26,6 +26,9 @@ const FILTERS = [
 ];
 
 export default function FiltersTab({ imageUrl, onChange, initialFilter }: FiltersTabProps) {
+  // Get filter preview function from store
+  const { getFilterThumbnailUrl } = useFormBuilderStore();
+  
   // Initialize with the provided filter or null
   const [selectedFilter, setSelectedFilter] = useState<string | null>(initialFilter || null);
   
@@ -40,21 +43,6 @@ export default function FiltersTab({ imageUrl, onChange, initialFilter }: Filter
     setSelectedFilter(filterValue);
     onChange(filterValue);
   };
-  
-  // Generate the filter preview URL for each filter
-  const getFilterPreviewUrl = (filter: string | null) => {
-    if (!filter || !imageUrl) return imageUrl;
-    
-    const transformString = generateTransformations({
-      filter
-    });
-    
-    const parts = imageUrl.split('/upload/');
-    if (parts.length !== 2) return imageUrl;
-    
-    const [baseUrl, resourceId] = parts;
-    return `${baseUrl}/upload/${transformString}/${resourceId}`;
-  };
 
   return (
     <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
@@ -68,7 +56,7 @@ export default function FiltersTab({ imageUrl, onChange, initialFilter }: Filter
             onClick={() => handleFilterSelect(filter.value)}
           >
             <img 
-              src={getFilterPreviewUrl(filter.value)} 
+              src={getFilterThumbnailUrl(filter.value) || imageUrl} 
               alt={filter.name}
               className="w-full h-full object-cover"
             />

@@ -15,13 +15,14 @@ import { ImageEditorTransformations } from '@/types/form-store-slices-types-medi
 export default function ImageEditor() {
   const { 
     editingMediaId, 
-    mediaAssets, 
-    cancelEditing, 
+    mediaAssets,
     updateEditorTransformations,
+    cancelEditing,
     saveEditedMedia,
     getEditorPreviewUrl,
     getNonCropPreviewUrl,
-    getAdjustmentsPreviewUrl
+    getAdjustmentsPreviewUrl,
+    getFiltersPreviewUrl
   } = useFormBuilderStore();
   
   // Get the media asset being edited
@@ -31,6 +32,7 @@ export default function ImageEditor() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [nonCropPreviewUrl, setNonCropPreviewUrl] = useState("");
   const [adjustmentsPreviewUrl, setAdjustmentsPreviewUrl] = useState("");
+  const [filtersPreviewUrl, setFiltersPreviewUrl] = useState("");
   
   // Handle tab changes
   const handleTabChange = useCallback((tab: string) => {
@@ -59,8 +61,14 @@ export default function ImageEditor() {
       if (adjustmentsUrl) {
         setAdjustmentsPreviewUrl(adjustmentsUrl);
       }
+      
+      // Update the filters preview URL for the filters tab
+      const filtersUrl = getFiltersPreviewUrl();
+      if (filtersUrl) {
+        setFiltersPreviewUrl(filtersUrl);
+      }
     }, 0);
-  }, [editingMediaId, getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, mediaAsset]);
+  }, [editingMediaId, getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, getFiltersPreviewUrl, mediaAsset]);
   
   const { editingHistory = {} } = useFormBuilderStore();
   
@@ -70,6 +78,7 @@ export default function ImageEditor() {
       const currentPreviewUrl = getEditorPreviewUrl();
       const currentNonCropUrl = getNonCropPreviewUrl();
       const currentAdjustmentsUrl = getAdjustmentsPreviewUrl();
+      const currentFiltersUrl = getFiltersPreviewUrl();
       
       // If we don't have a preview URL, regenerate it from the transformations
       if (!currentPreviewUrl) {
@@ -81,6 +90,7 @@ export default function ImageEditor() {
             const newUrl = getEditorPreviewUrl();
             const newNonCropUrl = getNonCropPreviewUrl();
             const newAdjustmentsUrl = getAdjustmentsPreviewUrl();
+            const newFiltersUrl = getFiltersPreviewUrl();
             
             if (newUrl) {
               setPreviewUrl(newUrl);
@@ -93,23 +103,30 @@ export default function ImageEditor() {
             if (newAdjustmentsUrl) {
               setAdjustmentsPreviewUrl(newAdjustmentsUrl);
             }
+
+            if (newFiltersUrl) {
+              setFiltersPreviewUrl(newFiltersUrl);
+            }
           }, 10);
         } else {
           setPreviewUrl(mediaAsset.url); // Fallback to original
           setNonCropPreviewUrl(mediaAsset.url); // Fallback to original
           setAdjustmentsPreviewUrl(mediaAsset.url); // Fallback to original
+          setFiltersPreviewUrl(mediaAsset.url); // Fallback to original
         }
       } else {
         setPreviewUrl(currentPreviewUrl);
         setNonCropPreviewUrl(currentNonCropUrl || mediaAsset.url);
         setAdjustmentsPreviewUrl(currentAdjustmentsUrl || mediaAsset.url);
+        setFiltersPreviewUrl(currentFiltersUrl || mediaAsset.url);
       }
     } else if (mediaAsset) {
       setPreviewUrl(mediaAsset.url);
       setNonCropPreviewUrl(mediaAsset.url);
       setAdjustmentsPreviewUrl(mediaAsset.url);
+      setFiltersPreviewUrl(mediaAsset.url);
     }
-  }, [getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
+  }, [getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, getFiltersPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
   
   if (!mediaAsset) return null;
   
@@ -179,7 +196,11 @@ export default function ImageEditor() {
               {activeTab !== "crop" && (
                 <div className="mb-4 relative overflow-hidden bg-[url('/grid-pattern-gray.svg')] rounded-md w-full max-h-[200px]">
                   <img 
-                    src={activeTab === "adjustments" ? adjustmentsPreviewUrl : previewUrl || mediaAsset.url} 
+                    src={
+                      activeTab === "adjustments" ? adjustmentsPreviewUrl : 
+                      activeTab === "filters" ? filtersPreviewUrl : 
+                      previewUrl || mediaAsset.url
+                    } 
                     alt="Preview" 
                     className="max-w-full max-h-[200px] mx-auto object-contain"
                   />

@@ -41,26 +41,36 @@ export function generateTransformations(
       parts.push(`e_contrast:${contrast}`);
     }
     
-    if (rotate && rotate !== 0) {
-      parts.push(`a_${rotate}`);
-    }
+    // First, normalize angle to 0-359°
+    let normalizedAngle = ((rotate || 0) % 360 + 360) % 360;
+    // If angle is exactly 360, reset to 0 (they're equivalent)
+    if (normalizedAngle === 360) normalizedAngle = 0;
     
-    // Handle flip transformations using correct Cloudinary parameters
-    // NOTE: Cloudinary uses different parameter names than what might be expected
-    // 'flip' is actually vertical flip in Cloudinary
-    // 'flop' is actually horizontal flip in Cloudinary
+    // Handle flip transformations based on current rotation angle
+    const isAxisSwapped = normalizedAngle === 90 || normalizedAngle === 270;
+    let flipString = '';
+    
+    // Since Cloudinary applies rotation first, we need to adjust which flip we apply
+    // based on the current rotation angle to give the expected visual result
     if (flip) {
       if (flip === 'horizontal') {
-        // For horizontal flip, use 'flop' in Cloudinary
-        parts.push('a_hflip');
+        // At 90° or 270°, horizontal flip becomes vertical flip from user's perspective
+        flipString = isAxisSwapped ? '.vflip' : '.hflip';
       } else if (flip === 'vertical') {
-        // For vertical flip, use 'flip' in Cloudinary
-        parts.push('a_vflip');
+        // Similarly, vertical flip becomes horizontal flip at 90° or 270°
+        flipString = isAxisSwapped ? '.hflip' : '.vflip';
       } else if (flip === 'both') {
-        // Apply both horizontal and vertical flips
-        // For both flips, we can use a 180 degree rotation which is equivalent to both flips
-        parts.push('a_180');
+        // Both flips remain the same regardless of rotation
+        flipString = '.hflip.vflip';
       }
+    }
+    
+    // For the final transformation string
+    let angleParam = normalizedAngle;
+    
+    // Only add the transformation if rotation or flipping is needed
+    if (angleParam !== 0 || flipString) {
+      parts.push(`a_${angleParam}${flipString}`);
     }
     
     if (opacity !== undefined && opacity !== 100) {
