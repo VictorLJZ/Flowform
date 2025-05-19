@@ -9,9 +9,13 @@ import { ImageEditorTransformations } from '@/types/form-store-slices-types-medi
 /**
  * Generates a Cloudinary transformation string from editor transformations
  * @param edits The image editor transformations to apply
+ * @param exclude Optional array of transformation types to exclude
  * @returns A Cloudinary transformation string, or empty string if no edits
  */
-export function generateTransformations(edits: ImageEditorTransformations): string {
+export function generateTransformations(
+  edits: ImageEditorTransformations,
+  exclude: ('crop' | 'adjustments' | 'filter')[] = []
+): string {
   if (!edits) {
     console.warn('No edits provided to generateTransformations');
     return '';
@@ -19,14 +23,14 @@ export function generateTransformations(edits: ImageEditorTransformations): stri
 
   const parts: string[] = [];
   
-  // Handle crop transformation
-  if (edits.crop) {
+  // Handle crop transformation (if not excluded)
+  if (edits.crop && !exclude.includes('crop')) {
     const {x, y, width, height} = edits.crop;
     parts.push(`c_crop,x_${Math.round(x)},y_${Math.round(y)},w_${Math.round(width)},h_${Math.round(height)}`);
   }
   
-  // Handle adjustment transformations
-  if (edits.adjustments) {
+  // Handle adjustment transformations (if not excluded)
+  if (edits.adjustments && !exclude.includes('adjustments')) {
     const {brightness, contrast, rotate, flip, opacity} = edits.adjustments;
     
     if (brightness && brightness !== 0) {
@@ -64,8 +68,8 @@ export function generateTransformations(edits: ImageEditorTransformations): stri
     }
   }
   
-  // Handle filter transformation
-  if (edits.filter) {
+  // Handle filter transformation (if not excluded)
+  if (edits.filter && !exclude.includes('filter')) {
     // Map filter presets to Cloudinary effects
     const filterMap: Record<string, string> = {
       'Duotone': 'e_gradient_fade',

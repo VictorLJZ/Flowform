@@ -19,7 +19,8 @@ export default function ImageEditor() {
     cancelEditing, 
     updateEditorTransformations,
     saveEditedMedia,
-    getEditorPreviewUrl
+    getEditorPreviewUrl,
+    getNonCropPreviewUrl
   } = useFormBuilderStore();
   
   // Get the media asset being edited
@@ -27,6 +28,7 @@ export default function ImageEditor() {
   
   const [activeTab, setActiveTab] = useState("crop");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [nonCropPreviewUrl, setNonCropPreviewUrl] = useState("");
   
   // Handle tab changes
   const handleTabChange = useCallback((tab: string) => {
@@ -44,6 +46,12 @@ export default function ImageEditor() {
           : `${currentPreviewUrl}?${cacheBuster}`;
         setPreviewUrl(newUrl);
       }
+      
+      // Also update the non-crop preview URL
+      const nonCropUrl = getNonCropPreviewUrl();
+      if (nonCropUrl) {
+        setNonCropPreviewUrl(nonCropUrl);
+      }
     }
   }, [editingMediaId, getEditorPreviewUrl, mediaAsset]);
   
@@ -53,29 +61,39 @@ export default function ImageEditor() {
     // Ensure we have a valid previewUrl whenever component renders or editingMediaId changes
     if (mediaAsset && editingMediaId) {
       const currentPreviewUrl = getEditorPreviewUrl();
+      const currentNonCropUrl = getNonCropPreviewUrl();
       
       // If we don't have a preview URL, regenerate it from the transformations
       if (!currentPreviewUrl) {
         if (editingHistory[editingMediaId]?.transformations) {
           // Reapply saved transformations to regenerate the preview
           updateEditorTransformations(editingHistory[editingMediaId].transformations);
-          // Wait for the update to complete and then get the new URL
+          // Wait for the update to complete and then get the new URLs
           setTimeout(() => {
             const newUrl = getEditorPreviewUrl();
+            const newNonCropUrl = getNonCropPreviewUrl();
+            
             if (newUrl) {
               setPreviewUrl(newUrl);
+            }
+            
+            if (newNonCropUrl) {
+              setNonCropPreviewUrl(newNonCropUrl);
             }
           }, 10);
         } else {
           setPreviewUrl(mediaAsset.url); // Fallback to original
+          setNonCropPreviewUrl(mediaAsset.url); // Fallback to original
         }
       } else {
         setPreviewUrl(currentPreviewUrl);
+        setNonCropPreviewUrl(currentNonCropUrl || mediaAsset.url);
       }
     } else if (mediaAsset) {
       setPreviewUrl(mediaAsset.url);
+      setNonCropPreviewUrl(mediaAsset.url);
     }
-  }, [getEditorPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
+  }, [getEditorPreviewUrl, getNonCropPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
   
   if (!mediaAsset) return null;
   
@@ -154,8 +172,8 @@ export default function ImageEditor() {
               
               <TabsContent value="crop" className="w-full mt-4">
                 <CropTab 
-                  imageUrl={mediaAsset.url}
-                  onChange={handleCropChange}
+                  imageUrl={nonCropPreviewUrl || mediaAsset.url} 
+                  onChange={handleCropChange} 
                 />
               </TabsContent>
               

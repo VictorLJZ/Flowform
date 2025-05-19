@@ -68,4 +68,5 @@ export interface FormMediaSlice {
   updateEditorTransformations: (transformations: Partial<ImageEditorTransformations>) => void;
   saveEditedMedia: (workspaceId: string) => Promise<boolean>;
   getEditorPreviewUrl: () => string | undefined;
+  getNonCropPreviewUrl: () => string | null;
 }

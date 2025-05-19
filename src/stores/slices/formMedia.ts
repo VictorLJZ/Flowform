@@ -223,15 +223,66 @@ export const createFormMediaSlice: StateCreator<
       })
     ),
     
+    /**
+     * Generates a preview URL for the current image with transformations applied
+     * @returns The preview URL or null if no image is being edited
+     */
     getEditorPreviewUrl: () => {
       const { editingMediaId, editingHistory } = get();
+      
       if (!editingMediaId || !editingHistory[editingMediaId]) {
         return undefined;
       }
       
-      return editingHistory[editingMediaId].previewUrl;
+      return editingHistory[editingMediaId]?.previewUrl || undefined;
     },
     
+    /**
+     * Generates a preview URL for the crop tab that includes all transformations except cropping
+     * This prevents circular dependencies between preview and crop
+     * @returns The non-crop preview URL or null if no image is being edited
+     */
+    getNonCropPreviewUrl: () => {
+      const { editingMediaId, mediaAssets, editingHistory } = get();
+      
+      if (!editingMediaId || !mediaAssets[editingMediaId]) {
+        return null;
+      }
+      
+      const asset = mediaAssets[editingMediaId];
+      const transforms = editingHistory[editingMediaId]?.transformations;
+      
+      if (!transforms) {
+        return asset.url;
+      }
+      
+      // Generate transformation string WITHOUT crop transformations
+      const transformString = generateTransformations(transforms, ['crop']);
+      
+      if (!transformString) {
+        return asset.url;
+      }
+      
+      // Parse the Cloudinary URL
+      const baseUrl = asset.url.split('/upload/')[0];
+      const publicId = asset.url.split('/upload/')[1];
+      
+      if (!baseUrl || !publicId) {
+        return asset.url;
+      }
+      
+      // Build the URL with transformations and cache busting
+      const previewUrl = `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+      const cacheBuster = `_t=${Date.now()}`;
+      
+      return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
+    },
+    
+    /**
+     * Save the edited media to Cloudinary
+     * @param workspaceId The workspace ID where the media belongs
+     * @returns Promise resolving to success status
+     */
     saveEditedMedia: async (workspaceId: string) => {
       const { editingMediaId, editingHistory, mediaAssets } = get();
       
