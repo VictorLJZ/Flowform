@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -14,16 +14,34 @@ import type { ImageEditorTransformations } from '@/types/form-store-slices-types
 
 interface AdjustmentsTabProps {
   onChange: (adjustments: ImageEditorTransformations['adjustments']) => void;
+  initialAdjustments?: ImageEditorTransformations['adjustments']; // Optional initial adjustment values
 }
 
-export default function AdjustmentsTab({ onChange }: AdjustmentsTabProps) {
-  const [adjustments, setAdjustments] = useState({
+export default function AdjustmentsTab({ onChange, initialAdjustments }: AdjustmentsTabProps) {
+  // Define default adjustments
+  const defaultAdjustments = {
     rotate: 0,
     flip: null as 'horizontal' | 'vertical' | 'both' | null,
     brightness: 0,
     contrast: 0,
     opacity: 100
+  };
+  
+  // Initialize state with initialAdjustments or defaults
+  const [adjustments, setAdjustments] = useState({
+    ...defaultAdjustments,
+    ...initialAdjustments // Override defaults with any initial values
   });
+  
+  // Update local state when initialAdjustments change
+  useEffect(() => {
+    if (initialAdjustments) {
+      setAdjustments(prev => ({
+        ...prev,
+        ...initialAdjustments
+      }));
+    }
+  }, [initialAdjustments]);
   
   const handleChange = (key: keyof typeof adjustments, value: any) => {
     const newAdjustments = { ...adjustments, [key]: value };

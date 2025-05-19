@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { generateTransformations } from '@/utils/cloudinary-transforms';
 
 interface FiltersTabProps {
   imageUrl: string;
   onChange: (filter: string | null) => void;
+  initialFilter?: string | null; // Optional initial filter value
 }
 
 // Filter presets with their Cloudinary transformation equivalents
@@ -24,8 +25,16 @@ const FILTERS = [
   { name: 'Valencia', value: 'Valencia' }
 ];
 
-export default function FiltersTab({ imageUrl, onChange }: FiltersTabProps) {
-  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+export default function FiltersTab({ imageUrl, onChange, initialFilter }: FiltersTabProps) {
+  // Initialize with the provided filter or null
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(initialFilter || null);
+  
+  // Update state when initialFilter changes
+  useEffect(() => {
+    if (initialFilter !== undefined) {
+      setSelectedFilter(initialFilter);
+    }
+  }, [initialFilter]);
   
   const handleFilterSelect = (filterValue: string | null) => {
     setSelectedFilter(filterValue);

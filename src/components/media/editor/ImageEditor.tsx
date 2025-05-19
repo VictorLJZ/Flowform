@@ -180,6 +180,7 @@ export default function ImageEditor() {
               <TabsContent value="adjustments" className="w-full mt-4">
                 <AdjustmentsTab
                   onChange={handleAdjustmentsChange}
+                  initialAdjustments={editingMediaId ? editingHistory[editingMediaId]?.transformations?.adjustments : undefined}
                 />
               </TabsContent>
               
@@ -187,6 +188,7 @@ export default function ImageEditor() {
                 <FiltersTab 
                   imageUrl={mediaAsset.url}
                   onChange={handleFilterChange}
+                  initialFilter={editingMediaId ? editingHistory[editingMediaId]?.transformations?.filter : undefined}
                 />
               </TabsContent>
             </div>
