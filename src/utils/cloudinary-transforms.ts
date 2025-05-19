@@ -54,8 +54,8 @@ export function generateTransformations(edits: ImageEditorTransformations): stri
         parts.push('a_vflip');
       } else if (flip === 'both') {
         // Apply both horizontal and vertical flips
-        parts.push('a_hflip');
-        parts.push('a_vflip');
+        // For both flips, we can use a 180 degree rotation which is equivalent to both flips
+        parts.push('a_180');
       }
     }
     
