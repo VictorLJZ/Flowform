@@ -19,7 +19,7 @@ export interface ImageEditorTransformations {
   };
   adjustments?: {
     rotate?: number;
-    flip?: 'horizontal' | 'vertical' | null;
+    flip?: 'horizontal' | 'vertical' | 'both' | null;
     brightness?: number;
     contrast?: number;
     opacity?: number;

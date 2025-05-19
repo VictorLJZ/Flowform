@@ -41,15 +41,21 @@ export function generateTransformations(edits: ImageEditorTransformations): stri
       parts.push(`a_${rotate}`);
     }
     
+    // Handle flip transformations using correct Cloudinary parameters
+    // NOTE: Cloudinary uses different parameter names than what might be expected
+    // 'flip' is actually vertical flip in Cloudinary
+    // 'flop' is actually horizontal flip in Cloudinary
     if (flip) {
       if (flip === 'horizontal') {
-        parts.push('e_flip');
+        // For horizontal flip, use 'flop' in Cloudinary
+        parts.push('a_hflip');
       } else if (flip === 'vertical') {
-        parts.push('e_flop');
+        // For vertical flip, use 'flip' in Cloudinary
+        parts.push('a_vflip');
       } else if (flip === 'both') {
-        // Add as separate transformations instead of comma-joined string
-        parts.push('e_flip');
-        parts.push('e_flop');
+        // Apply both horizontal and vertical flips
+        parts.push('a_hflip');
+        parts.push('a_vflip');
       }
     }
     

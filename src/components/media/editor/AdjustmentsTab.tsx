@@ -19,7 +19,7 @@ interface AdjustmentsTabProps {
 export default function AdjustmentsTab({ onChange }: AdjustmentsTabProps) {
   const [adjustments, setAdjustments] = useState({
     rotate: 0,
-    flip: null as 'horizontal' | 'vertical' | null,
+    flip: null as 'horizontal' | 'vertical' | 'both' | null,
     brightness: 0,
     contrast: 0,
     opacity: 100
@@ -37,8 +37,23 @@ export default function AdjustmentsTab({ onChange }: AdjustmentsTabProps) {
   };
   
   const handleFlip = (direction: 'horizontal' | 'vertical') => {
-    // Toggle flip state
-    const newFlip = adjustments.flip === direction ? null : direction;
+    // Enhanced flip logic to handle toggling and both directions
+    let newFlip = null;
+    
+    if (adjustments.flip === 'both') {
+      // If both directions are currently active, toggle off the selected direction
+      newFlip = direction === 'horizontal' ? 'vertical' : 'horizontal';
+    } else if (adjustments.flip === direction) {
+      // If the current direction is already active, turn it off
+      newFlip = null;
+    } else if (adjustments.flip === null) {
+      // If no direction is active, set the selected direction
+      newFlip = direction;
+    } else {
+      // If the other direction is active, activate both directions
+      newFlip = 'both';
+    }
+    
     handleChange('flip', newFlip);
   };
 
@@ -78,7 +93,7 @@ export default function AdjustmentsTab({ onChange }: AdjustmentsTabProps) {
             <Label className="text-sm font-medium">Flip</Label>
             <div className="flex space-x-2">
               <Button 
-                variant={adjustments.flip === 'vertical' ? "default" : "outline"} 
+                variant={adjustments.flip === 'vertical' || adjustments.flip === 'both' ? "default" : "outline"} 
                 size="icon"
                 onClick={() => handleFlip('vertical')}
                 title="Flip vertical"
@@ -86,7 +101,7 @@ export default function AdjustmentsTab({ onChange }: AdjustmentsTabProps) {
                 <FlipVerticalIcon className="h-4 w-4" />
               </Button>
               <Button 
-                variant={adjustments.flip === 'horizontal' ? "default" : "outline"} 
+                variant={adjustments.flip === 'horizontal' || adjustments.flip === 'both' ? "default" : "outline"} 
                 size="icon"
                 onClick={() => handleFlip('horizontal')}
                 title="Flip horizontal"
