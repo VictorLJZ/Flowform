@@ -69,4 +69,5 @@ export interface FormMediaSlice {
   saveEditedMedia: (workspaceId: string) => Promise<boolean>;
   getEditorPreviewUrl: () => string | undefined;
   getNonCropPreviewUrl: () => string | null;
+  getAdjustmentsPreviewUrl: () => string | null;
 }

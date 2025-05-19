@@ -20,7 +20,8 @@ export default function ImageEditor() {
     updateEditorTransformations,
     saveEditedMedia,
     getEditorPreviewUrl,
-    getNonCropPreviewUrl
+    getNonCropPreviewUrl,
+    getAdjustmentsPreviewUrl
   } = useFormBuilderStore();
   
   // Get the media asset being edited
@@ -29,14 +30,14 @@ export default function ImageEditor() {
   const [activeTab, setActiveTab] = useState("crop");
   const [previewUrl, setPreviewUrl] = useState("");
   const [nonCropPreviewUrl, setNonCropPreviewUrl] = useState("");
+  const [adjustmentsPreviewUrl, setAdjustmentsPreviewUrl] = useState("");
   
   // Handle tab changes
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    
-    // Force preview update when switching to a tab that shows the preview
-    if (tab !== "crop" && mediaAsset && editingMediaId) {
-      // Get the latest preview URL
+
+    // Reset the preview URL when changing tabs to ensure it's updated
+    setTimeout(() => {
       const currentPreviewUrl = getEditorPreviewUrl();
       if (currentPreviewUrl) {
         // Add cache busting parameter to ensure preview refreshes
@@ -47,13 +48,19 @@ export default function ImageEditor() {
         setPreviewUrl(newUrl);
       }
       
-      // Also update the non-crop preview URL
+      // Update the non-crop preview URL for the crop tab
       const nonCropUrl = getNonCropPreviewUrl();
       if (nonCropUrl) {
         setNonCropPreviewUrl(nonCropUrl);
       }
-    }
-  }, [editingMediaId, getEditorPreviewUrl, mediaAsset]);
+
+      // Update the adjustments preview URL for the adjustments tab
+      const adjustmentsUrl = getAdjustmentsPreviewUrl();
+      if (adjustmentsUrl) {
+        setAdjustmentsPreviewUrl(adjustmentsUrl);
+      }
+    }, 0);
+  }, [editingMediaId, getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, mediaAsset]);
   
   const { editingHistory = {} } = useFormBuilderStore();
   
@@ -62,6 +69,7 @@ export default function ImageEditor() {
     if (mediaAsset && editingMediaId) {
       const currentPreviewUrl = getEditorPreviewUrl();
       const currentNonCropUrl = getNonCropPreviewUrl();
+      const currentAdjustmentsUrl = getAdjustmentsPreviewUrl();
       
       // If we don't have a preview URL, regenerate it from the transformations
       if (!currentPreviewUrl) {
@@ -72,6 +80,7 @@ export default function ImageEditor() {
           setTimeout(() => {
             const newUrl = getEditorPreviewUrl();
             const newNonCropUrl = getNonCropPreviewUrl();
+            const newAdjustmentsUrl = getAdjustmentsPreviewUrl();
             
             if (newUrl) {
               setPreviewUrl(newUrl);
@@ -80,20 +89,27 @@ export default function ImageEditor() {
             if (newNonCropUrl) {
               setNonCropPreviewUrl(newNonCropUrl);
             }
+
+            if (newAdjustmentsUrl) {
+              setAdjustmentsPreviewUrl(newAdjustmentsUrl);
+            }
           }, 10);
         } else {
           setPreviewUrl(mediaAsset.url); // Fallback to original
           setNonCropPreviewUrl(mediaAsset.url); // Fallback to original
+          setAdjustmentsPreviewUrl(mediaAsset.url); // Fallback to original
         }
       } else {
         setPreviewUrl(currentPreviewUrl);
         setNonCropPreviewUrl(currentNonCropUrl || mediaAsset.url);
+        setAdjustmentsPreviewUrl(currentAdjustmentsUrl || mediaAsset.url);
       }
     } else if (mediaAsset) {
       setPreviewUrl(mediaAsset.url);
       setNonCropPreviewUrl(mediaAsset.url);
+      setAdjustmentsPreviewUrl(mediaAsset.url);
     }
-  }, [getEditorPreviewUrl, getNonCropPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
+  }, [getEditorPreviewUrl, getNonCropPreviewUrl, getAdjustmentsPreviewUrl, mediaAsset, editingMediaId, editingHistory, updateEditorTransformations]);
   
   if (!mediaAsset) return null;
   
@@ -163,7 +179,7 @@ export default function ImageEditor() {
               {activeTab !== "crop" && (
                 <div className="mb-4 relative overflow-hidden bg-[url('/grid-pattern-gray.svg')] rounded-md w-full max-h-[200px]">
                   <img 
-                    src={previewUrl || mediaAsset.url} 
+                    src={activeTab === "adjustments" ? adjustmentsPreviewUrl : previewUrl || mediaAsset.url} 
                     alt="Preview" 
                     className="max-w-full max-h-[200px] mx-auto object-contain"
                   />

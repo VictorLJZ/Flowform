@@ -277,6 +277,54 @@ export const createFormMediaSlice: StateCreator<
       
       return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
     },
+
+    /**
+     * Generates a preview URL for the adjustments tab that properly applies
+     * transformations in the correct order (crop first, then adjustments)
+     * @returns The adjustments preview URL or null if no image is being edited
+     */
+    getAdjustmentsPreviewUrl: () => {
+      const { editingMediaId, mediaAssets, editingHistory } = get();
+      
+      if (!editingMediaId || !mediaAssets[editingMediaId]) {
+        return null;
+      }
+      
+      const asset = mediaAssets[editingMediaId];
+      const transforms = editingHistory[editingMediaId]?.transformations;
+      
+      if (!transforms) {
+        return asset.url;
+      }
+      
+      // First apply only the crop transformation
+      const cropOnlyTransforms = { ...transforms, adjustments: undefined, filter: undefined };
+      const cropString = generateTransformations(cropOnlyTransforms);
+      
+      // Then apply only the adjustments without crop
+      const adjustmentsOnly = { ...transforms, crop: undefined };
+      const adjustmentsString = generateTransformations(adjustmentsOnly, ['crop']);
+      
+      // Parse the Cloudinary URL
+      const baseUrl = asset.url.split('/upload/')[0];
+      const publicId = asset.url.split('/upload/')[1];
+      
+      if (!baseUrl || !publicId) {
+        return asset.url;
+      }
+      
+      // Build the URL with transformations in proper order and cache busting
+      // This ensures cropString is applied first, then adjustmentsString
+      const transformParts = [];
+      if (cropString) transformParts.push(cropString);
+      if (adjustmentsString) transformParts.push(adjustmentsString);
+      
+      const transformString = transformParts.join('/');
+      const previewUrl = `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+      const cacheBuster = `_t=${Date.now()}`;
+      
+      return previewUrl + (previewUrl.includes('?') ? '&' : '?') + cacheBuster;
+    },
     
     /**
      * Save the edited media to Cloudinary
