@@ -14,15 +14,6 @@ import { dbToApiWorkspaceInvitation } from '@/utils/type-utils/workspace/DbToApi
 import { apiToDbWorkspaceInvitationInput } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
 
 /**
- * Extract the workspace ID from the params
- */
-interface Params {
-  params: {
-    id: string;
-  };
-}
-
-/**
  * GET handler - retrieve all invitations for a workspace
  */
 export async function GET(

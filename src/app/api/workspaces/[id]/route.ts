@@ -15,15 +15,6 @@ import { dbToApiWorkspace } from '@/utils/type-utils/workspace/DbToApiWorkspace'
 import { workspaceUpdateInputToDb } from '@/utils/type-utils/workspace/ApiToDbWorkspace';
 
 /**
- * Extract the workspace ID from the params
- */
-interface Params {
-  params: {
-    id: string;
-  };
-}
-
-/**
  * GET handler - retrieve a specific workspace by ID
  */
 export async function GET(

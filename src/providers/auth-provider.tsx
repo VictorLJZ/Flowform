@@ -8,13 +8,11 @@ import {
   useCallback,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getVerifiedUser } from "@/services/auth/verifiedAuth";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { mutate } from 'swr'; 
 
 const AUTH_SWR_KEY = 'auth-session';
-const USER_CACHE_KEY = 'user-session-cache';
 
 type AuthContextType = {
   supabase: SupabaseClient;

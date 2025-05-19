@@ -5,16 +5,16 @@ import { ApiWorkspaceRole } from '@/types/workspace';
 
 // Create a logger for tracking the invitation email process
 const logger = {
-  info: (message: string, data?: any) => {
+  info: (message: string, data?: Record<string, unknown>) => {
     console.log(`[INVITE-EMAIL-INFO] ${new Date().toISOString()} | ${message}`, data ? data : '');
   },
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: Record<string, unknown>) => {
     console.warn(`[INVITE-EMAIL-WARN] ${new Date().toISOString()} | ${message}`, data ? data : '');
   },
-  error: (message: string, data?: any) => {
+  error: (message: string, data?: Record<string, unknown>) => {
     console.error(`[INVITE-EMAIL-ERROR] ${new Date().toISOString()} | ${message}`, data ? data : '');
   },
-  debug: (message: string, data?: any) => {
+  debug: (message: string, data?: Record<string, unknown>) => {
     console.debug(`[INVITE-EMAIL-DEBUG] ${new Date().toISOString()} | ${message}`, data ? data : '');
   }
 };

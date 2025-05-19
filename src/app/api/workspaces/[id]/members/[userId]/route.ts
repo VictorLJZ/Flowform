@@ -13,16 +13,6 @@ import { ApiWorkspaceMemberUpdate, ApiWorkspaceRole } from '@/types/workspace';
 import { dbToApiWorkspaceMember } from '@/utils/type-utils/workspace/DbToApiWorkspace';
 
 /**
- * Extract the workspace ID and user ID from the params
- */
-interface Params {
-  params: {
-    id: string;
-    userId: string;
-  };
-}
-
-/**
  * PUT handler - update a member's role
  */
 export async function PUT(

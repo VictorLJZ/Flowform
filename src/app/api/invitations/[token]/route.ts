@@ -10,15 +10,6 @@ import * as workspacesService from '@/services/workspace/workspaces.server';
 import { dbToApiWorkspaceInvitation } from '@/utils/type-utils/workspace/DbToApiWorkspace';
 
 /**
- * Extract the invitation token from the params
- */
-interface Params {
-  params: {
-    token: string;
-  };
-}
-
-/**
  * GET handler - get invitation details by token (public endpoint)
  */
 export async function GET(

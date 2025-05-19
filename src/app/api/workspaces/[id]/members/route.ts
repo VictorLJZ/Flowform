@@ -11,15 +11,6 @@ import * as permissionsService from '@/services/workspace/permissions.server';
 import { dbToApiWorkspaceMemberWithProfile } from '@/utils/type-utils/workspace/DbToApiWorkspace';
 
 /**
- * Extract the workspace ID from the params
- */
-interface Params {
-  params: {
-    id: string;
-  };
-}
-
-/**
  * GET handler - retrieve all members of a workspace
  */
 export async function GET(

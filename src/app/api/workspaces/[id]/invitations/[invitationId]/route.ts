@@ -10,16 +10,6 @@ import * as invitationsService from '@/services/workspace/invitations.server';
 import * as permissionsService from '@/services/workspace/permissions.server';
 
 /**
- * Extract the workspace ID and invitation ID from the params
- */
-interface Params {
-  params: {
-    id: string;
-    invitationId: string;
-  };
-}
-
-/**
  * DELETE handler - delete a specific invitation
  */
 export async function DELETE(

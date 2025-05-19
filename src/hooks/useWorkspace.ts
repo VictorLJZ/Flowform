@@ -25,8 +25,8 @@ export function useWorkspace() {
   // Get direct access to the store for advanced operations
   const store = useWorkspaceStore();
   
-  // Get the current user's ID and data for permission checks
-  const { user, userId, refreshUser } = useCurrentUser();
+  // Get the current user's ID for permission checks
+  const { userId } = useCurrentUser();
   
   // Get Next.js router for navigation
   const router = useRouter();

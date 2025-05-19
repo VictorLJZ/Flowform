@@ -88,11 +88,19 @@ export async function getWorkspaceMembersWithProfiles(workspaceId: string): Prom
       
     if (profilesError) throw profilesError;
     
+    // Define a type for profile data
+    interface ProfileData {
+      id: string;
+      full_name: string | null;
+      avatar_url: string | null;
+      email: string | null;
+    }
+
     // Create a map of profiles by user ID for easy lookup
     const profileMap = (profiles || []).reduce((map, profile) => {
       map[profile.id] = profile;
       return map;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, ProfileData>);
     
     // Combine member data with profile data
     const data = members.map(member => {

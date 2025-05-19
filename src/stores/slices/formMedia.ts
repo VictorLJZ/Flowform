@@ -3,7 +3,7 @@
 import { StateCreator } from 'zustand'
 import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
-import type { FormMediaSlice, ImageEditorTransformations, ImageEditorState } from '@/types/form-store-slices-types-media'
+import type { FormMediaSlice, ImageEditorTransformations } from '@/types/form-store-slices-types-media'
 import { UiMediaAsset } from '@/types/media/UiMedia'
 import { 
   deleteMediaAsset as deleteMediaFromCloudinary, 

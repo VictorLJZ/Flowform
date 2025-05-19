@@ -10,16 +10,17 @@ import {
   ApiWorkspaceInvitationInput,
   ApiErrorResponse 
 } from '@/types/workspace';
+import { InvitationSendResponse } from '@/types/workspace/invitation-types';
 
 // Create a logger for tracking the invitation process
 const logger = {
-  info: (message: string, data?: any) => {
+  info: (message: string, data?: Record<string, unknown>) => {
     console.log(`[INVITE-CLIENT-INFO] ${new Date().toISOString()} | ${message}`, data ? data : '');
   },
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: Record<string, unknown>) => {
     console.warn(`[INVITE-CLIENT-WARN] ${new Date().toISOString()} | ${message}`, data ? data : '');
   },
-  error: (message: string, data?: any) => {
+  error: (message: string, data?: Record<string, unknown>) => {
     console.error(`[INVITE-CLIENT-ERROR] ${new Date().toISOString()} | ${message}`, data ? data : '');
   }
 };
@@ -205,7 +206,7 @@ export async function declineInvitation(token: string): Promise<{ success: boole
  */
 export async function sendInvitationEmail(
   invitationId: string
-): Promise<{ success: boolean; emailData?: any }> {
+): Promise<InvitationSendResponse> {
   logger.info('Sending invitation email', { invitationId });
   
   try {

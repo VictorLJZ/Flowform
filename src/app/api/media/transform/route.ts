@@ -94,11 +94,27 @@ export async function POST(request: Request) {
     console.log('Transformed asset response:', transformedAsset);
 
     return NextResponse.json(transformedAsset);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/media/transform:', error);
     // Provide more detailed error information
-    const errorMessage = error?.message || 'Unknown error occurred';
-    const errorDetails = error?.error?.message || error?.toString() || 'No details available';
+    let errorMessage = 'Unknown error occurred';
+    let errorDetails = 'No details available';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || error.toString();
+    } else if (typeof error === 'object' && error !== null) {
+      // Try to extract as much information as possible from the error object
+      const errorObj = error as Record<string, unknown>;
+      errorMessage = String(errorObj.message || errorMessage);
+      
+      if (errorObj.error && typeof errorObj.error === 'object' && errorObj.error !== null) {
+        const errorData = errorObj.error as Record<string, unknown>;
+        errorDetails = String(errorData.message || errorObj.toString() || errorDetails);
+      } else {
+        errorDetails = String(errorObj.toString());
+      }
+    }
     
     console.error(`Error details: ${errorMessage}\n${errorDetails}`);
     

@@ -9,15 +9,6 @@ import { createClient } from '@/lib/supabase/server';
 import * as invitationsService from '@/services/workspace/invitations.server';
 
 /**
- * Extract the invitation token from the params
- */
-interface Params {
-  params: {
-    token: string;
-  };
-}
-
-/**
  * POST handler - decline invitation
  */
 export async function POST(

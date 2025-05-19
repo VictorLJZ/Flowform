@@ -15,12 +15,13 @@ interface CropTabProps {
 export default function CropTab({ imageUrl, onChange }: CropTabProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
+  // Define a type for crop area to avoid repeated type definitions
+  type CropAreaType = { x: number; y: number; width: number; height: number; };
   const [aspectRatio, setAspectRatio] = useState<number | undefined>(undefined);
 
   const onCropComplete = useCallback(
-    (_croppedArea: any, croppedAreaPixels: { x: number; y: number; width: number; height: number; }) => {
-      setCroppedAreaPixels(croppedAreaPixels);
+    (_croppedArea: { x: number; y: number; width: number; height: number }, croppedAreaPixels: CropAreaType) => {
+      // Direct pass to onChange without storing in state since we're not using it elsewhere
       onChange(croppedAreaPixels);
     },
     [onChange]

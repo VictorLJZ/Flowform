@@ -18,10 +18,13 @@ interface AdjustmentsTabProps {
 }
 
 export default function AdjustmentsTab({ onChange, initialAdjustments }: AdjustmentsTabProps) {
+  // Define flip type for better type safety
+  type FlipType = 'horizontal' | 'vertical' | 'both' | null;
+  
   // Define default adjustments
   const defaultAdjustments = {
     rotate: 0,
-    flip: null as 'horizontal' | 'vertical' | 'both' | null,
+    flip: null as FlipType,
     brightness: 0,
     contrast: 0,
     opacity: 100
@@ -43,7 +46,7 @@ export default function AdjustmentsTab({ onChange, initialAdjustments }: Adjustm
     }
   }, [initialAdjustments]);
   
-  const handleChange = (key: keyof typeof adjustments, value: any) => {
+  const handleChange = (key: keyof typeof adjustments, value: number | FlipType) => {
     const newAdjustments = { ...adjustments, [key]: value };
     setAdjustments(newAdjustments);
     onChange(newAdjustments);
@@ -64,7 +67,7 @@ export default function AdjustmentsTab({ onChange, initialAdjustments }: Adjustm
   
   const handleFlip = (direction: 'horizontal' | 'vertical') => {
     // Enhanced flip logic to handle toggling and both directions
-    let newFlip = null;
+    let newFlip: FlipType = null;
     
     if (adjustments.flip === 'both') {
       // If both directions are currently active, toggle off the selected direction

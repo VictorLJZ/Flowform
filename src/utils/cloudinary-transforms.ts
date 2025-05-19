@@ -66,7 +66,7 @@ export function generateTransformations(
     }
     
     // For the final transformation string
-    let angleParam = normalizedAngle;
+    const angleParam = normalizedAngle;
     
     // Only add the transformation if rotation or flipping is needed
     if (angleParam !== 0 || flipString) {

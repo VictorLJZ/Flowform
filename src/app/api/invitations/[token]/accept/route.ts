@@ -11,15 +11,6 @@ import * as membersService from '@/services/workspace/members.server';
 import * as workspacesService from '@/services/workspace/workspaces.server';
 
 /**
- * Extract the invitation token from the params
- */
-interface Params {
-  params: {
-    token: string;
-  };
-}
-
-/**
  * POST handler - accept invitation and join workspace
  */
 export async function POST(

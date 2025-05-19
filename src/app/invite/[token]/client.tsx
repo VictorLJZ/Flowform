@@ -183,8 +183,7 @@ export function InvitePageClient({ token }: InvitePageClientProps) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to accept invitation')
       }
-      
-      const data = await response.json()
+    
       
       toast({
         title: "Invitation accepted",

@@ -116,7 +116,8 @@ export function useWorkspaceSWR<T>(
   
   // Create a workspace-specific fetcher
   const workspaceFetcher = useCallback(
-    async (url: string): Promise<T> => {
+    async (): Promise<T> => {
+      // Using hardcoded path instead of url parameter
       if (!workspaceId) throw new Error('No workspace ID');
       return createWorkspaceFetcher(workspaceId)<T>(path);
     },

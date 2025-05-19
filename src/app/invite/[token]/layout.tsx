@@ -4,6 +4,7 @@ import { WorkspaceProvider } from "@/providers/workspace-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { ReactNode, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
 interface InviteLayoutProps {
   children: ReactNode;
@@ -24,9 +25,9 @@ function InviteErrorState() {
               Please try again or contact support if the issue persists.
             </p>
             <div className="mt-4">
-              <a href="/" className="text-primary hover:underline">
+              <Link href="/" className="text-primary hover:underline">
                 Return to Home
-              </a>
+              </Link>
             </div>
           </div>
         </CardContent>

@@ -14,3 +14,5 @@ export * from './ApiWorkspace';
 // UI types
 export * from './UiWorkspace';
 
+// Invitation types
+export * from './invitation-types';
