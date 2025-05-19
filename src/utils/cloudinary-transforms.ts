@@ -47,7 +47,9 @@ export function generateTransformations(edits: ImageEditorTransformations): stri
       } else if (flip === 'vertical') {
         parts.push('e_flop');
       } else if (flip === 'both') {
-        parts.push('e_flip,e_flop');
+        // Add as separate transformations instead of comma-joined string
+        parts.push('e_flip');
+        parts.push('e_flop');
       }
     }
     

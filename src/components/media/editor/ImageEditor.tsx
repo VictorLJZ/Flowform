@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X as XIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,30 @@ export default function ImageEditor() {
     getEditorPreviewUrl
   } = useFormBuilderStore();
   
+  // Get the media asset being edited
+  const mediaAsset = editingMediaId ? mediaAssets[editingMediaId] : null;
+  
   const [activeTab, setActiveTab] = useState("crop");
   const [previewUrl, setPreviewUrl] = useState("");
   
-  const mediaAsset = editingMediaId ? mediaAssets[editingMediaId] : null;
+  // Handle tab changes
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    
+    // Force preview update when switching to a tab that shows the preview
+    if (tab !== "crop" && mediaAsset && editingMediaId) {
+      // Get the latest preview URL
+      const currentPreviewUrl = getEditorPreviewUrl();
+      if (currentPreviewUrl) {
+        // Add cache busting parameter to ensure preview refreshes
+        const cacheBuster = `_t=${Date.now()}`;
+        const newUrl = currentPreviewUrl.includes('?') 
+          ? `${currentPreviewUrl}&${cacheBuster}` 
+          : `${currentPreviewUrl}?${cacheBuster}`;
+        setPreviewUrl(newUrl);
+      }
+    }
+  }, [editingMediaId, getEditorPreviewUrl, mediaAsset]);
   
   const { editingHistory = {} } = useFormBuilderStore();
   
@@ -104,7 +124,7 @@ export default function ImageEditor() {
           </Button>
         </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <div className="border-b">
             <TabsList className="w-full justify-start p-0">
               <TabsTrigger value="crop" className="py-3 px-6 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none">
@@ -119,15 +139,15 @@ export default function ImageEditor() {
             </TabsList>
           </div>
           
-          <div className="flex-grow overflow-y-auto">
-            <div className="flex flex-col items-center justify-center p-4">
+          <div className="flex-grow overflow-y-auto p-4">
+            <div className="flex flex-col items-center justify-start">
               {/* Only show preview for adjustments and filters tabs */}
               {activeTab !== "crop" && (
-                <div className="mb-4 relative overflow-hidden bg-[url('/grid-pattern-gray.svg')] rounded-md max-h-[40vh]">
+                <div className="mb-4 relative overflow-hidden bg-[url('/grid-pattern-gray.svg')] rounded-md w-full max-h-[200px]">
                   <img 
                     src={previewUrl || mediaAsset.url} 
                     alt="Preview" 
-                    className="max-w-full max-h-[40vh] mx-auto object-contain"
+                    className="max-w-full max-h-[200px] mx-auto object-contain"
                   />
                 </div>
               )}

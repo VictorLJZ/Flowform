@@ -15,7 +15,6 @@ interface CropTabProps {
 export default function CropTab({ imageUrl, onChange }: CropTabProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number | undefined>(undefined);
 
@@ -57,7 +56,6 @@ export default function CropTab({ imageUrl, onChange }: CropTabProps) {
           crop={crop}
           zoom={zoom}
           aspect={aspectRatio}
-          rotation={rotation}
           onCropChange={setCrop}
           onCropComplete={onCropComplete}
           onZoomChange={setZoom}
@@ -101,19 +99,7 @@ export default function CropTab({ imageUrl, onChange }: CropTabProps) {
           />
         </div>
         
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label className="text-sm font-medium">Rotation</Label>
-            <span className="text-sm">{rotation}°</span>
-          </div>
-          <Slider
-            value={[rotation]}
-            min={-180}
-            max={180}
-            step={1}
-            onValueChange={(value) => setRotation(value[0])}
-          />
-        </div>
+        {/* Rotation feature has been removed */}
       </div>
     </div>
   );
