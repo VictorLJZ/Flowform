@@ -12,12 +12,27 @@ let cloudinaryModule: { v2: typeof CloudinaryType } | null = null;
 
 // Helper function to initialize and get the cloudinary instance
 async function getCloudinary(): Promise<typeof CloudinaryType> {
+  console.log('🔄 Initializing Cloudinary...');
+  
+  // Check if environment variables are set
+  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+    console.error('❌ Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME environment variable');
+  }
+  if (!process.env.CLOUDINARY_API_KEY) {
+    console.error('❌ Missing CLOUDINARY_API_KEY environment variable');
+  }
+  if (!process.env.CLOUDINARY_API_SECRET) {
+    console.error('❌ Missing CLOUDINARY_API_SECRET environment variable');
+  }
+  
   if (!cloudinaryModule) {
     try {
       // Dynamic import happens at runtime, not build time
+      console.log('📥 Importing Cloudinary module...');
       cloudinaryModule = await import('cloudinary');
+      console.log('✅ Cloudinary module imported successfully');
     } catch (error) {
-      console.error('Failed to load Cloudinary module:', error);
+      console.error('❌ Failed to load Cloudinary module:', error);
       throw new Error('Failed to initialize Cloudinary');
     }
   }
@@ -26,11 +41,18 @@ async function getCloudinary(): Promise<typeof CloudinaryType> {
   
   // Configure if not already configured
   if (!cloudinary.config().cloud_name) {
-    cloudinary.config({
-      cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    console.log('⚙️ Configuring Cloudinary with credentials...');
+    try {
+      cloudinary.config({
+        cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
+      console.log('✅ Cloudinary configured successfully');
+    } catch (configError) {
+      console.error('❌ Error configuring Cloudinary:', configError);
+      throw new Error('Failed to configure Cloudinary');
+    }
   }
   
   return cloudinary;

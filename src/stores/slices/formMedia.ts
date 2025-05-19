@@ -3,10 +3,15 @@
 import { StateCreator } from 'zustand'
 import { produce } from 'immer'
 import type { FormBuilderState } from '@/types/store-types'
-import type { FormMediaSlice } from '@/types/form-store-slices-types-media'
+import type { FormMediaSlice, ImageEditorTransformations, ImageEditorState } from '@/types/form-store-slices-types-media'
 import { UiMediaAsset } from '@/types/media/UiMedia'
-import { deleteMediaAsset as deleteMediaFromCloudinary, fetchWorkspaceMediaAssets } from '@/services/media-service'
+import { 
+  deleteMediaAsset as deleteMediaFromCloudinary, 
+  fetchWorkspaceMediaAssets,
+  saveEditedMedia as saveEditedMediaService 
+} from '@/services/media-service'
 import { apiToUiMediaAssets } from '@/utils/type-utils/media'
+import { generateTransformations } from '../../utils/cloudinary-transforms'
 
 export const createFormMediaSlice: StateCreator<
   FormBuilderState,
@@ -22,6 +27,11 @@ export const createFormMediaSlice: StateCreator<
     mediaAssets: initialMediaAssets,
     selectedMediaId: null,
     isLoadingMedia: false,
+    
+    // Image Editor State
+    editingMediaId: null,
+    isEditing: false,
+    editingHistory: {},
     
     // Actions
     addMediaAsset: (asset: UiMediaAsset) => set(
@@ -142,6 +152,123 @@ export const createFormMediaSlice: StateCreator<
         return success;
       } catch (error) {
         console.error('Error deleting media asset:', error);
+        return false;
+      }
+    },
+    // Image Editor Actions
+    startEditingMedia: (id: string) => set(
+      produce((state) => {
+        const asset = state.mediaAssets[id];
+        if (!asset) return;
+        
+        state.editingMediaId = id;
+        state.isEditing = true;
+        
+        // Initialize history if not exists
+        if (!state.editingHistory[id]) {
+          state.editingHistory[id] = {
+            transformations: {},
+            original: asset,
+            previewUrl: asset.url
+          };
+        }
+      })
+    ),
+    
+    cancelEditing: () => set(
+      produce((state) => {
+        state.editingMediaId = null;
+        state.isEditing = false;
+      })
+    ),
+    
+    updateEditorTransformations: (transformations: Partial<ImageEditorTransformations>) => set(
+      produce((state) => {
+        const { editingMediaId } = state;
+        if (!editingMediaId) return;
+        
+        // Update transformations
+        state.editingHistory[editingMediaId].transformations = {
+          ...state.editingHistory[editingMediaId].transformations,
+          ...transformations
+        };
+        
+        // Generate preview URL
+        const asset = state.mediaAssets[editingMediaId];
+        const transforms = state.editingHistory[editingMediaId].transformations;
+        
+        if (asset) {
+          const transformString = generateTransformations(transforms);
+          if (!transformString) {
+            state.editingHistory[editingMediaId].previewUrl = asset.url;
+            return;
+          }
+          
+          // Parse the Cloudinary URL to insert transformations
+          const baseUrl = asset.url.split('/upload/')[0];
+          const publicId = asset.url.split('/upload/')[1];
+          
+          if (baseUrl && publicId) {
+            // The correct format for Cloudinary transformations is:
+            // https://res.cloudinary.com/cloud-name/image/upload/transformation_params/public_id
+            state.editingHistory[editingMediaId].previewUrl = 
+              `${baseUrl}/upload/${transformString ? transformString + '/' : ''}${publicId}`;
+              
+            // Force update the preview by adding a timestamp parameter
+            state.editingHistory[editingMediaId].previewUrl += 
+              (state.editingHistory[editingMediaId].previewUrl.includes('?') ? '&' : '?') + 
+              '_t=' + Date.now();
+          }
+        }
+      })
+    ),
+    
+    getEditorPreviewUrl: () => {
+      const { editingMediaId, editingHistory } = get();
+      if (!editingMediaId || !editingHistory[editingMediaId]) {
+        return undefined;
+      }
+      
+      return editingHistory[editingMediaId].previewUrl;
+    },
+    
+    saveEditedMedia: async (workspaceId: string) => {
+      const { editingMediaId, editingHistory, mediaAssets } = get();
+      
+      if (!editingMediaId || !editingHistory[editingMediaId] || !workspaceId) {
+        return false;
+      }
+      
+      const asset = mediaAssets[editingMediaId];
+      const transforms = editingHistory[editingMediaId].transformations;
+      const transformString = generateTransformations(transforms);
+      
+      if (!asset || !transformString) {
+        return false;
+      }
+      
+      try {
+        // Call service to save edited media
+        const result = await saveEditedMediaService(asset.mediaId, workspaceId, transformString);
+        
+        if (result) {
+          // Update the media asset in the store
+          set(
+            produce((state) => {
+              // Add the edited media as a new asset
+              state.mediaAssets[result.id] = result;
+              
+              // Clean up editing state
+              state.editingMediaId = null;
+              state.isEditing = false;
+              delete state.editingHistory[editingMediaId];
+            })
+          );
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Error saving edited media:', error);
         return false;
       }
     }

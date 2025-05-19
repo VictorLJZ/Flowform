@@ -4,6 +4,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { DebugProvider } from "@/components/providers/debug-provider";
 import { ProtectedRoute } from "@/components/providers/protected-route";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
+import MediaEditorProvider from "@/components/media/MediaEditorProvider";
 
 // Workspace initialization now handled by WorkspaceProvider
 
@@ -23,6 +24,7 @@ export default function DashboardLayout({
               <main className="flex-1 w-full overflow-auto">
                 {children}
               </main>
+              <MediaEditorProvider />
             </div>
           </SidebarProvider>
         </WorkspaceProvider>

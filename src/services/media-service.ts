@@ -2,6 +2,8 @@
  * Client-side media service functions
  */
 import { ApiMediaAsset } from '@/types/media/ApiMedia';
+import { UiMediaAsset } from '@/types/media/UiMedia';
+import { apiToUiMediaAsset } from '@/utils/type-utils/media';
 
 /**
  * Deletes a media asset from Cloudinary
@@ -68,5 +70,39 @@ export async function fetchWorkspaceMediaAssets(workspaceId: string): Promise<Ap
   } catch (error) {
     console.error('Error fetching workspace media assets:', error);
     return [];
+  }
+}
+
+/**
+ * Saves edited media with transformations
+ * @param mediaId The media ID of the asset to edit
+ * @param workspaceId The workspace ID that owns the media asset
+ * @param transformations The Cloudinary transformation string
+ * @returns Promise resolving to the updated UiMediaAsset or null if failed
+ */
+export async function saveEditedMedia(
+  mediaId: string,
+  workspaceId: string,
+  transformations: string
+): Promise<UiMediaAsset | null> {
+  try {
+    const response = await fetch('/api/media/transform', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mediaId, workspaceId, transformations }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save edited media');
+    }
+    
+    const apiMediaAsset = await response.json();
+    return apiToUiMediaAsset(apiMediaAsset);
+  } catch (error) {
+    console.error('Error saving edited media:', error);
+    return null;
   }
 }

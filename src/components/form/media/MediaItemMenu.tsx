@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, PencilIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,7 @@ interface MediaItemMenuProps {
 }
 
 export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
-  const { deleteMediaAsset } = useFormBuilderStore();
+  const { deleteMediaAsset, getMediaAssetByMediaId, startEditingMedia } = useFormBuilderStore();
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -66,6 +66,20 @@ export function MediaItemMenu({ mediaId }: MediaItemMenuProps) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem 
+            className="flex items-center" 
+            onClick={(e) => {
+              e.stopPropagation();
+              // Get the media asset by mediaId and then use its ID to start editing
+              const asset = getMediaAssetByMediaId(mediaId);
+              if (asset) {
+                startEditingMedia(asset.id);
+              }
+            }}
+          >
+            <PencilIcon className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
           <DropdownMenuItem 
             className="text-destructive focus:text-destructive flex items-center" 
             onClick={handleDeleteClick}
